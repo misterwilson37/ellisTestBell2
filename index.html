@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 3.47</title>
+    <title>Ellis Web Bell 3.48</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -1139,9 +1139,13 @@
         let appId; 
         let isAudioReady = false; 
         
-        let keepAliveOscillator = null; // NEW in 3.48: "Anti-sleep" oscillator
-        let lastClockCheckTimestamp = 0; // NEW in 3.48: For missed bell recovery
-        let currentDay = new Date().getDay(); // NEW in 3.48: To clear missed bells
+        let keepAliveOscillator = null; // NEW in 3.47: "Anti-sleep" oscillator
+
+        let oscillatorAlertInterval = null; // NEW in 3.48: For pre-bell wake-up
+        let isOscillatorAlert = false; // NEW in 3.48: Flag for pre-bell wake-up
+
+        let lastClockCheckTimestamp = 0; // NEW in 3.47: For missed bell recovery
+        let currentDay = new Date().getDay(); // NEW in 3.47: To clear missed bells
 
         // NEW: Audio file state
         let userAudioFiles = []; // { name, url, path }
@@ -1261,7 +1265,7 @@
                     clockIntervalId = setInterval(updateClock, 1000);
                 }
 
-                // NEW in 3.48: Start a silent, looping oscillator to prevent AudioContext suspension.
+                // NEW in 3.47: Start a silent, looping oscillator to prevent AudioContext suspension.
                 if (!keepAliveOscillator) {
                     keepAliveOscillator = new Tone.Oscillator({
                         frequency: 1, // 1 Hz (inaudible)
@@ -1500,7 +1504,7 @@
         }
 
         /**
-         * NEW in 3.48: Helper to get a Date object for a bell's time on a specific day.
+         * NEW in 3.47: Helper to get a Date object for a bell's time on a specific day.
          * @param {string} timeString - The HH:MM:SS time of the bell.
          * @param {Date} referenceDate - The "current" date object (from updateClock).
          * @returns {Date} A Date object for the bell on the reference day.
@@ -1627,7 +1631,40 @@
                 }
             }
     
-            // --- 5. Ring Logic (MODIFIED in 3.48: Missed Bell Recovery) ---
+            // --- NEW in 3.48: Pre-Bell Wake-up Logic ---
+            // If a bell is approaching (under 60s) and we're not in "alert mode",
+            // start "pulsing" the silent oscillator to keep the browser awake.
+            if (activeTimerMillis < 60000 && !isOscillatorAlert && keepAliveOscillator) {
+                console.log("Bell approaching. Entering oscillator alert mode.");
+                isOscillatorAlert = true;
+                if (oscillatorAlertInterval) clearInterval(oscillatorAlertInterval); // Clear just in case
+                
+                // "Pulse" the volume of the silent oscillator every 2 seconds
+                oscillatorAlertInterval = setInterval(() => {
+                    if (keepAliveOscillator) {
+                        // Ramp to slightly "louder" (still inaudible) and back
+                        keepAliveOscillator.volume.rampTo(-99, 0.2);
+                        setTimeout(() => {
+                            if (keepAliveOscillator) {
+                                keepAliveOscillator.volume.rampTo(-100, 0.2);
+                            }
+                        }, 1000); // 1s at -99, 1s at -100
+                    }
+                }, 2000);
+            } 
+            // If the next bell is far away and we're still in "alert mode", stop.
+            else if (activeTimerMillis > 60000 && isOscillatorAlert && keepAliveOscillator) {
+                console.log("Bell has passed. Exiting oscillator alert mode.");
+                isOscillatorAlert = false;
+                if (oscillatorAlertInterval) {
+                    clearInterval(oscillatorAlertInterval);
+                    oscillatorAlertInterval = null;
+                }
+                // Ensure volume is reset
+                keepAliveOscillator.volume.value = -100;
+            }
+
+            // --- 5. Ring Logic (MODIFIED in 3.47: Missed Bell Recovery) ---
             
             // A. Check if the day has rolled over. If so, clear the timestamp.
             const newDay = now.getDay();
@@ -1679,7 +1716,9 @@
             if (quickBellEndTime && nowTimestamp >= quickBellEndTime.getTime() && (nowTimestamp - lastRingTimestamp > RING_COOLDOWN)) {
                 console.log("Ringing Quick Bell");
                 ringBell({ name: "Quick Bell", sound: quickBellSound });
-                lastRingTimestamp = nowTimestamp; // Set cooldown timestamp
+                // MODIFIED in 3.48: DO NOT set the lastRingTimestamp.
+                // This prevents a quick bell from "eating" a nearby schedule bell.
+                // lastRingTimestamp = nowTimestamp; 
                 quickBellEndTime = null; // Clear the quick bell
             }
 
@@ -2205,12 +2244,19 @@
                         userId = null;
                         isUserAnonymous = true;
                         
-                        // NEW in 3.48: Stop the keep-alive oscillator
+                        // NEW in 3.47: Stop the keep-alive oscillator
                         if (keepAliveOscillator) {
                             keepAliveOscillator.stop();
                             keepAliveOscillator.dispose();
                             keepAliveOscillator = null;
                         }
+                        
+                        // NEW in 3.48: Stop the alert interval
+                        if (oscillatorAlertInterval) {
+                            clearInterval(oscillatorAlertInterval);
+                            oscillatorAlertInterval = null;
+                        }
+                        isOscillatorAlert = false; // Reset flag
 
                         if (clockIntervalId) {
                             clearInterval(clockIntervalId);
@@ -4608,13 +4654,19 @@
         // --- NEW in 3.46: App Cleanup Listener (Fix for Safari CORS/Fetch Errors on Refresh) ---
         window.addEventListener('beforeunload', () => {
             try {
-                // NEW in 3.48: Stop keep-alive oscillator
+                // NEW in 3.47: Stop keep-alive oscillator
                 if (keepAliveOscillator) {
                     keepAliveOscillator.stop();
                     keepAliveOscillator.dispose();
                     keepAliveOscillator = null;
                 }
 
+                // NEW in 3.48: Stop the alert interval
+                if (oscillatorAlertInterval) {
+                    clearInterval(oscillatorAlertInterval);
+                    oscillatorAlertInterval = null;
+                }
+                
                 // If the Firebase app is initialized, ensure we delete it on page unload
                 // to prevent stale connections/tokens causing CORS/Fetch errors on next load.
                 if (auth && auth.app) {
@@ -4654,4 +4706,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 3.47 -->
+<!-- Version 3.48 -->
