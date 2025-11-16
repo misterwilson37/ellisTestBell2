@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.79</title>
+    <title>Ellis Web Bell 4.80</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.79</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.80</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -3521,11 +3521,23 @@
             function findBellChildren(parentBellId) {
                 if (!parentBellId) return [];
 
-                const allPeriods = [...localSchedulePeriods, ...personalBellsPeriods];
-                let children = [];
-                // NEW in 4.48: Find the *period* this parent bell is in.
-                const parentPeriod = allPeriods.find(p => p.bells.some(b => b.bellId === parentBellId));
+                // --- MODIFIED V4.80: CRITICAL BUG FIX ---
+                // We must use the time-resolved, sorted *calculatedPeriodsList* to find
+                // the true anchors. Using the raw 'allPeriods' list was causing
+                // new bells (at the end of the raw array) to be misidentified as anchors.
+                const allPeriods = [...localSchedulePeriods, ...personalBellsPeriods]; // Raw data for iteration
+                const calculatedParentPeriod = calculatedPeriodsList.find(p => p.bells.some(b => b.bellId === parentBellId));
+                
+                let trueFirstBell, trueLastBell;
+                if (calculatedParentPeriod && calculatedParentPeriod.bells.length > 0) {
+                    // This list IS sorted by time.
+                    trueFirstBell = calculatedParentPeriod.bells[0];
+                    trueLastBell = calculatedParentPeriod.bells[calculatedParentPeriod.bells.length - 1];
+                }
+                // --- END V4.80 FIX ---
 
+                let children = [];
+                
                 allPeriods.forEach(period => {
                     period.bells.forEach(bell => {
                         if (!bell.relative) return; // Skip non-relative bells
@@ -3535,14 +3547,17 @@
 
                         // Check for new-style anchor link
                         let isAnchorMatch = false;
-                        if (bell.relative.parentPeriodName && parentPeriod) {
-                            const isSamePeriod = bell.relative.parentPeriodName === parentPeriod.name;
+                        // MODIFIED V4.80: Use the calculated anchor bells (trueFirstBell, trueLastBell)
+                        if (bell.relative.parentPeriodName && calculatedParentPeriod && trueFirstBell && trueLastBell) {
+                            const isSamePeriod = bell.relative.parentPeriodName === calculatedParentPeriod.name;
                             const anchorType = bell.relative.parentAnchorType; // 'period_start' or 'period_end'
                             
-                            if (isSamePeriod && anchorType === 'period_start' && parentPeriod.bells[0].bellId === parentBellId) {
-                                isAnchorMatch = true; // It's linked to 'period_start' and this IS the start bell
-                            } else if (isSamePeriod && anchorType === 'period_end' && parentPeriod.bells[parentPeriod.bells.length - 1].bellId === parentBellId) {
-                                isAnchorMatch = true; // It's linked to 'period_end' and this IS the end bell
+                            // Check if this bell is anchored to 'period_start' AND the bell being deleted *is* the true start bell
+                            if (isSamePeriod && anchorType === 'period_start' && trueFirstBell.bellId === parentBellId) {
+                                isAnchorMatch = true;
+                            // Check if this bell is anchored to 'period_end' AND the bell being deleted *is* the true end bell
+                            } else if (isSamePeriod && anchorType === 'period_end' && trueLastBell.bellId === parentBellId) {
+                                isAnchorMatch = true;
                             }
                         }
 
@@ -6521,8 +6536,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.79: Changed to a generic 'person' icon
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 7.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM14 9H9c-2.7 0-5.8 1.29-6 2.01V12h18v-1c-.2-.71-3.3-2-6-2zm-8 4v8h2v-6h2v6h2v-6h2v6h2v-8c0-2.66-5.33-4-8-4z"/></svg>`;
+                    // MODIFIED V4.80: Replaced 'person' with 'pedestrian' icon
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M14.5 6a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0zM15 8.5H9a4.5 4.5 0 0 0-4.5 4.5v10h2V14a2.5 2.5 0 0 1 2.5-2.5h1.1l-.6 6h2l.6-6H15a2.5 2.5 0 0 1 2.5 2.5v9h2v-10A4.5 4.5 0 0 0 15 8.5z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -6660,8 +6675,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.79: Changed to a generic 'person' icon
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 7.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM14 9H9c-2.7 0-5.8 1.29-6 2.01V12h18v-1c-.2-.71-3.3-2-6-2zm-8 4v8h2v-6h2v6h2v-6h2v6h2v-8c0-2.66-5.33-4-8-4z"/></svg>`;
+                    // MODIFIED V4.80: Replaced 'person' with 'pedestrian' icon
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M14.5 6a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0zM15 8.5H9a4.5 4.5 0 0 0-4.5 4.5v10h2V14a2.5 2.5 0 0 1 2.5-2.5h1.1l-.6 6h2l.6-6H15a2.5 2.5 0 0 1 2.5 2.5v9h2v-10A4.5 4.5 0 0 0 15 8.5z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -8669,4 +8684,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.79 -->
+<!-- Version 4.80 -->
