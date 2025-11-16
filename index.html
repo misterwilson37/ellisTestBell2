@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.78</title>
+    <title>Ellis Web Bell 4.79</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.78</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.79</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -3757,14 +3757,10 @@
     
                 saveSoundOverrides();
                 
-                // 2. Refresh the active schedule data
-                // Since we updated bellSoundOverrides, the activeScheduleListener
-                // will pick up the change on the next load. We manually trigger a 
-                // re-render of the list and update the clock.
-                
-                // MODIFIED: This is safe because the listeners have already pulled the data.
-                renderCombinedList();
-                updateClock();
+                // MODIFIED V4.79: Call the master recalculate function.
+                // This ensures the list re-renders with the new sound override.
+                recalculateAndRenderAll();
+                // updateClock() is called inside recalculate, so this is redundant.
     
                 closeChangeSoundModal();
             }
@@ -6084,9 +6080,9 @@
                     addNewVisualOption(downloadURL, visualFileToUpload.name);
                     renderVisualFileManager(); // Re-render the manager list
                     
-                    // NEW V4.77 (FIX): Force a full schedule re-render
-                    // This fixes the "disappearing schedule" bug.
-                    recalculateAndRenderAll();
+                    // DELETED V4.79: This call caused the schedule to disappear
+                    // because the override had not been saved yet.
+                    // recalculateAndRenderAll();
 
                     // 2. If this was triggered from a period edit, select the new file
                     if (currentVisualSelectTarget) {
@@ -6525,8 +6521,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.60.4: Changed to a walking figure icon path.
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8l2.1 2v6h2v-8.4l-2.1-2.1.6-3.4c1.1 1.2 2.7 2 4.5 2V12c-1.4 0-2.6-.7-3.4-1.8L9.8 8.9z"/></svg>`;
+                    // MODIFIED V4.79: Changed to a generic 'person' icon
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 7.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM14 9H9c-2.7 0-5.8 1.29-6 2.01V12h18v-1c-.2-.71-3.3-2-6-2zm-8 4v8h2v-6h2v6h2v-6h2v6h2v-8c0-2.66-5.33-4-8-4z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -6664,8 +6660,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.60.5: Changed to a walking figure icon path (matches full size).
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8l2.1 2v6h2v-8.4l-2.1-2.1.6-3.4c1.1 1.2 2.7 2 4.5 2V12c-1.4 0-2.6-.7-3.4-1.8L9.8 8.9z"/></svg>`;
+                    // MODIFIED V4.79: Changed to a generic 'person' icon
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 7.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM14 9H9c-2.7 0-5.8 1.29-6 2.01V12h18v-1c-.2-.71-3.3-2-6-2zm-8 4v8h2v-6h2v6h2v-6h2v6h2v-8c0-2.66-5.33-4-8-4z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -7270,10 +7266,9 @@
                     addNewAudioOption(downloadURL, fileToUpload.name);
                     renderAudioFileManager(); // Re-render the manager list
 
-                    // NEW V4.77 (FIX): Force a full schedule re-render
-                    // This fixes the "disappearing schedule" bug and the
-                    // stale "[UPLOAD]" text in the schedule list.
-                    recalculateAndRenderAll();
+                    // DELETED V4.79: This call caused the schedule to disappear
+                    // because the override had not been saved yet.
+                    // recalculateAndRenderAll();
 
                     // 2. If this was triggered from a sound select, select the new file
                     if (currentSoundSelectTarget) {
@@ -8674,4 +8669,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.78 -->
+<!-- Version 4.79 -->
