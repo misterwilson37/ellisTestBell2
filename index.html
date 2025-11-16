@@ -1104,11 +1104,7 @@
                     </div>
                     <!-- Relative Inputs -->
                     <div id="new-period-start-relative" class="hidden space-y-3">
-                            <input type="time" id="new-period-start-time" step="1" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-                    <!-- Relative Inputs -->
-                    <div id="new-period-start-relative" class="hidden space-y-3">
+                        <!-- DELETED V4.81: Removed stray/broken input tag and div that broke the layout -->
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label for="new-period-start-parent" class="block text-sm font-medium text-gray-700">Anchor Period</label>
@@ -1127,6 +1123,17 @@
                         <div class="grid grid-cols-3 gap-4">
                             <div>
                                 <label for="new-period-start-direction" class="block text-sm font-medium text-gray-700">Direction</label>
+                                <select id="new-period-start-direction" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="before">Before</option>
+                                    <option value="after">After</option>
+                                </select>
+                            </div>
+                            <!-- NEW V4.81: Added missing Minutes input -->
+                            <div>
+                                <label for="new-period-start-minutes" class="block text-sm font-medium text-gray-700">Minutes</label>
+                                <input type="number" id="new-period-start-minutes" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <div>
                                 <select id="new-period-start-direction" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                                     <option value="before">Before</option>
                                     <option value="after">After</option>
@@ -8307,19 +8314,35 @@
                     if (target.classList.contains('delete-btn') || target.classList.contains('delete-custom-btn')) {
                         handleDeleteBellClick(bell);
                         return; // Action handled
-                    // MODIFIED V4.81: 'sound-btn' on a custom bell should trigger edit
-                    } else if (target.classList.contains('edit-btn') || (target.classList.contains('edit-custom-btn') && target.classList.contains('sound-btn'))) {
+                    
+                    // MODIFIED V4.81 (FIX): Corrected button logic.
+                    // Use 'title' to distinguish Edit from Sound on custom bells.
+                    } else if (target.classList.contains('edit-btn') || 
+                               (target.classList.contains('edit-custom-btn') && target.title === 'Edit bell')) {
+                        // This handles:
+                        // 1. "Edit" on a Shared bell
+                        // 2. "Edit" on a Custom bell
+                        
                         // MODIFIED in 4.19: Pass periodName to edit function
                         // MODIFIED in 4.27: Pass bellId to edit function
                         // MODIFIED in 4.31: Pass the full bell object
                         handleEditBellClick(bell);
                         return; // Action handled
-                    // MODIFIED V4.81: This now only handles SHARED bell sound clicks
-                    } else if (target.classList.contains('sound-btn')) {
-                        openChangeSoundModal(bell);
-                        return; // Action handled
-                    } else if (target.classList.contains('preview-bell-btn')) { // NEW in 4.16: Handle Play button
-                        playBell(bell.sound);
+                    
+                    // MODIFIED V4.81 (FIX): Corrected button logic.
+                    } else if (target.classList.contains('sound-btn') || 
+                               (target.classList.contains('edit-custom-btn') && target.title === 'Change Sound')) {
+                        // This handles:
+                        // 1. "Sound" on a Shared bell (opens Change Sound modal)
+                        // 2. "Sound" on a Custom bell (opens Edit Bell modal)
+                        
+                        if (bell.type === 'custom') {
+                            // Custom bell "Sound" button just opens the main editor
+                            handleEditBellClick(bell);
+                        } else {
+                            // Shared bell "Sound" button opens the override modal
+                            openChangeSoundModal(bell);
+                        }
                         return; // Action handled
                     }
                     
