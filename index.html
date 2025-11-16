@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.81</title>
+    <title>Ellis Web Bell 4.82</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.81</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.82</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -1104,8 +1104,9 @@
                     </div>
                     <!-- Relative Inputs -->
                     <div id="new-period-start-relative" class="hidden space-y-3">
-                        <!-- DELETED V4.81: Removed stray/broken input tag and div that broke the layout -->
-                        <div class="grid grid-cols-2 gap-4">
+                        <!-- DELETED V4.81: Removed stray/broken input tag -->
+                        <!-- MODIFIED V4.82: This div was the source of the stray </div>, it's now self-contained -->
+                        <div class="grid grid-cols-2 gap-4"> 
                             <div>
                                 <label for="new-period-start-parent" class="block text-sm font-medium text-gray-700">Anchor Period</label>
                                 <select id="new-period-start-parent" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
@@ -1128,16 +1129,10 @@
                                     <option value="after">After</option>
                                 </select>
                             </div>
-                            <!-- NEW V4.81: Added missing Minutes input -->
+                            <!-- MODIFIED V4.82: Corrected layout and fixed duplicate/wrong inputs -->
                             <div>
                                 <label for="new-period-start-minutes" class="block text-sm font-medium text-gray-700">Minutes</label>
                                 <input type="number" id="new-period-start-minutes" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                            </div>
-                            <div>
-                                <select id="new-period-start-direction" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                    <option value="before">Before</option>
-                                    <option value="after">After</option>
-                                </select>
                             </div>
                             <div>
                                 <label for="new-period-start-seconds" class="block text-sm font-medium text-gray-700">Seconds</label>
@@ -8344,10 +8339,16 @@
                             openChangeSoundModal(bell);
                         }
                         return; // Action handled
-                    }
                     
+                    // NEW V4.82: Add missing Preview button handler
+                    } else if (target.classList.contains('preview-bell-btn')) {
+                        playBell(bell.sound);
+                        return; // Action handled
+                    }
+                    // END V4.82 FIX
+
                     // If no specific button was clicked (e.g., just the bell row), do nothing.
-                }
+                } // DELETED V4.82: Removed extra '}' that was causing a SyntaxError
                 
                 // Event delegation
                 combinedBellListElement.addEventListener('click', handleBellListClick);
@@ -8762,4 +8763,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.81 -->
+<!-- Version 4.82 -->
