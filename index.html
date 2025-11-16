@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.77</title>
+    <title>Ellis Web Bell 4.78</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.77</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.78</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -3242,12 +3242,24 @@
                     // 2c. Find the anchor bell (start or end) within that period.
                     // Note: We MUST recursively find the time for these, as they could also be relative.
                     let anchorBell;
+                    // --- MODIFIED V4.78: Multi-Add Circular Dependency FIX ---
+                    // We must find the first/last *STATIC* (non-relative) bell.
+                    // This prevents a new relative bell from anchoring to itself,
+                    // which was the source of the circular dependency errors.
+                    const staticBellsInPeriod = parentPeriod.bells.filter(b => !b.relative);
+                    
+                    if (staticBellsInPeriod.length === 0) {
+                         console.warn(`Could not find a STATIC anchor bell in period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
+                         return { ...bell, isOrphan: true, fallbackTime: "00:00:00" };
+                    }
+                    
                     if (parentAnchorType === 'period_start') {
-                        anchorBell = parentPeriod.bells[0];
+                        anchorBell = staticBellsInPeriod[0];
                     } else {
                         // 'period_end'
-                        anchorBell = parentPeriod.bells[parentPeriod.bells.length - 1];
+                        anchorBell = staticBellsInPeriod[staticBellsInPeriod.length - 1];
                     }
+                    // --- END V4.78 FIX ---
 
                     // 2d. Recursively find the anchor bell's time
                     const anchorTime = calculateRelativeBellTime(anchorBell, bellMap, allPeriods, new Set(visited));
@@ -6072,6 +6084,10 @@
                     addNewVisualOption(downloadURL, visualFileToUpload.name);
                     renderVisualFileManager(); // Re-render the manager list
                     
+                    // NEW V4.77 (FIX): Force a full schedule re-render
+                    // This fixes the "disappearing schedule" bug.
+                    recalculateAndRenderAll();
+
                     // 2. If this was triggered from a period edit, select the new file
                     if (currentVisualSelectTarget) {
                         currentVisualSelectTarget.value = downloadURL;
@@ -6518,7 +6534,7 @@
                     if (match) {
                         text = (match[1] || match[2]).toUpperCase();
                     }
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor">${text}</text></svg>`;
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text></svg>`;
                 }
                 
                 // Return as a full HTML string for injection
@@ -6610,9 +6626,10 @@
                     const bgColor = parts[1] || '#4338CA'; // Default bg
                     const fgColor = parts[2] || '#FFFFFF'; // Default fg
                     
-                    const svgFontSize = customText.length > 2 ? 60 : 80;
+                    // MODIFIED V4.78: Reduced 3-char font size & added font-family
+                    const svgFontSize = customText.length > 2 ? 55 : 80;
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
-                        <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor">${customText}</text>
+                        <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${customText}</text>
                     </svg>`;
                     // MODIFIED V4.75: Use inline styles for custom colors
                     return `<div class="w-full h-full p-8 flex items-center justify-center" style="background-color:${bgColor}; color:${fgColor};">
@@ -6656,7 +6673,7 @@
                     if (match) {
                         text = (match[1] || match[2]).toUpperCase();
                     }
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor">${text}</text></svg>`;
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text></svg>`;
                 }
                 
                 // MODIFIED V4.74: Return *only* the SVG content string.
@@ -6685,9 +6702,10 @@
                     const bgColor = parts[1] || '#4338CA'; // Default bg
                     const fgColor = parts[2] || '#FFFFFF'; // Default fg
                     
-                    const svgFontSize = customText.length > 2 ? 30 : 40; // Use larger font size for 1-2 chars
+                    // MODIFIED V4.78: Reduced 3-char font size & added font-family
+                    const svgFontSize = customText.length > 2 ? 28 : 40; // Use larger font size for 1-2 chars
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-                        <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor">${customText}</text>
+                        <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${customText}</text>
                     </svg>`;
                     // MODIFIED V4.75: Use inline styles for custom colors
                     return `<div class="${sharedClasses} flex items-center justify-center" style="background-color:${bgColor}; color:${fgColor};">
@@ -7251,6 +7269,11 @@
                     userAudioFiles.push({ name: fileToUpload.name, url: downloadURL, path: storageRef.fullPath });
                     addNewAudioOption(downloadURL, fileToUpload.name);
                     renderAudioFileManager(); // Re-render the manager list
+
+                    // NEW V4.77 (FIX): Force a full schedule re-render
+                    // This fixes the "disappearing schedule" bug and the
+                    // stale "[UPLOAD]" text in the schedule list.
+                    recalculateAndRenderAll();
 
                     // 2. If this was triggered from a sound select, select the new file
                     if (currentSoundSelectTarget) {
@@ -8651,4 +8674,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.77 -->
+<!-- Version 4.78 -->
