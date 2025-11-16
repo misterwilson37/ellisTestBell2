@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.80</title>
+    <title>Ellis Web Bell 4.81</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.80</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.81</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -1089,9 +1089,21 @@
                 <div class="border-t pt-4 mb-4">
                     <h4 class="text-lg font-semibold text-gray-800 mb-2">Start Bell (Anchor)</h4>
                     <!-- Static Inputs -->
-                    <div id="new-period-start-static" class="grid grid-cols-2 gap-4">
-                        <div>
+                    <!-- MODIFIED V4.81: Added sound dropdown, changed to 3 cols -->
+                    <div id="new-period-start-static" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-1">
                             <label for="new-period-start-time" class="block text-sm font-medium text-gray-700">Time (HH:MM:SS)</label>
+                            <input type="time" id="new-period-start-time" step="1" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="new-period-start-sound" class="block text-sm font-medium text-gray-700">Sound</label>
+                            <select id="new-period-start-sound" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Relative Inputs -->
+                    <div id="new-period-start-relative" class="hidden space-y-3">
                             <input type="time" id="new-period-start-time" step="1" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
@@ -1121,13 +1133,16 @@
                                 </select>
                             </div>
                             <div>
-                                <label for="new-period-start-minutes" class="block text-sm font-medium text-gray-700">Minutes</label>
-                                <input type="number" id="new-period-start-minutes" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                            </div>
-                            <div>
                                 <label for="new-period-start-seconds" class="block text-sm font-medium text-gray-700">Seconds</label>
                                 <input type="number" id="new-period-start-seconds" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                             </div>
+                        </div>
+                        <!-- NEW V4.81: Sound dropdown for relative start bell -->
+                        <div>
+                            <label for="new-period-start-sound-relative" class="block text-sm font-medium text-gray-700">Sound</label>
+                            <select id="new-period-start-sound-relative" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <!-- Populated by JS -->
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -1136,10 +1151,17 @@
                 <div class="border-t pt-4">
                     <h4 class="text-lg font-semibold text-gray-800 mb-2">End Bell (Anchor)</h4>
                     <!-- Static Inputs -->
-                    <div id="new-period-end-static" class="grid grid-cols-2 gap-4">
-                        <div>
+                    <!-- MODIFIED V4.81: Added sound dropdown, changed to 3 cols -->
+                    <div id="new-period-end-static" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-1">
                             <label for="new-period-end-time" class="block text-sm font-medium text-gray-700">Time (HH:MM:SS)</label>
                             <input type="time" id="new-period-end-time" step="1" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="new-period-end-sound" class="block text-sm font-medium text-gray-700">Sound</label>
+                            <select id="new-period-end-sound" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Populated by JS -->
+                            </select>
                         </div>
                     </div>
                     <!-- Relative Inputs -->
@@ -1175,6 +1197,13 @@
                                 <label for="new-period-end-seconds" class="block text-sm font-medium text-gray-700">Seconds</label>
                                 <input type="number" id="new-period-end-seconds" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                             </div>
+                        </div>
+                        <!-- NEW V4.81: Sound dropdown for relative end bell -->
+                        <div>
+                            <label for="new-period-end-sound-relative" class="block text-sm font-medium text-gray-700">Sound</label>
+                            <select id="new-period-end-sound-relative" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <!-- Populated by JS -->
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -2984,9 +3013,9 @@
                                             aria-label="Delete bell ${safeName}"
                                             title="Delete bell">Delete</button>
 
-                                    <!-- NEW V4.76: Restored Sound Button for SHARED bells -->
-                                    <button class="sound-btn px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                                            style="${isCustom ? 'display: none;' : ''}"
+                                    <!-- MODIFIED V4.81: Show Sound button for ALL bells -->
+                                    <!-- For custom bells, it will open the Edit modal -->
+                                    <button class="${isCustom ? 'edit-custom-btn' : 'sound-btn'} px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                                             aria-label="Change sound for ${safeName}"
                                             title="Change Sound">Sound</button>
 
@@ -6536,8 +6565,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.80: Replaced 'person' with 'pedestrian' icon
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M14.5 6a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0zM15 8.5H9a4.5 4.5 0 0 0-4.5 4.5v10h2V14a2.5 2.5 0 0 1 2.5-2.5h1.1l-.6 6h2l.6-6H15a2.5 2.5 0 0 1 2.5 2.5v9h2v-10A4.5 4.5 0 0 0 15 8.5z"/></svg>`;
+                    // MODIFIED V4.81: New 'pedestrian' icon
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-8.4l-2.1-2.1.6-3.4C14.1 11.2 15.6 12 17.5 12V10c-1.4 0-2.6-.7-3.4-1.8L9.8 8.9z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -6675,8 +6704,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.80: Replaced 'person' with 'pedestrian' icon
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M14.5 6a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0zM15 8.5H9a4.5 4.5 0 0 0-4.5 4.5v10h2V14a2.5 2.5 0 0 1 2.5-2.5h1.1l-.6 6h2l.6-6H15a2.5 2.5 0 0 1 2.5 2.5v9h2v-10A4.5 4.5 0 0 0 15 8.5z"/></svg>`;
+                    // MODIFIED V4.81: New 'pedestrian' icon
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-8.4l-2.1-2.1.6-3.4C14.1 11.2 15.6 12 17.5 12V10c-1.4 0-2.6-.7-3.4-1.8L9.8 8.9z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -6803,6 +6832,24 @@
                 newPeriodStatus.classList.add('hidden');
                 updateVisualDropdowns();
                 
+                // NEW V4.81: Populate all sound dropdowns
+                const soundSelects = [
+                    document.getElementById('new-period-start-sound'),
+                    document.getElementById('new-period-start-sound-relative'),
+                    document.getElementById('new-period-end-sound'),
+                    document.getElementById('new-period-end-sound-relative')
+                ];
+                const sharedSoundSelect = document.getElementById('shared-bell-sound');
+                if (sharedSoundSelect) {
+                    updateSoundDropdowns(); // Ensure sounds are populated
+                    soundSelects.forEach(select => {
+                        if(select) {
+                            select.innerHTML = sharedSoundSelect.innerHTML;
+                            select.value = 'ellisBell.mp3'; // Default to Ellis Bell
+                        }
+                    });
+                }
+                
                 // 2. Populate relative anchor period dropdowns
                 // Only use the BASE shared periods for anchoring
                 const basePeriodNames = localSchedulePeriods.map(p => p.name);
@@ -6897,6 +6944,11 @@
                 
                 // Helper to validate and build bell data
                 const buildBellData = (type, prefix) => {
+                    // NEW V4.81: Get sound based on type
+                    const sound = (type === 'static')
+                        ? document.getElementById(`${prefix}-sound`).value
+                        : document.getElementById(`${prefix}-sound-relative`).value;
+
                     if (type === 'static') {
                         const time = document.getElementById(`${prefix}-time`).value;
                         if (!time) throw new Error(`${prefix.split('-')[1]} time is required for static mode.`);
@@ -6918,7 +6970,8 @@
                         if (nearbyBell) {
                             throw new Error(`Time conflict: Period start/end is too close to "${nearbyBell.name}" (${formatTime12Hour(nearbyBell.time, true)}).`);
                         }
-                        return { time };
+                        // MODIFIED V4.81: Return sound
+                        return { time, sound };
                     } else { // relative
                         const parentName = document.getElementById(`${prefix}-parent`).value;
                         const anchorType = document.getElementById(`${prefix}-anchor-type`).value;
@@ -6937,7 +6990,8 @@
                                 parentPeriodName: parentName,
                                 parentAnchorType: anchorType,
                                 offsetSeconds: offsetSeconds
-                            }
+                            },
+                            sound // MODIFIED V4.81: Return sound
                         };
                     }
                 };
@@ -6948,7 +7002,7 @@
                     newBells.push({
                         ...startBellData,
                         name: 'Period Start', // Critical for anchoring/fluke logic
-                        sound: 'ellisBell.mp3', // Default bell sound
+                        // sound: 'ellisBell.mp3', // DELETED V4.81: Sound is now in startBellData
                         bellId: generateBellId()
                     });
 
@@ -6957,7 +7011,7 @@
                     newBells.push({
                         ...endBellData,
                         name: 'Period End', // Critical for anchoring/fluke logic
-                        sound: 'ellisBell.mp3',
+                        // sound: 'ellisBell.mp3', // DELETED V4.81: Sound is now in endBellData
                         bellId: generateBellId()
                     });
 
@@ -8253,13 +8307,14 @@
                     if (target.classList.contains('delete-btn') || target.classList.contains('delete-custom-btn')) {
                         handleDeleteBellClick(bell);
                         return; // Action handled
-                    } else if (target.classList.contains('edit-btn') || target.classList.contains('edit-custom-btn')) {
+                    // MODIFIED V4.81: 'sound-btn' on a custom bell should trigger edit
+                    } else if (target.classList.contains('edit-btn') || (target.classList.contains('edit-custom-btn') && target.classList.contains('sound-btn'))) {
                         // MODIFIED in 4.19: Pass periodName to edit function
                         // MODIFIED in 4.27: Pass bellId to edit function
                         // MODIFIED in 4.31: Pass the full bell object
                         handleEditBellClick(bell);
                         return; // Action handled
-                    // MODIFIED V4.76: This logic was missing
+                    // MODIFIED V4.81: This now only handles SHARED bell sound clicks
                     } else if (target.classList.contains('sound-btn')) {
                         openChangeSoundModal(bell);
                         return; // Action handled
@@ -8684,4 +8739,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.80 -->
+<!-- Version 4.81 -->
