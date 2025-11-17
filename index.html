@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.89</title>
+    <title>Ellis Web Bell 4.90</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.89</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.90</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -757,28 +757,33 @@
             <div class="border-t pt-6 space-y-4">
                 <h4 class="text-lg font-medium text-gray-800">Backup & Restore</h4>
                 
-                <!-- Export -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Export All Schedules</label>
-                    <button type="button" id="export-schedules-btn" class="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        Download Backup (JSON)
+                <!-- MODIFIED V4.90: 2x2 Grid for Backup/Restore -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Top Row: Current Schedule -->
+                    <button type="button" id="export-current-schedule-btn" class="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Export Current Schedule
+                    </button>
+                    <button type="button" id="import-current-schedule-btn" class="w-full px-4 py-2 bg-gray-600 text-white font-medium rounded-lg shadow-md hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Import & Overwrite Current
+                    </button>
+                    
+                    <!-- Bottom Row: All Schedules -->
+                    <button type="button" id="export-schedules-btn" class="w-full px-4 py-2 bg-blue-700 text-white font-medium rounded-lg shadow-md hover:bg-blue-800 transition-colors">
+                        Export ALL Shared Schedules
+                    </button>
+                    <button type="button" id="import-schedules-btn" class="w-full px-4 py-2 bg-gray-700 text-white font-medium rounded-lg shadow-md hover:bg-gray-800 transition-colors">
+                        Import & Overwrite ALL
                     </button>
                 </div>
-
-                <!-- Import -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Import & Overwrite Schedules</label>
-                    <!-- This input is hidden and triggered by the button -->
-                    <input type="file" id="import-file-input" accept="application/json">
-                    <button type="button" id="import-schedules-btn" class="w-full px-4 py-2 bg-gray-600 text-white font-medium rounded-lg shadow-md hover:bg-gray-700 transition-colors">
-                        Upload Backup (JSON)
-                    </button>
-                    <p id="import-status" class="text-blue-600 text-sm mt-2 hidden"></p>
-                </div>
+                
+                <!-- Hidden file inputs -->
+                <input type="file" id="import-file-input" accept="application/json">
+                <input type="file" id="import-current-file-input" accept="application/json" class="hidden"> <!-- NEW V4.90 -->
+                
+                <p id="import-status" class="text-blue-600 text-sm mt-2 hidden"></p>
             </div>
 
         </div>
-
 
         <!-- MODIFIED: Custom Bells (Local) -> Personal Bells (Cloud) v3.03 -->
         <div class="auth-required mt-12"> <!-- Hidden for anonymous users -->
@@ -1811,6 +1816,10 @@
         const importSchedulesBtn = document.getElementById('import-schedules-btn');
         const importFileInput = document.getElementById('import-file-input');
         const importStatus = document.getElementById('import-status');
+        // NEW V4.90: Current Schedule Import/Export
+        const exportCurrentScheduleBtn = document.getElementById('export-current-schedule-btn');
+        const importCurrentScheduleBtn = document.getElementById('import-current-schedule-btn');
+        const importCurrentFileInput = document.getElementById('import-current-file-input');
         // --- END: v4.14d RESTORE ---
 
         // --- END: v4.14 Global Scope Fix ---
@@ -4196,12 +4205,48 @@
                 sharedSchedulesListenerUnsubscribe = onSnapshot(schedulesCollectionRef, (querySnapshot) => {
                     // MODIFIED V4.88: Read the 'periods' array, not the legacy 'bells' array.
                     // This fixes the 'undefined.findIndex' error when editing shared bells.
-                    allSchedules = querySnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        name: doc.data().name || "Unnamed Schedule",
-                        periods: doc.data().periods || [], // <-- THE FIX
-                        bells: doc.data().bells || [] // Keep legacy for migrate check
-                    }));
+                    // MODIFIED V4.90: CRITICAL FIX for Admin functions.
+                    // This listener MUST run the same migration logic as setActiveSchedule.
+                    allSchedules = querySnapshot.docs.map(doc => {
+                        const scheduleData = doc.data();
+                        let periodsToUse = [];
+                        
+                        // 1. Check for 'periods' array first
+                        if (scheduleData.periods && scheduleData.periods.length > 0) {
+                            periodsToUse = scheduleData.periods;
+                        } 
+                        // 2. If no 'periods', migrate from 'bells'
+                        else if (scheduleData.bells && scheduleData.bells.length > 0) {
+                            periodsToUse = migrateLegacyBellsToPeriods(scheduleData.bells);
+                            console.log(`(Admin List) Migrating legacy schedule: ${scheduleData.name}`);
+                        }
+
+                        // 3. Assign unique bellIds if missing (for override/edit logic)
+                        let needsIdMigration = false;
+                        periodsToUse.forEach(period => {
+                            period.bells.forEach(bell => {
+                                if (!bell.bellId) {
+                                    bell.bellId = generateBellId();
+                                    needsIdMigration = true;
+                                }
+                            });
+                        });
+                        
+                        // 4. (Admin-only) Save back migrated IDs
+                        if (needsIdMigration && document.body.classList.contains('admin-mode')) {
+                            console.log(`(Admin List) Saving migrated bellIds for ${scheduleData.name}`);
+                            const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', doc.id);
+                            // Fire-and-forget, do not await
+                            updateDoc(scheduleRef, { periods: periodsToUse }); 
+                        }
+
+                        return {
+                            id: doc.id,
+                            name: scheduleData.name || "Unnamed Schedule",
+                            periods: periodsToUse, // Use the migrated periods
+                            bells: scheduleData.bells || [] // Keep legacy for migrate check
+                        };
+                    });
                     allSchedules.sort((a, b) => a.name.localeCompare(b.name));
                     console.log("Shared schedules updated from snapshot:", allSchedules.length);
     
@@ -4290,6 +4335,10 @@
                 backupPersonalScheduleBtn.disabled = true;
                 restorePersonalScheduleBtn.disabled = true;
                 showMultiAddRelativeModalBtn.disabled = true; // NEW in 4.42: Reset button state
+                
+                // NEW V4.90: Disable admin import/export buttons
+                exportCurrentScheduleBtn.disabled = true;
+                importCurrentScheduleBtn.disabled = true;
 
                 // v3.03: Disable personal schedule buttons
                 createPersonalScheduleBtn.disabled = true;
@@ -4329,6 +4378,9 @@
                         // Enable admin add shared bell
                         if (document.body.classList.contains('admin-mode')) {
                             addSharedBellForm.querySelector('button[type="submit"]').disabled = false;
+                            // NEW V4.90: Enable current schedule buttons
+                            exportCurrentScheduleBtn.disabled = false;
+                            importCurrentScheduleBtn.disabled = false;
                         }
                     }
     
@@ -4354,7 +4406,7 @@
                                 localSchedulePeriods = [];
                             }
                             
-                            // --- NEW V4.89: One-Time Bell ID Migration for BASE shared bells ---
+                            // --- NEW V4.90: One-Time Bell ID Migration for BASE shared bells ---
                             // This must run for personal schedules too, so the base bells have IDs.
                             let needsBaseMigration = false;
                             localSchedulePeriods.forEach(period => {
@@ -4373,7 +4425,7 @@
                                     .then(() => console.log("Base schedule bellId migration successful."))
                                     .catch(err => console.error("Error saving base bellId migration:", err));
                             }
-                            // --- END V4.89 Migration ---
+                            // --- END V4.90 Migration ---
                             
                             console.log("Base schedule for personal schedule updated.");
                         } else {
@@ -4436,7 +4488,7 @@
                                 localSchedulePeriods = [];
                             }
 
-                            // --- NEW V4.89: One-Time Bell ID Migration for SHARED bells ---
+                            // --- NEW V4.90: One-Time Bell ID Migration for SHARED bells ---
                             // This fixes the bug where overrides wouldn't save on refresh.
                             let needsSharedMigration = false;
                             localSchedulePeriods.forEach(period => {
@@ -4458,7 +4510,7 @@
                                     .then(() => console.log("Shared schedule bellId migration successful."))
                                     .catch(err => console.error("Error saving shared bellId migration:", err));
                             }
-                            // --- END V4.89 Migration ---
+                            // --- END V4.90 Migration ---
                             
                             console.log("Active shared schedule updated.");
 
@@ -7355,6 +7407,11 @@
             function handleImportSchedules() {
                 importFileInput.click();
             }
+
+            // NEW V4.90: Handler for Current Schedule Import button
+            function handleImportCurrentScheduleClick() {
+                importCurrentFileInput.click(); // Trigger the *new* hidden input
+            }
     
             async function handleFileInputChange(e) {
                 const file = e.target.files[0];
@@ -7371,6 +7428,22 @@
                         if (!data.schedules || !Array.isArray(data.schedules)) {
                             throw new Error("Invalid file: 'schedules' array not found.");
                         }
+                        
+                        // --- NEW V4.90: Add confirmation modal ---
+                        const confirmed = await showConfirmationModal(
+                            `This will OVERWRITE ALL ${data.schedules.length} shared schedules in the database with the data from this file. This action cannot be undone. Are you sure you want to proceed?`,
+                            "Confirm Overwrite ALL Schedules",
+                            "Overwrite ALL"
+                        );
+
+                        if (!confirmed) {
+                            importStatus.textContent = "Import cancelled by user.";
+                            setTimeout(() => importStatus.classList.add('hidden'), 3000);
+                            importFileInput.value = ''; // Clear input
+                            return; // Stop execution
+                        }
+                        // --- END V4.90 Confirmation ---
+                        
                         importStatus.textContent = `Found ${data.schedules.length} schedules. Importing...`;
                         const batch = writeBatch(db);
                         let newCount = 0;
@@ -7402,6 +7475,114 @@
                 };
                 reader.readAsText(file);
             }
+
+            // --- NEW V4.90: Import/Export for CURRENT schedule ---
+            function handleExportCurrentSchedule() {
+                if (!activeBaseScheduleId || !document.body.classList.contains('admin-mode')) {
+                    showUserMessage("No active shared schedule selected or insufficient permissions.");
+                    return;
+                }
+
+                const schedule = allSchedules.find(s => s.id === activeBaseScheduleId);
+                if (!schedule) {
+                    showUserMessage("Error: Could not find the active schedule data.");
+                    return;
+                }
+
+                // Create a clean backup object for a *single* schedule
+                const backupData = {
+                    type: "EllisWebBell_SingleSchedule_v1",
+                    schedule: {
+                        name: schedule.name,
+                        periods: schedule.periods || [] // Export the raw periods array
+                    }
+                };
+
+                try {
+                    const dataStr = JSON.stringify(backupData, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const filename = (schedule.name || 'current_schedule').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    a.download = `ellisbell_schedule_${filename}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                     console.error("Error backing up current schedule:", error);
+                     showUserMessage("Error exporting schedule: " + error.message);
+                }
+            }
+
+            async function handleImportCurrentFileChange(e) {
+                const file = e.target.files[0];
+                if (!file || !activeBaseScheduleId || !document.body.classList.contains('admin-mode')) {
+                    importCurrentFileInput.value = ''; // Clear input
+                    return;
+                }
+                
+                const currentSchedule = allSchedules.find(s => s.id === activeBaseScheduleId);
+                if (!currentSchedule) {
+                    showUserMessage("Error: No active schedule to overwrite.");
+                    importCurrentFileInput.value = ''; // Clear input
+                    return;
+                }
+
+                importStatus.textContent = `Reading file ${file.name}...`;
+                importStatus.classList.remove('hidden');
+                
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        
+                        // 1. Validate file
+                        if (data.type !== "EllisWebBell_SingleSchedule_v1" || !data.schedule || !data.schedule.name || !Array.isArray(data.schedule.periods)) {
+                            throw new Error("Invalid or corrupt single schedule backup file.");
+                        }
+
+                        // 2. Show confirmation
+                        const confirmed = await showConfirmationModal(
+                            `This will OVERWRITE your current schedule "${currentSchedule.name}" with the data from "${data.schedule.name}" (from file: ${file.name}). This action cannot be undone.`,
+                            "Confirm Overwrite Current Schedule",
+                            "Overwrite Current"
+                        );
+
+                        if (!confirmed) {
+                            importStatus.textContent = "Import cancelled by user.";
+                            setTimeout(() => importStatus.classList.add('hidden'), 3000);
+                            importCurrentFileInput.value = ''; // Clear input
+                            return; // Stop execution
+                        }
+
+                        // 3. Proceed with overwrite
+                        importStatus.textContent = `Importing and overwriting "${currentSchedule.name}"...`;
+                        
+                        const scheduleData = data.schedule;
+                        const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
+
+                        // We update the name AND the periods.
+                        await updateDoc(scheduleRef, { 
+                            name: scheduleData.name, 
+                            periods: scheduleData.periods 
+                        });
+
+                        importStatus.textContent = `Successfully overwrote "${currentSchedule.name}" with "${scheduleData.name}".`;
+                        // The onSnapshot listener will handle the UI refresh.
+
+                    } catch (error) {
+                        console.error("Current schedule import failed:", error);
+                        importStatus.textContent = `Error: ${error.message}`;
+                    } finally {
+                        importCurrentFileInput.value = ''; // Clear input
+                        setTimeout(() => importStatus.classList.add('hidden'), 4000);
+                    }
+                };
+                reader.readAsText(file);
+            }
+            // --- END V4.90 ---
     
             // --- NEW: Audio File Management ---
     
@@ -8692,6 +8873,10 @@
                 exportSchedulesBtn.addEventListener('click', handleExportSchedules);
                 importSchedulesBtn.addEventListener('click', handleImportSchedules);
                 importFileInput.addEventListener('change', handleFileInputChange);
+                // NEW V4.90: Current Schedule Listeners
+                exportCurrentScheduleBtn.addEventListener('click', handleExportCurrentSchedule);
+                importCurrentScheduleBtn.addEventListener('click', handleImportCurrentScheduleClick);
+                importCurrentFileInput.addEventListener('change', handleImportCurrentFileChange);
     
                 // NEW: Audio Manager Listeners
                 // MODIFIED V4.76: Listeners for the new reusable modal
@@ -8894,4 +9079,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.89 -->
+<!-- Version 4.90 -->
