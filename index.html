@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.88</title>
+    <title>Ellis Web Bell 4.89</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.88</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.89</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -4354,10 +4354,28 @@
                                 localSchedulePeriods = [];
                             }
                             
-                            // DELETED in v4.30: This logic is now handled by recalculateAndRenderAll
-                            
-                            console.log("Active shared schedule updated.");
+                            // --- NEW V4.89: One-Time Bell ID Migration for BASE shared bells ---
+                            // This must run for personal schedules too, so the base bells have IDs.
+                            let needsBaseMigration = false;
+                            localSchedulePeriods.forEach(period => {
+                                period.bells.forEach(bell => {
+                                    if (!bell.bellId) {
+                                        bell.bellId = generateBellId();
+                                        needsBaseMigration = true;
+                                        console.log(`Assigning new bellId to BASE bell: ${bell.name} in ${period.name}`);
+                                    }
+                                });
+                            });
 
+                            if (needsBaseMigration && document.body.classList.contains('admin-mode')) {
+                                console.log("Saving migrated bellId data back to BASE schedule...");
+                                updateDoc(scheduleRef, { periods: localSchedulePeriods }) 
+                                    .then(() => console.log("Base schedule bellId migration successful."))
+                                    .catch(err => console.error("Error saving base bellId migration:", err));
+                            }
+                            // --- END V4.89 Migration ---
+                            
+                            console.log("Base schedule for personal schedule updated.");
                         } else {
                             console.warn("Selected shared schedule does not exist.");
                             localSchedulePeriods = [];
@@ -4399,7 +4417,7 @@
                     // NEW in 4.57: Enable new period button
                     newPeriodBtn.disabled = false;
                     
-                    /// 1. Listen to the BASE shared schedule
+                    // 1. Listen to the BASE shared schedule
                     scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
                     activeScheduleListenerUnsubscribe = onSnapshot(scheduleRef, (docSnap) => {
                         // NEW in 4.35: Set the base loaded flag
@@ -4417,10 +4435,33 @@
                             } else {
                                 localSchedulePeriods = [];
                             }
+
+                            // --- NEW V4.89: One-Time Bell ID Migration for SHARED bells ---
+                            // This fixes the bug where overrides wouldn't save on refresh.
+                            let needsSharedMigration = false;
+                            localSchedulePeriods.forEach(period => {
+                                period.bells.forEach(bell => {
+                                    if (!bell.bellId) {
+                                        bell.bellId = generateBellId();
+                                        needsSharedMigration = true;
+                                        console.log(`Assigning new bellId to SHARED bell: ${bell.name} in ${period.name}`);
+                                    }
+                                });
+                            });
+
+                            if (needsSharedMigration && document.body.classList.contains('admin-mode')) {
+                                console.log("Saving migrated bellId data back to SHARED schedule...");
+                                // Fire-and-forget update.
+                                // We only save if user is an admin to prevent write errors.
+                                // Non-admins will still have the IDs in-memory for this session.
+                                updateDoc(scheduleRef, { periods: localSchedulePeriods }) 
+                                    .then(() => console.log("Shared schedule bellId migration successful."))
+                                    .catch(err => console.error("Error saving shared bellId migration:", err));
+                            }
+                            // --- END V4.89 Migration ---
                             
-                            // DELETED in v4.30: This logic is now handled by recalculateAndRenderAll
-                            
-                            console.log("Base schedule for personal schedule updated.");
+                            console.log("Active shared schedule updated.");
+
                         } else {
                             console.warn("Base schedule does not exist.");
                             localSchedulePeriods = [];
@@ -5198,7 +5239,9 @@
                     // OK, re-reading the v3.02 code I provided, it was `findAllNearbySharedBells(time)`
                     // and it did NOT check for name. I will remove the `name` parameter again.
     
-                    const bellList = schedule.bells || [];
+                    // MODIFIED V4.89: Read from the 'periods' array, not the legacy 'bells' array.
+                    // This was the source of the "linked edit" bug.
+                    const bellList = (schedule.periods || []).flatMap(p => p.bells || []);
                     for (const bell of bellList) {
                         // DELETED: Name check removed to match spec
                         // if (bell.name !== name) {
@@ -8851,4 +8894,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.88 -->
+<!-- Version 4.89 -->
