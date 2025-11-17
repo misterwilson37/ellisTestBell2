@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.84</title>
+    <title>Ellis Web Bell 4.85</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.84</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.85</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -3775,38 +3775,76 @@
     
             /**
              * NEW: v3.19 (4.03?) - Handles saving the new sound URL as a local override.
+             * MODIFIED: v4.85 - Now handles BOTH shared bell overrides (localStorage)
+             * AND custom bell sound edits (Firestore).
              */
             async function handleChangeSoundSubmit(e) {
                 e.preventDefault();
-                if (!currentChangingSoundBell || !activeBaseScheduleId) return;
+                // MODIFIED V4.85: We need either a base ID (shared) or personal ID (custom).
+                if (!currentChangingSoundBell || (!activeBaseScheduleId && !activePersonalScheduleId)) return;
     
                 const newSound = changeSoundSelect.value;
                 const oldBell = currentChangingSoundBell;
     
-                // 1. Store the override locally
-                const overrideKey = getBellOverrideKey(activeBaseScheduleId, oldBell);
-                if (!overrideKey) {
-                    console.error("Cannot create override key for current bell.");
-                    closeChangeSoundModal();
-                    return;
+                // --- CASE 1: SHARED BELL (Save override to localStorage) ---
+                if (oldBell.type === 'shared') {
+                    if (!activeBaseScheduleId) {
+                        console.error("No activeBaseScheduleId to save shared override.");
+                        return;
+                    }
+                    
+                    const overrideKey = getBellOverrideKey(activeBaseScheduleId, oldBell);
+                    if (!overrideKey) {
+                        console.error("Cannot create override key for shared bell.");
+                        closeChangeSoundModal();
+                        return;
+                    }
+        
+                    if (newSound === oldBell.originalSound) {
+                        // If the user selected the original shared sound, delete the override
+                        delete bellSoundOverrides[overrideKey];
+                        console.log("Deleted sound override.");
+                    } else {
+                        // Store the new sound override
+                        bellSoundOverrides[overrideKey] = newSound;
+                        console.log(`Saved sound override: ${newSound}`);
+                    }
+        
+                    saveSoundOverrides();
+                    
+                // --- CASE 2: CUSTOM BELL (Save directly to Firestore) ---
+                } else if (oldBell.type === 'custom') {
+                    if (!activePersonalScheduleId) {
+                        console.error("No activePersonalScheduleId to save custom bell edit.");
+                        return;
+                    }
+
+                    // Create the 'newBell' object with *only* the sound changed
+                    const newBell = { ...oldBell, sound: newSound };
+
+                    try {
+                        const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
+                        
+                        // Use the global state, not a fresh DB read, to prevent race conditions
+                        const existingPeriods = personalBellsPeriods || [];
+                        
+                        // Use the update helper to find the old bell and replace it
+                        const updatedPeriods = updatePeriodsOnEdit(existingPeriods, oldBell, newBell);
+        
+                        await updateDoc(personalScheduleRef, { periods: updatedPeriods });
+                        console.log(`Custom bell sound edited: ${oldBell.name}.`);
+                        
+                    } catch (error) {
+                        console.error("Error editing custom bell sound:", error);
+                        showUserMessage(`Error saving sound: ${error.message}`);
+                        // Don't close modal, let user see the error
+                        return;
+                    }
                 }
-    
-                if (newSound === oldBell.originalSound) {
-                    // If the user selected the original shared sound, delete the override
-                    delete bellSoundOverrides[overrideKey];
-                    console.log("Deleted sound override.");
-                } else {
-                    // Store the new sound override
-                    bellSoundOverrides[overrideKey] = newSound;
-                    console.log(`Saved sound override: ${newSound}`);
-                }
-    
-                saveSoundOverrides();
                 
                 // MODIFIED V4.79: Call the master recalculate function.
-                // This ensures the list re-renders with the new sound override.
+                // This ensures the list re-renders with the new sound.
                 recalculateAndRenderAll();
-                // updateClock() is called inside recalculate, so this is redundant.
     
                 closeChangeSoundModal();
             }
@@ -6575,8 +6613,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.81: New 'pedestrian' icon
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-8.4l-2.1-2.1.6-3.4C14.1 11.2 15.6 12 17.5 12V10c-1.4 0-2.6-.7-3.4-1.8L9.8 8.9z"/></svg>`;
+                    // MODIFIED V4.85: Using Font Awesome 'walking' icon per user request
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" class="w-full h-full"><path d="M232 224c-20.1 0-37.7-11-46.1-27.4l-38.6-77.1C142.3 108 128 99.3 112 96.6V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V203.3c-23.4 7.5-43.2 23.2-56.1 42.4L0 288.9C0 300.6 7.8 311.1 19 314.9s23.4-1.7 31.1-12.3l19.2-26.4c6-8.2 15.2-13.2 25.4-13.2H128c17.7 0 32 14.3 32 32s-14.3 32-32 32H72.5c-2.3 0-4.6.3-6.8.8l-38.6 9.6C12.3 392.3 0 407.6 0 424.4V464c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48V368c0-26.5-21.5-48-48-48H281.3l-28.1-56.2c-7.5-15-23.2-24.3-40.4-24.3H192c-4.4 0-8 3.6-8 8s3.6 8 8 8h20.8c6.6 0 12.6 3.3 16.1 8.7l23.2 36.3c1 1.6 1.8 3.3 2.5 5H232c26.5 0 48-21.5 48-48s-21.5-48-48-48z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -6714,8 +6752,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.81: New 'pedestrian' icon
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-8.4l-2.1-2.1.6-3.4C14.1 11.2 15.6 12 17.5 12V10c-1.4 0-2.6-.7-3.4-1.8L9.8 8.9z"/></svg>`;
+                    // MODIFIED V4.85: Using Font Awesome 'walking' icon per user request
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" class="w-full h-full"><path d="M232 224c-20.1 0-37.7-11-46.1-27.4l-38.6-77.1C142.3 108 128 99.3 112 96.6V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V203.3c-23.4 7.5-43.2 23.2-56.1 42.4L0 288.9C0 300.6 7.8 311.1 19 314.9s23.4-1.7 31.1-12.3l19.2-26.4c6-8.2 15.2-13.2 25.4-13.2H128c17.7 0 32 14.3 32 32s-14.3 32-32 32H72.5c-2.3 0-4.6.3-6.8.8l-38.6 9.6C12.3 392.3 0 407.6 0 424.4V464c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48V368c0-26.5-21.5-48-48-48H281.3l-28.1-56.2c-7.5-15-23.2-24.3-40.4-24.3H192c-4.4 0-8 3.6-8 8s3.6 8 8 8h20.8c6.6 0 12.6 3.3 16.1 8.7l23.2 36.3c1 1.6 1.8 3.3 2.5 5H232c26.5 0 48-21.5 48-48s-21.5-48-48-48z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -8341,15 +8379,11 @@
                                (target.classList.contains('edit-custom-btn') && target.title === 'Change Sound')) {
                         // This handles:
                         // 1. "Sound" on a Shared bell (opens Change Sound modal)
-                        // 2. "Sound" on a Custom bell (opens Edit Bell modal)
+                        // 2. "Sound" on a Custom bell (opens Change Sound modal)
                         
-                        if (bell.type === 'custom') {
-                            // Custom bell "Sound" button just opens the main editor
-                            handleEditBellClick(bell);
-                        } else {
-                            // Shared bell "Sound" button opens the override modal
-                            openChangeSoundModal(bell);
-                        }
+                        // MODIFIED V4.85: User wants both buttons to open the *same* sound modal.
+                        // We will add logic to handleChangeSoundSubmit to handle both cases.
+                        openChangeSoundModal(bell);
                         return; // Action handled
                     
                     // NEW V4.82: Add missing Preview button handler
@@ -8775,4 +8809,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.84 -->
+<!-- Version 4.85 -->
