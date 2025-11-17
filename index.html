@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.91</title>
+    <title>Ellis Web Bell 4.92</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -554,7 +554,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.91</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.92</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -5098,7 +5098,8 @@
     
                             if (externalConflicts.length > 0) {
                                 // Link edit modal handling (will continue the process)
-                                currentEditingBell = { ...oldBell, newBell, updatedPeriods }; // Store state including new periods
+                                // MODIFIED V4.92: Store data in the *correct* state variable
+                                linkedEditData = { ...oldBell, newBell, updatedPeriods }; 
                                 showLinkedEditModal(externalConflicts);
                                 return; // Wait for modal resolution
                             }
@@ -5126,7 +5127,8 @@
     
                     // If execution reaches here, the update was successful (or linked edit modal opened)
                     editBellStatus.textContent = "Changes saved.";
-                    if (!currentEditingBell.newBell) { // If not waiting on linked edit modal
+                    // MODIFIED V4.92: Check the correct state variable
+                    if (!linkedEditData) { // If not waiting on linked edit modal
                         closeEditBellModal();
                     }
     
@@ -5212,9 +5214,10 @@
     
                     linkedEditStatus.textContent = "Updates complete.";
                     setTimeout(() => {
-                        closeLinkedEditModal();
-                        closeEditBellModal(); // Close the parent edit modal
-                    }, 1000);
+                    closeLinkedEditModal();
+                    closeEditBellModal(); // Close the parent edit modal
+                    currentEditingBell = null; // NEW V4.92: Clear the parent modal's state
+                }, 1000);
     
                 } catch (error) {
                     console.error("Error applying linked edit:", error);
@@ -5355,19 +5358,20 @@
              * @param {string} name - The name of the bell to check
              * @returns {object} { internal: bell|null, external: [{schedule, bell}] }
              */
+            // MODIFIED V4.92: Rewritten to correctly find one conflict per external schedule.
             function findAllNearbySharedBells(time) {
                 const newTimeInSeconds = timeToSeconds(time);
                 if (isNaN(newTimeInSeconds)) return { internal: null, external: [] };
     
                 let internalConflict = null;
-                const externalConflicts = [];
+                const externalConflictsMap = new Map(); // Use a Map to store one conflict per *schedule*
     
                 // MODIFIED: v3.03 - Use activeBaseScheduleId
-                const currentSchedule = allSchedules.find(s => s.id === activeBaseScheduleId);
+                const currentScheduleId = activeBaseScheduleId;
     
                 for (const schedule of allSchedules) {
                     // MODIFIED: v3.03 - Use activeBaseScheduleId
-                    const isCurrentSchedule = schedule.id === activeBaseScheduleId;
+                    const isCurrentSchedule = schedule.id === currentScheduleId;
                     
                     // Use findNearbyBell helper, but *only* check bells with the same name
                     // This is a modification from the spec, which said *any* bell.
@@ -5390,39 +5394,33 @@
                     // MODIFIED V4.89: Read from the 'periods' array, not the legacy 'bells' array.
                     // This was the source of the "linked edit" bug.
                     const bellList = (schedule.periods || []).flatMap(p => p.bells || []);
-                    for (const bell of bellList) {
-                        // DELETED: Name check removed to match spec
-                        // if (bell.name !== name) {
-                        //     continue;
-                        // }
-    
+                    if (bellList.length === 0) continue;
+
+                    // Find the *first* bell in this schedule that conflicts
+                    const conflictingBell = bellList.find(bell => {
                         const existingTimeInSeconds = timeToSeconds(bell.time);
-                        if (isNaN(existingTimeInSeconds)) continue;
+                        if (isNaN(existingTimeInSeconds)) return false;
+                        return Math.abs(newTimeInSeconds - existingTimeInSeconds) <= 60;
+                    });
+
+                    if (!conflictingBell) continue; // No conflict in this schedule
     
-                        if (Math.abs(newTimeInSeconds - existingTimeInSeconds) <= 60) {
-                            // Conflict found!
-                            if (isCurrentSchedule) {
-                                if (!internalConflict) { // Only grab the first one
-                                    internalConflict = bell;
-                                }
-                            } else {
-                                externalConflicts.push({ schedule, bell });
-                            }
+                    // Now, handle the conflict
+                    if (isCurrentSchedule) {
+                        // This is an internal conflict
+                        if (!internalConflict) {
+                            internalConflict = conflictingBell;
                         }
-                    }
-                }
-                
-                // De-duplicate external conflicts based on the bell itself (time and name)
-                const uniqueExternal = new Map();
-                for (const conflict of externalConflicts) {
-                    const key = `${conflict.bell.name}::${conflict.bell.time}`;
-                    if (!uniqueExternal.has(key)) {
-                        uniqueExternal.set(key, conflict);
+                    } else {
+                        // This is an external conflict. Store it if we haven't already.
+                        if (!externalConflictsMap.has(schedule.id)) {
+                            externalConflictsMap.set(schedule.id, { schedule, bell: conflictingBell });
+                        }
                     }
                 }
     
                 // ADDED: Missing return statement and closing brace
-                return { internal: internalConflict, external: Array.from(uniqueExternal.values()) };
+                return { internal: internalConflict, external: Array.from(externalConflictsMap.values()) };
             }
     
             // --- NEW: v3.05 Personal Schedule Manager Functions ---
@@ -9182,4 +9180,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.91 -->
+<!-- Version 4.92 -->
