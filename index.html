@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.85</title>
+    <title>Ellis Web Bell 4.86</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.85</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.86</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -2964,7 +2964,8 @@
                         }
                         
                         // NEW V4.62.3: Reapply the override flag AFTER naming convention is resolved
-                        if (isOverridden) {
+                        // MODIFIED V4.86: Only show "Override" for SHARED bells
+                        if (isOverridden && bell.type === 'shared') {
                             soundDisplay = `Override: ${soundDisplay}`;
                         }
     
@@ -2978,10 +2979,12 @@
                                 
                                 <!-- Bell Info (Time, Name, Sound) (left) -->
                                 <div class="flex items-center space-x-4 min-w-0 flex-grow">
-                                    <span class="text-xl font-medium text-blue-600 tabular-nums">${formatTime12Hour(bell.time, false)}</span>
+                                    <!-- MODIFIED V4.86: Apply isCustom logic to bell time color -->
+                                    <span class="text-xl font-medium ${isCustom ? 'text-blue-600' : 'text-gray-800'} tabular-nums">${formatTime12Hour(bell.time, false)}</span>
                                     <div class="min-w-0">
                                         <!-- NEW v4.04: Anchor Icon Logic -->
-                                        <span class="font-medium text-gray-800 truncate block flex items-center" title="${safeName}">
+                                        <!-- MODIFIED V4.86: Apply isCustom logic to bell name color -->
+                                        <span class="font-medium ${isCustom ? 'text-blue-600' : 'text-gray-800'} truncate block flex items-center" title="${safeName}">
                                             ${safeName}
                                             <!-- MODIFIED in 4.32: Anchor icon now indicates a 'shared' (admin-controlled) bell, not first/last in period -->
                                             ${bell.type === 'shared' ?
@@ -3473,17 +3476,29 @@
                 calculatedPeriods.forEach(period => {
                     // MODIFIED V4.76: Apply overrides *inside* calculatedPeriods
                     // This fixes the bug where overrides were only applied to the flat list
+                    // MODIFIED V4.86: This logic was completely wrong. This is the fix.
                     period.bells.forEach(bell => {
                         const bellType = bell.type;
                         if (bellType === 'shared') {
+                            // 1. Store the *original* sound from the database.
+                            // 'bell.sound' *is* the original sound at this point.
+                            bell.originalSound = bell.sound; 
+                            
+                            // 2. Check for an override.
                             const overrideKey = getBellOverrideKey(activeBaseScheduleId, bell);
                             const overrideSound = bellSoundOverrides[overrideKey];
-                            // Apply override directly to the bell in the period
-                            bell.sound = overrideSound || bell.sound;
-                            bell.originalSound = bell.sound; // This is now correct in context
+                            
+                            // 3. Apply the override *if it exists*.
+                            if (overrideSound) {
+                                bell.sound = overrideSound;
+                            }
+                            // If no override, 'bell.sound' remains the original sound.
                         }
+                        // For custom bells, bell.sound is just bell.sound.
+                        // We set originalSound to null (or it's undefined)
+                        // so isOverridden will be false.
                     });
-                    // END V4.76 FIX
+                    // END V4.86 FIX
 
                     period.bells.forEach(bell => {
                         // Apply sound overrides logic (from old flatten function)
@@ -4696,7 +4711,21 @@
                 relativeAnchorBellSelect.innerHTML = anchorOptionsHtml;
 
                 // 5. Populate fields with the bell's saved data
-                relativeAnchorBellSelect.value = rawBell.relative.parentBellId;
+                // MODIFIED V4.86: Handle *both* new (V4.47) and old (V4.10) relative bell types
+                if (rawBell.relative.parentBellId) {
+                    // Old V4.10 logic: Anchor is a specific bell ID
+                    relativeAnchorBellSelect.value = rawBell.relative.parentBellId;
+                } else if (rawBell.relative.parentPeriodName && resolvedBells.length > 0) {
+                    // New V4.47 logic: Anchor is 'period_start' or 'period_end'
+                    if (rawBell.relative.parentAnchorType === 'period_start') {
+                        relativeAnchorBellSelect.value = resolvedBells[0].bellId; // First bell
+                    } else {
+                        // Default to last bell if not 'period_start' (e.g., 'period_end')
+                        relativeAnchorBellSelect.value = resolvedBells[resolvedBells.length - 1].bellId; // Last bell
+                    }
+                }
+                // END V4.86 FIX
+                
                 relativeBellNameInput.value = rawBell.name;
                 relativeBellSoundSelect.value = rawBell.sound;
 
@@ -6613,8 +6642,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.85: Using Font Awesome 'walking' icon per user request
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" class="w-full h-full"><path d="M232 224c-20.1 0-37.7-11-46.1-27.4l-38.6-77.1C142.3 108 128 99.3 112 96.6V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V203.3c-23.4 7.5-43.2 23.2-56.1 42.4L0 288.9C0 300.6 7.8 311.1 19 314.9s23.4-1.7 31.1-12.3l19.2-26.4c6-8.2 15.2-13.2 25.4-13.2H128c17.7 0 32 14.3 32 32s-14.3 32-32 32H72.5c-2.3 0-4.6.3-6.8.8l-38.6 9.6C12.3 392.3 0 407.6 0 424.4V464c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48V368c0-26.5-21.5-48-48-48H281.3l-28.1-56.2c-7.5-15-23.2-24.3-40.4-24.3H192c-4.4 0-8 3.6-8 8s3.6 8 8 8h20.8c6.6 0 12.6 3.3 16.1 8.7l23.2 36.3c1 1.6 1.8 3.3 2.5 5H232c26.5 0 48-21.5 48-48s-21.5-48-48-48z"/></svg>`;
+                    // MODIFIED V4.86: Reverting to the cleaner V4.81 'pedestrian' icon
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-8.4l-2.1-2.1.6-3.4C14.1 11.2 15.6 12 17.5 12V10c-1.4 0-2.6-.7-3.4-1.8L9.8 8.9z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -6752,8 +6781,8 @@
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
                 } else if (p.includes('passing') || p.includes('between')) {
-                    // MODIFIED V4.85: Using Font Awesome 'walking' icon per user request
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" class="w-full h-full"><path d="M232 224c-20.1 0-37.7-11-46.1-27.4l-38.6-77.1C142.3 108 128 99.3 112 96.6V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V203.3c-23.4 7.5-43.2 23.2-56.1 42.4L0 288.9C0 300.6 7.8 311.1 19 314.9s23.4-1.7 31.1-12.3l19.2-26.4c6-8.2 15.2-13.2 25.4-13.2H128c17.7 0 32 14.3 32 32s-14.3 32-32 32H72.5c-2.3 0-4.6.3-6.8.8l-38.6 9.6C12.3 392.3 0 407.6 0 424.4V464c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48V368c0-26.5-21.5-48-48-48H281.3l-28.1-56.2c-7.5-15-23.2-24.3-40.4-24.3H192c-4.4 0-8 3.6-8 8s3.6 8 8 8h20.8c6.6 0 12.6 3.3 16.1 8.7l23.2 36.3c1 1.6 1.8 3.3 2.5 5H232c26.5 0 48-21.5 48-48s-21.5-48-48-48z"/></svg>`;
+                    // MODIFIED V4.86: Reverting to the cleaner V4.81 'pedestrian' icon
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-8.4l-2.1-2.1.6-3.4C14.1 11.2 15.6 12 17.5 12V10c-1.4 0-2.6-.7-3.4-1.8L9.8 8.9z"/></svg>`;
                 } else {
                     // Default: Number or Letter
                     const match = p.match(/(\d+)(?:st|nd|rd|th)?|([a-z])/);
@@ -8809,4 +8838,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.85 -->
+<!-- Version 4.86 -->
