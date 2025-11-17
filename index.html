@@ -1799,6 +1799,8 @@
         const multiAddRelativeBellForm = document.getElementById('multi-add-relative-bell-form');
         const multiAddRelativeParentAnchor = document.getElementById('multi-add-relative-parent-anchor');
         const multiAddRelativeDirection = document.getElementById('multi-add-relative-direction');
+        
+        let currentCustomBellIconSlot = null; // NEW V5.00: Stores the ID of the bell being edited in the icon modal.
 
         // NEW V5.00: Custom Quick Bell Modal
         const showCustomQuickBellManagerBtn = document.getElementById('show-custom-quick-bell-manager-btn');
@@ -2890,8 +2892,10 @@
                         const activeCustomBell = customQuickBells.find(b => b && b.name === nextPeriodName);
                         
                         if (activeCustomBell) {
-                            // NEW V5.00: Use Custom Text/Icon for banner display
-                            const customVisual = `[CUSTOM_TEXT] ${activeCustomBell.iconText}|#4338CA|#FFFFFF`;
+                            // NEW V5.00: Use Custom Text/Icon and its saved colors for banner display
+                            const bgColor = activeCustomBell.iconBgColor || '#4338CA';
+                            const fgColor = activeCustomBell.iconFgColor || '#FFFFFF';
+                            const customVisual = `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${bgColor}|${fgColor}`;
                             visualHtml = getVisualHtml(customVisual, activeCustomBell.iconText);
                         } else {
                             // Special icon for Generic Quick Bell
@@ -2950,14 +2954,23 @@
 
             /**
              * NEW V5.00: Renders the custom quick bell manager and the main quick bell buttons.
+             * MODIFIED: Restructured to a horizontal, single-row per bell format.
              */
             function renderCustomQuickBells() {
+                // Ensure a placeholder exists for the 4 slots if the database is empty
+                while (customQuickBells.length < 4) {
+                    customQuickBells.push(null);
+                }
+
                 const managerSlots = customQuickBells.map((bell, index) => {
                     const id = bell ? bell.id : index + 1;
-                    const name = bell ? bell.name : `Empty Slot ${id}`;
+                    const name = bell ? bell.name : `Slot ${id}`;
                     const minutes = bell ? bell.minutes : 5;
                     const seconds = bell ? bell.seconds : 0;
-                    const iconText = bell ? bell.iconText : '...';
+                    // NEW V5.00: Extracting colors/text from the icon data if available, defaulting to standard colors
+                    const rawIconText = bell ? bell.iconText : '...';
+                    const iconColor = bell ? (bell.iconBgColor || '#4338CA') : '#4338CA';
+                    const textColor = bell ? (bell.iconFgColor || '#FFFFFF') : '#FFFFFF';
                     const sound = bell ? bell.sound : 'ellisBell.mp3';
                     const hasData = !!bell;
                     
@@ -2965,49 +2978,73 @@
                     const soundOptionsHtml = getCustomBellSoundOptions(sound);
                     
                     return `
-                        <div class="p-4 border rounded-lg ${hasData ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-gray-50'}">
-                            <div class="flex justify-between items-center mb-3">
-                                <h4 class="font-semibold text-lg text-gray-800">${name}</h4>
-                                <div class="flex items-center space-x-2">
-                                    <label class="flex items-center text-sm font-medium text-gray-600 space-x-1 cursor-pointer">
-                                        <input type="checkbox" data-bell-id="${id}" class="custom-quick-bell-toggle h-4 w-4 text-red-600 focus:ring-red-500" ${hasData ? 'checked' : 'disabled'}>
-                                        <span>${hasData ? 'Active' : 'Unused'}</span>
-                                    </label>
-                                    ${hasData ? `<button type="button" data-bell-id="${id}" class="clear-custom-quick-bell px-2 py-1 text-xs bg-red-500 text-white rounded-md hover:bg-red-600">Clear Slot</button>` : ''}
+                        <div class="p-3 border rounded-xl shadow-sm ${hasData ? 'border-indigo-300 bg-white' : 'border-dashed border-gray-300 bg-gray-50'}">
+                            
+                            <!-- Main Row: Responsive Grid Layout -->
+                            <!-- sm:grid-cols-12 ensures the items align horizontally on larger screens -->
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                                
+                                <!-- Col 1: Active Checkbox (Col Span 1) -->
+                                <div class="col-span-1 flex justify-center" title="${hasData ? 'Activate/Deactivate Bell' : 'Slot is empty'}">
+                                    <input type="checkbox" data-bell-id="${id}" class="custom-quick-bell-toggle h-5 w-5 text-indigo-600 focus:ring-indigo-500 rounded-md" ${hasData ? 'checked' : 'disabled'} ${bell && bell.isActive === false ? '' : 'checked'}>
                                 </div>
-                            </div>
+                                
+                                <!-- Col 2: Display Name (Col Span 3) -->
+                                <div class="col-span-3 min-w-0">
+                                    ${hasData ? `
+                                        <input type="text" data-bell-id="${id}" data-field="name" value="${name}" required class="w-full text-sm font-medium px-2 py-1 border border-gray-300 rounded-lg" placeholder="Display Name">
+                                    ` : `<span class="text-gray-500 text-sm italic">${name}</span>`}
+                                </div>
 
-                            ${hasData ? `
-                                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-sm font-medium text-gray-700">Display Name</label>
-                                        <input type="text" data-bell-id="${id}" data-field="name" value="${name}" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Time (Min)</label>
-                                        <input type="number" data-bell-id="${id}" data-field="minutes" value="${minutes}" min="0" max="59" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Time (Sec)</label>
-                                        <input type="number" data-bell-id="${id}" data-field="seconds" value="${seconds}" min="0" max="59" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
-                                    </div>
+                                <!-- Col 3: Time (Min/Sec) (Col Span 3) -->
+                                <div class="col-span-3 grid grid-cols-2 gap-2">
+                                    ${hasData ? `
+                                        <input type="number" data-bell-id="${id}" data-field="minutes" value="${minutes}" min="0" max="59" required class="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center" placeholder="Min">
+                                        <input type="number" data-bell-id="${id}" data-field="seconds" value="${seconds}" min="0" max="59" required class="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center" placeholder="Sec">
+                                    ` : `<span class="text-gray-400 text-sm italic col-span-2 text-center">-- Min / Sec --</span>`}
                                 </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-sm font-medium text-gray-700">Sound</label>
-                                        <select data-bell-id="${id}" data-field="sound" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm custom-bell-sound-select">
+
+                                <!-- Col 4: Icon/Visual (Col Span 2) -->
+                                <div class="col-span-2">
+                                    ${hasData ? `
+                                        <button type="button" data-bell-id="${id}" 
+                                                data-icon-text="${rawIconText}" 
+                                                data-bg-color="${iconColor}" 
+                                                data-fg-color="${textColor}"
+                                                class="custom-bell-icon-btn w-full px-2 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:opacity-80 flex items-center justify-center gap-2 font-bold transition-opacity duration-150"
+                                                style="background-color: ${iconColor}; color: ${textColor};"
+                                                title="Edit Icon/Text">
+                                            <span class="text-lg leading-none">${rawIconText}</span>
+                                            <span class="text-xs">&#9998;</span> <!-- Pencil Icon -->
+                                        </button>
+                                        <!-- Hidden inputs to store colors/text from modal -->
+                                        <input type="hidden" data-bell-id="${id}" data-field="iconText" value="${rawIconText}">
+                                        <input type="hidden" data-bell-id="${id}" data-field="iconBgColor" value="${iconColor}">
+                                        <input type="hidden" data-bell-id="${id}" data-field="iconFgColor" value="${textColor}">
+
+                                    ` : `<span class="text-gray-400 text-sm italic block text-center">Icon</span>`}
+                                </div>
+                                
+                                <!-- Col 5: Sound & Preview (Col Span 2) -->
+                                <div class="col-span-2 flex items-center gap-1">
+                                    ${hasData ? `
+                                        <select data-bell-id="${id}" data-field="sound" class="w-full px-2 py-1 text-xs border border-gray-300 rounded-lg custom-bell-sound-select truncate">
                                             ${soundOptionsHtml}
                                         </select>
-                                    </div>
-                                    <div class="flex items-end gap-2">
-                                        <div class="flex-grow">
-                                            <label class="block text-sm font-medium text-gray-700">Icon (Max 3)</label>
-                                            <input type="text" data-bell-id="${id}" data-field="iconText" value="${iconText}" maxlength="3" required class="mt-1 w-full px-3 py-2 text-center text-lg border border-gray-300 rounded-lg shadow-sm">
-                                        </div>
-                                        <button type="button" data-bell-id="${id}" data-sound="${sound}" class="preview-audio-btn w-10 h-10 flex-shrink-0 flex items-center justify-center text-lg bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Preview">&#9654;</button>
-                                    </div>
+                                        <button type="button" data-bell-id="${id}" data-sound="${sound}" class="preview-audio-btn w-6 h-6 flex-shrink-0 flex items-center justify-center text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Preview">&#9654;</button>
+                                    ` : `<span class="text-gray-400 text-sm italic truncate">Sound</span>`}
                                 </div>
-                            ` : `<p class="text-gray-500 italic">Slot ${id} is available for a new custom quick bell.</p>`}
+
+                                <!-- Col 6: Clear Slot Button (Col Span 1) -->
+                                <div class="col-span-1 flex justify-center">
+                                    ${hasData ? `
+                                        <button type="button" data-bell-id="${id}" class="clear-custom-quick-bell p-1 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" title="Clear Slot">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 6v10h6V6H7z" clip-rule="evenodd"></path></svg>
+                                        </button>
+                                    ` : ''}
+                                </div>
+
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -3026,7 +3063,8 @@
                                 data-seconds="${bell.seconds}"
                                 data-sound="${bell.sound}"
                                 data-name="${bell.name}"
-                                class="custom-quick-launch-btn bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 relative overflow-hidden group"
+                                class="custom-quick-launch-btn font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 relative overflow-hidden group"
+                                style="background-color: ${bell.iconBgColor || '#4338CA'}; color: ${bell.iconFgColor || '#FFFFFF'};"
                                 title="${bell.name}: ${bell.minutes}m ${bell.seconds}s">
                             <!-- Custom Icon/Text -->
                             <span class="text-xl font-bold block leading-none">${bell.iconText}</span>
@@ -4600,7 +4638,11 @@
                             name: b.name || `Custom Timer ${index + 1}`,
                             minutes: b.minutes || 0,
                             seconds: b.seconds || 0,
+                            // NEW V5.00: Read Icon Colors
                             iconText: b.iconText || String(index + 1),
+                            iconBgColor: b.iconBgColor || '#4338CA',
+                            iconFgColor: b.iconFgColor || '#FFFFFF',
+                            
                             sound: b.sound || 'ellisBell.mp3',
                             isActive: b.isActive || false // NEW: For launch button state
                         }));
@@ -8763,7 +8805,12 @@
                                 name: slotData.name.trim(),
                                 minutes: parseInt(slotData.minutes) || 0,
                                 seconds: parseInt(slotData.seconds) || 0,
+                                
+                                // NEW V5.00: Include Icon colors and text
                                 iconText: slotData.iconText.trim().substring(0, 3) || String(id),
+                                iconBgColor: slotData.iconBgColor || '#4338CA',
+                                iconFgColor: slotData.iconFgColor || '#FFFFFF',
+                                
                                 sound: slotData.sound || 'ellisBell.mp3',
                                 isActive: isActive
                             };
@@ -8781,10 +8828,11 @@
                     }
                 });
                 
-                // Delegate Listeners for Manager UI (Clear, Preview, UPLOAD in sound dropdowns)
+                // Delegate Listeners for Manager UI (Clear, Preview, Icon Edit)
                 customQuickBellListContainer.addEventListener('click', (e) => {
                     const clearBtn = e.target.closest('.clear-custom-quick-bell');
                     const previewBtn = e.target.closest('.preview-audio-btn');
+                    const iconBtn = e.target.closest('.custom-bell-icon-btn'); // NEW V5.00: Icon button
                     
                     if (clearBtn) {
                         const id = parseInt(clearBtn.dataset.bellId);
@@ -8795,7 +8843,74 @@
                         }
                     } else if (previewBtn) {
                         playBell(previewBtn.dataset.sound);
+                    } else if (iconBtn) { // NEW V5.00: Open Icon Modal
+                        currentCustomBellIconSlot = parseInt(iconBtn.dataset.bellId); // Store which bell ID we are editing
+                        
+                        // 1. Load existing data into the modal inputs
+                        customTextInput.value = iconBtn.dataset.iconText;
+                        customTextBgColorInput.value = iconBtn.dataset.bgColor;
+                        customTextColorInput.value = iconBtn.dataset.fgColor;
+                        
+                        // 2. Update modal title
+                        const bellName = customQuickBells.find(b => b && b.id === currentCustomBellIconSlot)?.name || `Slot ${currentCustomBellIconSlot}`;
+                        customTextVisualModal.querySelector('h3').textContent = `Edit Icon for: ${bellName}`;
+
+                        // 3. Show the modal
+                        customTextVisualModal.classList.remove('hidden');
                     }
+                });
+
+                // NEW V5.00: Attach the Custom Text Visual Modal submit logic to save back to the manager's hidden fields
+                customTextVisualForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    
+                    // We only run this logic if we are editing a custom quick bell icon slot
+                    if (!currentCustomBellIconSlot) {
+                        // If no slot is set, use the old global visual logic (for periods)
+                        if (currentVisualSelectTarget) {
+                            // This means a period visual was being edited (using the global logic)
+                            // This block is empty because the global submit listener is outside the customQuickBellListContainer listener scope.
+                        } else {
+                            // Fallback, just close
+                            customTextVisualModal.classList.add('hidden');
+                        }
+                        return;
+                    }
+
+                    const customText = customTextInput.value.trim().toUpperCase().substring(0, 3);
+                    const fgColor = customTextColorInput.value;
+                    const bgColor = customTextBgColorInput.value;
+                    
+                    // 1. Find the corresponding hidden inputs in the custom bell form
+                    const formContainer = document.getElementById('custom-quick-bell-list-container');
+                    
+                    // Update hidden inputs for the specific slot
+                    const iconTextInput = formContainer.querySelector(`input[data-field="iconText"][data-bell-id="${currentCustomBellIconSlot}"]`);
+                    const bgColorInput = formContainer.querySelector(`input[data-field="iconBgColor"][data-bell-id="${currentCustomBellIconSlot}"]`);
+                    const fgColorInput = formContainer.querySelector(`input[data-field="iconFgColor"][data-bell-id="${currentCustomBellIconSlot}"]`);
+                    
+                    // 2. Find the visible button to update its style
+                    const iconButton = formContainer.querySelector(`.custom-bell-icon-btn[data-bell-id="${currentCustomBellIconSlot}"]`);
+                    
+                    if (iconTextInput && iconButton) {
+                        // Update hidden inputs (read by the main form submit)
+                        iconTextInput.value = customText;
+                        if (bgColorInput) bgColorInput.value = bgColor;
+                        if (fgColorInput) fgColorInput.value = fgColor;
+                        
+                        // Update visible button (for immediate visual feedback)
+                        iconButton.dataset.iconText = customText;
+                        iconButton.dataset.bgColor = bgColor;
+                        iconButton.dataset.fgColor = fgColor;
+                        iconButton.style.backgroundColor = bgColor;
+                        iconButton.style.color = fgColor;
+                        iconButton.querySelector('span:first-child').textContent = customText;
+                    }
+                    
+                    // 3. Clear state and hide modal
+                    currentCustomBellIconSlot = null;
+                    customTextVisualModal.classList.add('hidden');
+                    customTextVisualModal.querySelector('h3').textContent = `Set Custom Text Visual`;
                 });
                 
                 // NEW: Quick Launch Listener for Custom Buttons
