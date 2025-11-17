@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.94</title>
+    <title>Ellis Web Bell 4.95</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -226,22 +226,30 @@
                     <input type="text" id="edit-bell-name" placeholder="e.g. 1st Period End" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
-            <div>
-                <label for="edit-bell-sound" class="block text-sm font-medium text-gray-700">Sound</label>
-                <!-- MODIFIED: Sound select now uses optgroups -->
-                <select id="edit-bell-sound" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <optgroup label="Default Sounds">
-                        <option value="Bell">Bell</option>
-                        <option value="Chime">Chime</option>
-                        <option value="Beep">Beep</option>
-                        <option value="Alarm">Alarm</option>
-                        <!-- MODIFIED: Made Ellis Bell selected by default -->
-                        <option value="ellisBell.mp3" selected>Ellis Bell</option>
-                    </optgroup>
-                    <optgroup label="My Sounds" id="edit-my-sounds-optgroup"></optgroup>
-                    <optgroup label="Shared Sounds" id="edit-shared-sounds-optgroup"></optgroup>
-                </select>
+            <!-- MODIFIED V4.95: Add play button and flex layout -->
+            <div class="flex items-end gap-2">
+                <div class="flex-grow">
+                    <label for="edit-bell-sound" class="block text-sm font-medium text-gray-700">Sound</label>
+                    <!-- MODIFIED: Sound select now uses optgroups -->
+                    <select id="edit-bell-sound" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <optgroup label="Default Sounds">
+                            <option value="Bell">Bell</option>
+                            <option value="Chime">Chime</option>
+                            <option value="Beep">Beep</option>
+                            <option value="Alarm">Alarm</option>
+                            <!-- MODIFIED: Made Ellis Bell selected by default -->
+                            <option value="ellisBell.mp3" selected>Ellis Bell</option>
+                        </optgroup>
+                        <optgroup label="My Sounds" id="edit-my-sounds-optgroup"></optgroup>
+                        <optgroup label="Shared Sounds" id="edit-shared-sounds-optgroup"></optgroup>
+                    </select>
+                </div>
+                <!-- NEW V4.95: Preview button for edit modal -->
+                <button type="button" id="preview-edit-sound" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-lg bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Preview">
+                    &#9654;
+                </button>
             </div>
+            <!-- END V4.95 MODIFICATION -->
 
             <!-- NEW in 4.21: Override sound checkbox for shared bells -->
             <div id="edit-bell-override-container" class="mt-4 hidden">
@@ -554,7 +562,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.94</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.95</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -4988,9 +4996,13 @@
                     if (bell.type === 'shared') {
                         editBellOverrideContainer.classList.remove('hidden');
                         editBellOverrideCheckbox.checked = false;
+                        // NEW V4.95: Disable sound select by default for shared bells
+                        editBellSoundInput.disabled = true;
                     } else {
                         editBellOverrideContainer.classList.add('hidden');
                         editBellOverrideCheckbox.checked = false;
+                        // NEW V4.95: Enable sound select for custom bells
+                        editBellSoundInput.disabled = false;
                     }
                     editBellModal.classList.remove('hidden');
                 }
@@ -5239,9 +5251,9 @@
              * @param {object} newBell - The bell object after edit {time, name, sound}.
              * @returns {Array} The new, updated periods array.
              */
+            // MODIFIED V4.95: This function no longer assumes the period name is the same.
+            // It iterates all periods to find the bell by its ID.
             function updatePeriodsOnEdit(periods, oldBell, newBell) {
-                // MODIFIED in 4.27: Use bellId from oldBell state
-                const oldPeriodName = oldBell.periodName; 
                 const bellIdToFind = oldBell.bellId;
                 
                 if (!bellIdToFind) {
@@ -5249,43 +5261,32 @@
                     return periods; // Return original array to prevent data loss
                 }
                 
-                // If the bell name has changed, we need to check if the period name should change too
-                // Note: In V4.03, we rely on the EDIT MODAL to determine which period it belongs to (future refinement)
-                // For now, we assume the period name STAYS THE SAME unless we add a Period Selector to the Edit Modal.
-                const targetPeriodName = oldPeriodName; 
-    
-                // Find the period containing the old bell
-                const periodIndex = periods.findIndex(p => p.name === oldPeriodName);
-    
-                if (periodIndex === -1) {
-                    console.warn(`updatePeriodsOnEdit: Could not find period "${oldPeriodName}".`);
-                    return periods; // Period not found, return original array
-                }
-    
-                const period = periods[periodIndex];
-                let bellFound = false; // NEW in 4.27: Flag to see if we found the bell
-                const updatedBells = period.bells.map(bell => {
-                    // MODIFIED in 4.36: Find by bellId and replace
-                    if (bell.bellId === bellIdToFind) {
-                        bellFound = true; // Mark as found
+                // MODIFIED V4.95: Iterate through all periods to find the bell
+                let bellFound = false;
+                const updatedPeriods = periods.map(period => {
+                    // Check if this period contains the bell
+                    const bellIndex = period.bells.findIndex(bell => bell.bellId === bellIdToFind);
+
+                    if (bellIndex > -1) {
+                        bellFound = true;
                         
-                        // MODIFIED in 4.36: Return the newBell object *as-is*.
-                        // This works because both handleEditBellSubmit and
-                        // handleRelativeBellSubmit now pass a complete
-                        // bell object (including bellId) as 'newBell'.
-                        return newBell;
+                        // Create a new bells array for this period
+                        const updatedBells = [...period.bells];
+                        // Replace the old bell with the new bell
+                        updatedBells[bellIndex] = newBell;
+                        
+                        // Return the updated period object
+                        return { ...period, bells: updatedBells };
                     }
-                    return bell;
+                    
+                    // This period didn't contain the bell, return it unchanged
+                    return period;
                 });
 
                 if (!bellFound) {
-                    console.warn(`updatePeriodsOnEdit: Did not find bellId "${bellIdToFind}" in period "${oldPeriodName}".`);
+                    console.warn(`updatePeriodsOnEdit: Did not find bellId "${bellIdToFind}" in any period.`);
                 }
     
-                // Reconstruct the periods array
-                const updatedPeriods = [...periods];
-                updatedPeriods[periodIndex] = { ...period, bells: updatedBells };
-                
                 // DELETED in 4.36: This sort is invalid.
                 // It was trying to sort bells, but relative bells have no 'time' property,
                 // causing the 'a.time.localeCompare' error.
@@ -6228,7 +6229,7 @@
 
                 // 1. Get all values from the form
                 const bellName = multiAddRelativeBellName.value.trim();
-                const bellSound = multiAddRelativeBellSound.value;
+                let bellSound = multiAddRelativeBellSound.value;
                 const parentAnchorType = multiAddRelativeParentAnchor.value; // 'period_start' or 'period_end'
                 const direction = multiAddRelativeDirection.value;
                 const minutes = parseInt(multiAddRelativeMinutes.value) || 0;
@@ -6247,6 +6248,12 @@
                     multiAddRelativeStatus.textContent = "Please select at least one period.";
                     multiAddRelativeStatus.classList.remove('hidden');
                     return;
+                }
+                
+                // NEW V4.95: Validate sound
+                if (!bellSound || bellSound === '[UPLOAD]') {
+                    console.warn("Multi-add bell sound was empty or [UPLOAD], defaulting to Ellis Bell.");
+                    bellSound = 'ellisBell.mp3';
                 }
                 
                 // 3. Calculate offset
@@ -8505,6 +8512,14 @@
                 // Modals (Edit Bell)
                 editBellForm.addEventListener('submit', handleEditBellSubmit);
                 editBellCancelBtn.addEventListener('click', closeEditBellModal);
+                // NEW V4.95: Add listener for preview button
+                document.getElementById('preview-edit-sound').addEventListener('click', () => playBell(editBellSoundInput.value));
+                // NEW V4.95: Add listener for override checkbox to enable/disable sound select
+                editBellOverrideCheckbox.addEventListener('change', (e) => {
+                    if (currentEditingBell && currentEditingBell.type === 'shared') {
+                        editBellSoundInput.disabled = !e.target.checked;
+                    }
+                });
                 
                 // Modals (Linked Edit)
                 linkedEditCancel.addEventListener('click', closeLinkedEditModal);
@@ -8563,6 +8578,8 @@
                 multiAddRelativeCancelBtn.addEventListener('click', () => {
                     multiAddRelativeBellModal.classList.add('hidden');
                 });
+                // NEW V4.95: Wire up sound select for [UPLOAD]
+                multiAddRelativeBellSound.addEventListener('change', changeSoundSelectHandler);
                 
                 // --- NEW in 4.57: New Period Modal Listeners ---
                 newPeriodBtn.addEventListener('click', openNewPeriodModal);
@@ -8945,9 +8962,10 @@
                 }
                 
                 // Attach handler to all sound selects
+                // MODIFIED V4.95: Added multiAddRelativeBellSound
                 [sharedSoundInput, multiBellSoundInput, editBellSoundInput, 
                  changeSoundSelect, quickBellSoundSelect, addStaticBellSound, 
-                 relativeBellSoundSelect].forEach(select => {
+                 relativeBellSoundSelect, multiAddRelativeBellSound].forEach(select => {
                     if (select) {
                         select.addEventListener('change', changeSoundSelectHandler);
                     }
@@ -9186,4 +9204,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.94 -->
+<!-- Version 4.95 -->
