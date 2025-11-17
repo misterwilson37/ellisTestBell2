@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 5.03</title>
+    <title>Ellis Web Bell 5.04</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -582,7 +582,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.03</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.04</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -3030,10 +3030,10 @@
                                 
                                 <!-- Col 1: Active Checkbox (Col Span 1) -->
                                 <div class="col-span-1 flex justify-center" title="${hasData ? 'Activate/Deactivate Bell' : 'Click to activate this slot'}">
-                                    <!-- Checkbox is always ENABLED if slot has data -->
+                                    <!-- V5.04 FIX: Checkbox is always ENABLED, even if slot is empty, allowing user to activate the row. -->
                                     <input type="checkbox" data-bell-id="${id}" name="custom-bell-toggle-${id}" 
                                            class="custom-quick-bell-toggle h-5 w-5 text-indigo-600 focus:ring-indigo-500 rounded-md" 
-                                           ${!hasData ? 'disabled' : ''} ${!isInactive ? 'checked' : ''}>
+                                           ${!isInactive ? 'checked' : ''}>
                                 </div>
                                 
                                 <!-- Col 2: Display Name (Col Span 5) -->
@@ -3122,7 +3122,13 @@
                 
                 if (activeCustomBells.length > 0) {
                     customQuickBellSeparator.classList.remove('hidden');
-                    customQuickBellsContainer.innerHTML = activeCustomBells.map(bell => `
+                    customQuickBellsContainer.innerHTML = activeCustomBells.map(bell => {
+                        // V5.04: Format tooltip time to omit seconds if zero
+                        const formattedTime = bell.seconds === 0 
+                            ? `${bell.minutes}m` 
+                            : `${bell.minutes}m ${bell.seconds}s`;
+
+                        return `
                         <button data-custom-id="${bell.id}"
                                 data-minutes="${bell.minutes}"
                                 data-seconds="${bell.seconds}"
@@ -3130,15 +3136,11 @@
                                 data-name="${bell.name}"
                                 class="custom-quick-launch-btn font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 relative overflow-hidden group"
                                 style="background-color: ${bell.iconBgColor || '#4338CA'}; color: ${bell.iconFgColor || '#FFFFFF'};"
-                                title="${bell.name}: ${bell.minutes}m ${bell.seconds}s">
+                                title="${bell.name}: ${formattedTime}">
                             <!-- Custom Icon/Text -->
                             <span class="text-xl font-bold block leading-none">${bell.iconText}</span>
-                            <!-- Time hint on hover -->
-                            <span class="absolute inset-0 bg-indigo-700 bg-opacity-90 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                                ${bell.minutes}m ${bell.seconds}s
-                            </span>
-                        </button>
-                    `).join('');
+                            <!-- Time hint on hover -->`
+                    }).join('');
                 } else {
                     customQuickBellSeparator.classList.add('hidden');
                     customQuickBellsContainer.innerHTML = '';
@@ -8962,6 +8964,12 @@
                         const index = customQuickBells.findIndex(b => b && b.id === id);
                         if (index > -1) {
                             customQuickBells[index] = null; // Mark slot as null
+                            
+                            // V5.04 FIX: Manually uncheck the toggle before re-render, 
+                            // ensuring the slot is shown as inactive/empty.
+                            const toggle = document.querySelector(`.custom-quick-bell-toggle[data-bell-id="${id}"]`);
+                            if(toggle) toggle.checked = false; 
+
                             renderCustomQuickBells(); // Re-render the manager
                         }
                     } else if (previewBtn) {
@@ -10011,4 +10019,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 5.03 -->
+<!-- Version 5.04 -->
