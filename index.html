@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.87</title>
+    <title>Ellis Web Bell 4.88</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -531,7 +531,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.87</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.88</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -1988,9 +1988,16 @@
             if (!scheduleId || !bell) return null;
             // MODIFIED: v3.03 - We only override 'shared' bells
             if (bell.type !== 'shared') return null;
-            const bellId = getBellId(bell);
-            if (!bellId) return null;
-            return `${scheduleId}-${bellId}`;
+            
+            // MODIFIED V4.88: Use the bell's *unique* database ID, not the fragile composite key.
+            // This makes overrides persistent even if an admin renames the bell,
+            // and guarantees uniqueness across all schedules, fixing the bug.
+            const uniqueBellId = bell.bellId; 
+            if (!uniqueBellId) {
+                console.warn("getBellOverrideKey: Bell has no unique bellId.", bell);
+                return null;
+            }
+            return `${scheduleId}-${uniqueBellId}`;
         }
 
         function loadSoundOverrides() {
@@ -2924,8 +2931,9 @@
                     periodHtml += bellsToRender.map((bell, index) => {
                         const isCustom = bell.type === 'custom';
                         const safeName = bell.name.replace(/"/g, '&quot;');
-                        const bellId = getBellId(bell);
-                        const isMuted = mutedBellIds.has(bellId);
+                        // MODIFIED V4.88: Use the *unique* bellId for mutes
+                        const uniqueBellId = bell.bellId || getBellId(bell); // Fallback for any legacy
+                        const isMuted = mutedBellIds.has(uniqueBellId);
 
                         // --- MODIFIED V4.76: Simplified Sound Logic ---
                         // The bell object from calculatedPeriods now has the *correct* sound (with override)
@@ -3034,7 +3042,7 @@
                                     <label class="flex items-center space-x-2 cursor-pointer p-1"> 
                                         <span class="text-sm font-medium text-gray-700 hidden sm:inline">Mute</span>
                                         <input type="checkbox" class="bell-mute-toggle h-5 w-5 text-blue-600 rounded focus:ring-blue-500" 
-                                               data-bell-id="${bellId}" ${isMuted ? 'checked' : ''} 
+                                               data-bell-id="${uniqueBellId}" ${isMuted ? 'checked' : ''} 
                                                aria-label="Mute this bell">
                                     </label>
                                     
@@ -4186,10 +4194,13 @@
                 console.log("Listening for real-time shared schedule updates...");
     
                 sharedSchedulesListenerUnsubscribe = onSnapshot(schedulesCollectionRef, (querySnapshot) => {
+                    // MODIFIED V4.88: Read the 'periods' array, not the legacy 'bells' array.
+                    // This fixes the 'undefined.findIndex' error when editing shared bells.
                     allSchedules = querySnapshot.docs.map(doc => ({
                         id: doc.id,
                         name: doc.data().name || "Unnamed Schedule",
-                        bells: doc.data().bells || []
+                        periods: doc.data().periods || [], // <-- THE FIX
+                        bells: doc.data().bells || [] // Keep legacy for migrate check
                     }));
                     allSchedules.sort((a, b) => a.name.localeCompare(b.name));
                     console.log("Shared schedules updated from snapshot:", allSchedules.length);
@@ -8369,13 +8380,14 @@
  
                     // Check which specific button *within* the bell item was clicked
                     if (target.classList.contains('bell-mute-toggle')) {
-                        const bellId = getBellId(bell);
-                        if (!bellId) return;
+                        // MODIFIED V4.88: Use the *unique* bellId from the 'bell' object
+                        const uniqueBellId = bell.bellId;
+                        if (!uniqueBellId) return;
                         
                         if (target.checked) {
-                            mutedBellIds.add(bellId);
+                            mutedBellIds.add(uniqueBellId);
                         } else {
-                            mutedBellIds.delete(bellId);
+                            mutedBellIds.delete(uniqueBellId);
                         }
                         saveMutedBells();
                         // MODIFIED in 4.19: Call the master recalculate function
@@ -8839,4 +8851,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.87 -->
+<!-- Version 4.88 -->
