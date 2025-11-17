@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.90</title>
+    <title>Ellis Web Bell 4.91</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -354,6 +354,29 @@
         </div>
     </div>
 
+    <!-- **** NEW V4.91: Rename SHARED Schedule Modal (Admin) **** -->
+    <div id="rename-shared-schedule-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+        <form id="rename-shared-schedule-form" class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+            <h3 class="text-2xl font-medium mb-6">Rename Shared Schedule</h3>
+            
+            <p class="text-gray-700 mb-4">
+                Current Name: <strong id="rename-shared-old-name">...</strong>
+            </p>
+            
+            <div>
+                <label for="rename-shared-new-name" class="block text-sm font-medium text-gray-700">New Schedule Name</label>
+                <input type="text" id="rename-shared-new-name" placeholder="e.g. A-Day Schedule" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <p id="rename-shared-schedule-status" class="text-blue-600 text-sm mt-4 hidden"></p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="rename-shared-cancel" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Name</button>
+            </div>
+        </form>
+    </div>
+    
     <!-- **** NEW: Confirm Delete AUDIO Modal **** -->
     <div id="confirm-delete-audio-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
@@ -531,7 +554,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.90</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.91</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -746,11 +769,20 @@
             </div>
 
             <!-- MOVED: Delete Selected Schedule Button -->
-            <div class="border-t pt-6">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Delete Current Schedule</label>
-                <button type="button" id="delete-schedule-btn" class="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-lg shadow-md hover:bg-red-700 transition-colors">
-                    Delete Selected Schedule
-                </button>
+            <!-- MODIFIED V4.91: Added Rename button, put in grid -->
+            <div class="border-t pt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Rename Current Schedule</label>
+                    <button type="button" id="rename-schedule-btn" class="w-full px-4 py-2 bg-yellow-500 text-white font-medium rounded-lg shadow-md hover:bg-yellow-600 transition-colors">
+                        Rename Selected Schedule
+                    </button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Delete Current Schedule</label>
+                    <button type="button" id="delete-schedule-btn" class="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                        Delete Selected Schedule
+                    </button>
+                </div>
             </div>
 
             <!-- NEW: Import/Export Section -->
@@ -1560,6 +1592,15 @@
         const renameNewScheduleNameInput = document.getElementById('rename-new-schedule-name');
         const renamePersonalScheduleStatus = document.getElementById('rename-personal-schedule-status');
         const renamePersonalCancelBtn = document.getElementById('rename-personal-cancel');
+
+        // NEW V4.91: Rename SHARED Schedule Modal
+        const renameSharedScheduleModal = document.getElementById('rename-shared-schedule-modal');
+        const renameSharedScheduleForm = document.getElementById('rename-shared-schedule-form');
+        const renameSharedOldName = document.getElementById('rename-shared-old-name');
+        const renameSharedNewNameInput = document.getElementById('rename-shared-new-name');
+        const renameSharedScheduleStatus = document.getElementById('rename-shared-schedule-status');
+        const renameSharedCancelBtn = document.getElementById('rename-shared-cancel');
+        const renameScheduleBtn = document.getElementById('rename-schedule-btn'); // The button in Admin Zone
 
         // Personal Schedule Manager Buttons (These were missing!)
         const renamePersonalScheduleBtn = document.getElementById('rename-personal-schedule-btn');
@@ -4340,6 +4381,9 @@
                 exportCurrentScheduleBtn.disabled = true;
                 importCurrentScheduleBtn.disabled = true;
 
+                // NEW V4.91: Disable admin rename button
+                renameScheduleBtn.disabled = true;
+                
                 // v3.03: Disable personal schedule buttons
                 createPersonalScheduleBtn.disabled = true;
                 createPersonalScheduleBtn.textContent = 'Copy as Personal Schedule';
@@ -4381,6 +4425,8 @@
                             // NEW V4.90: Enable current schedule buttons
                             exportCurrentScheduleBtn.disabled = false;
                             importCurrentScheduleBtn.disabled = false;
+                            // NEW V4.91: Enable shared rename button
+                            renameScheduleBtn.disabled = false;
                         }
                     }
     
@@ -4621,6 +4667,56 @@
                     console.error("Error creating schedule:", error);
                 }
             }
+
+            // --- NEW V4.91: Rename Shared Schedule Functions ---
+            function openRenameSharedScheduleModal() {
+                if (!activeBaseScheduleId || !document.body.classList.contains('admin-mode')) return;
+                
+                const schedule = allSchedules.find(s => s.id === activeBaseScheduleId);
+                if (!schedule) return;
+
+                // Populate modal with current name
+                renameSharedOldName.textContent = schedule.name;
+                renameSharedNewNameInput.value = schedule.name;
+                renameSharedScheduleStatus.classList.add('hidden'); // Clear status
+                
+                // Show the modal
+                renameSharedScheduleModal.classList.remove('hidden');
+            }
+
+            async function handleRenameSharedScheduleSubmit(e) {
+                e.preventDefault();
+                if (!activeBaseScheduleId || !scheduleRef || !document.body.classList.contains('admin-mode')) return;
+
+                const schedule = allSchedules.find(s => s.id === activeBaseScheduleId);
+                if (!schedule) return;
+
+                const newName = renameSharedNewNameInput.value.trim();
+                
+                if (newName && newName !== "" && newName !== schedule.name) {
+                    renameSharedScheduleStatus.textContent = "Saving...";
+                    renameSharedScheduleStatus.classList.remove('hidden');
+                    
+                    try {
+                        await updateDoc(scheduleRef, { name: newName });
+                        console.log("Shared schedule renamed.");
+                        // The onSnapshot listener will handle the UI update.
+                        
+                        renameSharedScheduleModal.classList.add('hidden'); // Close modal on success
+                    } catch (error) {
+                        console.error("Error renaming schedule:", error);
+                        renameSharedScheduleStatus.textContent = "Error saving name.";
+                    }
+                } else if (newName === schedule.name) {
+                    // No change, just close the modal
+                    renameSharedScheduleModal.classList.add('hidden');
+                } else {
+                    // Invalid name
+                    renameSharedScheduleStatus.textContent = "Please enter a valid name.";
+                    renameSharedScheduleStatus.classList.remove('hidden');
+                }
+            }
+            // --- END V4.91 ---
     
             /**
              * NEW: v3.02 (4.03?) - Opens the modal to confirm bell deletion.
@@ -8186,6 +8282,13 @@
                 deleteScheduleBtn.addEventListener('click', handleDeleteSchedule);
                 deleteConfirmBtn.addEventListener('click', confirmDeleteSchedule);
                 deleteCancelBtn.addEventListener('click', () => confirmDeleteModal.classList.add('hidden'));
+
+                // NEW V4.91: Modals (Rename Shared Schedule)
+                renameScheduleBtn.addEventListener('click', openRenameSharedScheduleModal);
+                renameSharedScheduleForm.addEventListener('submit', handleRenameSharedScheduleSubmit);
+                renameSharedCancelBtn.addEventListener('click', () => {
+                    renameSharedScheduleModal.classList.add('hidden');
+                });
     
                 // NEW: v3.03 - Modals (Create/Delete Personal Schedule)
                 createPersonalScheduleBtn.addEventListener('click', () => {
@@ -9079,4 +9182,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.90 -->
+<!-- Version 4.91 -->
