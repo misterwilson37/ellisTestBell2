@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.97</title>
+    <title>Ellis Web Bell 4.98</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -582,7 +582,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.97</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.98</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -597,14 +597,9 @@
 
         <!-- MODIFIED: This card now shows countdown AND current time -->
         <!-- NEW in 4.44: Converted to 2-column grid for Visual Cues -->
+        <!-- MODIFIED V4.98: Reorganized to a simpler 2-column layout -->
         <div class="bg-white rounded-xl shadow-md mb-8 overflow-hidden p-4 md:p-6">
             
-            <!-- NEW in 4.49: Full Width Header (Line 1 in user diagram) -->
-            <!-- This element is pulled out of the grid to span the full width -->
-            <div id="live-clock-sentence" class="text-2xl font-medium text-gray-600 tabular-nums text-center pb-4 mb-4 border-b border-gray-100">
-                Loading...
-            </div>
-
             <!-- MODIFIED in 4.49: Grid for Visual Cue (25%) and Clock (75%) -->
             <div class="grid grid-cols-1 md:grid-cols-4 items-center gap-4 md:gap-6">
                 <!-- Column 1: Visual Cue (md:col-span-1 = 25%) -->
@@ -617,60 +612,67 @@
                 </div>
                 
                 <!-- Column 2: Countdown / Clock (md:col-span-3 = 75%) -->
-                <div class="md:col-span-3 text-center md:text-left p-2">
-                    <!-- NEW: Restructured countdown/clock -->
+                <!-- MODIFIED V4.98: All text content moved into this column -->
+                <div class="md:col-span-3 p-2 flex flex-col justify-center">
+                    <!-- MOVED V4.98: Live Clock Sentence -->
+                    <div id="live-clock-sentence" class="text-2xl font-medium text-gray-600 tabular-nums text-center md:text-left">
+                        Loading...
+                    </div>
+                    
                     <!-- Line 2: "HH:MM:SS" (countdown) -->
-                    <div id="countdown-display" class="text-6xl md:text-8xl font-bold text-gray-800 tabular-nums my-2">
+                    <div id="countdown-display" class="text-6xl md:text-8xl font-bold text-gray-800 tabular-nums my-2 text-center md:text-left">
                         --:--
                     </div>
+                    
                     <!-- Line 3: "until XXBELLXX" -->
-                    <div id="next-bell-sentence" class="text-2xl font-medium text-gray-600">
+                    <div id="next-bell-sentence" class="text-2xl font-medium text-gray-600 text-center md:text-left">
                         until the next bell.
                     </div>
+                    
                     <!-- MODIFIED: v3.21 -> v3.22 - This line's content logic is updated -->
-                    <div id="next-bell-info" class="text-lg text-gray-500 mt-2">
+                    <div id="next-bell-info" class="text-lg text-gray-500 mt-2 text-center md:text-left">
                         <!-- JS will populate this -->
+                    </div>
+                    
+                    <!-- MOVED V4.98: Status Footer -->
+                    <div class="text-center md:text-left text-gray-500 text-lg mt-4 pt-4 border-t border-gray-100">
+                        Status: <span id="status-message" class="font-medium text-gray-700">Initializing...</span>
                     </div>
                 </div>
             
             </div> <!-- End Grid (Graphic/Countdown) -->
 
-            <!-- NEW in 4.49: Full Width Status Footer -->
-            <!-- This element is pulled out of the grid to span the full width -->
-            <div class="text-center text-gray-500 text-lg mt-4 pt-4 border-t border-gray-100">
-                Status: <span id="status-message" class="font-medium text-gray-700">Initializing...</span>
-            </div>
-
         </div>
 
         <!-- **** NEW: Quick Bell Section **** -->
-        <div id="quickBellControls" class="p-4 bg-white rounded-xl shadow-md mb-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <div class="flex items-center space-x-3 flex-shrink-0"> <!-- ADDED flex-shrink-0 -->
-                <span class="font-semibold text-gray-700">Quick Bell:</span>
-                <div class="flex flex-wrap gap-2">
-                    <!-- ADDED: The 'quick-bell-btn' class as a JS hook -->
-                    <button data-minutes="1" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95">1</button>
-                    <button data-minutes="2" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95">2</button>
-                    <button data-minutes="3" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95">3</button>
-                    <button data-minutes="5" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95">5</button>
-                    <button data-minutes="10" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95">10</button>
-                    <button data-minutes="15" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95">15</button>
-                </div>
-            </div>
-            <div class="flex items-center space-x-2 flex-shrink min-w-0 w-full sm:w-auto"> <!-- ADDED flex-shrink min-w-0 w-full sm:w-auto -->
-                <label for="quickBellSoundSelect" class="text-sm font-medium text-gray-700">Sound:</label>
+        <!-- MODIFIED V4.98: Reorganized layout -->
+        <div id="quickBellControls" class="p-4 bg-white rounded-xl shadow-md mb-8 flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <!-- 1. Label -->
+            <span class="font-semibold text-gray-700 flex-shrink-0">Quick Bell:</span>
+            
+            <!-- 2. Sound Dropdown -->
+            <div class="flex-shrink-0 min-w-0 w-full sm:w-auto">
+                <label for="quickBellSoundSelect" class="block text-sm font-medium text-gray-700 mb-1">Sound</label>
                 <!-- This select will be populated by JS to match the others -->
-                <select id="quickBellSoundSelect" class="w-full truncate px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"> <!-- REPLACED sm:w-auto WITH w-full and ADDED truncate -->
+                <select id="quickBellSoundSelect" class="w-full truncate px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-11"> <!-- h-11 to match button height -->
                     <optgroup label="Default Sounds">
                         <option value="Bell">Bell</option>
                         <option value="Chime">Chime</option>
                         <option value="Beep">Beep</option>
-                        <option value="Alarm">Alarm</option>
-                        <option value="ellisBell.mp3" selected>Ellis Bell</option>
-                    </optgroup>
-                    <optgroup label="My Sounds" id="quick-my-sounds-optgroup"></optgroup>
+                        <optgroup label="My Sounds" id="quick-my-sounds-optgroup"></optgroup>
                     <optgroup label="Shared Sounds" id="quick-shared-sounds-optgroup"></optgroup>
                 </select>
+            </div>
+
+            <!-- 3. Button Container -->
+            <div class="flex-grow flex flex-wrap gap-2">
+                <!-- ADDED: The 'quick-bell-btn' class as a JS hook -->
+                <button data-minutes="1" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">1</button>
+                <button data-minutes="2" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">2</button>
+                <button data-minutes="3" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">3</button>
+                <button data-minutes="5" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">5</button>
+                <button data-minutes="10" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">10</button>
+                <button data-minutes="15" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">15</button>
             </div>
         </div>
         <!-- **** END NEW: Quick Bell Section **** -->
@@ -6907,7 +6909,7 @@
                 if (p.includes('lunch')) {
                     // Fork and Knife for Lunch
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5V12.97c2.09-.13 3.75-1.85 3.75-3.97V2h-2v7zm5-3v8h2.5v10h2.5V2h-5z"/></svg>`;
-                } else if (p.includes('passing') || p.includes('between')) {
+               } else if (p.includes('passing') || p.includes('between')) {
                     // MODIFIED V4.87: Using user-provided optimized SVG
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 259.3 435.88" fill="currentColor" class="w-full h-full"><path d="M315.67 347.53c0 20.503-16.621 37.123-37.123 37.123-20.503 0-37.123-16.621-37.123-37.123 0-20.503 16.621-37.123 37.123-37.123 20.503 0 37.123 16.621 37.123 37.123" transform="translate(-132.24 -310.409)"/><path d="M516.35 490.41s-30.339 157.53-36.871 168.19c-5.586 9.115-49.18 80.642-49.18 80.642-9.306 15.26-.487 26.17 9.372 31.862 8.394 4.846 26.437 3.646 32.403-6.53 0 0 48.366-75.267 53.643-91.5 3.654-11.238 12.143-57.857 12.143-57.857s46.996 48.47 52.143 57.143c6.488 10.933 18.571 87.143 18.571 87.143 2.89 13.56 15.822 17.982 29.286 15.714 10.633-1.79 21.753-8.985 19.286-22.143 0 0-10.746-88.36-19.286-102.86-10.19-17.302-65-76.43-65-76.43l15.714-70s10.086 20.447 17.143 29.287c8.026 10.053 58.571 39.286 58.571 39.286 4.637 3.11 15.133 1.396 19.286-6.429 3.334-6.28 3.177-16.454-4.285-21.429 0 0-41.655-26.15-51.43-34.286-10.87-9.03-32.86-69.27-32.86-69.27-6.82-9.386-16.15-19.742-32.142-20-16.12-.26-24.187 8.62-31.43 13.571 0 0-61.746 45.105-67.856 54.286-6.147 9.236-17.143 78.571-17.143 78.571-1.724 7.9 1.362 14.253 10.714 16.43 11.443 2.661 19.645-4.464 20.714-10 0 0 7.05-54.766 12.143-62.858 5.929-9.421 26.346-20.52 26.346-20.52z" transform="translate(-426.35 -339.904)"/></svg>`;
                 } else {
@@ -6917,10 +6919,11 @@
                     if (match) {
                         text = (match[1] || match[2]).toUpperCase();
                     }
+                    // MODIFIED V4.98 (FIX): This was the bug. It should create the SVG, not wrap an empty var.
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text></svg>`;
                 }
                 
-                // Return as a full HTML string for injection
+                // Return as a full HTML string for injection (MODIFIED V4.74: Removed wrapper div)
                 return `<div class="w-full h-full p-8 text-gray-400">${svgContent}</div>`;
             }
 
@@ -7027,7 +7030,14 @@
                     // Case 3: It's an uploaded image URL
                     // MODIFIED in 4.54: Force image to fill and be contained by its parent DIV (fixing overlap).
                     return `<img src="${value}" alt="Visual Cue" class="w-full h-full object-contain">`;
+                
+                // NEW V4.89: Add default visual for standard Quick Bell
+                // MODIFIED V4.98: Moved from getDefaultVisualCue and changed icon
+                } else if (value === "[DEFAULT] Quick Bell") {
+                    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM11 15h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg>`;
+                    return `<div class="w-full h-full p-8 text-gray-400">${svgContent}</div>`;
                 }
+                
                 // Fallback
                 return getDefaultVisualCue(periodName);
             }
@@ -9359,4 +9369,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.97 -->
+<!-- Version 4.98 -->
