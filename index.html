@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 5.01</title>
+    <title>Ellis Web Bell 5.02</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -582,7 +582,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.01</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.02</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -2954,7 +2954,7 @@
 
             /**
              * NEW V5.00: Renders the custom quick bell manager and the main quick bell buttons.
-             * MODIFIED: Restructured to a horizontal, single-row per bell format.
+             * MODIFIED V5.02: Restructured to always render inputs in empty slots for quick editing.
              */
             function renderCustomQuickBells() {
                 // Ensure a placeholder exists for the 4 slots if the database is empty
@@ -2964,19 +2964,21 @@
 
                 const managerSlots = customQuickBells.map((bell, index) => {
                     const id = bell ? bell.id : index + 1;
+                    const hasData = !!bell;
+                    
+                    // Defaults for empty slots (V5.02: use default values if bell is null)
                     const name = bell ? bell.name : `Slot ${id}`;
                     const minutes = bell ? bell.minutes : 5;
                     const seconds = bell ? bell.seconds : 0;
-                    // NEW V5.00: Extracting colors/text from the icon data if available, defaulting to standard colors
-                    const rawIconText = bell ? bell.iconText : '...';
+                    const rawIconText = bell ? bell.iconText : String(id); // Use slot ID as default icon
                     const iconColor = bell ? (bell.iconBgColor || '#4338CA') : '#4338CA';
                     const textColor = bell ? (bell.iconFgColor || '#FFFFFF') : '#FFFFFF';
                     const sound = bell ? bell.sound : 'ellisBell.mp3';
-                    const hasData = !!bell;
-                    // Determine the disabled state based on 'isActive' property
-                    const isInactive = !hasData || (bell && bell.isActive === false); // Use 'isInactive' to define the grayed-out state
-                    const disabledAttr = isInactive ? 'disabled' : ''; // Used for inputs
-                    const disabledClass = isInactive ? 'opacity-50 pointer-events-none' : ''; // Used for buttons/visuals
+                    
+                    // V5.02 CRITICAL FIX: The slot is INACTIVE/DISABLED if it has no data OR if it's explicitly set to inactive.
+                    const isInactive = !hasData || (bell && bell.isActive === false); 
+                    const disabledAttr = isInactive ? 'disabled' : ''; 
+                    const disabledClass = isInactive ? 'opacity-50 pointer-events-none' : '';
 
                     // Generate Sound Options for this slot
                     const soundOptionsHtml = getCustomBellSoundOptions(sound);
@@ -2985,58 +2987,62 @@
                         <div class="p-3 border rounded-xl shadow-sm ${hasData ? 'border-indigo-300 bg-white' : 'border-dashed border-gray-300 bg-gray-50'}">
                             
                             <!-- Main Row: Responsive Grid Layout -->
-                            <!-- sm:grid-cols-12 ensures the items align horizontally on larger screens -->
                             <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                                 
                                 <!-- Col 1: Active Checkbox (Col Span 1) -->
-                                <div class="col-span-1 flex justify-center" title="${hasData ? 'Activate/Deactivate Bell' : 'Slot is empty'}">
-                                    <input type="checkbox" data-bell-id="${id}" name="custom-bell-toggle-${id}" class="custom-quick-bell-toggle h-5 w-5 text-indigo-600 focus:ring-indigo-500 rounded-md" ${hasData ? '' : 'disabled'} ${!isInactive ? 'checked' : ''}>
+                                <div class="col-span-1 flex justify-center" title="${hasData ? 'Activate/Deactivate Bell' : 'Click to activate this slot'}">
+                                    <!-- V5.02: Checkbox is always ENABLED (removed 'disabled' if no data) -->
+                                    <input type="checkbox" data-bell-id="${id}" name="custom-bell-toggle-${id}" 
+                                           class="custom-quick-bell-toggle h-5 w-5 text-indigo-600 focus:ring-indigo-500 rounded-md" 
+                                           ${!isInactive ? 'checked' : ''}>
                                 </div>
                                 
                                 <!-- Col 2: Display Name (Col Span 3) -->
                                 <div class="col-span-3 min-w-0">
-                                    ${hasData ? `
-                                        <input type="text" data-bell-id="${id}" data-field="name" name="name-${id}" value="${name}" required class="custom-bell-editable-input w-full text-sm font-medium px-2 py-1 border border-gray-300 rounded-lg ${disabledClass}" placeholder="Display Name" ${disabledAttr}>
-                                    ` : `<span class="text-gray-500 text-sm italic">${name}</span>`}
+                                    <!-- V5.02: Always render input. If no data, value is empty. -->
+                                    <input type="text" data-bell-id="${id}" data-field="name" name="name-${id}" value="${name === `Slot ${id}` ? '' : name}" 
+                                           required class="custom-bell-editable-input w-full text-sm font-medium px-2 py-1 border border-gray-300 rounded-lg ${disabledClass}" 
+                                           placeholder="Display Name" ${disabledAttr}>
                                 </div>
 
                                 <!-- Col 3: Time (Min/Sec) (Col Span 3) -->
                                 <div class="col-span-3 grid grid-cols-2 gap-2">
-                                    ${hasData ? `
-                                        <input type="number" data-bell-id="${id}" data-field="minutes" name="minutes-${id}" value="${minutes}" min="0" max="59" required class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" placeholder="Min" ${disabledAttr}>
-                                        <input type="number" data-bell-id="${id}" data-field="seconds" name="seconds-${id}" value="${seconds}" min="0" max="59" required class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" placeholder="Sec" ${disabledAttr}>
-                                    ` : `<span class="text-gray-400 text-sm italic col-span-2 text-center">-- Min / Sec --</span>`}
+                                    <input type="number" data-bell-id="${id}" data-field="minutes" name="minutes-${id}" value="${minutes}" min="0" max="59" 
+                                           required class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
+                                           placeholder="Min" ${disabledAttr}>
+                                    <input type="number" data-bell-id="${id}" data-field="seconds" name="seconds-${id}" value="${seconds}" min="0" max="59" 
+                                           required class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
+                                           placeholder="Sec" ${disabledAttr}>
                                 </div>
 
                                 <!-- Col 4: Icon/Visual (Col Span 2) -->
                                 <div class="col-span-2">
-                                    ${hasData ? `
-                                        <button type="button" data-bell-id="${id}" 
-                                                data-icon-text="${rawIconText}" 
-                                                data-bg-color="${iconColor}" 
-                                                data-fg-color="${textColor}"
-                                                class="custom-bell-icon-btn custom-bell-editable-input w-full px-2 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:opacity-80 flex items-center justify-center gap-2 font-bold transition-opacity duration-150 ${disabledClass}"
-                                                style="background-color: ${iconColor}; color: ${textColor};"
-                                                title="Edit Icon/Text" ${disabledAttr}>
-                                            <span class="text-lg leading-none">${rawIconText}</span>
-                                            <span class="text-xs">&#9998;</span> <!-- Pencil Icon -->
-                                        </button>
-                                        <!-- Hidden inputs to store colors/text from modal -->
-                                        <input type="hidden" data-bell-id="${id}" data-field="iconText" name="iconText-${id}" value="${rawIconText}">
-                                        <input type="hidden" data-bell-id="${id}" data-field="iconBgColor" name="iconBgColor-${id}" value="${iconColor}">
-                                        <input type="hidden" data-bell-id="${id}" data-field="iconFgColor" name="iconFgColor-${id}" value="${textColor}">
-
-                                    ` : `<span class="text-gray-400 text-sm italic block text-center">Icon</span>`}
+                                    <button type="button" data-bell-id="${id}" 
+                                            data-icon-text="${rawIconText}" 
+                                            data-bg-color="${iconColor}" 
+                                            data-fg-color="${textColor}"
+                                            class="custom-bell-icon-btn custom-bell-editable-input w-full px-2 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:opacity-80 flex items-center justify-center gap-2 font-bold transition-opacity duration-150 ${disabledClass}"
+                                            style="background-color: ${iconColor}; color: ${textColor};"
+                                            title="Edit Icon/Text" ${disabledAttr}>
+                                        <span class="text-lg leading-none">${rawIconText}</span>
+                                        <span class="text-xs">&#9998;</span> <!-- Pencil Icon -->
+                                    </button>
+                                    <!-- Hidden inputs to store colors/text from modal -->
+                                    <input type="hidden" data-bell-id="${id}" data-field="iconText" name="iconText-${id}" value="${rawIconText}">
+                                    <input type="hidden" data-bell-id="${id}" data-field="iconBgColor" name="iconBgColor-${id}" value="${iconColor}">
+                                    <input type="hidden" data-bell-id="${id}" data-field="iconFgColor" name="iconFgColor-${id}" value="${textColor}">
                                 </div>
                                 
                                 <!-- Col 5: Sound & Preview (Col Span 2) -->
                                 <div class="col-span-2 flex items-center gap-1">
-                                    ${hasData ? `
-                                        <select data-bell-id="${id}" data-field="sound" name="sound-${id}" class="custom-bell-editable-input w-full px-2 py-1 text-xs border border-gray-300 rounded-lg custom-bell-sound-select truncate ${disabledClass}" ${disabledAttr}>
-                                            ${soundOptionsHtml}
-                                        </select>
-                                        <button type="button" data-bell-id="${id}" data-sound="${sound}" class="preview-audio-btn custom-bell-editable-input w-6 h-6 flex-shrink-0 flex items-center justify-center text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors ${disabledClass}" aria-label="Preview" ${disabledAttr}>&#9654;</button>
-                                    ` : `<span class="text-gray-400 text-sm italic truncate">Sound</span>`}
+                                    <select data-bell-id="${id}" data-field="sound" name="sound-${id}" 
+                                            class="custom-bell-editable-input w-full px-2 py-1 text-xs border border-gray-300 rounded-lg custom-bell-sound-select truncate ${disabledClass}" 
+                                            ${disabledAttr}>
+                                        ${soundOptionsHtml}
+                                    </select>
+                                    <button type="button" data-bell-id="${id}" data-sound="${sound}" 
+                                            class="preview-audio-btn custom-bell-editable-input w-6 h-6 flex-shrink-0 flex items-center justify-center text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors ${disabledClass}" 
+                                            aria-label="Preview" ${disabledAttr}>&#9654;</button>
                                 </div>
 
                                 <!-- Col 6: Clear Slot Button (Col Span 1) -->
@@ -8771,16 +8777,16 @@
                     
                     // NEW V5.01: Manually trigger the toggle logic for initial render
                     customQuickBellListContainer.querySelectorAll('.custom-quick-bell-toggle').forEach(toggle => {
-                        // Check if the input is checked (i.e., active)
                         const isChecked = toggle.checked; 
                         const row = toggle.closest('.p-3');
                         if (!row) return;
                         
-                        // Select all inputs *except* the toggle itself
+                        // Find all fields and buttons that are marked as editable
                         const editableElements = row.querySelectorAll('.custom-bell-editable-input');
 
                         editableElements.forEach(el => {
-                             el.disabled = !isChecked;
+                            el.disabled = !isChecked;
+                            // Apply visual disabled state (opacity + disabling pointer events for non-input elements)
                             if (!isChecked) {
                                 el.classList.add('opacity-50', 'pointer-events-none');
                             } else {
@@ -8962,15 +8968,8 @@
                             }
                         });
 
-                        // Special handling for the Name input's pointer events
-                        const nameInput = row.querySelector(`input[data-field="name"]`);
-                        if(nameInput) {
-                            if (!isChecked) {
-                                nameInput.classList.add('opacity-50', 'pointer-events-none');
-                            } else {
-                                nameInput.classList.remove('opacity-50', 'pointer-events-none');
-                            }
-                        }
+                        // All inputs/buttons are now handled by the generic .custom-bell-editable-input query.
+                        // The special handling is now unnecessary and removed for V5.02.
                     }
                 });
 
@@ -9675,7 +9674,7 @@
                         if(bellId) mutedBellIds.add(bellId);
                     });
                     saveMutedBells();
-                    // CRITICAL FIX V5.01: Must call master function to update list and clock
+                    // CRITICAL FIX V5.02: Ensure master function call updates list and clock checkboxes
                     recalculateAndRenderAll(); 
                     updateClock();
                 });
@@ -9683,7 +9682,7 @@
                     // MODIFIED: v4.50 - Use master function to guarantee stability
                     mutedBellIds.clear();
                     saveMutedBells();
-                    // CRITICAL FIX V5.01: Must call master function to update list and clock
+                    // CRITICAL FIX V5.02: Ensure master function call updates list and clock checkboxes
                     recalculateAndRenderAll(); 
                     updateClock();
                 });
@@ -9905,4 +9904,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 5.01 -->
+<!-- Version 5.02 -->
