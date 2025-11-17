@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.99</title>
+    <title>Ellis Web Bell 5.00</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -582,7 +582,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.99</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.00</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -666,6 +666,13 @@
 
             <!-- 3. Button Container -->
             <div class="flex-grow flex flex-wrap gap-2">
+                <!-- NEW V5.00: Container for custom quick bells -->
+                <div id="custom-quick-bells-container" class="flex flex-wrap gap-2">
+                    <!-- Custom buttons will be injected here -->
+                </div>
+                <!-- NEW V5.00: Vertical Separator (hidden by default, shown by JS if customs exist) -->
+                <div id="custom-quick-bell-separator" class="hidden h-11 border-l-2 border-gray-300 mx-1"></div>
+                
                 <!-- ADDED: The 'quick-bell-btn' class as a JS hook -->
                 <button data-minutes="1" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">1</button>
                 <button data-minutes="2" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">2</button>
@@ -858,12 +865,18 @@
             <div class="bg-white p-6 rounded-xl shadow-md mb-8">
                 <h3 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">My Personal Schedule Manager</h3>
                 
-                <!-- NEW in 4.54: Multi-Add Relative Bell Button (Full Width, Prominent) -->
-                <button type="button" id="multi-add-relative-btn" class="w-full px-4 py-3 bg-purple-600 text-white font-medium rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-4" disabled>
-                    <span class="font-semibold">Add Multi-Period Bell</span>
-                    <span class="block text-sm opacity-90">Add one relative bell (e.g., "Clean up") to many periods.</span>
-                </button>
-
+                <!-- NEW V5.00: Split Row for Multi-Add and Custom Quick Bells -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <button type="button" id="show-custom-quick-bell-manager-btn" class="w-full px-4 py-3 bg-indigo-600 text-white font-medium rounded-lg shadow-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <span class="font-semibold">Custom Quick Bells</span>
+                        <span class="block text-sm opacity-90">Set up to 4 personalized timers with custom icons.</span>
+                    </button>
+                    <button type="button" id="multi-add-relative-btn" class="w-full px-4 py-3 bg-purple-600 text-white font-medium rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <span class="font-semibold">Add Multi-Period Bell</span>
+                        <span class="block text-sm opacity-90">Add one relative bell (e.g., "Clean up") to many periods.</span>
+                    </button>
+                </div>
+                
                 <!-- ROW 1: Creation / Renaming (2-Column Grid) -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <!-- NEW in 4.54: Add New Period Button -->
@@ -1462,7 +1475,27 @@
                 </div>
             </form>
         </div>
+        
+        <!-- **** NEW: v5.00 - Custom Quick Bell Manager Modal **** -->
+        <div id="custom-quick-bell-manager-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+            <form id="custom-quick-bell-form" class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
+                <h3 class="text-2xl font-medium mb-6">Custom Quick Bells Manager</h3>
+                <p class="text-gray-700 mb-4">Define up to four custom, reusable quick bells.</p>
+                
+                <div id="custom-quick-bell-list-container" class="space-y-4">
+                    <!-- Custom Quick Bell Rows (to be injected by JS) -->
+                    <p class="text-gray-500">Loading custom bells...</p>
+                </div>
 
+                <p id="custom-quick-bell-status" class="text-red-600 text-sm mt-4 hidden"></p>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" id="custom-quick-bell-cancel" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Close</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save All Custom Bells</button>
+                </div>
+            </form>
+        </div>
+        
         <!-- NEW: Audio Manager Panel (Hidden for anonymous users) -->
         <div id="audio-manager-panel" class="auth-required mt-12">
             <!-- MODIFIED: v3.09 - Made H2 a cursor-pointer -->
@@ -1766,6 +1799,16 @@
         const multiAddRelativeBellForm = document.getElementById('multi-add-relative-bell-form');
         const multiAddRelativeParentAnchor = document.getElementById('multi-add-relative-parent-anchor');
         const multiAddRelativeDirection = document.getElementById('multi-add-relative-direction');
+
+        // NEW V5.00: Custom Quick Bell Modal
+        const showCustomQuickBellManagerBtn = document.getElementById('show-custom-quick-bell-manager-btn');
+        const customQuickBellManagerModal = document.getElementById('custom-quick-bell-manager-modal');
+        const customQuickBellForm = document.getElementById('custom-quick-bell-form');
+        const customQuickBellListContainer = document.getElementById('custom-quick-bell-list-container');
+        const customQuickBellCancelBtn = document.getElementById('custom-quick-bell-cancel');
+        const customQuickBellStatus = document.getElementById('custom-quick-bell-status');
+        const customQuickBellsContainer = document.getElementById('custom-quick-bells-container');
+        const customQuickBellSeparator = document.getElementById('custom-quick-bell-separator');
         const multiAddRelativeMinutes = document.getElementById('multi-add-relative-minutes');
         const multiAddRelativeSeconds = document.getElementById('multi-add-relative-seconds');
         const multiAddRelativeBellName = document.getElementById('multi-add-relative-bell-name');
@@ -1966,7 +2009,8 @@
         let activeScheduleListenerUnsubscribe = null; // For base schedule
         let activePersonalScheduleListenerUnsubscribe = null; // NEW: For personal schedule
         let personalSchedulesListenerUnsubscribe = null; // NEW: v3.09 - For the collection
-        let synths = {}; 
+        let customQuickBellsListenerUnsubscribe = null; // NEW V5.00: For custom quick bells
+        let synths = {};
         let lastBellRingTime = null; 
         let lastRingTimestamp = 0; // NEW: For ring cooldown
         const RING_COOLDOWN = 5000; // 5 seconds (5000ms)
@@ -1997,6 +2041,9 @@
         // NEW: Quick Bell State
         let quickBellEndTime = null;
         let quickBellSound = 'ellisBell.mp3'; // Default sound
+        
+        // NEW V5.00: Custom Quick Bell State
+        let customQuickBells = []; // Array of { id, name, minutes, seconds, iconText, sound, isActive }
 
         let mutedBellIds = new Set(); 
         let bellSoundOverrides = {}; // NEW: Store local sound overrides
@@ -2645,7 +2692,7 @@
     
                 } else if (millisToQuickBell < millisToScheduleBell) {
                     // --- B. Counting down to a QUICK BELL ---
-                    activeTimerLabel = "Quick Bell";
+                    activeTimerLabel = quickBellEndTime.bellName || "Quick Bell"; // NEW V5.00
                     activeTimerMillis = millisToQuickBell;
                     isMuting = false;
                     
@@ -2838,9 +2885,18 @@
                         const visualKey = getVisualOverrideKey(activeBaseScheduleId, currentPeriod.name);
                         const visualValue = periodVisualOverrides[visualKey] || "";
                         visualHtml = getVisualHtml(visualValue, currentPeriod.name);
-                    } else if (nextPeriodName === "Quick Bell") {
-                        // Special icon for Quick Bell
-                        visualHtml = `<div class="w-full h-full p-8 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>`;
+                    } else if (millisToQuickBell < Infinity) { // A Quick Bell is active
+                        // Check if it's a Custom Quick Bell
+                        const activeCustomBell = customQuickBells.find(b => b && b.name === nextPeriodName);
+                        
+                        if (activeCustomBell) {
+                            // NEW V5.00: Use Custom Text/Icon for banner display
+                            const customVisual = `[CUSTOM_TEXT] ${activeCustomBell.iconText}|#4338CA|#FFFFFF`;
+                            visualHtml = getVisualHtml(customVisual, activeCustomBell.iconText);
+                        } else {
+                            // Special icon for Generic Quick Bell
+                            visualHtml = `<div class="w-full h-full p-8 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>`;
+                        }
                     } else {
                         // Default / Passing Period
                         visualHtml = getDefaultVisualCue("Passing Period");
@@ -2854,11 +2910,19 @@
                 }
             }
             
-            // --- NEW: Quick Bell Function ---
-            function startQuickBell(minutes) {
+            // --- NEW: Quick Bell Function (MODIFIED V5.00) ---
+            function startQuickBell(minutes, seconds = 0, sound, name = "Quick Bell") {
                 const now = new Date();
-                quickBellEndTime = new Date(now.getTime() + minutes * 60000);
-                console.log(`Quick bell set for ${minutes} minutes from now.`);
+                const totalMillis = (minutes * 60000) + (seconds * 1000);
+                
+                quickBellEndTime = new Date(now.getTime() + totalMillis);
+                // Store the full details of the bell being launched
+                quickBellSound = sound || quickBellSoundSelect.value;
+                
+                // NEW V5.00: Store quick bell name for countdown display
+                quickBellEndTime.bellName = name; 
+
+                console.log(`Quick bell set for ${minutes}m ${seconds}s from now. Sound: ${quickBellSound}`);
                 updateClock(); // Update display immediately
             }
             
@@ -2884,10 +2948,130 @@
     
             // --- Render Functions ---
 
+            /**
+             * NEW V5.00: Renders the custom quick bell manager and the main quick bell buttons.
+             */
+            function renderCustomQuickBells() {
+                const managerSlots = customQuickBells.map((bell, index) => {
+                    const id = bell ? bell.id : index + 1;
+                    const name = bell ? bell.name : `Empty Slot ${id}`;
+                    const minutes = bell ? bell.minutes : 5;
+                    const seconds = bell ? bell.seconds : 0;
+                    const iconText = bell ? bell.iconText : '...';
+                    const sound = bell ? bell.sound : 'ellisBell.mp3';
+                    const hasData = !!bell;
+                    
+                    // Generate Sound Options for this slot
+                    const soundOptionsHtml = getCustomBellSoundOptions(sound);
+                    
+                    return `
+                        <div class="p-4 border rounded-lg ${hasData ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-gray-50'}">
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="font-semibold text-lg text-gray-800">${name}</h4>
+                                <div class="flex items-center space-x-2">
+                                    <label class="flex items-center text-sm font-medium text-gray-600 space-x-1 cursor-pointer">
+                                        <input type="checkbox" data-bell-id="${id}" class="custom-quick-bell-toggle h-4 w-4 text-red-600 focus:ring-red-500" ${hasData ? 'checked' : 'disabled'}>
+                                        <span>${hasData ? 'Active' : 'Unused'}</span>
+                                    </label>
+                                    ${hasData ? `<button type="button" data-bell-id="${id}" class="clear-custom-quick-bell px-2 py-1 text-xs bg-red-500 text-white rounded-md hover:bg-red-600">Clear Slot</button>` : ''}
+                                </div>
+                            </div>
+
+                            ${hasData ? `
+                                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Display Name</label>
+                                        <input type="text" data-bell-id="${id}" data-field="name" value="${name}" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Time (Min)</label>
+                                        <input type="number" data-bell-id="${id}" data-field="minutes" value="${minutes}" min="0" max="59" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Time (Sec)</label>
+                                        <input type="number" data-bell-id="${id}" data-field="seconds" value="${seconds}" min="0" max="59" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Sound</label>
+                                        <select data-bell-id="${id}" data-field="sound" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm custom-bell-sound-select">
+                                            ${soundOptionsHtml}
+                                        </select>
+                                    </div>
+                                    <div class="flex items-end gap-2">
+                                        <div class="flex-grow">
+                                            <label class="block text-sm font-medium text-gray-700">Icon (Max 3)</label>
+                                            <input type="text" data-bell-id="${id}" data-field="iconText" value="${iconText}" maxlength="3" required class="mt-1 w-full px-3 py-2 text-center text-lg border border-gray-300 rounded-lg shadow-sm">
+                                        </div>
+                                        <button type="button" data-bell-id="${id}" data-sound="${sound}" class="preview-audio-btn w-10 h-10 flex-shrink-0 flex items-center justify-center text-lg bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" aria-label="Preview">&#9654;</button>
+                                    </div>
+                                </div>
+                            ` : `<p class="text-gray-500 italic">Slot ${id} is available for a new custom quick bell.</p>`}
+                        </div>
+                    `;
+                }).join('');
+
+                customQuickBellListContainer.innerHTML = managerSlots;
+                
+                // --- Render Main Quick Bell Buttons ---
+                
+                const activeCustomBells = customQuickBells.filter(bell => bell && bell.isActive !== false);
+                
+                if (activeCustomBells.length > 0) {
+                    customQuickBellSeparator.classList.remove('hidden');
+                    customQuickBellsContainer.innerHTML = activeCustomBells.map(bell => `
+                        <button data-custom-id="${bell.id}"
+                                data-minutes="${bell.minutes}"
+                                data-seconds="${bell.seconds}"
+                                data-sound="${bell.sound}"
+                                data-name="${bell.name}"
+                                class="custom-quick-launch-btn bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 relative overflow-hidden group"
+                                title="${bell.name}: ${bell.minutes}m ${bell.seconds}s">
+                            <!-- Custom Icon/Text -->
+                            <span class="text-xl font-bold block leading-none">${bell.iconText}</span>
+                            <!-- Time hint on hover -->
+                            <span class="absolute inset-0 bg-indigo-700 bg-opacity-90 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                                ${bell.minutes}m ${bell.seconds}s
+                            </span>
+                        </button>
+                    `).join('');
+                } else {
+                    customQuickBellSeparator.classList.add('hidden');
+                    customQuickBellsContainer.innerHTML = '';
+                }
+            }
+
+            /**
+             * NEW V5.00: Helper to generate sound options for the custom quick bell manager.
+             */
+            function getCustomBellSoundOptions(currentSound) {
+                const sharedSoundSelect = document.getElementById('shared-bell-sound');
+                if (!sharedSoundSelect) {
+                    return `<option value="ellisBell.mp3">Ellis Bell</option>`;
+                }
+                
+                // Clone the entire content of the shared sound select
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = sharedSoundSelect.innerHTML;
+                
+                // Select the current sound
+                const options = Array.from(tempDiv.querySelectorAll('option'));
+                options.forEach(opt => {
+                    if (opt.value === currentSound) {
+                        opt.selected = true;
+                    } else {
+                        opt.selected = false;
+                    }
+                });
+                
+                return tempDiv.innerHTML;
+            }
+
             // MODIFIED: v4.13 - Now accepts calculatedPeriods as an argument
-        function renderCombinedList(calculatedPeriods) {
-            // Use the calculated, merged, and time-resolved periods passed from the engine
-            const combinedPeriods = calculatedPeriods || [];
+            function renderCombinedList(calculatedPeriods) {
+                // Use the calculated, merged, and time-resolved periods passed from the engine
+                const combinedPeriods = calculatedPeriods || [];
             
             // Step 1: Filter out periods that have no bells, or are disabled (future feature)
             let renderablePeriods = combinedPeriods.filter(p => p.bells && p.bells.length > 0 && p.isEnabled !== false);
@@ -3626,10 +3810,31 @@
             }
 
             /**
+             * NEW V5.00: Saves the current state of customQuickBells to Firestore.
+             */
+            async function saveCustomQuickBells(finalBells) {
+                if (isUserAnonymous || !userId) return;
+
+                const quickBellDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'quick_bells');
+                
+                try {
+                    // Filter out null/empty slots before saving
+                    const bellsToSave = finalBells.filter(bell => bell && bell.name); 
+
+                    await setDoc(quickBellDocRef, { bells: bellsToSave }, { merge: false });
+                    console.log("Custom Quick Bells saved:", bellsToSave.length);
+                    
+                    // The listener will re-render
+                    
+                } catch (error) {
+                    console.error("Error saving custom quick bells:", error);
+                    showUserMessage("Error saving custom quick bells. Please check the console.");
+                }
+            }
+
+            /**
              * NEW: v4.11 - Flattens a v4 'periods' array back into a v3 'bells' array.
              * This ensures backward compatibility for v3 users.
-             * @param {Array} periods - The array of period objects.
-             * @returns {Array} A flat array of v3-compatible bell objects.
              */
             function flattenPeriodsToLegacyBells(periods) {
                 let flatBells = [];
@@ -4120,8 +4325,16 @@
                             if (!user.isAnonymous) {
                                 // MODIFIED: v3.09 - Start real-time listener instead of one-time load
                                 listenForPersonalSchedules(user.uid);
+                                // NEW V5.00: Start Custom Quick Bell listener
+                                listenForCustomQuickBells(user.uid);
+                                // NEW V5.00: Enable custom quick bell button
+                                showCustomQuickBellManagerBtn.disabled = false;
+                                showCustomQuickBellManagerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                             } else {
                                 allPersonalSchedules = []; // Clear personal schedules
+                                // NEW V5.00: Disable custom quick bell button
+                                showCustomQuickBellManagerBtn.disabled = true;
+                                showCustomQuickBellManagerBtn.classList.add('opacity-50', 'cursor-not-allowed');
                             }
                             schedulesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedules');
                             // MODIFIED: v3.24 - Changed to real-time listener
@@ -4184,6 +4397,11 @@
                             if (sharedSchedulesListenerUnsubscribe) {
                                 sharedSchedulesListenerUnsubscribe();
                                 sharedSchedulesListenerUnsubscribe = null;
+                            }
+                            // NEW V5.00: Unsubscribe from custom quick bells
+                            if (customQuickBellsListenerUnsubscribe) {
+                                customQuickBellsListenerUnsubscribe();
+                                customQuickBellsListenerUnsubscribe = null;
                             }
                             
                             document.body.classList.remove('authenticated', 'not-anonymous', 'admin-mode');
@@ -4356,7 +4574,55 @@
                     statusElement.textContent = "Error loading schedules.";
                 });
             }
-    
+            
+            // NEW V5.00: Listener for Custom Quick Bells
+            function listenForCustomQuickBells(userId) {
+                if (isUserAnonymous || !userId) {
+                    customQuickBells = [];
+                    renderCustomQuickBells();
+                    return;
+                }
+
+                if (customQuickBellsListenerUnsubscribe) {
+                    customQuickBellsListenerUnsubscribe();
+                }
+                
+                const quickBellDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'quick_bells');
+                
+                console.log("Listening for real-time custom quick bell updates...");
+                
+                customQuickBellsListenerUnsubscribe = onSnapshot(quickBellDocRef, (docSnap) => {
+                    if (docSnap.exists() && docSnap.data().bells) {
+                        // Ensure we have max 4 and they are structured correctly
+                        // Initialize bellId if missing and ensure proper structure
+                        const bells = (docSnap.data().bells || []).slice(0, 4).map((b, index) => ({
+                            id: index + 1, // Use index + 1 as the ID 
+                            name: b.name || `Custom Timer ${index + 1}`,
+                            minutes: b.minutes || 0,
+                            seconds: b.seconds || 0,
+                            iconText: b.iconText || String(index + 1),
+                            sound: b.sound || 'ellisBell.mp3',
+                            isActive: b.isActive || false // NEW: For launch button state
+                        }));
+                        customQuickBells = bells.filter(b => b.name); // Filter out empty slots if structure is clean
+                    } else {
+                        // Initialize the array to empty, renderCustomQuickBells will handle slots
+                        customQuickBells = [];
+                    }
+                    
+                    // We must ensure the array has 4 slots for the manager UI
+                    while (customQuickBells.length < 4) {
+                        customQuickBells.push(null);
+                    }
+                    
+                    console.log("Custom Quick Bells updated from snapshot:", customQuickBells.filter(b => b).length);
+                    renderCustomQuickBells();
+
+                }, (error) => {
+                    console.error("Error listening to custom quick bells: ", error);
+                });
+            }
+            
             // NEW: v4.02 - Form rendering and logic handlers
             
             /**
@@ -8452,6 +8718,98 @@
                     renameSharedScheduleModal.classList.add('hidden');
                 });
     
+                // NEW V5.00: Custom Quick Bell Manager Listeners
+                showCustomQuickBellManagerBtn.addEventListener('click', () => {
+                    customQuickBellManagerModal.classList.remove('hidden');
+                    renderCustomQuickBells(); // Force refresh just in case
+                });
+                customQuickBellCancelBtn.addEventListener('click', () => {
+                    customQuickBellManagerModal.classList.add('hidden');
+                });
+                
+                customQuickBellForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    customQuickBellStatus.classList.add('hidden');
+                    
+                    try {
+                        const formElements = e.target.querySelectorAll('[data-bell-id]');
+                        const newBells = Array(4).fill(null).map((_, index) => {
+                            const id = index + 1;
+                            const slotData = {};
+                            
+                            // 1. Collect data for this slot ID
+                            const slotInputs = Array.from(formElements).filter(el => 
+                                parseInt(el.dataset.bellId) === id && !el.classList.contains('custom-quick-bell-toggle') && !el.classList.contains('clear-custom-quick-bell')
+                            );
+
+                            if (slotInputs.length > 0) {
+                                slotInputs.forEach(input => {
+                                    slotData[input.dataset.field] = input.value;
+                                });
+                            }
+
+                            // 2. Check if the slot should be cleared or is empty
+                            if (!slotData.name || slotData.name.trim() === '' || (slotData.minutes === '0' && slotData.seconds === '0')) {
+                                return null; // Clear slot
+                            }
+
+                            // 3. Check toggle state for isActive
+                            const toggle = e.target.querySelector(`.custom-quick-bell-toggle[data-bell-id="${id}"]`);
+                            const isActive = toggle ? toggle.checked : true;
+                            
+                            // 4. Return the new bell object
+                            return {
+                                id: id,
+                                name: slotData.name.trim(),
+                                minutes: parseInt(slotData.minutes) || 0,
+                                seconds: parseInt(slotData.seconds) || 0,
+                                iconText: slotData.iconText.trim().substring(0, 3) || String(id),
+                                sound: slotData.sound || 'ellisBell.mp3',
+                                isActive: isActive
+                            };
+                        });
+                        
+                        await saveCustomQuickBells(newBells);
+                        customQuickBellStatus.textContent = "Quick Bells Saved!";
+                        customQuickBellStatus.classList.remove('hidden');
+                        customQuickBellManagerModal.classList.add('hidden');
+                        
+                    } catch (error) {
+                        console.error("Custom Quick Bell save error:", error);
+                        customQuickBellStatus.textContent = `Error saving: ${error.message}`;
+                        customQuickBellStatus.classList.remove('hidden');
+                    }
+                });
+                
+                // Delegate Listeners for Manager UI (Clear, Preview, UPLOAD in sound dropdowns)
+                customQuickBellListContainer.addEventListener('click', (e) => {
+                    const clearBtn = e.target.closest('.clear-custom-quick-bell');
+                    const previewBtn = e.target.closest('.preview-audio-btn');
+                    
+                    if (clearBtn) {
+                        const id = parseInt(clearBtn.dataset.bellId);
+                        const index = customQuickBells.findIndex(b => b && b.id === id);
+                        if (index > -1) {
+                            customQuickBells[index] = null; // Mark slot as null
+                            renderCustomQuickBells(); // Re-render the manager
+                        }
+                    } else if (previewBtn) {
+                        playBell(previewBtn.dataset.sound);
+                    }
+                });
+                
+                // NEW: Quick Launch Listener for Custom Buttons
+                quickBellControls.addEventListener('click', (e) => {
+                    const customBtn = e.target.closest('.custom-quick-launch-btn');
+                    if (customBtn) {
+                        const minutes = parseInt(customBtn.dataset.minutes, 10);
+                        const seconds = parseInt(customBtn.dataset.seconds, 10);
+                        const sound = customBtn.dataset.sound;
+                        const name = customBtn.dataset.name;
+                        startQuickBell(minutes, seconds, sound, name);
+                    }
+                });
+                
                 // NEW: v3.03 - Modals (Create/Delete Personal Schedule)
                 createPersonalScheduleBtn.addEventListener('click', () => {
                     createPersonalScheduleModal.classList.remove('hidden');
@@ -9369,4 +9727,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.99 -->
+<!-- Version 5.00 -->
