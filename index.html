@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 4.95</title>
+    <title>Ellis Web Bell 4.96</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -562,7 +562,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.95</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 4.96</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -4919,12 +4919,9 @@
                 `).join('');
                 relativeAnchorBellSelect.innerHTML = anchorOptionsHtml;
 
-                // 5. Populate fields with the bell's saved data
-                // MODIFIED V4.86: Handle *both* new (V4.47) and old (V4.10) relative bell types
-                if (rawBell.relative.parentBellId) {
-                    // Old V4.10 logic: Anchor is a specific bell ID
-                    relativeAnchorBellSelect.value = rawBell.relative.parentBellId;
-                } else if (rawBell.relative.parentPeriodName && resolvedBells.length > 0) {
+                // 5. Populate fields with the bell's saved data -->
+                // MODIFIED V4.96: Prioritize V4.47 (stable) anchors first
+                if (rawBell.relative.parentPeriodName && resolvedBells.length > 0) {
                     // New V4.47 logic: Anchor is 'period_start' or 'period_end'
                     if (rawBell.relative.parentAnchorType === 'period_start') {
                         relativeAnchorBellSelect.value = resolvedBells[0].bellId; // First bell
@@ -4932,8 +4929,11 @@
                         // Default to last bell if not 'period_start' (e.g., 'period_end')
                         relativeAnchorBellSelect.value = resolvedBells[resolvedBells.length - 1].bellId; // Last bell
                     }
+                } else if (rawBell.relative.parentBellId) {
+                    // Old V4.10 logic: Anchor is a specific bell ID
+                    relativeAnchorBellSelect.value = rawBell.relative.parentBellId;
                 }
-                // END V4.86 FIX
+                // END V4.96 FIX
                 
                 relativeBellNameInput.value = rawBell.name;
                 relativeBellSoundSelect.value = rawBell.sound;
@@ -5006,10 +5006,6 @@
                     }
                     editBellModal.classList.remove('hidden');
                 }
-            }
-
-            /**
-             editBellModal.classList.add('hidden');
             }
                 
             // DELETED in 4.31: Removed duplicate/old handleEditBellClick function.
@@ -5171,7 +5167,10 @@
                 
                 linkedScheduleList.innerHTML = conflicts.map(c => `
                     <div class="flex items-center">
-                        <input type="checkbox" id="linked-schedule-${c.schedule.id}" name="schedule" value="${c.schedule.id}" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 linked-schedule-check">
+                        <!-- NEW V4.96: Added data-conflict-bell-id -->
+                        <input type="checkbox" id="linked-schedule-${c.schedule.id}" name="schedule" value="${c.schedule.id}" 
+                               data-conflict-bell-id="${c.bell.bellId}" 
+                               checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 linked-schedule-check">
                         <label for="linked-schedule-${c.schedule.id}" class="ml-2 block text-sm text-gray-900">
                             <span class="font-medium">${c.schedule.name}:</span>
                             <span>${c.bell.name} at ${formatTime12Hour(c.bell.time, true)}</span>
@@ -5194,8 +5193,12 @@
                 linkedEditStatus.classList.remove('hidden');
                 
                 try {
-                    const checkedScheduleIds = Array.from(document.querySelectorAll('.linked-schedule-check:checked'))
-                                                     .map(cb => cb.value);
+                    // MODIFIED V4.96: Get both schedule ID and the conflicting bell ID
+                    const checkedSchedules = Array.from(document.querySelectorAll('.linked-schedule-check:checked'))
+                                                      .map(cb => ({
+                                                          scheduleId: cb.value,
+                                                          conflictBellId: cb.dataset.conflictBellId
+                                                      }));
                     
                     const batch = writeBatch(db);
                     
@@ -5208,7 +5211,8 @@
     
                     // 2. Update LINKED schedules (Only if applyToAll is true)
                     if (applyToAll) {
-                        for (const scheduleId of checkedScheduleIds) {
+                        // MODIFIED V4.96: Loop through the new checkedSchedules object
+                        for (const { scheduleId, conflictBellId } of checkedSchedules) {
                             if (scheduleId === activeBaseScheduleId) continue; // Skip current schedule
     
                             const schedule = allSchedules.find(s => s.id === scheduleId);
@@ -5217,11 +5221,29 @@
                                 console.warn(`handleLinkedEdit: Could not find periods for schedule ${scheduleId}. Skipping.`);
                                 continue;
                             }
-    
+                            
+                            // MODIFIED V4.96: Find the *actual* conflicting bell (oldBellToUpdate)
+                            let oldBellToUpdate = null;
+                            for (const period of schedule.periods) {
+                                oldBellToUpdate = period.bells.find(b => b.bellId === conflictBellId);
+                                if (oldBellToUpdate) break;
+                            }
+
+                            if (!oldBellToUpdate) {
+                                console.warn(`handleLinkedEdit: Could not find conflictBellId ${conflictBellId} in schedule ${scheduleId}. Skipping.`);
+                                continue;
+                            }
+                            
+                            // NEW V4.96: Create the updated bell object FOR THIS SCHEDULE
+                            // It keeps its original bellId, sound, etc. but gets the NEW TIME.
+                            const updatedExternalBell = { ...oldBellToUpdate, time: newBell.time };
+                            
+                            // NEW V4.96: Add requested log
+                            console.log(`LINKED EDIT: Updating schedule "${schedule.name}", bell "${oldBellToUpdate.name}" (ID: ${oldBellToUpdate.bellId}) to new time ${newBell.time}.`);
+
                             // V4.0 Logic: Find the period and update the bell
-                            // MODIFIED V4.94: Use schedule.periods directly. The migration logic is no longer needed here.
                             const targetPeriods = schedule.periods; 
-                            const updatedLinkedPeriods = updatePeriodsOnEdit(targetPeriods, oldBell, newBell);
+                            const updatedLinkedPeriods = updatePeriodsOnEdit(targetPeriods, oldBellToUpdate, updatedExternalBell);
     
                             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', scheduleId);
                             batch.update(docRef, { periods: updatedLinkedPeriods });
@@ -8646,9 +8668,16 @@
                     currentRenamingPeriod = null; // Clear stale state
                 });
                 // FIX in 4.53: Update listener to inject into both new two-column preview elements
-                editPeriodImageSelect.addEventListener('change', () => {
+                editPeriodImageSelect.addEventListener('change', (e) => {
                     // NEW in 4.44: Update the preview
-                    const selectedValue = editPeriodImageSelect.value;
+                    const selectedValue = e.target.value; // Use e.target.value
+                    
+                    // MODIFIED V4.96: This listener must *not* fire if the 'visualSelectChangeHandler'
+                    // is handling an [UPLOAD] or [CUSTOM_TEXT] action.
+                    if (selectedValue === '[UPLOAD]' || selectedValue === '[CUSTOM_TEXT]') {
+                        return;
+                    }
+
                     // FIX: Use 'Default' fallback
                     const periodName = currentRenamingPeriod ? currentRenamingPeriod.name : "Default"; 
                     
@@ -9204,4 +9233,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 4.95 -->
+<!-- Version 4.96 -->
