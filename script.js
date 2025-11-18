@@ -7946,30 +7946,37 @@
                     // Check which specific button *within* the bell item was clicked
                     if (target.classList.contains('bell-mute-toggle')) {
                         
-                        // FIX 1: Get the ID from the HTML element itself, not the invisible 'bell' variable
-                        // We use String() to ensure it matches what is in the database
+                        // FIX: Use dataset to get the robust ID string
                         const uniqueBellId = String(target.dataset.bellId); 
-                        
                         if (!uniqueBellId) return;
                         
                         if (target.checked) {
                             mutedBellIds.add(uniqueBellId);
                         } else {
-                            // FIX 2: Ensure we delete the String version of the ID
                             mutedBellIds.delete(uniqueBellId);
                             
-                            // NEW V5.05: If user manually UN-MUTES (unchecks) a bell, 
-                            // they have broken the "Mute All" assumption.
-                            isGlobalMuted = false;
+                            // If we uncheck one, we are no longer "Globally Muted"
+                            if (isGlobalMuted) {
+                                isGlobalMuted = false;
+                                
+                                // CRITICAL: If we were globally muted, we need to make sure
+                                // all OTHER bells are explicitly added to the mute list now,
+                                // otherwise they will all unmute when the flag flips.
+                                const allBells = [...localSchedule, ...personalBells];
+                                allBells.forEach(b => {
+                                    const bId = getBellId(b);
+                                    // Add everyone EXCEPT the one we just unchecked
+                                    if (bId && bId !== uniqueBellId) {
+                                        mutedBellIds.add(bId);
+                                    }
+                                });
+                            }
                         }
                         saveMutedBells();
                         
-                        // NEW V5.05: Ensure UI reflects potential global mute state change
-                        updateMuteButtonsUI(); 
-                        
-                        // CRITICAL FIX V5.02: Ensure master function call updates list and clock checkboxes
-                        recalculateAndRenderAll(); 
-                        updateClock(); 
+                        updateMuteButtonsUI();
+                        recalculateAndRenderAll();
+                        updateClock();
                         return; // Action handled
                     }
                         
@@ -8204,9 +8211,11 @@
                 // Mute All / Unmute All
                 const muteAllListBtn = document.getElementById('mute-all-list-btn');
                 const unmuteAllListBtn = document.getElementById('unmute-all-list-btn');
-
+        
                 muteAllListBtn.addEventListener('click', () => {
                     // 1. Update the "Brain" (The Data)
+                    // We must add EVERY bell to the muted list so they persist individually
+                    // even if Global Mute is turned off later.
                     const allBells = [...localSchedule, ...personalBells];
                     allBells.forEach(bell => {
                         const bellId = getBellId(bell);
@@ -8218,28 +8227,22 @@
                     isGlobalMuted = true;
                     updateMuteButtonsUI();
                     
-                    // 3. FORCE UPDATE: Manually check every box on the screen right now
-                    document.querySelectorAll('.bell-mute-toggle').forEach(box => {
-                        box.checked = true;
-                    });
-
+                    // 3. Force Render
+                    recalculateAndRenderAll();
                     updateClock();
                 });
-
+        
                 unmuteAllListBtn.addEventListener('click', () => {
-                    // 1. Update the "Brain" (The Data)
+                    // 1. Clear the "Brain"
                     mutedBellIds.clear();
                     saveMutedBells();
                     
-                    // 2. Update Global State
+                    // 2. Reset Global State
                     isGlobalMuted = false;
                     updateMuteButtonsUI();
                     
-                    // 3. FORCE UPDATE: Manually uncheck every box on the screen right now
-                    document.querySelectorAll('.bell-mute-toggle').forEach(box => {
-                        box.checked = false;
-                    });
-
+                    // 3. Force Render
+                    recalculateAndRenderAll();
                     updateClock();
                 });
     
