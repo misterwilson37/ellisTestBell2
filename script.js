@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.08";
+        const APP_VERSION = "5.09";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1176,6 +1176,8 @@
                     } else {
                         countdownString = `${cdSeconds}`;
                     }
+                    
+                    // 1. Set the Big Numbers
                     countdownElement.textContent = countdownString;
                     
                     // NEW: v4.13 - Add Period context to the label
@@ -1184,26 +1186,42 @@
                         bellLabel = `${scheduleBellObject.periodName}: ${activeTimerLabel}`;
                     }
 
-                    if (isMuting) {
-                        // MODIFICATION: Added period
-                        nextBellElement.textContent = `until ${bellLabel} (MUTED).`;
-                    } else {
-                        // MODIFICATION: Added period
-                        nextBellElement.textContent = `until ${bellLabel}.`;
+                    // --- NEW v5.09 FIX: Calculate Mute Status for Display ---
+                    // Start by assuming global mute state
+                    let isNextBellMuted = isGlobalMuted;
+
+                    // If not globally muted, check if the SPECIFIC upcoming bell is in the mute list
+                    if (!isGlobalMuted && scheduleBellObject) {
+                        const nextBellId = getBellId(scheduleBellObject);
+                        // Force ID to string to match the checkbox logic
+                        if (nextBellId && mutedBellIds.has(String(nextBellId))) {
+                            isNextBellMuted = true;
+                        }
                     }
+
+                    // Apply the text and color based on the calculated status
+                    if (isNextBellMuted) {
+                        nextBellElement.textContent = `until ${bellLabel} (MUTED).`;
+                        countdownElement.classList.add('text-red-600'); // Make numbers red so it's obvious
+                    } else {
+                        nextBellElement.textContent = `until ${bellLabel}.`;
+                        countdownElement.classList.remove('text-red-600');
+                    }
+                    // -------------------------------------------------------
+
                 } else {
                     // --- C. No active timer ---
                     countdownElement.textContent = "--:--";
-                    // MODIFICATION: Added period
                     nextBellElement.textContent = "until the next bell.";
+                    countdownElement.classList.remove('text-red-600'); // Reset color
+                    
                     // "Next Bell" info is already set to "No more bells today."
                     // Or, if school is out, scheduleBellObject is the first bell tomorrow.
                     if (scheduleBellObject) {
-                        // MODIFICATION: Added period
                         nextBellInfoString = `Next bell is ${scheduleBellObject.name} at ${formatTime12Hour(scheduleBellObject.time, true)}.`;
                         nextBellInfoElement.textContent = nextBellInfoString;
                     } else {
-                         nextBellInfoElement.textContent = "No bells scheduled."; // Already has period
+                         nextBellInfoElement.textContent = "No bells scheduled."; 
                     }
                 }
     
@@ -7988,20 +8006,25 @@
                         
                                         // 1. Check if it is time to ring
                                         // We compare HH:MM:SS string directly
+                                        // ... inside allBells.forEach ...
                                         if (currentTimeHHMMSS === bell.time) {
-                                            
-                                            // --- MUTE CHECK START ---
-                                            const bellId = getBellId(bell);
-                                            const isIndividuallyMuted = bellId && mutedBellIds.has(bellId);
-                                            
-                                            // If Global Mute is ON, OR this specific bell is in the list...
-                                            if (isGlobalMuted || isIndividuallyMuted) {
-                                                // LOGGING: Uncomment the next line if you want to see it happening in the console
-                                                // console.log(`Skipped muted bell: ${bell.name}`);
-                                                return; // STOP. Do not play audio.
-                                            }
-                                            // --- MUTE CHECK END ---
-                        
+                                                
+                                                // --- MUTE CHECK START 5.08 ---
+                                                const bellId = getBellId(bell);
+                                                // FIX: Convert to String to ensure match with Set
+                                                const bellIdString = String(bellId); 
+                                                const isIndividuallyMuted = bellId && mutedBellIds.has(bellIdString);
+                                                
+                                                // Debug log to see why it might be failing
+                                                if (isIndividuallyMuted) {
+                                                    console.log(`Mute Check: ${bell.name} (ID: ${bellIdString}) is MUTED. Skipping.`);
+                                                }
+                                
+                                                if (isGlobalMuted || isIndividuallyMuted) {
+                                                    return; // STOP. Do not play audio.
+                                                }
+                                                // --- MUTE CHECK END ---
+                                                        
                                             // 2. Prevent double-ringing in the same second
                                             // We check if we already rang THIS bell at THIS time
                                             if (lastBellRingTime === bell.time) {
@@ -8275,8 +8298,8 @@
                     const allBells = [...localSchedule, ...personalBells];
                     allBells.forEach(bell => {
                         // CRITICAL: Use the helper to get the ID safely
-                        const bellId = getBellId(bell); 
-                        if(bellId) mutedBellIds.add(bellId);
+                        const bellId = getBellId(bell);
+                        if(bellId) mutedBellIds.add(String(bellId)); // Force String
                     });
                     saveMutedBells();
                     
