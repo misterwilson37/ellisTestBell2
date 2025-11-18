@@ -7945,14 +7945,19 @@
  
                     // Check which specific button *within* the bell item was clicked
                     if (target.classList.contains('bell-mute-toggle')) {
-                        // MODIFIED V4.88: Use the *unique* bellId from the 'bell' object
-                        const uniqueBellId = bell.bellId;
+                        
+                        // FIX 1: Get the ID from the HTML element itself, not the invisible 'bell' variable
+                        // We use String() to ensure it matches what is in the database
+                        const uniqueBellId = String(target.dataset.bellId); 
+                        
                         if (!uniqueBellId) return;
                         
                         if (target.checked) {
                             mutedBellIds.add(uniqueBellId);
                         } else {
+                            // FIX 2: Ensure we delete the String version of the ID
                             mutedBellIds.delete(uniqueBellId);
+                            
                             // NEW V5.05: If user manually UN-MUTES (unchecks) a bell, 
                             // they have broken the "Mute All" assumption.
                             isGlobalMuted = false;
@@ -7967,7 +7972,7 @@
                         updateClock(); 
                         return; // Action handled
                     }
-
+                        
                     // MODIFIED: v4.12.1 - Fixed 'contents' typo to 'contains' and passing full bell object
                     // MODIFIED in 4.19: Added return statements to prevent fall-through
                     if (target.classList.contains('delete-btn') || target.classList.contains('delete-custom-btn')) {
