@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 5.04</title>
+    <title>Ellis Web Bell 5.05</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Using Tone.js for web audio -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <!-- MODIFIED V5.05: Moved Tailwind config below the CDN link to resolve "tailwind is not defined" error -->
     <script>
         tailwind.config = {
             theme: {
@@ -23,6 +22,8 @@
             },
         }
     </script>
+    <!-- Using Tone.js for web audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <!-- Updated Google Font to include Questrial as a Century Gothic fallback -->
     <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
     <style>
@@ -582,7 +583,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.04</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.05</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -3123,7 +3124,7 @@
                 if (activeCustomBells.length > 0) {
                     customQuickBellSeparator.classList.remove('hidden');
                     customQuickBellsContainer.innerHTML = activeCustomBells.map(bell => {
-                        // V5.04: Format tooltip time to omit seconds if zero
+                        // V5.05 FIX: Format tooltip time to omit seconds if zero
                         const formattedTime = bell.seconds === 0 
                             ? `${bell.minutes}m` 
                             : `${bell.minutes}m ${bell.seconds}s`;
@@ -3139,7 +3140,11 @@
                                 title="${bell.name}: ${formattedTime}">
                             <!-- Custom Icon/Text -->
                             <span class="text-xl font-bold block leading-none">${bell.iconText}</span>
-                            <!-- Time hint on hover -->`
+                            <!-- Time hint on hover -->
+                            <span class="absolute inset-0 bg-indigo-700 bg-opacity-90 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                                ${formattedTime}
+                            </span>
+                        </button>`
                     }).join('');
                 } else {
                     customQuickBellSeparator.classList.add('hidden');
@@ -9070,19 +9075,23 @@
                         const editableElements = row.querySelectorAll('.custom-bell-editable-input');
                         
                         editableElements.forEach(el => {
-                            if (el !== toggle) {
-                                el.disabled = !isChecked;
-                                // Add/remove Tailwind class for visual disabled state
-                                if (!isChecked) {
-                                    el.classList.add('opacity-50', 'pointer-events-none');
-                                } else {
-                                    el.classList.remove('opacity-50', 'pointer-events-none');
-                                }
+                            // V5.05 FIX: Do not include the toggle itself in the list of elements to disable.
+                            el.disabled = !isChecked;
+                            // Add/remove Tailwind class for visual disabled state
+                            if (!isChecked) {
+                                el.classList.add('opacity-50', 'pointer-events-none');
+                            } else {
+                                el.classList.remove('opacity-50', 'pointer-events-none');
                             }
                         });
 
-                        // All inputs/buttons are now handled by the generic .custom-bell-editable-input query.
-                        // The special handling is now unnecessary and removed for V5.02.
+                        // V5.05 FIX: If the user unchecks the toggle, we should explicitly clear the value
+                        // of the Display Name field to ensure they have to re-enter it,
+                        // making the intent of clearing the slot clearer.
+                        if (!isChecked) {
+                             const nameInput = row.querySelector(`input[data-field="name"]`);
+                             if(nameInput) nameInput.value = '';
+                        }
                     }
                 });
 
@@ -9787,7 +9796,11 @@
                         if(bellId) mutedBellIds.add(bellId);
                     });
                     saveMutedBells();
-                    // CRITICAL FIX V5.02: Ensure master function call updates list and clock checkboxes
+                    // NEW V5.05: Direct UI Update (Fix for stubborn checkboxes)
+                    document.querySelectorAll('.bell-mute-toggle').forEach(checkbox => {
+                        checkbox.checked = true;
+                    });
+                    // Still run recalculate for the countdown/visuals
                     recalculateAndRenderAll(); 
                     updateClock();
                 });
@@ -9795,7 +9808,11 @@
                     // MODIFIED: v4.50 - Use master function to guarantee stability
                     mutedBellIds.clear();
                     saveMutedBells();
-                    // CRITICAL FIX V5.02: Ensure master function call updates list and clock checkboxes
+                    // NEW V5.05: Direct UI Update (Fix for stubborn checkboxes)
+                    document.querySelectorAll('.bell-mute-toggle').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    // Still run recalculate for the countdown/visuals
                     recalculateAndRenderAll(); 
                     updateClock();
                 });
@@ -9829,7 +9846,8 @@
                 uploadAudioCloseBtn.addEventListener('click', () => {
                     uploadAudioModal.classList.add('hidden');
                     currentSoundSelectTarget = null; // Ensure state is clear
-                    // NEW V5.03: Force refresh on close to update Mute/Sound button visibility
+                    // NEW V5.05: Force refresh on close to update Mute/Sound button visibility
+                    // This fixes the race condition that prevents Mute All from updating the list checkboxes.
                     recalculateAndRenderAll(); 
                 });
                 // END V4.76 Listeners
@@ -10019,4 +10037,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 5.04 -->
+<!-- Version 5.05 -->
