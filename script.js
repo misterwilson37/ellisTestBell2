@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.07";
+        const APP_VERSION = "5.08";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1730,7 +1730,8 @@
                         const safeName = bell.name.replace(/"/g, '&quot;');
                         // MODIFIED V4.88: Use the *unique* bellId for mutes
                         const uniqueBellId = bell.bellId || getBellId(bell); // Fallback for any legacy
-                        const isMuted = mutedBellIds.has(uniqueBellId);
+                        // FIX 5.08: Checkbox is true if SPECIFICALLY muted OR if GLOBALLY muted
+                        const isMuted = isGlobalMuted || mutedBellIds.has(uniqueBellId);
 
                         // --- MODIFIED V4.76: Simplified Sound Logic ---
                         // The bell object from calculatedPeriods now has the *correct* sound (with override)
@@ -8268,12 +8269,13 @@
                 const unmuteAllListBtn = document.getElementById('unmute-all-list-btn');
         
                 muteAllListBtn.addEventListener('click', () => {
-                    // 1. Update the "Brain" (The Data)
+                    // 1. Update the "Brain" (The Data) 5.08
                     // We must add EVERY bell to the muted list so they persist individually
                     // even if Global Mute is turned off later.
                     const allBells = [...localSchedule, ...personalBells];
                     allBells.forEach(bell => {
-                        const bellId = getBellId(bell);
+                        // CRITICAL: Use the helper to get the ID safely
+                        const bellId = getBellId(bell); 
                         if(bellId) mutedBellIds.add(bellId);
                     });
                     saveMutedBells();
