@@ -1,3 +1,5 @@
+        const APP_VERSION = "5.07";
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
         import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signOut, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -501,15 +503,19 @@
         function updateMuteButtonsUI() {
             const btnMuteAll = document.getElementById('mute-all-list-btn');
             const btnUnmuteAll = document.getElementById('unmute-all-list-btn');
+            
             if (btnMuteAll) {
+                // Toggle visual state of Mute All button
                 btnMuteAll.classList.remove('bg-gray-200', 'bg-red-600', 'text-gray-700', 'text-white');
                 btnMuteAll.classList.add(isGlobalMuted ? 'bg-red-600' : 'bg-gray-200');
                 btnMuteAll.classList.add(isGlobalMuted ? 'text-white' : 'text-gray-700');
                 btnMuteAll.textContent = isGlobalMuted ? 'GLOBALLY MUTED' : 'Mute All';
             }
+            
             if (btnUnmuteAll) {
-                btnUnmuteAll.disabled = !isGlobalMuted;
-                btnUnmuteAll.classList.toggle('opacity-50', !isGlobalMuted);
+                // FIX: Always keep Unmute button active/clickable
+                btnUnmuteAll.disabled = false;
+                btnUnmuteAll.classList.remove('opacity-50');
             }
         }
 
@@ -7215,13 +7221,25 @@
             // --- Init and Event Listeners ---
             function init() {
                 initFirebase();
+
+                // --- VERSION STAMP ---
+                // This finds the HTML element and stamps the JS version onto it
+                const versionElement = document.getElementById('app-version-display');
+                if (versionElement) {
+                    versionElement.textContent = `v${APP_VERSION}`;
+                }
+                
+                // Optional: Also update the Browser Tab Title automatically
+                document.title = `Ellis Web Bell ${APP_VERSION}`;
+                console.log(`App Version Loaded: ${APP_VERSION}`);
+                
                 // MODIFIED V4.74: All local storage loads
                 // are now handled inside onAuthStateChanged
                 // to prevent race conditions.
                 // DELETED: loadMutedBells();
                 // DELETED: loadSoundOverrides();
                 // DELETED: loadPeriodNameOverrides();
-
+                    
                 // NEW V4.06: Initialize Relative Bell DOM elements inside init()
                 // MODIFIED: v4.14 - Declarations moved to global scope.
                 // We just do a check here to ensure they loaded.
@@ -7946,38 +7964,75 @@
                     // Check which specific button *within* the bell item was clicked
                     if (target.classList.contains('bell-mute-toggle')) {
                         
-                        // FIX: Use dataset to get the robust ID string
+                        // 1. Get the robust ID string
                         const uniqueBellId = String(target.dataset.bellId); 
                         if (!uniqueBellId) return;
                         
                         if (target.checked) {
+                            // CASE A: User checks a box -> Mute this bell
                             mutedBellIds.add(uniqueBellId);
                         } else {
+                            // CASE B: User unchecks a box -> Unmute this bell
                             mutedBellIds.delete(uniqueBellId);
                             
-                            // If we uncheck one, we are no longer "Globally Muted"
+                            // SPECIAL LOGIC: If we were in "Global Mute" mode, unchecking one bell
+                            // implies we are no longer globally muted. However, we must ensure
+                            // all the OTHER bells stay muted (since they were visually checked).
                             if (isGlobalMuted) {
                                 isGlobalMuted = false;
                                 
-                                // CRITICAL: If we were globally muted, we need to make sure
-                                // all OTHER bells are explicitly added to the mute list now,
-                                // otherwise they will all unmute when the flag flips.
                                 const allBells = [...localSchedule, ...personalBells];
-                                allBells.forEach(b => {
-                                    const bId = getBellId(b);
-                                    // Add everyone EXCEPT the one we just unchecked
-                                    if (bId && bId !== uniqueBellId) {
-                                        mutedBellIds.add(bId);
-                                    }
-                                });
+                                allBells.forEach(bell => {
+                                        if (!bell.time) return;
+                        
+                                        // 1. Check if it is time to ring
+                                        // We compare HH:MM:SS string directly
+                                        if (currentTimeHHMMSS === bell.time) {
+                                            
+                                            // --- MUTE CHECK START ---
+                                            const bellId = getBellId(bell);
+                                            const isIndividuallyMuted = bellId && mutedBellIds.has(bellId);
+                                            
+                                            // If Global Mute is ON, OR this specific bell is in the list...
+                                            if (isGlobalMuted || isIndividuallyMuted) {
+                                                // LOGGING: Uncomment the next line if you want to see it happening in the console
+                                                // console.log(`Skipped muted bell: ${bell.name}`);
+                                                return; // STOP. Do not play audio.
+                                            }
+                                            // --- MUTE CHECK END ---
+                        
+                                            // 2. Prevent double-ringing in the same second
+                                            // We check if we already rang THIS bell at THIS time
+                                            if (lastBellRingTime === bell.time) {
+                                                return;
+                                            }
+                        
+                                            // 3. Play the sound
+                                            lastBellRingTime = bell.time; // Record that we rang
+                                            console.log(`Ringing Bell: ${bell.name} at ${bell.time}`);
+                                            
+                                            const soundToPlay = getEffectiveBellSound(bell);
+                                            playAudio(soundToPlay);
+                                            
+                                            // 4. Handle "One-Time" bells (like Quick Bells)
+                                            if (bell.type === 'quick') {
+                                                // Logic to remove quick bell if needed...
+                                                // (Your existing quick bell removal logic usually lives elsewhere, 
+                                                // but if you have it here, keep it. Usually updateClock just rings.)
+                                            }
+                                        }
+                                    });
                             }
                         }
                         saveMutedBells();
                         
+                        // Update UI and Lists
                         updateMuteButtonsUI();
                         recalculateAndRenderAll();
-                        updateClock();
-                        return; // Action handled
+                        
+                        // IMPORTANT: Do NOT call updateClock() here, as it might trigger a double-ring 
+                        // if the time matches exactly when you click. Just let the next second tick handle it.
+                        return; 
                     }
                         
                     // MODIFIED: v4.12.1 - Fixed 'contents' typo to 'contains' and passing full bell object
