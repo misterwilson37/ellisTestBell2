@@ -8199,8 +8199,9 @@
                 // Mute All / Unmute All
                 const muteAllListBtn = document.getElementById('mute-all-list-btn');
                 const unmuteAllListBtn = document.getElementById('unmute-all-list-btn');
+
                 muteAllListBtn.addEventListener('click', () => {
-                    // MODIFIED: v4.50 - Use master function to guarantee stability
+                    // 1. Update the "Brain" (The Data)
                     const allBells = [...localSchedule, ...personalBells];
                     allBells.forEach(bell => {
                         const bellId = getBellId(bell);
@@ -8208,26 +8209,32 @@
                     });
                     saveMutedBells();
                     
-                    // NEW V5.05: Update global state and UI
+                    // 2. Update Global State
                     isGlobalMuted = true;
                     updateMuteButtonsUI();
                     
-                    // CRITICAL FIX V5.02: Ensure master function call updates list and clock checkboxes
-                    recalculateAndRenderAll(); 
+                    // 3. FORCE UPDATE: Manually check every box on the screen right now
+                    document.querySelectorAll('.bell-mute-toggle').forEach(box => {
+                        box.checked = true;
+                    });
+
                     updateClock();
                 });
 
                 unmuteAllListBtn.addEventListener('click', () => {
-                    // MODIFIED: v4.50 - Use master function to guarantee stability
+                    // 1. Update the "Brain" (The Data)
                     mutedBellIds.clear();
                     saveMutedBells();
                     
-                    // NEW V5.05: Update global state and UI
+                    // 2. Update Global State
                     isGlobalMuted = false;
                     updateMuteButtonsUI();
                     
-                    // CRITICAL FIX V5.02: Ensure master function call updates list and clock checkboxes
-                    recalculateAndRenderAll(); 
+                    // 3. FORCE UPDATE: Manually uncheck every box on the screen right now
+                    document.querySelectorAll('.bell-mute-toggle').forEach(box => {
+                        box.checked = false;
+                    });
+
                     updateClock();
                 });
     
