@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25"
+        const APP_VERSION = "5.25.1"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1576,7 +1576,8 @@
                 // --- Render Main Quick Bell Buttons ---
                 
                 const activeCustomBells = customQuickBells.filter(bell => bell && bell.isActive !== false);
-                
+
+                // Rewritten for 5.25.1 to try to get images to save with quickbells
                 if (activeCustomBells.length > 0) {
                     customQuickBellSeparator.classList.remove('hidden');
                     customQuickBellsContainer.innerHTML = activeCustomBells.map(bell => {
@@ -1584,19 +1585,38 @@
                         const formattedTime = bell.seconds === 0 
                             ? `${bell.minutes}m` 
                             : `${bell.minutes}m ${bell.seconds}s`;
-
+                        
+                        // NEW 5.20: Get the visual content (image or text)
+                        const visualCue = bell.visualCue || `[CUSTOM_TEXT] ${bell.iconText}|${bell.iconBgColor}|${bell.iconFgColor}`;
+                        let visualContent = '';
+                        
+                        if (visualCue.startsWith('http')) {
+                            // It's an image URL
+                            visualContent = `<img src="${visualCue}" alt="${bell.name}" class="w-10 h-10 object-contain">`;
+                        } else if (visualCue.startsWith('[CUSTOM_TEXT]')) {
+                            // It's custom text - extract text and colors
+                            const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
+                            const text = parts[0] || bell.iconText || bell.id;
+                            visualContent = `<span class="text-xl font-bold block leading-none">${text}</span>`;
+                        } else if (visualCue.startsWith('[DEFAULT]')) {
+                            // It's a default SVG - just show the icon text as fallback
+                            visualContent = `<span class="text-xl font-bold block leading-none">${bell.iconText}</span>`;
+                        } else {
+                            // Fallback
+                            visualContent = `<span class="text-xl font-bold block leading-none">${bell.iconText}</span>`;
+                        }
+                        
                         return `
                         <button data-custom-id="${bell.id}"
                                 data-minutes="${bell.minutes}"
                                 data-seconds="${bell.seconds}"
                                 data-sound="${bell.sound}"
                                 data-name="${bell.name}"
-                                class="custom-quick-launch-btn font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 relative overflow-hidden group"
+                                class="custom-quick-launch-btn font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 w-11 relative overflow-hidden group flex items-center justify-center"
                                 style="background-color: ${bell.iconBgColor || '#4338CA'}; color: ${bell.iconFgColor || '#FFFFFF'};"
                                 title="${bell.name}: ${formattedTime}">
-                            <!-- Custom Icon/Text -->
-                            <span class="text-xl font-bold block leading-none">${bell.iconText}</span>
-                            <!-- Time hint on hover -->`
+                            ${visualContent}
+                        </button>`;
                     }).join('');
                 } else {
                     customQuickBellSeparator.classList.add('hidden');
@@ -5351,6 +5371,7 @@
                     // This is faster than waiting for loadAllVisualFiles()
                     userVisualFiles.push({ name: visualFileToUpload.name, url: downloadURL, path: storageRef.fullPath });
                     addNewVisualOption(downloadURL, visualFileToUpload.name);
+                    updateVisualDropdowns(); // Refresh ALL dropdowns including quick bell
                     renderVisualFileManager(); // Re-render the manager list
                     
                     // DELETED V4.79: This call caused the schedule to disappear
