@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.16";
+        const APP_VERSION = "5.17";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -540,7 +540,15 @@
 
         // --- Mute Helper Functions ---
         function getBellId(bell) {
-            if (!bell || !bell.type || !bell.time || !bell.name) return null;
+            if (!bell) return null;
+            
+            // CRITICAL FIX 5.17: Always prefer the database bell.bellId if it exists
+            if (bell.bellId) {
+                return String(bell.bellId);
+            }
+            
+            // Fallback for legacy or quick bells
+            if (!bell.type || !bell.time || !bell.name) return null;
             const safeName = bell.name.replace(/"/g, '&quot;');
             return `${bell.type}-${bell.time}-${safeName}`;
         }
@@ -1277,15 +1285,16 @@
                         // Ring them all, but only if cooldown has passed
                         if (nowTimestamp - lastRingTimestamp > RING_COOLDOWN) {
                             // For now, just ring the *last* one if multiple were missed
-                            const bell = bellsToRing[bellsToRing.length - 1];
-                            const bellId = getBellId(bell);
-                            
-                            if (mutedBellIds.has(bellId)) {
-                                console.log(`Skipping bell (Muted): ${bell.name}`);
-                                statusElement.textContent = `Skipped (Muted): ${bell.name}`;
-                            } else {
-                                ringBell(bell); // fire-and-forget
-                            }
+                                const bell = bellsToRing[bellsToRing.length - 1];
+                                // FIX 5.17: Use the actual bell.bellId if it exists, otherwise fall back to getBellId()
+                                const bellId = bell.bellId || getBellId(bell);
+                                
+                                if (mutedBellIds.has(String(bellId))) {
+                                    console.log(`Skipping bell (Muted): ${bell.name}`);
+                                    statusElement.textContent = `Skipped (Muted): ${bell.name}`;
+                                } else {
+                                    ringBell(bell); // fire-and-forget
+                                }
                             lastRingTimestamp = nowTimestamp; // Set cooldown
                         }
                     }
@@ -8035,10 +8044,14 @@
                             console.log(`Unmuted bell: ${uniqueBellId}`);
                             
                             // If we were in Global Mute mode, unchecking one bell exits that mode
-                            // but keeps all other bells muted
+                            // BUT we need to keep all the OTHER bells muted
                             if (isGlobalMuted) {
                                 isGlobalMuted = false;
                                 console.log('Exited global mute mode');
+                                
+                                // Keep all OTHER bells in the muted list (don't clear it)
+                                // The one we just unchecked is already removed above
+                                // Don't re-add it or do anything else - just exit global mode
                             }
                         }
                         
@@ -8049,7 +8062,6 @@
                         updateMuteButtonsUI();
                         
                         // 5. Update the display (this will re-render with correct mute states)
-                        // Note: We don't call updateClock() to avoid potential double-ring issues
                         recalculateAndRenderAll();
                     }
                 });
