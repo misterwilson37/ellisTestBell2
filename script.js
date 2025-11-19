@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.19.1";
+        const APP_VERSION = "5.19.2";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1462,7 +1462,7 @@
                                     <!-- V5.04 FIX: Checkbox is always ENABLED, even if slot is empty, allowing user to activate the row. -->
                                     <input type="checkbox" data-bell-id="${id}" name="custom-bell-toggle-${id}" 
                                            class="custom-quick-bell-toggle h-5 w-5 text-indigo-600 focus:ring-indigo-500 rounded-md" 
-                                           ${!isInactive ? 'checked' : ''}>
+                                           ${isActive ? 'checked' : ''}> <!-- 5.19.2 Fix the checkbox! -->
                                 </div>
                                 
                                 <!-- Col 2: Display Name (Col Span 5) -->
