@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.08";
+        const APP_VERSION = "5.15";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1730,8 +1730,8 @@
                         const safeName = bell.name.replace(/"/g, '&quot;');
                         // MODIFIED V4.88: Use the *unique* bellId for mutes
                         const uniqueBellId = bell.bellId || getBellId(bell); // Fallback for any legacy
-                        // FIX 5.08: Checkbox is true if SPECIFICALLY muted OR if GLOBALLY muted
-                        const isMuted = isGlobalMuted || mutedBellIds.has(uniqueBellId);
+                        // FIX 5.15: Checkbox is checked if Specifcally Muted OR Globally Muted
+                        const isMuted = isGlobalMuted || mutedBellIds.has(String(uniqueBellId));
 
                         // --- MODIFIED V4.76: Simplified Sound Logic ---
                         // The bell object from calculatedPeriods now has the *correct* sound (with override)
@@ -7989,6 +7989,15 @@
                                         // 1. Check if it is time to ring
                                         // We compare HH:MM:SS string directly
                                         if (currentTimeHHMMSS === bell.time) {
+                                            // --- THE ONE-LINE FIX (Gatekeeper) 5.15 ---
+                                            // Check if Global Mute is on OR if this specific bell is in the list
+                                            // We force String() to ensure it matches what the checkbox saved
+                                            const gatekeeperId = String(getBellId(bell));
+                                            if (isGlobalMuted || mutedBellIds.has(gatekeeperId)) {
+                                                console.log(`🔕 Muted: ${bell.name}`);
+                                                return; // STOP. Do not ring.
+                                            }
+                                            // Last chance for gemini...
                                             
                                             // --- MUTE CHECK START ---
                                             const bellId = getBellId(bell);
