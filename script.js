@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.19.4";
+        const APP_VERSION = "5.20";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7369,8 +7369,12 @@
                             }
 
                             // 2. Check if the slot should be cleared or is empty
-                            if (!slotData.name || slotData.name.trim() === '' || (slotData.minutes === '0' && slotData.seconds === '0')) {
-                                return null; // Clear slot
+                            // 5.20 Don't save slots with no name OR no time
+                            if (!slotData.name || slotData.name.trim() === '') {
+                                return null; // No name = empty slot
+                            }
+                            if (slotData.minutes === '0' && slotData.seconds === '0') {
+                                return null; // No time = invalid bell
                             }
 
                             // 3. Check toggle state for isActive
@@ -7412,6 +7416,7 @@
                     const previewBtn = e.target.closest('.preview-audio-btn');
                     const iconBtn = e.target.closest('.custom-bell-icon-btn'); // NEW V5.00: Icon button
                     
+                    // Re-written in 5.19.4
                     if (clearBtn) {
                         const id = parseInt(clearBtn.dataset.bellId);
                         const index = customQuickBells.findIndex(b => b && b.id === id);
@@ -7419,13 +7424,16 @@
                             customQuickBells[index] = null; // Mark slot as null
                             renderCustomQuickBells(); // Re-render the manager
                             // Don't need to manually uncheck - the render will handle it
-                        }
+                        } // Only one bracket here!
                     } else if (previewBtn) {
                         playBell(previewBtn.dataset.sound);
                     } else if (iconBtn) { // NEW V5.00: Open Icon Modal
-                        currentCustomBellIconSlot = parseInt(iconBtn.dataset.bellId); // Store which bell ID we are editing
+                        //5.20: Added logging.
+                        console.log('Icon button clicked!', iconBtn.dataset.bellId);
+                        currentCustomBellIconSlot = parseInt(iconBtn.dataset.bellId);
                         
                         const bellData = customQuickBells.find(b => b && b.id === currentCustomBellIconSlot);
+                        console.log('Bell data:', bellData);
                         // V5.03: Use the new data attribute for the visual cue
                         const visualCue = iconBtn.dataset.visualCue; 
                         const bellName = bellData?.name || `Slot ${currentCustomBellIconSlot}`;
