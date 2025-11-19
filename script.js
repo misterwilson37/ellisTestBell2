@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.20";
+        const APP_VERSION = "5.21";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -228,7 +228,8 @@
         // NEW V5.00: Custom Quick Bell Modal
         const showCustomQuickBellManagerBtn = document.getElementById('show-custom-quick-bell-manager-btn');
         const customQuickBellManagerModal = document.getElementById('custom-quick-bell-manager-modal');
-        const customQuickBellForm = document.getElementById('custom-quick-bell-form');
+        const customQuickBellForm = document.getElementById('custom-quick-bell-form'); // Added in 5.20
+        const quickBellVisualSelect = document.getElementById('quick-bell-visual-select');
         const customQuickBellListContainer = document.getElementById('custom-quick-bell-list-container');
         const customQuickBellCancelBtn = document.getElementById('custom-quick-bell-cancel');
         const customQuickBellStatus = document.getElementById('custom-quick-bell-status');
@@ -1469,7 +1470,7 @@
                                 <div class="col-span-5 min-w-0">
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Display Name</label>
                                     <input type="text" data-bell-id="${id}" data-field="name" name="name-${id}" value="${name === `Slot ${id}` ? '' : name}" 
-                                           required class="custom-bell-editable-input w-full text-sm font-medium px-2 py-1 border border-gray-300 rounded-lg ${disabledClass}" 
+                                           ${isActive ? 'required' : ''} class="custom-bell-editable-input w-full text-sm font-medium px-2 py-1 border border-gray-300 rounded-lg ${disabledClass}" 
                                            placeholder="e.g. Hamburger Time" ${disabledAttr}>
                                 </div>
 
@@ -1478,13 +1479,13 @@
                                     <div>
                                         <label class="block text-xs font-medium text-gray-500 mb-1">Minutes</label>
                                         <input type="number" data-bell-id="${id}" data-field="minutes" name="minutes-${id}" value="${minutes}" min="0" max="59" 
-                                           required class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
+                                           ${isActive ? 'required' : ''} class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
                                            placeholder="Min" ${disabledAttr}>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-500 mb-1">Seconds</label>
                                         <input type="number" data-bell-id="${id}" data-field="seconds" name="seconds-${id}" value="${seconds}" min="0" max="59" 
-                                           required class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
+                                           ${isActive ? 'required' : ''} class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
                                            placeholder="Sec" ${disabledAttr}>
                                     </div>
                                 </div>
@@ -7349,6 +7350,11 @@
                 
                 customQuickBellForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
+
+                    // FIX 5.20: Before processing, remove 'required' from all disabled inputs
+                    // This ensures browser validation doesn't block unchecked rows
+                    const disabledInputs = e.target.querySelectorAll('input[disabled]');
+                    disabledInputs.forEach(input => input.removeAttribute('required'));
                     customQuickBellStatus.classList.add('hidden');
                     
                     try {
@@ -7441,9 +7447,12 @@
                         // 1. Update modal title
                         customTextVisualModal.querySelector('h3').textContent = `Edit Visual for: ${bellName}`;
                         
-                        // 2. Populate visual select dropdown (re-using period logic)
-                        updateVisualDropdowns(quickBellVisualSelect); // Send target select
-                        quickBellVisualSelect.value = visualCue;
+                        // 5.21: Use the existing quick bell sound select that's in the custom text visual modal
+                        const visualSelectElement = document.getElementById('quick-bell-visual-select');
+                        if (visualSelectElement) {
+                            updateVisualDropdowns(visualSelectElement);
+                            visualSelectElement.value = visualCue;
+                        }
 
                         // 3. Load text/color inputs for the custom text section (for pre-fill)
                         customTextInput.value = iconBtn.dataset.iconText;
