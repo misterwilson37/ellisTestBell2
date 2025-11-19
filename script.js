@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.24.6"
+        const APP_VERSION = "5.25"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -3208,7 +3208,9 @@
                             iconText: b.iconText || String(index + 1),
                             iconBgColor: b.iconBgColor || '#4338CA',
                             iconFgColor: b.iconFgColor || '#FFFFFF',
-                            
+                            // Added 5.25 to get visual uploads working
+                            visualCue: b.visualCue || `[CUSTOM_TEXT] ${index + 1}|#4338CA|#FFFFFF`,
+                                
                             sound: b.sound || 'ellisBell.mp3',
                             isActive: b.isActive !== false // 5.19.3 Default to TRUE (active/checked)
                         }));
@@ -7450,6 +7452,7 @@
                                 iconText: slotData.iconText.trim().substring(0, 3) || String(id),
                                 iconBgColor: slotData.iconBgColor || '#4338CA',
                                 iconFgColor: slotData.iconFgColor || '#FFFFFF',
+                                visualCue: slotData.visualCue || '[CUSTOM_TEXT] ?|#4338CA|#FFFFFF',
                                 
                                 sound: slotData.sound || 'ellisBell.mp3',
                                 isActive: isActive
