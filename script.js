@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.24.5"
+        const APP_VERSION = "5.24.6"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -5357,11 +5357,22 @@
 
                     // 2. If this was triggered from a period edit, select the new file
                     if (currentVisualSelectTarget) {
-                        currentVisualSelectTarget.value = downloadURL;
-                        // Trigger change to update the previews in the edit modal
-                        currentVisualSelectTarget.dispatchEvent(new Event('change')); 
-                        currentVisualSelectTarget = null; // Clear state
-                        uploadVisualModal.classList.add('hidden'); // Close modal
+                    currentVisualSelectTarget.value = downloadURL;
+                    // Trigger change to update the previews in the edit modal
+                    currentVisualSelectTarget.dispatchEvent(new Event('change')); 
+                            
+                    // NEW 5.24.6: If this is the quick bell visual select, also update hidden inputs
+                    if (currentVisualSelectTarget === quickBellVisualSelect && currentCustomBellIconSlot) {
+                       // Update the hidden inputs in the manager for this bell slot
+                        const hiddenVisualCue = document.querySelector(`input[data-bell-id="${currentCustomBellIconSlot}"][data-field="visualCue"]`);
+                        if (hiddenVisualCue) {
+                                hiddenVisualCue.value = downloadURL;
+                        }
+                        console.log('Updated quick bell visual cue for slot', currentCustomBellIconSlot);
+                    }
+                            
+                    currentVisualSelectTarget = null; // Clear state (only once!)
+                    uploadVisualModal.classList.add('hidden'); // Close modal
                     } else {
                         // If triggered from manager, just show success
                         setTimeout(() => visualUploadStatus.classList.add('hidden'), 3000);
