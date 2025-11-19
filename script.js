@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.24.4"
+        const APP_VERSION = "5.24.5"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7953,6 +7953,8 @@
                     }
                 });
                 showVisualUploadModalBtn.addEventListener('click', () => {
+                    // Open the modal
+                    uploadVisualModal.style.zIndex = '70'; // 5.24.5: Higher than custom text modal (60)
                     uploadVisualModal.classList.remove('hidden');
                     visualUploadStatus.classList.add('hidden');
                     currentVisualSelectTarget = null; // Ensure state is clear
@@ -8277,6 +8279,7 @@
                         e.target.value = originalValue !== '[UPLOAD]' ? originalValue : '';
                         
                         // Open the modal
+                        uploadVisualModal.style.zIndex = '70'; // 5.24.5: Higher than custom text modal (60)
                         uploadVisualModal.classList.remove('hidden');
                         visualUploadStatus.classList.add('hidden'); // Clear status
                         return;
