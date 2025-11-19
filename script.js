@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.15";
+        const APP_VERSION = "5.16";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7961,89 +7961,6 @@
                         periodName: bellElement.dataset.periodName, // NEW: Grab period name
                         isRelative: bellElement.dataset.isRelative === 'true' // NEW in 4.31
                     };
- 
-                    // Check which specific button *within* the bell item was clicked
-                    if (target.classList.contains('bell-mute-toggle')) {
-                        
-                        // 1. Get the robust ID string
-                        const uniqueBellId = String(target.dataset.bellId); 
-                        if (!uniqueBellId) return;
-                        
-                        if (target.checked) {
-                            // CASE A: User checks a box -> Mute this bell
-                            mutedBellIds.add(uniqueBellId);
-                        } else {
-                            // CASE B: User unchecks a box -> Unmute this bell
-                            mutedBellIds.delete(uniqueBellId);
-                            
-                            // SPECIAL LOGIC: If we were in "Global Mute" mode, unchecking one bell
-                            // implies we are no longer globally muted. However, we must ensure
-                            // all the OTHER bells stay muted (since they were visually checked).
-                            if (isGlobalMuted) {
-                                isGlobalMuted = false;
-                                
-                                const allBells = [...localSchedule, ...personalBells];
-                                allBells.forEach(bell => {
-                                        if (!bell.time) return;
-                        
-                                        // 1. Check if it is time to ring
-                                        // We compare HH:MM:SS string directly
-                                        if (currentTimeHHMMSS === bell.time) {
-                                            // --- THE ONE-LINE FIX (Gatekeeper) 5.15 ---
-                                            // Check if Global Mute is on OR if this specific bell is in the list
-                                            // We force String() to ensure it matches what the checkbox saved
-                                            const gatekeeperId = String(getBellId(bell));
-                                            if (isGlobalMuted || mutedBellIds.has(gatekeeperId)) {
-                                                console.log(`🔕 Muted: ${bell.name}`);
-                                                return; // STOP. Do not ring.
-                                            }
-                                            // Last chance for gemini...
-                                            
-                                            // --- MUTE CHECK START ---
-                                            const bellId = getBellId(bell);
-                                            const isIndividuallyMuted = bellId && mutedBellIds.has(bellId);
-                                            
-                                            // If Global Mute is ON, OR this specific bell is in the list...
-                                            if (isGlobalMuted || isIndividuallyMuted) {
-                                                // LOGGING: Uncomment the next line if you want to see it happening in the console
-                                                // console.log(`Skipped muted bell: ${bell.name}`);
-                                                return; // STOP. Do not play audio.
-                                            }
-                                            // --- MUTE CHECK END ---
-                        
-                                            // 2. Prevent double-ringing in the same second
-                                            // We check if we already rang THIS bell at THIS time
-                                            if (lastBellRingTime === bell.time) {
-                                                return;
-                                            }
-                        
-                                            // 3. Play the sound
-                                            lastBellRingTime = bell.time; // Record that we rang
-                                            console.log(`Ringing Bell: ${bell.name} at ${bell.time}`);
-                                            
-                                            const soundToPlay = getEffectiveBellSound(bell);
-                                            playAudio(soundToPlay);
-                                            
-                                            // 4. Handle "One-Time" bells (like Quick Bells)
-                                            if (bell.type === 'quick') {
-                                                // Logic to remove quick bell if needed...
-                                                // (Your existing quick bell removal logic usually lives elsewhere, 
-                                                // but if you have it here, keep it. Usually updateClock just rings.)
-                                            }
-                                        }
-                                    });
-                            }
-                        }
-                        saveMutedBells();
-                        
-                        // Update UI and Lists
-                        updateMuteButtonsUI();
-                        recalculateAndRenderAll();
-                        
-                        // IMPORTANT: Do NOT call updateClock() here, as it might trigger a double-ring 
-                        // if the time matches exactly when you click. Just let the next second tick handle it.
-                        return; 
-                    }
                         
                     // MODIFIED: v4.12.1 - Fixed 'contents' typo to 'contains' and passing full bell object
                     // MODIFIED in 4.19: Added return statements to prevent fall-through
@@ -8089,7 +8006,54 @@
                 
                 // Event delegation
                 combinedBellListElement.addEventListener('click', handleBellListClick);
-                
+
+                // NEW: Separate change handler for mute toggles (checkboxes respond better to 'change' than 'click')
+                combinedBellListElement.addEventListener('change', (e) => {
+                    const target = e.target;
+                    
+                    // Check if the changed element is a mute toggle checkbox
+                    if (target.classList.contains('bell-mute-toggle')) {
+                        e.stopPropagation(); // Prevent bubbling
+                        
+                        // 1. Get the bell ID from the checkbox
+                        const uniqueBellId = String(target.dataset.bellId);
+                        if (!uniqueBellId) {
+                            console.warn('Mute toggle has no bell ID');
+                            return;
+                        }
+                        
+                        console.log(`Mute toggle changed for bell ID: ${uniqueBellId}, checked: ${target.checked}`);
+                        
+                        // 2. Update the mutedBellIds set
+                        if (target.checked) {
+                            // User checked the box -> Mute this bell
+                            mutedBellIds.add(uniqueBellId);
+                            console.log(`Muted bell: ${uniqueBellId}`);
+                        } else {
+                            // User unchecked the box -> Unmute this bell
+                            mutedBellIds.delete(uniqueBellId);
+                            console.log(`Unmuted bell: ${uniqueBellId}`);
+                            
+                            // If we were in Global Mute mode, unchecking one bell exits that mode
+                            // but keeps all other bells muted
+                            if (isGlobalMuted) {
+                                isGlobalMuted = false;
+                                console.log('Exited global mute mode');
+                            }
+                        }
+                        
+                        // 3. Save to localStorage
+                        saveMutedBells();
+                        
+                        // 4. Update UI
+                        updateMuteButtonsUI();
+                        
+                        // 5. Update the display (this will re-render with correct mute states)
+                        // Note: We don't call updateClock() to avoid potential double-ring issues
+                        recalculateAndRenderAll();
+                    }
+                });
+                    
                 // REMOVED V4.61.2: Redundant click listener for .delete-list-period-btn.
                 // Logic has been moved into handleBellListClick to avoid conflict with the Edit button.
                 
