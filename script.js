@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.24.3"
+        const APP_VERSION = "5.24.4"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -8319,7 +8319,8 @@
                 // NEW in 4.60.3: Attach the custom text handler to the main edit/new period selects
                 editPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
                 newPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
-                
+                quickBellVisualSelect.addEventListener('change', visualSelectChangeHandler); // NEW 5.24.4: Add quick bell support
+                    
                 // --- NEW V4.76: Sound Select Change Handler (for [UPLOAD]) ---
                 function changeSoundSelectHandler(e) {
                     if (e.target.value === '[UPLOAD]') {
