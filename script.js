@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.21";
+        const APP_VERSION = "5.22";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7351,10 +7351,24 @@
                 customQuickBellForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
 
-                    // FIX 5.20: Before processing, remove 'required' from all disabled inputs
-                    // This ensures browser validation doesn't block unchecked rows
-                    const disabledInputs = e.target.querySelectorAll('input[disabled]');
-                    disabledInputs.forEach(input => input.removeAttribute('required'));
+                    // FIX 5.20: Remove 'required' from disabled inputs AND unchecked rows
+                    const form = e.target;
+                    const allRequiredInputs = form.querySelectorAll('input[required]');
+                    allRequiredInputs.forEach(input => {
+                        // Remove required if disabled
+                        if (input.disabled) {
+                            input.removeAttribute('required');
+                            return;
+                        }
+                        // Remove required if the row's checkbox is unchecked
+                        const bellId = input.dataset.bellId;
+                        if (bellId) {
+                            const toggle = form.querySelector(`.custom-quick-bell-toggle[data-bell-id="${bellId}"]`);
+                            if (toggle && !toggle.checked) {
+                                input.removeAttribute('required');
+                            }
+                        }
+                    });
                     customQuickBellStatus.classList.add('hidden');
                     
                     try {
