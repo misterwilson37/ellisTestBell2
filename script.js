@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.13";
+        const APP_VERSION = "5.14";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1087,24 +1087,35 @@
             }
 
 
-            // --- Re-added 5.13 HELPER: Get the correct sound for a bell (Shared vs Personal vs Override) ---
+            // --- Re-added 5.13 (and 14) HELPER: Get the correct sound for a bell (Shared vs Personal vs Override) ---
+                // --- HELPER: Get the correct sound for a bell ---
                 function getEffectiveBellSound(bell) {
-                    // 1. If there is a user-specific override (Right-Click "Change Sound"), use it.
-                    //    (Logic assumes bellSoundOverrides is a global object you load)
+                    // Check for user overrides first
                     if (typeof bellSoundOverrides !== 'undefined' && bell.id) {
                          const overrideKey = String(bell.id);
                          if (bellSoundOverrides[overrideKey]) {
                              return bellSoundOverrides[overrideKey];
                          }
                     }
+                    // Fallback to bell's sound or default
+                    return bell.sound || 'ellisBell.mp3';
+                }
         
-                    // 2. If the bell has its own sound (from the schedule), use it.
-                    if (bell.sound) {
-                        return bell.sound;
+                // --- HELPER: Play the sound ---
+                function playAudio(soundFile) {
+                    if (!soundFile) return;
+                    
+                    // Basic Audio Player Logic
+                    // (This assumes you have Tone.js or a basic Audio object setup)
+                    // If you have a complex audio system elsewhere, we might need to find it.
+                    // But for now, let's use a standard HTML5 Audio player as a safety net.
+                    try {
+                        const audioPath = soundFile.startsWith('http') ? soundFile : `sounds/${soundFile}`;
+                        const audio = new Audio(audioPath);
+                        audio.play().catch(e => console.error("Audio play failed:", e));
+                    } catch (e) {
+                        console.error("Error initializing audio:", e);
                     }
-        
-                    // 3. Default fallback
-                    return 'ellisBell.mp3';
                 }
             // Rewritten 5.12
             function updateClock() {
@@ -7836,81 +7847,42 @@
                     };
  
                     // Check which specific button *within* the bell item was clicked
+                    // Check which specific button *within* the bell item was clicked
                     if (target.classList.contains('bell-mute-toggle')) {
                         
-                        // 1. Get the robust ID string
                         const uniqueBellId = String(target.dataset.bellId); 
-                        if (!uniqueBellId) return;
+                        if (!uniqueBellId) {
+                            console.error("❌ ERROR: Checkbox has no ID!");
+                            return;
+                        }
                         
                         if (target.checked) {
-                            // CASE A: User checks a box -> Mute this bell
                             mutedBellIds.add(uniqueBellId);
+                            console.log(`✅ CHECKED: Muted Bell ID ${uniqueBellId}. Total Muted: ${mutedBellIds.size}`);
                         } else {
-                            // CASE B: User unchecks a box -> Unmute this bell
                             mutedBellIds.delete(uniqueBellId);
+                            console.log(`⬜ UNCHECKED: Unmuted Bell ID ${uniqueBellId}. Total Muted: ${mutedBellIds.size}`);
                             
-                            // SPECIAL LOGIC: If we were in "Global Mute" mode, unchecking one bell
-                            // implies we are no longer globally muted. However, we must ensure
-                            // all the OTHER bells stay muted (since they were visually checked).
+                            // Break Global Mute if needed
                             if (isGlobalMuted) {
+                                console.log("🌍 BREAKING GLOBAL MUTE (Keeping others muted)");
                                 isGlobalMuted = false;
-                                
                                 const allBells = [...localSchedule, ...personalBells];
-                                allBells.forEach(bell => {
-                                        if (!bell.time) return;
-                        
-                                        // 1. Check if it is time to ring
-                                        // We compare HH:MM:SS string directly
-                                        // ... inside allBells.forEach ...
-                                        if (currentTimeHHMMSS === bell.time) {
-                                                
-                                                // --- MUTE CHECK START 5.08 ---
-                                                const bellId = getBellId(bell);
-                                                // FIX: Convert to String to ensure match with Set
-                                                const bellIdString = String(bellId); 
-                                                const isIndividuallyMuted = bellId && mutedBellIds.has(bellIdString);
-                                                
-                                                // Debug log to see why it might be failing
-                                                if (isIndividuallyMuted) {
-                                                    console.log(`Mute Check: ${bell.name} (ID: ${bellIdString}) is MUTED. Skipping.`);
-                                                }
-                                
-                                                if (isGlobalMuted || isIndividuallyMuted) {
-                                                    return; // STOP. Do not play audio.
-                                                }
-                                                // --- MUTE CHECK END ---
-                                                        
-                                            // 2. Prevent double-ringing in the same second
-                                            // We check if we already rang THIS bell at THIS time
-                                            if (lastBellRingTime === bell.time) {
-                                                return;
-                                            }
-                        
-                                            // 3. Play the sound
-                                            lastBellRingTime = bell.time; // Record that we rang
-                                            console.log(`Ringing Bell: ${bell.name} at ${bell.time}`);
-                                            
-                                            const soundToPlay = getEffectiveBellSound(bell);
-                                            playAudio(soundToPlay);
-                                            
-                                            // 4. Handle "One-Time" bells (like Quick Bells)
-                                            if (bell.type === 'quick') {
-                                                // Logic to remove quick bell if needed...
-                                                // (Your existing quick bell removal logic usually lives elsewhere, 
-                                                // but if you have it here, keep it. Usually updateClock just rings.)
-                                            }
-                                        }
-                                    });
+                                allBells.forEach(b => {
+                                    const bId = String(getBellId(b));
+                                    if (bId && bId !== uniqueBellId) {
+                                        mutedBellIds.add(bId);
+                                    }
+                                });
                             }
                         }
-                        saveMutedBells();
                         
-                        // Update UI and Lists
+                        // Save to "Database" (LocalStorage)
+                        saveMutedBells();
+                        console.log("💾 SAVED to LocalStorage");
+                        
                         updateMuteButtonsUI();
                         recalculateAndRenderAll();
-                        
-                        // IMPORTANT: Do NOT call updateClock() here, as it might trigger a double-ring 
-                        // if the time matches exactly when you click. Just let the next second tick handle it.
                         return; 
                     }
                         
