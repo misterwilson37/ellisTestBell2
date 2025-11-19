@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.22";
+        const APP_VERSION = "5.23"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1419,12 +1419,26 @@
              * MODIFIED V5.03: Restructured to a two-row layout per bell for better spacing and full visual integration.
              */
             function renderCustomQuickBells() {
-                // Ensure a placeholder exists for the 4 slots if the database is empty
-                while (customQuickBells.length < 4) {
-                    customQuickBells.push(null);
+                // Filter out null slots - only render bells that have data OR are being created
+                const bellsToRender = customQuickBells.filter(b => b !== null);
+                
+                // If no bells, show "add" button
+                if (bellsToRender.length === 0) {
+                    customQuickBellListContainer.innerHTML = `
+                        <div class="text-center py-8">
+                            <p class="text-gray-500 mb-4">No custom quick bells yet.</p>
+                            <button type="button" id="add-custom-bell-slot-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                + Add Custom Quick Bell
+                            </button>
+                        </div>
+                    `;
+                    // Render empty main buttons
+                    customQuickBellsContainer.innerHTML = '';
+                    customQuickBellSeparator.classList.add('hidden');
+                    return;
                 }
 
-                const managerSlots = customQuickBells.map((bell, index) => {
+                const managerSlots = bellsToRender.map((bell, index) => {
                     const id = bell ? bell.id : index + 1;
                     const hasData = !!bell;
                     
@@ -1545,6 +1559,19 @@
                 }).join('');
 
                 customQuickBellListContainer.innerHTML = managerSlots;
+
+                customQuickBellListContainer.innerHTML = managerSlots;
+
+                // 5.23 Add "Add Another Bell" button if less than 4
+                if (bellsToRender.length < 4) {
+                    customQuickBellListContainer.innerHTML += `
+                        <div class="text-center py-4">
+                            <button type="button" id="add-custom-bell-slot-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                + Add Another Quick Bell (${bellsToRender.length}/4)
+                            </button>
+                        </div>
+                    `;
+                }
                 
                 // --- Render Main Quick Bell Buttons ---
                 
@@ -7436,6 +7463,31 @@
                     const previewBtn = e.target.closest('.preview-audio-btn');
                     const iconBtn = e.target.closest('.custom-bell-icon-btn'); // NEW V5.00: Icon button
                     
+                    // NEW 5.22: Handle Add button
+                    if (e.target.id === 'add-custom-bell-slot-btn') {
+                        const usedIds = customQuickBells.filter(b => b).map(b => b.id);
+                        let newId = 1;
+                        while (usedIds.includes(newId) && newId <= 4) {
+                            newId++;
+                        }
+                        if (newId <= 4) {
+                            const newBell = {
+                                id: newId,
+                                name: '',
+                                minutes: 5,
+                                seconds: 0,
+                                iconText: String(newId),
+                                iconBgColor: '#4338CA',
+                                iconFgColor: '#FFFFFF',
+                                sound: 'ellisBell.mp3',
+                                isActive: true
+                            };
+                            customQuickBells.push(newBell);
+                            renderCustomQuickBells();
+                        }
+                        return;
+                    }
+                        
                     // Re-written in 5.19.4
                     if (clearBtn) {
                         const id = parseInt(clearBtn.dataset.bellId);
@@ -7481,7 +7533,7 @@
                         customTextVisualModal.classList.remove('hidden');
                     }
                 });
-
+                
                 // NEW V5.00: Attach the Custom Text Visual Modal submit logic to save back to the manager's hidden fields
                 customTextVisualForm.addEventListener('submit', (e) => {
                     e.preventDefault();
