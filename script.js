@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.18.3";
+        const APP_VERSION = "5.19.1";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1438,10 +1438,12 @@
                     const textColor = bell ? (bell.iconFgColor || '#FFFFFF') : '#FFFFFF';
                     const sound = bell ? bell.sound : 'ellisBell.mp3';
                     
-                    // CRITICAL FIX V5.03: The slot is INACTIVE/DISABLED if it has no data OR if it's explicitly set to inactive.
-                    const isInactive = !hasData || (bell && bell.isActive === false); 
-                    const disabledAttr = isInactive ? 'disabled' : ''; 
-                    const disabledClass = isInactive ? 'opacity-50 pointer-events-none' : '';
+                    // FIX 5.19.1: A slot is ACTIVE (editable) if the checkbox is checked.
+                    // Default to TRUE (checked) for empty slots so users can fill them in.
+                    // If there's data, use the saved isActive value (defaulting to true).
+                    const isActive = hasData ? (bell.isActive !== false) : true; // Default to active/checked
+                    const disabledAttr = !isActive ? 'disabled' : ''; 
+                    const disabledClass = !isActive ? 'opacity-50 pointer-events-none' : '';
 
                     // Generate Sound Options for this slot
                     const soundOptionsHtml = getCustomBellSoundOptions(sound);
