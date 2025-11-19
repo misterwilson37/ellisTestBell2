@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.19.2";
+        const APP_VERSION = "5.19.3";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -3182,7 +3182,7 @@
                             iconFgColor: b.iconFgColor || '#FFFFFF',
                             
                             sound: b.sound || 'ellisBell.mp3',
-                            isActive: b.isActive || false // NEW: For launch button state
+                            isActive: b.isActive !== false // 5.19.3 Default to TRUE (active/checked)
                         }));
                         customQuickBells = bells.filter(b => b.name); // Filter out empty slots if structure is clean
                     } else {
