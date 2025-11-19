@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.12";
+        const APP_VERSION = "5.13";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1086,6 +1086,26 @@
                 return bellDate;
             }
 
+
+            // --- Re-added 5.13 HELPER: Get the correct sound for a bell (Shared vs Personal vs Override) ---
+                function getEffectiveBellSound(bell) {
+                    // 1. If there is a user-specific override (Right-Click "Change Sound"), use it.
+                    //    (Logic assumes bellSoundOverrides is a global object you load)
+                    if (typeof bellSoundOverrides !== 'undefined' && bell.id) {
+                         const overrideKey = String(bell.id);
+                         if (bellSoundOverrides[overrideKey]) {
+                             return bellSoundOverrides[overrideKey];
+                         }
+                    }
+        
+                    // 2. If the bell has its own sound (from the schedule), use it.
+                    if (bell.sound) {
+                        return bell.sound;
+                    }
+        
+                    // 3. Default fallback
+                    return 'ellisBell.mp3';
+                }
             // Rewritten 5.12
             function updateClock() {
                     const now = new Date();
