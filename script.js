@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.24"
+        const APP_VERSION = "5.24.1"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7536,6 +7536,7 @@
                         }
 
                         // 5. Show the modal (needs higher z-index than manager's z-50)
+                        customTextVisualModal.style.zIndex = '60';
                         customTextVisualModal.classList.remove('hidden');
                     }
                 });
