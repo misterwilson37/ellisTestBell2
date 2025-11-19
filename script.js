@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.23"
+        const APP_VERSION = "5.24"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1526,7 +1526,7 @@
                                             data-bg-color="${iconColor}" 
                                             data-fg-color="${textColor}"
                                             data-visual-cue="${rawVisualCue}"
-                                            class="custom-bell-icon-btn custom-bell-editable-input w-full p-0 h-12 text-sm bg-gray-200 text-gray-700 rounded-lg hover:opacity-80 flex items-center justify-center gap-2 font-bold transition-opacity duration-150 ${disabledClass} overflow-hidden"
+                                            class="custom-bell-icon-btn custom-bell-editable-input w-12 h-12 text-sm bg-gray-200 text-gray-700 rounded-lg hover:opacity-80 flex items-center justify-center gap-2 font-bold transition-opacity duration-150 ${disabledClass} overflow-hidden"
                                             style="background-color: ${iconColor}; color: ${textColor};"
                                             title="Edit Icon/Visual" ${disabledAttr}>
                                         ${iconButtonContent}
@@ -7446,9 +7446,13 @@
                         });
                         
                         await saveCustomQuickBells(newBells);
+                        // 5.24: Don't close modal - let the Firestore listener re-render it
                         customQuickBellStatus.textContent = "Quick Bells Saved!";
                         customQuickBellStatus.classList.remove('hidden');
-                        customQuickBellManagerModal.classList.add('hidden');
+                        // Modal stays open so you can see your saved values
+                        setTimeout(() => {
+                            customQuickBellStatus.classList.add('hidden');
+                        }, 3000);
                         
                     } catch (error) {
                         console.error("Custom Quick Bell save error:", error);
@@ -7526,10 +7530,12 @@
                         customTextColorInput.value = iconBtn.dataset.fgColor;
                         
                         // 4. Force change event to update previews and toggle custom text container
-                        quickBellVisualSelect.dispatchEvent(new Event('change'));
+                        // Updated 5.24 to replace quickBellVisualSelect.dispatchEvent(new Event('change'));
+                        if (visualSelectElement) {
+                            visualSelectElement.dispatchEvent(new Event('change'));
+                        }
 
-                        // 5. Show the modal (z-60)
-                        customQuickBellManagerModal.classList.add('z-50'); // Ensure manager is z-50
+                        // 5. Show the modal (needs higher z-index than manager's z-50)
                         customTextVisualModal.classList.remove('hidden');
                     }
                 });
