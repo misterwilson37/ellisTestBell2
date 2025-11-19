@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.24.2"
+        const APP_VERSION = "5.24.3"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -5830,7 +5830,7 @@
             }
 
             function updateVisualDropdowns() {
-                const selects = [ editPeriodImageSelect, newPeriodImageSelect ]; // Add any future visual selects here
+                const selects = [ editPeriodImageSelect, newPeriodImageSelect, quickBellVisualSelect ]; // Add any future visual selects here
                 
                 // 1. Create options for default SVGs (dynamically)
                 // MODIFIED V4.61: Removed static number options ('1st Period', '2nd Period')
@@ -7521,7 +7521,7 @@
                         const visualSelectElement = document.getElementById('quick-bell-visual-select');
                         console.log('Visual select element:', visualSelectElement);
                         if (visualSelectElement) {
-                            updateVisualDropdowns(visualSelectElement);
+                            updateVisualDropdowns(); // 5.22.3: No parameter - it updates all dropdowns including quickBellVisualSelect
                             console.log('Options after update:', visualSelectElement.innerHTML);
                             console.log('Trying to set value to:', visualCue);
                             visualSelectElement.value = visualCue;
