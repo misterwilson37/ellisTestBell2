@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.17";
+        const APP_VERSION = "5.18.1";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1390,6 +1390,8 @@
             }
             
             async function ringBell(bell) {
+                // 5.18.1 Log what bells are rung
+                console.log('🔔 ringBell called with bell:', JSON.stringify(bell));
                 const soundName = bell.sound; // CRITICAL V4.63.7: Define soundName locally for logging.
                 // NEW in 4.41: Detailed logging for ring accuracy
                 const actualTime = new Date();
@@ -5015,7 +5017,9 @@
                 
                 // 2. Create the new bell object
                 const newBell = { time, name, sound, bellId: generateBellId() };
-    
+                // 5.18.1 Log static bell information for reference
+                console.log('🔔 Creating static bell:', JSON.stringify(newBell));
+                    
                 // 3. Check for nearby bell conflict
                 const allBells = [...localSchedule, ...personalBells];
                 const nearbyBell = findNearbyBell(time, allBells);
