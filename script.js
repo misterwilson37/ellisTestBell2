@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.19.3";
+        const APP_VERSION = "5.19.4";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7417,13 +7417,8 @@
                         const index = customQuickBells.findIndex(b => b && b.id === id);
                         if (index > -1) {
                             customQuickBells[index] = null; // Mark slot as null
-                            
-                            // V5.04 FIX: Manually uncheck the toggle before re-render, 
-                            // ensuring the slot is shown as inactive/empty.
-                            const toggle = document.querySelector(`.custom-quick-bell-toggle[data-bell-id="${id}"]`);
-                            if(toggle) toggle.checked = false; 
-
                             renderCustomQuickBells(); // Re-render the manager
+                            // Don't need to manually uncheck - the render will handle it
                         }
                     } else if (previewBtn) {
                         playBell(previewBtn.dataset.sound);
