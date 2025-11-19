@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.14";
+        const APP_VERSION = "5.08";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1086,167 +1086,283 @@
                 return bellDate;
             }
 
-
-            // --- Re-added 5.13 (and 14) HELPER: Get the correct sound for a bell (Shared vs Personal vs Override) ---
-                // --- HELPER: Get the correct sound for a bell ---
-                function getEffectiveBellSound(bell) {
-                    // Check for user overrides first
-                    if (typeof bellSoundOverrides !== 'undefined' && bell.id) {
-                         const overrideKey = String(bell.id);
-                         if (bellSoundOverrides[overrideKey]) {
-                             return bellSoundOverrides[overrideKey];
-                         }
-                    }
-                    // Fallback to bell's sound or default
-                    return bell.sound || 'ellisBell.mp3';
-                }
-        
-                // --- HELPER: Play the sound ---
-                function playAudio(soundFile) {
-                    if (!soundFile) return;
-                    
-                    // Basic Audio Player Logic
-                    // (This assumes you have Tone.js or a basic Audio object setup)
-                    // If you have a complex audio system elsewhere, we might need to find it.
-                    // But for now, let's use a standard HTML5 Audio player as a safety net.
-                    try {
-                        const audioPath = soundFile.startsWith('http') ? soundFile : `sounds/${soundFile}`;
-                        const audio = new Audio(audioPath);
-                        audio.play().catch(e => console.error("Audio play failed:", e));
-                    } catch (e) {
-                        console.error("Error initializing audio:", e);
-                    }
-                }
-            // Rewritten 5.12
+            // MODIFIED: v3.22 -> v3.23 - Grammar changes
             function updateClock() {
-                    const now = new Date();
-                    
-                    // 1. Update the Header Clock
-                    let hours = now.getHours();
-                    const minutes = now.getMinutes();
-                    const seconds = now.getSeconds();
-                    const ampm = hours >= 12 ? 'PM' : 'AM';
-                    hours = hours % 12;
-                    hours = hours ? hours : 12; 
-                    const strTime = `${hours}:${minutes < 10 ? '0' + minutes : minutes}:${seconds < 10 ? '0' + seconds : seconds} ${ampm}`;
-                    
-                    if (clockElement) {
-                        clockElement.textContent = strTime;
-                    }
-        
-                    // 2. Prepare Bell List
-                    const currentTimeHHMMSS = now.toTimeString().split(' ')[0];
-                    const allBells = [...(localSchedule || []), ...(personalBells || []), ...(customQuickBells || []).filter(b => b !== null)];
-                    
-                    allBells.sort((a, b) => {
-                        if (a.time < b.time) return -1;
-                        if (a.time > b.time) return 1;
-                        return 0;
-                    });
-        
-                    let nextBell = null;
-                    let minDiff = Infinity;
-                    const nowSecondsOfDay = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
-        
-                    // 3. Ringing Logic & Next Bell Finder
-                    allBells.forEach(bell => {
-                        if (!bell.time) return;
-        
-                        // --- A. Check for Ringing ---
-                        if (currentTimeHHMMSS === bell.time) {
-                            
-                            // v5.12 MUTE LOGIC (Clean & Explicit)
-                            const bellId = String(getBellId(bell));
-                            const isIndividuallyMuted = mutedBellIds.has(bellId);
-        
-                            // If GLOBAL is on, OR this specific bell is in the set...
-                            if (isGlobalMuted || isIndividuallyMuted) {
-                                 // Do nothing (Blocked)
-                                 // console.log(`Blocked muted bell: ${bell.name}`);
-                            } else {
-                                // Only ring if we haven't rung this second yet
-                                if (lastBellRingTime !== bell.time) {
-                                    lastBellRingTime = bell.time;
-                                    console.log(`Ringing Bell: ${bell.name}`);
-                                    const soundToPlay = getEffectiveBellSound(bell);
-                                    playAudio(soundToPlay);
-                                }
-                            }
-                        }
-        
-                        // --- B. Find Next Bell ---
-                        const [bH, bM, bS] = bell.time.split(':').map(Number);
-                        const bellSecondsOfDay = (bH * 3600) + (bM * 60) + bS;
-                        let diff = bellSecondsOfDay - nowSecondsOfDay;
-        
-                        if (diff > 0 && diff < minDiff) {
-                            minDiff = diff;
-                            nextBell = bell;
-                        }
-                    });
-        
-                    // 4. Update Countdown Display
-                    if (nextBell) {
-                        // Digits
-                        let totalSeconds = minDiff;
-                        let cdHours = Math.floor(totalSeconds / 3600);
-                        totalSeconds %= 3600;
-                        let cdMinutes = Math.floor(totalSeconds / 60);
-                        let cdSeconds = totalSeconds % 60;
-        
-                        let countdownString;
-                        if (cdHours > 0) {
-                            countdownString = `${cdHours}:${String(cdMinutes).padStart(2, '0')}:${String(cdSeconds).padStart(2, '0')}`;
-                        } else if (cdMinutes > 0 || cdHours > 0) {
-                            countdownString = `${cdMinutes}:${String(cdSeconds).padStart(2, '0')}`;
-                        } else {
-                            countdownString = `${cdSeconds}`;
-                        }
-                        
-                        if (countdownElement) countdownElement.textContent = countdownString;
-        
-                        // Label
-                        let bellLabel = nextBell.name;
-                        if (nextBell.periodName && nextBell.name !== "Quick Bell") {
-                            bellLabel = `${nextBell.periodName}: ${nextBell.name}`;
-                        }
-        
-                        // Mute Status Check (for Red Text)
-                        let isNextBellMuted = isGlobalMuted;
-                        if (!isGlobalMuted) {
-                            const nbId = String(getBellId(nextBell));
-                            if (mutedBellIds.has(nbId)) isNextBellMuted = true;
-                        }
-        
-                        if (nextBellElement) {
-                            if (isNextBellMuted) {
-                                nextBellElement.textContent = `until ${bellLabel} (MUTED).`;
-                                if (countdownElement) countdownElement.classList.add('text-red-600');
-                                nextBellElement.classList.add('text-red-600');
-                            } else {
-                                nextBellElement.textContent = `until ${bellLabel}.`;
-                                if (countdownElement) countdownElement.classList.remove('text-red-600');
-                                nextBellElement.classList.remove('text-red-600');
-                            }
-                        }
-                        
-                        if (nextBellInfoElement) {
-                            nextBellInfoElement.textContent = `Next bell is ${nextBell.name} at ${formatTime12Hour(nextBell.time, true)}.`;
-                        }
-        
-                    } else {
-                        // No Bells Left
-                        if (countdownElement) {
-                            countdownElement.textContent = "--:--";
-                            countdownElement.classList.remove('text-red-600');
-                        }
-                        if (nextBellElement) {
-                            nextBellElement.textContent = "until the next bell.";
-                            nextBellElement.classList.remove('text-red-600');
-                        }
-                        if (nextBellInfoElement) nextBellInfoElement.textContent = "No bells scheduled.";
+                const now = new Date();
+                const nowTimestamp = now.getTime(); // Get current time in ms
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const currentTimeHHMMSS = `${hours}:${minutes}:${seconds}`;
+    
+                // --- 1. Update Live Clock Display ---
+                // Use (false) to ensure seconds are always shown for the clock
+                const formattedTime = formatTime12Hour(currentTimeHHMMSS, false); 
+                // MODIFICATION: Removed period after "are"
+                clockElement.textContent = `The time is ${formattedTime}. There are`;
+                
+                // --- 2. Find Bells & Calculate Timers ---
+                const allBells = [...localSchedule, ...personalBells];
+                const scheduleBellObject = findNextBell(currentTimeHHMMSS); // The bell we will count down to
+                
+                let millisToScheduleBell = Infinity;
+                if (scheduleBellObject) {
+                    const [h, m, s] = scheduleBellObject.time.split(':').map(Number);
+                    const nextBellDate = new Date();
+                    nextBellDate.setHours(h, m, s, 0);
+                    millisToScheduleBell = nextBellDate.getTime() - nowTimestamp;
+                    if (millisToScheduleBell < 0) { // If bell time has passed for today
+                        nextBellDate.setDate(nextBellDate.getDate() + 1);
+                        millisToScheduleBell = nextBellDate.getTime() - nowTimestamp;
                     }
                 }
+    
+                const millisToQuickBell = quickBellEndTime ? quickBellEndTime.getTime() - nowTimestamp : Infinity;
+                
+                // --- 3. Determine Active Countdown & "Next Bell" Info ---
+                let activeTimerLabel = null;
+                let activeTimerMillis = Infinity;
+                let isMuting = false;
+                let nextBellInfoString = "No more bells today."; // Default "Next Bell" text
+    
+                if (millisToScheduleBell < millisToQuickBell && scheduleBellObject) {
+                    // --- A. Counting down to a SCHEDULE BELL ---
+                    activeTimerLabel = scheduleBellObject.name;
+                    activeTimerMillis = millisToScheduleBell;
+                    const nextBellId = getBellId(scheduleBellObject);
+                    isMuting = mutedBellIds.has(nextBellId);
+                    
+                    // Find the bell *after* this one for the info display
+                    const bellAfter = findBellAfter(scheduleBellObject, allBells);
+                    if (bellAfter) {
+                        // Use (true) to omit seconds if they are 00
+                        // MODIFICATION: Added period at the end
+                        nextBellInfoString = `Next bell is ${bellAfter.name} at ${formatTime12Hour(bellAfter.time, true)}.`;
+                    } else {
+                        nextBellInfoString = "No more bells today."; // Already has period
+                    }
+    
+                } else if (millisToQuickBell < millisToScheduleBell) {
+                    // --- B. Counting down to a QUICK BELL ---
+                    activeTimerLabel = quickBellEndTime.bellName || "Quick Bell"; // NEW V5.00
+                    activeTimerMillis = millisToQuickBell;
+                    isMuting = false;
+                    
+                    // The "next bell" info should be the next *schedule* bell
+                    if (scheduleBellObject) {
+                        // Use (true) to omit seconds if they are 00
+                        // MODIFICATION: Added period at the end
+                        nextBellInfoString = `Next bell is ${scheduleBellObject.name} at ${formatTime12Hour(scheduleBellObject.time, true)}.`;
+                    } else {
+                        nextBellInfoString = "No more bells today."; // Already has period
+                    }
+                }
+                
+                // --- 4. Populate Countdown and "Next Bell" Elements ---
+                nextBellInfoElement.textContent = nextBellInfoString;
+    
+                if (activeTimerLabel) {
+                    let totalSeconds = Math.max(0, Math.floor(activeTimerMillis / 1000));
+                    let cdHours = Math.floor(totalSeconds / 3600);
+                    totalSeconds %= 3600;
+                    let cdMinutes = Math.floor(totalSeconds / 60);
+                    let cdSeconds = totalSeconds % 60;
+                    let countdownString;
+                    
+                    if (cdHours > 0) {
+                        countdownString = `${cdHours}:${String(cdMinutes).padStart(2, '0')}:${String(cdSeconds).padStart(2, '0')}`;
+                    } else if (cdMinutes > 0 || cdHours > 0) { // Show minutes if 1m or more
+                        countdownString = `${cdMinutes}:${String(cdSeconds).padStart(2, '0')}`;
+                    } else {
+                        countdownString = `${cdSeconds}`;
+                    }
+                    countdownElement.textContent = countdownString;
+                    
+                    // NEW: v4.13 - Add Period context to the label
+                    let bellLabel = activeTimerLabel;
+                    if (scheduleBellObject && scheduleBellObject.periodName && activeTimerLabel !== "Quick Bell") {
+                        bellLabel = `${scheduleBellObject.periodName}: ${activeTimerLabel}`;
+                    }
+
+                    if (isMuting) {
+                        // MODIFICATION: Added period
+                        nextBellElement.textContent = `until ${bellLabel} (MUTED).`;
+                    } else {
+                        // MODIFICATION: Added period
+                        nextBellElement.textContent = `until ${bellLabel}.`;
+                    }
+                } else {
+                    // --- C. No active timer ---
+                    countdownElement.textContent = "--:--";
+                    // MODIFICATION: Added period
+                    nextBellElement.textContent = "until the next bell.";
+                    // "Next Bell" info is already set to "No more bells today."
+                    // Or, if school is out, scheduleBellObject is the first bell tomorrow.
+                    if (scheduleBellObject) {
+                        // MODIFICATION: Added period
+                        nextBellInfoString = `Next bell is ${scheduleBellObject.name} at ${formatTime12Hour(scheduleBellObject.time, true)}.`;
+                        nextBellInfoElement.textContent = nextBellInfoString;
+                    } else {
+                         nextBellInfoElement.textContent = "No bells scheduled."; // Already has period
+                    }
+                }
+    
+                // --- NEW in 4.38: Pre-Bell Wake-up Logic ---
+                // If a bell is approaching (under 60s) and we're not in "alert mode",
+                // start "pulsing" the silent oscillator to keep the browser awake.
+                // MODIFIED in 4.41: Widen window from 60s to 180s (3 minutes)
+                if (activeTimerMillis < 180000 && !isOscillatorAlert && keepAliveOscillator) {
+                    // NEW in 4.41: Added timestamp to log
+                    const nowStr = formatTime12Hour(currentTimeHHMMSS, false);
+                    console.log(`Bell approaching. Entering oscillator alert mode. (Actual: ${nowStr})`);
+                    isOscillatorAlert = true;
+                    if (oscillatorAlertInterval) clearInterval(oscillatorAlertInterval); // Clear just in case
+                    
+                    // "Pulse" the volume of the silent oscillator every 2 seconds
+                    oscillatorAlertInterval = setInterval(() => {
+                        if (keepAliveOscillator) {
+                            // Ramp to slightly "louder" (still inaudible) and back
+                            keepAliveOscillator.volume.rampTo(-99, 0.2);
+                            setTimeout(() => {
+                                if (keepAliveOscillator) {
+                                    keepAliveOscillator.volume.rampTo(-100, 0.2);
+                                }
+                            }, 1000); // 1s at -99, 1s at -100
+                        }
+                    }, 2000);
+                } 
+                // If the next bell is far away and we're still in "alert mode", stop.
+                // MODIFIED in 4.41: Widen window from 60s to 180s (3 minutes)
+                else if (activeTimerMillis > 180000 && isOscillatorAlert && keepAliveOscillator) {
+                    // NEW in 4.41: Added timestamp to log
+                    const nowStr = formatTime12Hour(currentTimeHHMMSS, false);
+                    console.log(`Bell has passed. Exiting oscillator alert mode. (Actual: ${nowStr})`);
+                    isOscillatorAlert = false;
+                    if (oscillatorAlertInterval) {
+                        clearInterval(oscillatorAlertInterval);
+                        oscillatorAlertInterval = null;
+                    }
+                    // Ensure volume is reset
+                    keepAliveOscillator.volume.value = -100;
+                }
+
+                // --- 5. Ring Logic (MODIFIED in 4.35: Missed Bell Recovery) ---
+                
+                // A. Check if the day has rolled over. If so, clear the timestamp.
+                const newDay = now.getDay();
+                if (newDay !== currentDay) {
+                    console.log("Day has changed. Resetting missed bell check.");
+                    lastClockCheckTimestamp = 0; // Force reset
+                    currentDay = newDay;
+                }
+
+                // B. On first run, just set the timestamp and wait for the next second.
+                if (lastClockCheckTimestamp === 0) {
+                    lastClockCheckTimestamp = nowTimestamp;
+                } else if (nowTimestamp > lastClockCheckTimestamp) {
+                    // C. Find all bells that *should have* rung between the last check and now
+                    const bellsToRing = allBells.filter(bell => {
+                        const bellDate = getDateForBellTime(bell.time, now);
+                        const bellTimestamp = bellDate.getTime();
+                        
+                        return bellTimestamp > lastClockCheckTimestamp && // After the last check
+                               bellTimestamp <= nowTimestamp;            // and at or before now
+                    });
+                    
+                    if (bellsToRing.length > 0) {
+                        console.log(`Found ${bellsToRing.length} missed bell(s) to ring.`);
+                        // Sort them just in case
+                        bellsToRing.sort((a, b) => a.time.localeCompare(b.time));
+
+                        // Ring them all, but only if cooldown has passed
+                        if (nowTimestamp - lastRingTimestamp > RING_COOLDOWN) {
+                            // For now, just ring the *last* one if multiple were missed
+                            const bell = bellsToRing[bellsToRing.length - 1];
+                            const bellId = getBellId(bell);
+                            
+                            if (mutedBellIds.has(bellId)) {
+                                console.log(`Skipping bell (Muted): ${bell.name}`);
+                                statusElement.textContent = `Skipped (Muted): ${bell.name}`;
+                            } else {
+                                ringBell(bell); // fire-and-forget
+                            }
+                            lastRingTimestamp = nowTimestamp; // Set cooldown
+                        }
+                    }
+                }
+                
+                // D. Always update the timestamp for the next check
+                lastClockCheckTimestamp = nowTimestamp;
+
+                // --- Ring Logic (Quick Bell) ---
+                if (quickBellEndTime && nowTimestamp >= quickBellEndTime.getTime() && (nowTimestamp - lastRingTimestamp > RING_COOLDOWN)) {
+                    console.log("Ringing Quick Bell");
+                    ringBell({ name: "Quick Bell", sound: quickBellSound });
+                    // MODIFIED in 4.39: DO NOT set the lastRingTimestamp.
+                    // This prevents a quick bell from "eating" a nearby schedule bell.
+                    // lastRingTimestamp = nowTimestamp;
+                    quickBellEndTime = null; // Clear the quick bell
+                }
+    
+                // MODIFIED: Reset status text logic
+                if (lastBellRingTime && lastBellRingTime !== currentTimeHHMMSS && (nowTimestamp - lastRingTimestamp > RING_COOLDOWN)) {
+                    lastBellRingTime = null;
+                    if (isAudioReady) statusElement.textContent = "Monitoring...";
+                }
+
+                // --- NEW in 4.44: Update Visual Cue ---
+                try {
+                    // Find the *current* period based on the countdown
+                    // Check 1: Is it a Quick Bell? OR is it counting down to the next day (> 6 hours = 21600000ms)?
+                    const isNextDayBell = activeTimerMillis > (6 * 3600 * 1000); // More than 6 hours
+                    
+                    const currentPeriod = (activeTimerMillis < millisToScheduleBell || isNextDayBell) 
+                        ? null // It's a Quick Bell OR it's the next day (End of Day)
+                        : (scheduleBellObject ? calculatedPeriodsList.find(p => p.name === scheduleBellObject.periodName) : null);
+
+                    // Determine the name of the period whose visual cue we SHOULD be displaying
+                    const nextPeriodName = currentPeriod ? currentPeriod.name : 
+                                           (millisToQuickBell < Infinity ? "Quick Bell" : "Passing Period");
+                                           
+                    // CRITICAL: Only proceed if the visual cue needs to change
+                    if (nextPeriodName === currentVisualPeriodName) {
+                        return; // Exit function early if the period hasn't changed
+                    }
+
+                    // Store the new period name
+                    currentVisualPeriodName = nextPeriodName; 
+
+                    let visualHtml = '';
+                    if (currentPeriod) {
+                        const visualKey = getVisualOverrideKey(activeBaseScheduleId, currentPeriod.name);
+                        const visualValue = periodVisualOverrides[visualKey] || "";
+                        visualHtml = getVisualHtml(visualValue, currentPeriod.name);
+                    } else if (millisToQuickBell < Infinity) { // A Quick Bell is active
+                        // Check if it's a Custom Quick Bell
+                        const activeCustomBell = customQuickBells.find(b => b && b.name === nextPeriodName);
+                        
+                        if (activeCustomBell) {
+                            // NEW V5.00: Use Custom Text/Icon and its saved colors for banner display
+                            const bgColor = activeCustomBell.iconBgColor || '#4338CA';
+                            const fgColor = activeCustomBell.iconFgColor || '#FFFFFF';
+                            const customVisual = `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${bgColor}|${fgColor}`;
+                            visualHtml = getVisualHtml(customVisual, activeCustomBell.iconText);
+                        } else {
+                            // Special icon for Generic Quick Bell
+                            visualHtml = `<div class="w-full h-full p-8 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>`;
+                        }
+                    } else {
+                        // Default / Passing Period
+                        visualHtml = getDefaultVisualCue("Passing Period");
+                    }
+                    
+                    // Inject into main container (now only runs once per period change)
+                    visualCueContainer.innerHTML = visualHtml;
+                    
+                } catch (e) {
+                    console.error("Error updating visual cue:", e);
+                }
+            }
             
             // --- NEW: Quick Bell Function (MODIFIED V5.00) ---
             function startQuickBell(minutes, seconds = 0, sound, name = "Quick Bell") {
@@ -7847,42 +7963,76 @@
                     };
  
                     // Check which specific button *within* the bell item was clicked
-                    // Check which specific button *within* the bell item was clicked
                     if (target.classList.contains('bell-mute-toggle')) {
                         
+                        // 1. Get the robust ID string
                         const uniqueBellId = String(target.dataset.bellId); 
-                        if (!uniqueBellId) {
-                            console.error("❌ ERROR: Checkbox has no ID!");
-                            return;
-                        }
+                        if (!uniqueBellId) return;
                         
                         if (target.checked) {
+                            // CASE A: User checks a box -> Mute this bell
                             mutedBellIds.add(uniqueBellId);
-                            console.log(`✅ CHECKED: Muted Bell ID ${uniqueBellId}. Total Muted: ${mutedBellIds.size}`);
                         } else {
+                            // CASE B: User unchecks a box -> Unmute this bell
                             mutedBellIds.delete(uniqueBellId);
-                            console.log(`⬜ UNCHECKED: Unmuted Bell ID ${uniqueBellId}. Total Muted: ${mutedBellIds.size}`);
                             
-                            // Break Global Mute if needed
+                            // SPECIAL LOGIC: If we were in "Global Mute" mode, unchecking one bell
+                            // implies we are no longer globally muted. However, we must ensure
+                            // all the OTHER bells stay muted (since they were visually checked).
                             if (isGlobalMuted) {
-                                console.log("🌍 BREAKING GLOBAL MUTE (Keeping others muted)");
                                 isGlobalMuted = false;
+                                
                                 const allBells = [...localSchedule, ...personalBells];
-                                allBells.forEach(b => {
-                                    const bId = String(getBellId(b));
-                                    if (bId && bId !== uniqueBellId) {
-                                        mutedBellIds.add(bId);
-                                    }
-                                });
+                                allBells.forEach(bell => {
+                                        if (!bell.time) return;
+                        
+                                        // 1. Check if it is time to ring
+                                        // We compare HH:MM:SS string directly
+                                        if (currentTimeHHMMSS === bell.time) {
+                                            
+                                            // --- MUTE CHECK START ---
+                                            const bellId = getBellId(bell);
+                                            const isIndividuallyMuted = bellId && mutedBellIds.has(bellId);
+                                            
+                                            // If Global Mute is ON, OR this specific bell is in the list...
+                                            if (isGlobalMuted || isIndividuallyMuted) {
+                                                // LOGGING: Uncomment the next line if you want to see it happening in the console
+                                                // console.log(`Skipped muted bell: ${bell.name}`);
+                                                return; // STOP. Do not play audio.
+                                            }
+                                            // --- MUTE CHECK END ---
+                        
+                                            // 2. Prevent double-ringing in the same second
+                                            // We check if we already rang THIS bell at THIS time
+                                            if (lastBellRingTime === bell.time) {
+                                                return;
+                                            }
+                        
+                                            // 3. Play the sound
+                                            lastBellRingTime = bell.time; // Record that we rang
+                                            console.log(`Ringing Bell: ${bell.name} at ${bell.time}`);
+                                            
+                                            const soundToPlay = getEffectiveBellSound(bell);
+                                            playAudio(soundToPlay);
+                                            
+                                            // 4. Handle "One-Time" bells (like Quick Bells)
+                                            if (bell.type === 'quick') {
+                                                // Logic to remove quick bell if needed...
+                                                // (Your existing quick bell removal logic usually lives elsewhere, 
+                                                // but if you have it here, keep it. Usually updateClock just rings.)
+                                            }
+                                        }
+                                    });
                             }
                         }
-                        
-                        // Save to "Database" (LocalStorage)
                         saveMutedBells();
-                        console.log("💾 SAVED to LocalStorage");
                         
+                        // Update UI and Lists
                         updateMuteButtonsUI();
                         recalculateAndRenderAll();
+                        
+                        // IMPORTANT: Do NOT call updateClock() here, as it might trigger a double-ring 
+                        // if the time matches exactly when you click. Just let the next second tick handle it.
                         return; 
                     }
                         
@@ -8125,8 +8275,8 @@
                     const allBells = [...localSchedule, ...personalBells];
                     allBells.forEach(bell => {
                         // CRITICAL: Use the helper to get the ID safely
-                        const bellId = getBellId(bell);
-                        if(bellId) mutedBellIds.add(String(bellId)); // Force String
+                        const bellId = getBellId(bell); 
+                        if(bellId) mutedBellIds.add(bellId);
                     });
                     saveMutedBells();
                     
