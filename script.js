@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.20";
+        const APP_VERSION = "5.20.1";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7417,24 +7417,23 @@
                     const iconBtn = e.target.closest('.custom-bell-icon-btn'); // NEW V5.00: Icon button
                     
                     if (clearBtn) {
-                            const id = parseInt(clearBtn.dataset.bellId);
-                            const index = customQuickBells.findIndex(b => b && b.id === id);
-                            if (index > -1) {
-                                customQuickBells[index] = null; // Mark slot as null
-                                renderCustomQuickBells(); // Re-render the manager
-                                // Don't need to manually uncheck - the render will handle it
-                            }
+                        const id = parseInt(clearBtn.dataset.bellId);
+                        const index = customQuickBells.findIndex(b => b && b.id === id);
+                        if (index > -1) {
+                            customQuickBells[index] = null; // Mark slot as null
+                            renderCustomQuickBells(); // Re-render the manager
+                            // Don't need to manually uncheck - the render will handle it
                         }
+                    }
                     } else if (previewBtn) {
                         playBell(previewBtn.dataset.sound);
                     } else if (iconBtn) { // NEW V5.00: Open Icon Modal
-                            console.log('Icon button clicked!', iconBtn.dataset.bellId);
-                            currentCustomBellIconSlot = parseInt(iconBtn.dataset.bellId);
+                        console.log('Icon button clicked!', iconBtn.dataset.bellId);
+                        currentCustomBellIconSlot = parseInt(iconBtn.dataset.bellId);
                             
-                            const bellData = customQuickBells.find(b => b && b.id === currentCustomBellIconSlot);
-                            console.log('Bell data:', bellData);
-                        
                         const bellData = customQuickBells.find(b => b && b.id === currentCustomBellIconSlot);
+                        console.log('Bell data:', bellData);
+
                         // V5.03: Use the new data attribute for the visual cue
                         const visualCue = iconBtn.dataset.visualCue; 
                         const bellName = bellData?.name || `Slot ${currentCustomBellIconSlot}`;
