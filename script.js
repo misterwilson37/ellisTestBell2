@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.20.1";
+        const APP_VERSION = "5.18.3";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1438,12 +1438,10 @@
                     const textColor = bell ? (bell.iconFgColor || '#FFFFFF') : '#FFFFFF';
                     const sound = bell ? bell.sound : 'ellisBell.mp3';
                     
-                    // FIX 5.20: A slot is ACTIVE (editable) if the checkbox is checked.
-                    // Default to TRUE (checked) for empty slots so users can fill them in.
-                    // If there's data, use the saved isActive value (defaulting to true).
-                    const isActive = hasData ? (bell.isActive !== false) : true; // Default to active/checked
-                    const disabledAttr = !isActive ? 'disabled' : ''; 
-                    const disabledClass = !isActive ? 'opacity-50 pointer-events-none' : '';
+                    // CRITICAL FIX V5.03: The slot is INACTIVE/DISABLED if it has no data OR if it's explicitly set to inactive.
+                    const isInactive = !hasData || (bell && bell.isActive === false); 
+                    const disabledAttr = isInactive ? 'disabled' : ''; 
+                    const disabledClass = isInactive ? 'opacity-50 pointer-events-none' : '';
 
                     // Generate Sound Options for this slot
                     const soundOptionsHtml = getCustomBellSoundOptions(sound);
@@ -1462,7 +1460,7 @@
                                     <!-- V5.04 FIX: Checkbox is always ENABLED, even if slot is empty, allowing user to activate the row. -->
                                     <input type="checkbox" data-bell-id="${id}" name="custom-bell-toggle-${id}" 
                                            class="custom-quick-bell-toggle h-5 w-5 text-indigo-600 focus:ring-indigo-500 rounded-md" 
-                                           ${isActive ? 'checked' : ''}>
+                                           ${!isInactive ? 'checked' : ''}>
                                 </div>
                                 
                                 <!-- Col 2: Display Name (Col Span 5) -->
@@ -3182,7 +3180,7 @@
                             iconFgColor: b.iconFgColor || '#FFFFFF',
                             
                             sound: b.sound || 'ellisBell.mp3',
-                            isActive: b.isActive !== false // Default to TRUE (active/checked)
+                            isActive: b.isActive || false // NEW: For launch button state
                         }));
                         customQuickBells = bells.filter(b => b.name); // Filter out empty slots if structure is clean
                     } else {
@@ -7369,12 +7367,8 @@
                             }
 
                             // 2. Check if the slot should be cleared or is empty
-                            // Don't save slots with no name OR no time
-                            if (!slotData.name || slotData.name.trim() === '') {
-                                return null; // No name = empty slot
-                            }
-                            if (slotData.minutes === '0' && slotData.seconds === '0') {
-                                return null; // No time = invalid bell
+                            if (!slotData.name || slotData.name.trim() === '' || (slotData.minutes === '0' && slotData.seconds === '0')) {
+                                return null; // Clear slot
                             }
 
                             // 3. Check toggle state for isActive
@@ -7421,19 +7415,20 @@
                         const index = customQuickBells.findIndex(b => b && b.id === id);
                         if (index > -1) {
                             customQuickBells[index] = null; // Mark slot as null
+                            
+                            // V5.04 FIX: Manually uncheck the toggle before re-render, 
+                            // ensuring the slot is shown as inactive/empty.
+                            const toggle = document.querySelector(`.custom-quick-bell-toggle[data-bell-id="${id}"]`);
+                            if(toggle) toggle.checked = false; 
+
                             renderCustomQuickBells(); // Re-render the manager
-                            // Don't need to manually uncheck - the render will handle it
                         }
-                    }
                     } else if (previewBtn) {
                         playBell(previewBtn.dataset.sound);
                     } else if (iconBtn) { // NEW V5.00: Open Icon Modal
-                        console.log('Icon button clicked!', iconBtn.dataset.bellId);
-                        currentCustomBellIconSlot = parseInt(iconBtn.dataset.bellId);
-                            
+                        currentCustomBellIconSlot = parseInt(iconBtn.dataset.bellId); // Store which bell ID we are editing
+                        
                         const bellData = customQuickBells.find(b => b && b.id === currentCustomBellIconSlot);
-                        console.log('Bell data:', bellData);
-
                         // V5.03: Use the new data attribute for the visual cue
                         const visualCue = iconBtn.dataset.visualCue; 
                         const bellName = bellData?.name || `Slot ${currentCustomBellIconSlot}`;
