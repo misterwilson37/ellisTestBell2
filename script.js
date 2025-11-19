@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.18.1";
+        const APP_VERSION = "5.18.2";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -3860,16 +3860,21 @@
                     // (This is the original logic)
                     currentEditingBell = { ...bell }; // Store state
                     
-                    // Set fields
+                    / Set fields
                     editBellTimeInput.value = bell.time;
                     editBellNameInput.value = bell.name;
-                    editBellSoundInput.value = bell.originalSound; // Use originalSound
-                    editBellStatus.classList.add('hidden'); // Clear status
-                    
-                    updateSoundDropdowns();
-                    editBellSoundInput.value = bell.originalSound; 
-
-                    if (bell.type === 'shared') {
+                        
+                   // FIX 5.19: Use the bell's actual sound for custom bells, originalSound for shared bells
+                   const soundToShow = bell.type === 'custom' ? bell.sound : bell.originalSound;
+                   editBellSoundInput.value = soundToShow || 'ellisBell.mp3'; // Fallback to Ellis Bell if empty
+                        
+                   editBellStatus.classList.add('hidden'); // Clear status
+                        
+                   updateSoundDropdowns();
+                        
+                   editBellSoundInput.value = soundToShow || 'ellisBell.mp3'; // Set again after dropdown update 5.18.2
+                        
+                   if (bell.type === 'shared') {
                         editBellOverrideContainer.classList.remove('hidden');
                         editBellOverrideCheckbox.checked = false;
                         // NEW V4.95: Disable sound select by default for shared bells
@@ -4770,6 +4775,7 @@
                 }
     
                 // 3. Show Modal
+                addStaticBellSound.value = 'ellisBell.mp3'; // Set default sound
                 addStaticBellModal.classList.remove('hidden');
             }
 
@@ -5007,7 +5013,7 @@
                 const periodName = currentRelativePeriod.name;
                 const time = addStaticBellTime.value;
                 const name = addStaticBellName.value.trim();
-                const sound = addStaticBellSound.value;
+                const sound = addStaticBellSound.value || 'ellisBell.mp3';
                 
                 if (!time || !name) {
                     addStaticBellStatus.textContent = "Time and Name are required.";
