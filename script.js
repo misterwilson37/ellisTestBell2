@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.24.1"
+        const APP_VERSION = "5.24.2"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7519,9 +7519,13 @@
                         
                         // 5.21: Use the existing quick bell sound select that's in the custom text visual modal
                         const visualSelectElement = document.getElementById('quick-bell-visual-select');
+                        console.log('Visual select element:', visualSelectElement);
                         if (visualSelectElement) {
                             updateVisualDropdowns(visualSelectElement);
+                            console.log('Options after update:', visualSelectElement.innerHTML);
+                            console.log('Trying to set value to:', visualCue);
                             visualSelectElement.value = visualCue;
+                            console.log('Actual value set:', visualSelectElement.value);
                         }
 
                         // 3. Load text/color inputs for the custom text section (for pre-fill)
