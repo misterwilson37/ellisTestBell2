@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.18.2";
+        const APP_VERSION = "5.18.3";
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -3860,7 +3860,7 @@
                     // (This is the original logic)
                     currentEditingBell = { ...bell }; // Store state
                     
-                    / Set fields
+                    // Set fields
                     editBellTimeInput.value = bell.time;
                     editBellNameInput.value = bell.name;
                         
