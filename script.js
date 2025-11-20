@@ -1,4 +1,5 @@
-        const APP_VERSION = "5.27"
+        const APP_VERSION = "5.28"
+        // The goal of 5.28 is to fix the anchor bell confusion.
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -2152,24 +2153,26 @@
                     // 2c. Find the anchor bell (start or end) within that period.
                     // Note: We MUST recursively find the time for these, as they could also be relative.
                     let anchorBell;
-                    // --- MODIFIED V4.78: Multi-Add Circular Dependency FIX ---
-                    // We must find the first/last *STATIC* (non-relative) bell.
-                    // This prevents a new relative bell from anchoring to itself,
-                    // which was the source of the circular dependency errors.
-                    const staticBellsInPeriod = parentPeriod.bells.filter(b => !b.relative);
+                       
+                    // --- MODIFIED V4.78 & V5.28: Only anchor to SHARED bells ---
+                    // Relative bells should ONLY anchor to admin-controlled shared bells,
+                    // never to teacher-added personal bells. This keeps anchors stable.
+                    const sharedStaticBells = parentPeriod.bells.filter(b => 
+                        !b.relative && b._originType === 'shared'
+                    );
                     
-                    if (staticBellsInPeriod.length === 0) {
-                         console.warn(`Could not find a STATIC anchor bell in period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
-                         return { ...bell, isOrphan: true, fallbackTime: "00:00:00" };
+                    if (sharedStaticBells.length === 0) {
+                        console.warn(`No shared anchor bells in period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
+                        return { ...bell, isOrphan: true, fallbackTime: "00:00:00" };
                     }
-                    
+                        
                     if (parentAnchorType === 'period_start') {
-                        anchorBell = staticBellsInPeriod[0];
+                       anchorBell = sharedStaticBells[0]; // First shared bell
                     } else {
-                        // 'period_end'
-                        anchorBell = staticBellsInPeriod[staticBellsInPeriod.length - 1];
+                       // 'period_end'
+                       anchorBell = sharedStaticBells[sharedStaticBells.length - 1]; // Last shared bell
                     }
-                    // --- END V4.78 FIX ---
+                    // --- END V4.78/V5.28 FIX ---
 
                     // 2d. Recursively find the anchor bell's time
                     const anchorTime = calculateRelativeBellTime(anchorBell, bellMap, allPeriods, new Set(visited));
