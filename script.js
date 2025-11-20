@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.32"
+        const APP_VERSION = "5.32.1"
         // clean up edit bell row buttons
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -1896,6 +1896,8 @@
                                 data-bell-id="${bell.bellId || getBellId(bell)}"
                                 data-original-sound="${originalSound}" data-period-name="${period.name}"
                                 data-is-relative="${!!bell.relative}"> <!-- NEW in 4.31 -->
+                                data-visual-cue="${bell.visualCue || ''}"
+                                data-visual-mode="${bell.visualMode || 'none'}">
                                 
                                 <!-- Bell Info (Time, Name, Sound) (left) -->
                                 <div class="flex items-center space-x-4 min-w-0 flex-grow">
@@ -8247,11 +8249,12 @@
                         name: bellElement.dataset.name,
                         sound: bellElement.dataset.sound,
                         type: bellElement.dataset.type,
-                        // NEW: v4.12.1 - Add bellId
                         bellId: bellElement.dataset.bellId, 
                         originalSound: bellElement.dataset.originalSound,
-                        periodName: bellElement.dataset.periodName, // NEW: Grab period name
-                        isRelative: bellElement.dataset.isRelative === 'true' // NEW in 4.31
+                        periodName: bellElement.dataset.periodName,
+                        isRelative: bellElement.dataset.isRelative === 'true',
+                        visualCue: bellElement.dataset.visualCue || '', // NEW 5.32
+                        visualMode: bellElement.dataset.visualMode || 'none' // NEW 5.32
                     };
                         
                     // MODIFIED: v4.12.1 - Fixed 'contents' typo to 'contains' and passing full bell object
