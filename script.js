@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.30.1"
+        const APP_VERSION = "5.30.2"
         // Find those custom text bell images
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -8410,6 +8410,28 @@
                             customTextContainer.classList.remove('hidden');
                         }
 
+                        // NEW 5.30.2: Add live preview updates
+                        customTextInput.addEventListener('input', updateCustomTextPreviews);
+                        customTextColorInput.addEventListener('input', updateCustomTextPreviews);
+                        customTextBgColorInput.addEventListener('input', updateCustomTextPreviews);
+                        
+                        function updateCustomTextPreviews() {
+                            const text = customTextInput.value.trim().toUpperCase().substring(0, 3) || '?';
+                            const fgColor = customTextColorInput.value;
+                            const bgColor = customTextBgColorInput.value;
+                            
+                            // Update live preview (large)
+                            const livePreview = document.getElementById('quick-bell-visual-preview-full');
+                            livePreview.innerHTML = `<div class="w-full h-full flex items-center justify-center" style="background-color: ${bgColor};">
+                                <span class="text-6xl font-bold" style="color: ${fgColor};">${text}</span>
+                            </div>`;
+                            
+                            // Update quick bell button preview (small)
+                            const iconPreview = document.getElementById('quick-bell-visual-preview-icon-inner');
+                            iconPreview.innerHTML = `<span class="text-xl font-bold" style="color: ${fgColor};">${text}</span>`;
+                            iconPreview.style.backgroundColor = bgColor;
+                        }
+                            
                         // 5.25.7: More console logging
                         console.log('After removing hidden:', customTextVisualModal.classList.contains('hidden'));
                             
