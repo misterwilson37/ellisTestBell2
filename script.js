@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.31"
+        const APP_VERSION = "5.31.1"
         // Per bell visual cues with before/after context
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -4045,14 +4045,15 @@
                 
                 const oldBell = currentEditingBell;
                 const visualMode = document.querySelector('input[name="edit-visual-mode"]:checked')?.value || 'none';
+                const visualCue = document.getElementById('edit-bell-visual')?.value || '';
                     
-                // MODIFIED in 4.21: Build the newBell object
                 const newBell = {
                     bellId: oldBell.bellId,
                     time: editBellTimeInput.value,
                     name: editBellNameInput.value.trim(),
                     sound: oldBell.sound,
-                    visualMode // Use the form value!
+                    visualMode,
+                    visualCue
                 };
 
                 // NEW in 4.21: Check if we should override the sound
@@ -5011,23 +5012,23 @@
                 // 3. Create the new bell object
                 let finalBell;
                 const visualMode = document.querySelector('input[name="relative-visual-mode"]:checked')?.value || 'none';
+                const visualCue = document.getElementById('relative-bell-visual')?.value || '';
                     
                 if (isEditing && convertToStatic) {
-                    // --- Case 1: Editing and Converting to Static ---
-                    const calculatedTime = updateCalculatedTime();
                     finalBell = {
                         name: bellName,
                         sound: bellSound,
-                        visualMode, // Use the form value!
+                        visualMode,
+                        visualCue,
                         bellId: currentEditingBell.bellId,
                         time: calculatedTime
                     };
                 } else {
-                    // --- Case 2: Adding new or Editing existing Relative Bell ---
                     finalBell = {
                         name: bellName,
                         sound: bellSound,
-                        visualMode, // Use the form value!
+                        visualMode,
+                        visualCue,
                         bellId: isEditing ? currentEditingBell.bellId : generateBellId(),
                         relative: {
                             parentBellId: parentBellId,
@@ -5145,12 +5146,14 @@
                 
                 // 2. Create the new bell object
                 const visualMode = document.querySelector('input[name="add-static-visual-mode"]:checked')?.value || 'none';
-
+                const visualCue = document.getElementById('add-static-bell-visual')?.value || '';
+                
                 const newBell = { 
                     time, 
                     name, 
                     sound, 
-                    visualMode, // Now reads from the radio buttons!
+                    visualMode,
+                    visualCue, // ADD THIS LINE!
                     bellId: generateBellId() 
                 };
                 // 5.18.1 Log static bell information for reference
@@ -5312,17 +5315,17 @@
                     
                     // Create the new relative bell
                     const visualMode = document.querySelector('input[name="multi-relative-visual-mode"]:checked')?.value || 'none';
-                        
+                    const visualCue = document.getElementById('multi-relative-bell-visual')?.value || '';
+                            
                     const newBell = {
                         name: bellName,
                         sound: bellSound,
-                        visualMode, // NEW 5.31: Default to no special visual
+                        visualMode,
+                        visualCue,
                         bellId: generateBellId(),
                         relative: {
-                            // DELETED: parentBellId: anchorBell.bellId,
-                            // NEW: Store the stable anchor info
                             parentPeriodName: periodName,
-                            parentAnchorType: parentAnchorType, // 'period_start' or 'period_end'
+                            parentAnchorType: parentAnchorType,
                             offsetSeconds: totalOffsetSeconds
                         }
                     };
@@ -5945,8 +5948,17 @@
             }
 
             function updateVisualDropdowns() {
-                const selects = [ editPeriodImageSelect, newPeriodImageSelect, quickBellVisualSelect ]; // Add any future visual selects here
-                
+                // Added 5.31.1: Dropdowns to add images to individual bells
+                const selects = [ 
+                    editPeriodImageSelect, 
+                    newPeriodImageSelect, 
+                    quickBellVisualSelect,
+                    document.getElementById('add-static-bell-visual'),
+                    document.getElementById('relative-bell-visual'),
+                    document.getElementById('edit-bell-visual'),
+                    document.getElementById('multi-bell-visual'),
+                    document.getElementById('multi-relative-bell-visual')
+                ];
                 // 1. Create options for default SVGs (dynamically)
                 // MODIFIED V4.61: Removed static number options ('1st Period', '2nd Period')
                 const defaultVisuals = ['Lunch', 'Passing Period'];
@@ -6412,12 +6424,14 @@
                 e.preventDefault();
 
                 const visualMode = document.querySelector('input[name="multi-add-visual-mode"]:checked')?.value || 'none';
+                const visualCue = document.getElementById('multi-bell-visual')?.value || '';
                     
                 const newBell = {
                     time: multiBellTimeInput.value,
                     name: multiBellNameInput.value,
                     sound: multiBellSoundInput.value,
-                    visualMode, // NEW 5.31
+                    visualMode,
+                    visualCue
                 };
                 
                 if (!newBell.time || !newBell.name) {
@@ -8553,6 +8567,13 @@
                 editPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
                 newPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
                 quickBellVisualSelect.addEventListener('change', visualSelectChangeHandler); // NEW 5.24.4: Add quick bell support
+
+                // NEW 5.31.1: Bell visual dropdowns
+                document.getElementById('add-static-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('relative-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('edit-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('multi-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('multi-relative-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
                     
                 // --- NEW V4.76: Sound Select Change Handler (for [UPLOAD]) ---
                 function changeSoundSelectHandler(e) {
