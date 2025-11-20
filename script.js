@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.30.3"
-        // Find those custom text bell images
+        const APP_VERSION = "5.30.4"
+        // last quickbell tweak!
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1597,10 +1597,10 @@
                 if (activeCustomBells.length > 0) {
                     customQuickBellSeparator.classList.remove('hidden');
                     customQuickBellsContainer.innerHTML = activeCustomBells.map(bell => {
-                        // V5.04: Format tooltip time to omit seconds if zero
-                        const formattedTime = bell.seconds === 0 
-                            ? `${bell.minutes}m` 
-                            : `${bell.minutes}m ${bell.seconds}s`;
+                        // V5.30.4: Format tooltip time to omit seconds or minutes if zero
+                        const formattedTime = bell.minutes > 0 
+                            ? (bell.seconds > 0 ? `${bell.minutes}m ${bell.seconds}s` : `${bell.minutes}m`)
+                            : `${bell.seconds}s`;
                         
                         // NEW 5.20: Get the visual content (image or text)
                         const visualCue = bell.visualCue || `[CUSTOM_TEXT] ${bell.iconText}|${bell.iconBgColor}|${bell.iconFgColor}`;
@@ -7629,7 +7629,6 @@
                         } else {
                             // Fallback, just close
                             customTextVisualModal.classList.add('hidden');
-                            // customQuickBellManagerModal.style.opacity = '1'; // NEW: Restore manager
                         }
                         return;
                     }
@@ -7672,7 +7671,6 @@
                     // 3. Clear state and hide modal
                     currentCustomBellIconSlot = null;
                     customTextVisualModal.classList.add('hidden');
-                    // customQuickBellManagerModal.style.opacity = '1'; // NEW: Restore manager
                     customTextVisualModal.querySelector('h3').textContent = `Set Custom Text Visual`;
                 });
                 
@@ -8285,7 +8283,6 @@
                 // NEW in 4.60.3: Custom Text Modal Listeners
                 customTextCancelBtn.addEventListener('click', () => {
                     customTextVisualModal.classList.add('hidden');
-                    // customQuickBellManagerModal.style.opacity = '1'; // NEW in 5.25.7: Restore manager
                     // MODIFIED V4.75: Do not reset the select, just close.
                     // The original value is preserved by the change handler.
                     currentVisualSelectTarget = null;
@@ -8403,7 +8400,6 @@
                         // Store the target select element
                         currentVisualSelectTarget = e.target;
                         console.log('Opening custom text modal, z-index 80'); // New in 5.25.6: Console logging!
-                        // customQuickBellManagerModal.style.opacity = '0.3'; // New in 5.25.8: Dim the manager modal
                         customTextVisualModal.classList.remove('hidden');
                         customTextVisualModal.style.zIndex = '80'; // NEW in 5.25.?: Make sure it's on top of everything
                         
