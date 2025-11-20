@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 5.12</title>
+    <title>Ellis Web Bell 5.13</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -492,7 +492,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.12</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.13</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -562,8 +562,8 @@
             <span class="font-semibold text-gray-700 flex-shrink-0">Quick Bell:</span>
             
             <!-- 2. Sound Dropdown -->
-            <!-- 5.12: Dynamically change size to factor in quick bells -->
-			<div class="flex-shrink min-w-0 w-full sm:flex-1 sm:max-w-xs">
+            <!-- 5.13: Dynamically change size to factor in quick bells -->
+			<div class="flex-shrink-0 w-full sm:flex-1 sm:max-w-xs">
                 <!-- This select will be populated by JS to match the others -->
                 <select id="quickBellSoundSelect" class="w-full truncate px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-11">
                     <optgroup label="Default Sounds">
@@ -576,9 +576,7 @@
             </div>
 
             <!-- 3. Button Container -->
-            <div class="flex-grow flex flex-wrap gap-2">
-                
-                
+            <div class="flex-grow flex flex-wrap gap-2 items-center">
                 <!-- ADDED: The 'quick-bell-btn' class as a JS hook -->
                 <button data-minutes="1" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">1</button>
                 <button data-minutes="2" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">2</button>
