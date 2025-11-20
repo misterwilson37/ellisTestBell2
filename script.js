@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.9"
+        const APP_VERSION = "5.26"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1352,11 +1352,9 @@
                         const activeCustomBell = customQuickBells.find(b => b && b.name === nextPeriodName);
                         
                         if (activeCustomBell) {
-                            // NEW V5.00: Use Custom Text/Icon and its saved colors for banner display
-                            const bgColor = activeCustomBell.iconBgColor || '#4338CA';
-                            const fgColor = activeCustomBell.iconFgColor || '#FFFFFF';
-                            const customVisual = `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${bgColor}|${fgColor}`;
-                            visualHtml = getVisualHtml(customVisual, activeCustomBell.iconText);
+                            // NEW 5.20: Use the bell's actual visualCue (which could be image URL or custom text)
+                            const visualCue = activeCustomBell.visualCue || `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${activeCustomBell.iconBgColor}|${activeCustomBell.iconFgColor}`;
+                            visualHtml = getVisualHtml(visualCue, activeCustomBell.name);
                         } else {
                             // Special icon for Generic Quick Bell
                             visualHtml = `<div class="w-full h-full p-8 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>`;
@@ -7595,7 +7593,7 @@
                         } else {
                             // Fallback, just close
                             customTextVisualModal.classList.add('hidden');
-                            customQuickBellManagerModal.style.opacity = '1'; // NEW: Restore manager
+                            // customQuickBellManagerModal.style.opacity = '1'; // NEW: Restore manager
                         }
                         return;
                     }
@@ -7632,7 +7630,7 @@
                     // 3. Clear state and hide modal
                     currentCustomBellIconSlot = null;
                     customTextVisualModal.classList.add('hidden');
-                    customQuickBellManagerModal.style.opacity = '1'; // NEW: Restore manager
+                    // customQuickBellManagerModal.style.opacity = '1'; // NEW: Restore manager
                     customTextVisualModal.querySelector('h3').textContent = `Set Custom Text Visual`;
                 });
                 
@@ -8245,7 +8243,7 @@
                 // NEW in 4.60.3: Custom Text Modal Listeners
                 customTextCancelBtn.addEventListener('click', () => {
                     customTextVisualModal.classList.add('hidden');
-                    customQuickBellManagerModal.style.opacity = '1'; // NEW in 5.25.7: Restore manager
+                    // customQuickBellManagerModal.style.opacity = '1'; // NEW in 5.25.7: Restore manager
                     // MODIFIED V4.75: Do not reset the select, just close.
                     // The original value is preserved by the change handler.
                     currentVisualSelectTarget = null;
@@ -8356,7 +8354,7 @@
                         // Store the target select element
                         currentVisualSelectTarget = e.target;
                         console.log('Opening custom text modal, z-index 80'); // New in 5.25.6: Console logging!
-                        customQuickBellManagerModal.style.opacity = '0.3'; // New in 5.25.8: Dim the manager modal
+                        // customQuickBellManagerModal.style.opacity = '0.3'; // New in 5.25.8: Dim the manager modal
                         customTextVisualModal.classList.remove('hidden');
                         customTextVisualModal.style.zIndex = '80'; // NEW in 5.25.?: Make sure it's on top of everything
                         
