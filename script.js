@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.29"
-        // The goal of 5.29 is to fix the countdown grammar & punctuation duplicates.
+        const APP_VERSION = "5.30"
+        // Find those custom text bell images
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -471,6 +471,7 @@
         
         // NEW V5.00: Custom Quick Bell State
         let customQuickBells = []; // Array of { id, name, minutes, seconds, iconText, sound, isActive }
+        window.customQuickBells = customQuickBells; // 5.30: Make it accessible from console
 
         let mutedBellIds = new Set(); 
         let bellSoundOverrides = {}; // NEW: Store local sound overrides
@@ -7645,7 +7646,13 @@
                         iconTextInput.value = customText;
                         if (bgColorInput) bgColorInput.value = bgColor;
                         if (fgColorInput) fgColorInput.value = fgColor;
-                        
+                            
+                        // NEW 5.30: Update the visualCue hidden input with the full custom text format
+                        const visualCueInput = formContainer.querySelector(`input[data-field="visualCue"][data-bell-id="${currentCustomBellIconSlot}"]`);
+                        if (visualCueInput) {
+                            visualCueInput.value = `[CUSTOM_TEXT] ${customText}|${bgColor}|${fgColor}`;
+                        }
+                            
                         // Update visible button (for immediate visual feedback)
                         iconButton.dataset.iconText = customText;
                         iconButton.dataset.bgColor = bgColor;
