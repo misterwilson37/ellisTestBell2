@@ -2559,8 +2559,11 @@
                                 periodName: period.name // Tag with periodName for the update
                             });
                         }
-                    });
+                     });
                 });
+                
+                return children; // Return the collected children
+            }
             
             /**
              * Closes the orphan handling modal and clears state.
