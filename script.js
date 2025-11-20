@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.5"
+        const APP_VERSION = "5.25.6"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -8348,8 +8348,9 @@
                         // 5.25.5: Show the modal
                         // Store the target select element
                         currentVisualSelectTarget = e.target;
+                        console.log('Opening custom text modal, z-index 80'); // New in 5.25.6: Console logging!
                         customTextVisualModal.classList.remove('hidden');
-                        customTextVisualModal.style.zIndex = '80'; // NEW: Make sure it's on top of everything
+                        customTextVisualModal.style.zIndex = '80'; // NEW in 5.25.?: Make sure it's on top of everything
                         
                         // Set focus and select current text
                         setTimeout(() => customTextInput.select(), 50);
