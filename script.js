@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.26.3"
+        const APP_VERSION = "5.27"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1385,6 +1385,7 @@
                 const totalMillis = (minutes * 60000) + (seconds * 1000);
                 
                 quickBellEndTime = new Date(now.getTime() + totalMillis);
+                document.getElementById('cancel-quick-bell-btn').classList.remove('hidden'); // 5.27: Show cancel button
                 // Store the full details of the bell being launched
                 quickBellSound = sound || quickBellSoundSelect.value;
                 
@@ -8256,6 +8257,13 @@
                     currentVisualSelectTarget = null;
                 });
 
+                document.getElementById('cancel-quick-bell-btn').addEventListener('click', () => {
+                    quickBellEndTime = null;
+                    quickBellSound = 'ellisBell.mp3';
+                    document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
+                    updateClock(); // Refresh display
+                });
+                    
                 customTextVisualForm.addEventListener('submit', (e) => {
                     e.preventDefault();
                     const customText = customTextInput.value.trim().toUpperCase().substring(0, 3);
