@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- MODIFIED: Version Bump -->
-    <title>Ellis Web Bell 5.17</title>
+    <title>Ellis Web Bell 5.18</title>
     <!-- NEW: SVG Favicon (FIXED: Removed extra quote in viewBox) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -97,6 +97,29 @@
                 </select>
             </div>
 
+			<!-- NEW 5.18: Visual Display Mode -->
+			<div class="mb-4">
+			    <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
+			    <div class="grid grid-cols-3 gap-2">
+			        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+			            <input type="radio" name="multi-add-visual-mode" value="none" checked class="mr-2">
+			            <span class="text-sm">None</span>
+			        </label>
+			        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+			            <input type="radio" name="multi-add-visual-mode" value="before" class="mr-2">
+			            <span class="text-sm">Before</span>
+			        </label>
+			        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+			            <input type="radio" name="multi-add-visual-mode" value="after" class="mr-2">
+			            <span class="text-sm">After</span>
+			        </label>
+			    </div>
+			    <p class="text-xs text-gray-500 mt-1">
+			        <strong>Before:</strong> Show visual while counting down<br>
+			        <strong>After:</strong> Show visual after bell rings
+			    </p>
+			</div>
+			
             <!-- Schedule Checkboxes -->
             <div class="mt-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Select Schedules to Add to:</label>
@@ -161,6 +184,29 @@
             </div>
             <!-- END V4.95 MODIFICATION -->
 
+			<!-- NEW 5.18: Visual Display Mode -->
+			<div class="mb-4">
+			    <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
+			    <div class="grid grid-cols-3 gap-2">
+			        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+			            <input type="radio" name="edit-visual-mode" value="none" checked class="mr-2">
+			            <span class="text-sm">None</span>
+			        </label>
+			        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+			            <input type="radio" name="edit-visual-mode" value="before" class="mr-2">
+			            <span class="text-sm">Before</span>
+			        </label>
+			        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+			            <input type="radio" name="edit-visual-mode" value="after" class="mr-2">
+			            <span class="text-sm">After</span>
+			        </label>
+			    </div>
+			    <p class="text-xs text-gray-500 mt-1">
+			        <strong>Before:</strong> Show visual while counting down<br>
+			        <strong>After:</strong> Show visual after bell rings
+			    </p>
+			</div>
+			
             <!-- NEW in 4.21: Override sound checkbox for shared bells -->
             <div id="edit-bell-override-container" class="mt-4 hidden">
                 <label class="flex items-center space-x-2 cursor-pointer p-1">
@@ -492,7 +538,7 @@
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
             <!-- MODIFIED: Version Bump -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.17</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.18</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             
             <!-- MODIFIED: User info and signout button grouped -->
@@ -871,7 +917,30 @@
                         </select>
                     </div>
                 </div>
-    
+
+				<!-- NEW 5.18: Visual Display Mode -->
+				<div class="mb-4">
+				    <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
+				    <div class="grid grid-cols-3 gap-2">
+				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				            <input type="radio" name="relative-visual-mode" value="none" checked class="mr-2">
+				            <span class="text-sm">None</span>
+				        </label>
+				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				            <input type="radio" name="relative-visual-mode" value="before" class="mr-2">
+				            <span class="text-sm">Before</span>
+				        </label>
+				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				            <input type="radio" name="relative-visual-mode" value="after" class="mr-2">
+				            <span class="text-sm">After</span>
+				        </label>
+				    </div>
+				    <p class="text-xs text-gray-500 mt-1">
+				        <strong>Before:</strong> Show visual while counting down<br>
+				        <strong>After:</strong> Show visual after bell rings
+				    </p>
+				</div>
+				
                 <p id="relative-time-preview" class="text-lg font-medium text-blue-600 mt-4">Calculated Time: <span id="calculated-time">--:--:--</span></p>
                 
                 <!-- NEW in 4.31: Convert to Static (for editing) -->
@@ -942,6 +1011,29 @@
                     </button>
                 </div>
 
+				<!-- NEW 5.18: Visual Display Mode -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                            <input type="radio" name="add-static-visual-mode" value="none" checked class="mr-2">
+                            <span class="text-sm">None</span>
+                        </label>
+                        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                            <input type="radio" name="add-static-visual-mode" value="before" class="mr-2">
+                            <span class="text-sm">Before</span>
+                        </label>
+                        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                            <input type="radio" name="add-static-visual-mode" value="after" class="mr-2">
+                            <span class="text-sm">After</span>
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <strong>Before:</strong> Show visual while counting down<br>
+                        <strong>After:</strong> Show visual after bell rings
+                    </p>
+                </div>
+				
                 <p id="add-static-bell-status" class="text-red-600 text-sm mt-4 hidden"></p>
     
                 <div class="mt-6 flex justify-end gap-3">
@@ -1379,6 +1471,29 @@
                     </div>
                 </div>
 
+				<!-- NEW 5.18: Visual Display Mode -->
+				<div class="mb-4">
+				    <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
+				    <div class="grid grid-cols-3 gap-2">
+				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				            <input type="radio" name="multi-relative-visual-mode" value="none" checked class="mr-2">
+				            <span class="text-sm">None</span>
+				        </label>
+				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				            <input type="radio" name="multi-relative-visual-mode" value="before" class="mr-2">
+				            <span class="text-sm">Before</span>
+				        </label>
+				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				            <input type="radio" name="multi-relative-visual-mode" value="after" class="mr-2">
+				            <span class="text-sm">After</span>
+				        </label>
+				    </div>
+				    <p class="text-xs text-gray-500 mt-1">
+				        <strong>Before:</strong> Show visual while counting down<br>
+				        <strong>After:</strong> Show visual after bell rings
+				    </p>
+				</div>
+				
                 <!-- Relative Time Config -->
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
                     <div class="sm:col-span-2">
@@ -1555,4 +1670,4 @@ The new admin will have admin privileges (including the "Make Public" button) th
 -->
 
 <!-- MODIFIED: Version Bump -->
-<!-- Version 5.17 -->
+<!-- Version 5.18 -->
