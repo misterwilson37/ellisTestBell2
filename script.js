@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.28"
+        const APP_VERSION = "5.28.1"
         // The goal of 5.28 is to fix the anchor bell confusion.
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -2525,26 +2525,34 @@
                 allPeriods.forEach(period => {
                     period.bells.forEach(bell => {
                         if (!bell.relative) return; // Skip non-relative bells
-
+                        
                         // Check for old-style ID link
                         const isIdMatch = bell.relative.parentBellId === parentBellId;
-
+                        
                         // Check for new-style anchor link
                         let isAnchorMatch = false;
-                        // MODIFIED V4.80: Use the calculated anchor bells (trueFirstBell, trueLastBell)
+                        // MODIFIED V4.80 & V5.28.1: Use calculated anchor bells AND check they're shared
                         if (bell.relative.parentPeriodName && calculatedParentPeriod && trueFirstBell && trueLastBell) {
                             const isSamePeriod = bell.relative.parentPeriodName === calculatedParentPeriod.name;
                             const anchorType = bell.relative.parentAnchorType; // 'period_start' or 'period_end'
                             
-                            // Check if this bell is anchored to 'period_start' AND the bell being deleted *is* the true start bell
-                            if (isSamePeriod && anchorType === 'period_start' && trueFirstBell.bellId === parentBellId) {
-                                isAnchorMatch = true;
-                            // Check if this bell is anchored to 'period_end' AND the bell being deleted *is* the true end bell
-                            } else if (isSamePeriod && anchorType === 'period_end' && trueLastBell.bellId === parentBellId) {
+                            // NEW V5.28.1: Only match if the anchor bell is SHARED (not personal)
+                            // This prevents personal static bells from being treated as anchors
+                            const isStartAnchor = isSamePeriod && 
+                                                 anchorType === 'period_start' && 
+                                                 trueFirstBell.bellId === parentBellId &&
+                                                 trueFirstBell._originType === 'shared';
+                                                 
+                            const isEndAnchor = isSamePeriod && 
+                                               anchorType === 'period_end' && 
+                                               trueLastBell.bellId === parentBellId &&
+                                               trueLastBell._originType === 'shared';
+                            
+                            if (isStartAnchor || isEndAnchor) {
                                 isAnchorMatch = true;
                             }
                         }
-
+                        
                         if (isIdMatch || isAnchorMatch) {
                             children.push({
                                 ...bell,
@@ -2553,8 +2561,6 @@
                         }
                     });
                 });
-                return children;
-            }
             
             /**
              * Closes the orphan handling modal and clears state.
