@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.6"
+        const APP_VERSION = "5.25.7"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -8323,6 +8323,11 @@
                     }
                     
                     if (e.target.value === '[CUSTOM_TEXT]') {
+                        //5.25.7: Console logging
+                        console.log('Custom text selected!');
+                        console.log('customTextVisualModal:', customTextVisualModal);
+                        console.log('Has hidden class?', customTextVisualModal.classList.contains('hidden'));
+                            
                         // Keep the current selection if it was a file URL, otherwise revert to empty
                         const selectedOption = Array.from(e.target.options).find(opt => opt.selected);
                         
@@ -8351,7 +8356,10 @@
                         console.log('Opening custom text modal, z-index 80'); // New in 5.25.6: Console logging!
                         customTextVisualModal.classList.remove('hidden');
                         customTextVisualModal.style.zIndex = '80'; // NEW in 5.25.?: Make sure it's on top of everything
-                        
+
+                        // 5.25.7: More console logging
+                        console.log('After removing hidden:', customTextVisualModal.classList.contains('hidden'));
+                            
                         // Set focus and select current text
                         setTimeout(() => customTextInput.select(), 50);
                             
