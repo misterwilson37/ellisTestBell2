@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.3"
+        const APP_VERSION = "5.25.4"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1592,7 +1592,8 @@
                         
                         if (visualCue.startsWith('http')) {
                             // It's an image URL
-                            visualContent = `<img src="${visualCue}" alt="${bell.name}" class="w-full h-full object-contain">`;
+                            // Constantly updating in 5.25 to get the appearance right.
+                            visualContent = `<img src="${visualCue}" alt="${bell.name}" class="absolute inset-0 w-full h-full object-contain p-1">`;
                         } else if (visualCue.startsWith('[CUSTOM_TEXT]')) {
                             // It's custom text - extract text and colors
                             const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
@@ -7484,6 +7485,7 @@
                         // 5.24: Don't close modal - let the Firestore listener re-render it
                         customQuickBellStatus.textContent = "Quick Bells Saved!";
                         customQuickBellStatus.classList.remove('hidden');
+                        customQuickBellManagerModal.classList.add('hidden'); // 5.25.4: Close the modal
                         // Modal stays open so you can see your saved values
                         setTimeout(() => {
                             customQuickBellStatus.classList.add('hidden');
