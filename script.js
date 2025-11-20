@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.30.4"
-        // last quickbell tweak!
+        const APP_VERSION = "5.31"
+        // Per bell visual cues with before/after context
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1352,37 +1352,64 @@
                     // Store the new period name
                     currentVisualPeriodName = nextPeriodName; 
 
+                    // Store the new period name
+                    currentVisualPeriodName = nextPeriodName; 
                     let visualHtml = '';
-                    if (currentPeriod) {
+                    let visualSource = ''; // For debugging
+                        
+                    // NEW 5.31: Check for per-bell visual modes (before/after)
+                    // Priority: 1) After-mode bells that recently rang, 2) Before-mode upcoming bell, 3) Period default
+                      
+                    // Get all bells from current schedule
+                    const allBells = calculatedPeriodsList.flatMap(p => 
+                        p.bells.map(b => ({ ...b, periodName: p.name }))
+                    );
+                        
+                    // 1. Check for "after" mode bells that recently rang
+                    const now = new Date();
+                    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                        
+                    const afterBells = allBells
+                        .filter(b => b.visualMode === 'after' && b.visualCue && b.time <= currentTimeStr)
+                        .sort((a, b) => b.time.localeCompare(a.time)); // Most recent first
+                        
+                    if (afterBells.length > 0 && afterBells[0].visualCue) {
+                        visualHtml = getVisualHtml(afterBells[0].visualCue, afterBells[0].name);
+                        visualSource = `After: ${afterBells[0].name}`;
+                    }
+                        
+                    // 2. Check for "before" mode on the upcoming bell
+                    if (!visualHtml && scheduleBellObject && scheduleBellObject.visualMode === 'before' && scheduleBellObject.visualCue) {
+                        visualHtml = getVisualHtml(scheduleBellObject.visualCue, scheduleBellObject.name);
+                        visualSource = `Before: ${scheduleBellObject.name}`;
+                    }
+                        
+                    // 3. Quick bells (existing logic)
+                    if (!visualHtml && millisToQuickBell < Infinity) {
+                        const activeCustomBell = customQuickBells.find(b => b && b.isActive !== false && b.name === activeTimerLabel);
+                          
+                        if (activeCustomBell) {
+                            const visualCue = activeCustomBell.visualCue || `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${activeCustomBell.iconBgColor}|${activeCustomBell.iconFgColor}`;
+                            visualHtml = getVisualHtml(visualCue, activeCustomBell.name);
+                            visualSource = `Quick Bell: ${activeCustomBell.name}`;
+                        } else {
+                            visualHtml = `<div class="w-full h-full p-8 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>`;
+                            visualSource = 'Quick Bell (generic)';
+                        }
+                    }
+                     
+                    // 4. Fall back to period visual
+                    if (!visualHtml && currentPeriod) {
                         const visualKey = getVisualOverrideKey(activeBaseScheduleId, currentPeriod.name);
                         const visualValue = periodVisualOverrides[visualKey] || "";
                         visualHtml = getVisualHtml(visualValue, currentPeriod.name);
-                    } else if (millisToQuickBell < Infinity) { // A Quick Bell is active
-                        // Check if it's a Custom Quick Bell
-                        const activeCustomBell = customQuickBells.find(b => b && b.isActive !== false && b.name === activeTimerLabel);
-                        console.log('All custom quick bells:', customQuickBells); // 5.26.2: Console logging for to try to find the quickbell graphic
-                        console.log('Quick bell active. Timer label:', activeTimerLabel);
-
-                        // 5.26.1: Console logging to find big graphic
-                        console.log('Quick bell active. Timer label:', activeTimerLabel);
-                        console.log('Found custom bell?', activeCustomBell);
-                        if (activeCustomBell) console.log('Visual cue:', activeCustomBell.visualCue);
-                        
-                        if (activeCustomBell) {
-                            // NEW 5.20: Use the bell's actual visualCue (which could be image URL or custom text)
-                            const visualCue = activeCustomBell.visualCue || `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${activeCustomBell.iconBgColor}|${activeCustomBell.iconFgColor}`;
-                            visualHtml = getVisualHtml(visualCue, activeCustomBell.name);
-                        } else {
-                            // Special icon for Generic Quick Bell
-                            visualHtml = `<div class="w-full h-full p-8 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>`;
-                        }
-                    } else {
-                        // Default / Passing Period
-                        visualHtml = getDefaultVisualCue("Passing Period");
+                        visualSource = `Period: ${currentPeriod.name}`;
                     }
-                    
-                    // Inject into main container (now only runs once per period change)
-                    visualCueContainer.innerHTML = visualHtml;
+                        
+                    // 5. Default passing period
+                    if (!visualHtml) {
+                        visualHtml = getDefaultVisualCue("Passing Period");
+                        visualSource = 'Passing Period (default)';
                     
                 } catch (e) {
                     console.error("Error updating visual cue:", e);
@@ -3867,6 +3894,10 @@
                 relativePeriodName.textContent = bell.periodName;
                 relativeBellForm.reset();
                 relativeBellStatus.classList.add('hidden');
+                // NEW 5.31: Set the visual mode radio button
+                const visualMode = bell.visualMode || 'none';
+                const visualRadio = document.querySelector(`input[name="relative-visual-mode"][value="${visualMode}"]`);
+                if (visualRadio) visualRadio.checked = true;
 
                 // NEW: Change modal title for editing
                 const modalTitle = relativeBellModal.querySelector('h3');
@@ -3946,6 +3977,10 @@
                     // Set fields
                     editBellTimeInput.value = bell.time;
                     editBellNameInput.value = bell.name;
+                    // NEW 5.31: Set the visual mode radio button
+                    const visualMode = bell.visualMode || 'none';
+                    const visualRadio = document.querySelector(`input[name="edit-visual-mode"][value="${visualMode}"]`);
+                    if (visualRadio) visualRadio.checked = true;
                         
                    // FIX 5.19: Use the bell's actual sound for custom bells, originalSound for shared bells
                    const soundToShow = bell.type === 'custom' ? bell.sound : bell.originalSound;
@@ -4009,13 +4044,15 @@
                 if (!currentEditingBell) return;
                 
                 const oldBell = currentEditingBell;
-                
+                const visualMode = document.querySelector('input[name="edit-visual-mode"]:checked')?.value || 'none';
+                    
                 // MODIFIED in 4.21: Build the newBell object
                 const newBell = {
-                    bellId: oldBell.bellId, // NEW in 4.36: Pass the bellId
+                    bellId: oldBell.bellId,
                     time: editBellTimeInput.value,
                     name: editBellNameInput.value.trim(),
-                    sound: oldBell.sound // Start by assuming the sound does NOT change
+                    sound: oldBell.sound,
+                    visualMode // Use the form value!
                 };
 
                 // NEW in 4.21: Check if we should override the sound
@@ -4973,22 +5010,24 @@
  
                 // 3. Create the new bell object
                 let finalBell;
-
+                const visualMode = document.querySelector('input[name="relative-visual-mode"]:checked')?.value || 'none';
+                    
                 if (isEditing && convertToStatic) {
                     // --- Case 1: Editing and Converting to Static ---
-                    const calculatedTime = updateCalculatedTime(); // Get the HH:MM:SS time
+                    const calculatedTime = updateCalculatedTime();
                     finalBell = {
                         name: bellName,
                         sound: bellSound,
-                        bellId: currentEditingBell.bellId, // Keep existing ID
-                        time: calculatedTime // This makes it a static bell
-                        // 'relative' property is removed
+                        visualMode, // Use the form value!
+                        bellId: currentEditingBell.bellId,
+                        time: calculatedTime
                     };
                 } else {
                     // --- Case 2: Adding new or Editing existing Relative Bell ---
                     finalBell = {
                         name: bellName,
                         sound: bellSound,
+                        visualMode, // Use the form value!
                         bellId: isEditing ? currentEditingBell.bellId : generateBellId(),
                         relative: {
                             parentBellId: parentBellId,
@@ -5105,7 +5144,15 @@
                 }
                 
                 // 2. Create the new bell object
-                const newBell = { time, name, sound, bellId: generateBellId() };
+                const visualMode = document.querySelector('input[name="add-static-visual-mode"]:checked')?.value || 'none';
+
+                const newBell = { 
+                    time, 
+                    name, 
+                    sound, 
+                    visualMode, // Now reads from the radio buttons!
+                    bellId: generateBellId() 
+                };
                 // 5.18.1 Log static bell information for reference
                 console.log('🔔 Creating static bell:', JSON.stringify(newBell));
                     
@@ -5264,9 +5311,12 @@
                     // We will save the *reference* and let the calculation engine find it.
                     
                     // Create the new relative bell
+                    const visualMode = document.querySelector('input[name="multi-relative-visual-mode"]:checked')?.value || 'none';
+                        
                     const newBell = {
                         name: bellName,
                         sound: bellSound,
+                        visualMode, // NEW 5.31: Default to no special visual
                         bellId: generateBellId(),
                         relative: {
                             // DELETED: parentBellId: anchorBell.bellId,
@@ -6360,11 +6410,14 @@
                 
             async function handleMultiAddSubmit(e) {
                 e.preventDefault();
-                
+
+                const visualMode = document.querySelector('input[name="multi-add-visual-mode"]:checked')?.value || 'none';
+                    
                 const newBell = {
                     time: multiBellTimeInput.value,
                     name: multiBellNameInput.value,
-                    sound: multiBellSoundInput.value
+                    sound: multiBellSoundInput.value,
+                    visualMode, // NEW 5.31
                 };
                 
                 if (!newBell.time || !newBell.name) {
