@@ -1917,7 +1917,13 @@
                                             <!-- NEW: v4.10.3 - Relative Bell Icon -->
                                             ${bell.relative ? 
                                                 `<span class="ml-2 text-purple-600" title="Relative Bell (Time is calculated)">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v2H8v-2z"/></svg>
+                                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v2H8v-2z"/></svg>
+                                                </span>` : ''}
+                                            
+                                            <!-- NEW 5.32: Visual Cue Indicator -->
+                                            ${bell.visualCue && bell.visualMode && bell.visualMode !== 'none' ? 
+                                                `<span class="ml-2 text-green-600" title="Has custom visual (${bell.visualMode} mode)">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                                                 </span>` : ''}
                                         </span>
                                         <!-- MODIFIED V4.87: Removed all custom coloring for a cleaner UI -->
@@ -1930,7 +1936,6 @@
                                 
                                     <!-- 1. Edit Button (Consolidated for Custom or Shared/Admin) -->
                                     <button class="${isCustom ? 'edit-custom-btn' : 'edit-btn'} px-3 py-1 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-                                            style="${!isCustom && !isAdmin && bell.type === 'shared' ? 'display: none;' : ''}" 
                                             aria-label="Edit bell ${safeName}"
                                             title="Edit bell">Edit</button>
 
@@ -1940,11 +1945,7 @@
                                             aria-label="Delete bell ${safeName}"
                                             title="Delete bell">Delete</button>
 
-                                    <!-- MODIFIED V4.81: Show Sound button for ALL bells -->
-                                    <!-- For custom bells, it will open the Edit modal -->
-                                    <button class="${isCustom ? 'edit-custom-btn' : 'sound-btn'} px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                                            aria-label="Change sound for ${safeName}"
-                                            title="Change Sound">Sound</button>
+                                    <!-- The old "Sound" button is now redundant and removed here. -->
 
                                     <!-- 3. Play/Preview Button -->
                                     <button class="preview-bell-btn px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
