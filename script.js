@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.1"
+        const APP_VERSION = "5.25.2"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1592,7 +1592,7 @@
                         
                         if (visualCue.startsWith('http')) {
                             // It's an image URL
-                            visualContent = `<img src="${visualCue}" alt="${bell.name}" class="w-10 h-10 object-contain">`;
+                            visualContent = `<img src="${visualCue}" alt="${bell.name}" class="w-full h-full object-cover p-1">`;
                         } else if (visualCue.startsWith('[CUSTOM_TEXT]')) {
                             // It's custom text - extract text and colors
                             const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
@@ -8354,6 +8354,40 @@
                 }
                 // --- END V4.75 (FIX) ---
 
+                // NEW 5.25.2: Update quick bell visual previews when dropdown changes
+                quickBellVisualSelect.addEventListener('change', (e) => {
+                    const value = e.target.value;
+                    const previewFull = document.getElementById('quick-bell-visual-preview-full');
+                    const previewIcon = document.getElementById('quick-bell-visual-preview-icon-inner');
+                    
+                    if (!previewFull || !previewIcon) return;
+                    
+                    if (value.startsWith('http')) {
+                        // Image URL
+                        previewFull.innerHTML = `<img src="${value}" class="w-full h-full object-contain" alt="Preview">`;
+                        previewIcon.innerHTML = `<img src="${value}" class="w-full h-full object-contain" alt="Icon">`;
+                    } else if (value.startsWith('[CUSTOM_TEXT]')) {
+                        // Custom text - extract parts
+                        const parts = value.replace('[CUSTOM_TEXT] ', '').split('|');
+                        const text = parts[0] || '?';
+                        const bgColor = parts[1] || '#4338CA';
+                        const fgColor = parts[2] || '#FFFFFF';
+                        
+                        previewFull.innerHTML = `<span class="text-6xl font-bold" style="color: ${fgColor};">${text}</span>`;
+                        previewFull.style.backgroundColor = bgColor;
+                        
+                        previewIcon.innerHTML = `<span class="text-2xl font-bold" style="color: ${fgColor};">${text}</span>`;
+                        previewIcon.style.backgroundColor = bgColor;
+                    } else {
+                        // Clear/default
+                        previewFull.innerHTML = '<span class="text-gray-400 text-xs">Preview</span>';
+                        previewFull.style.backgroundColor = '#F3F4F6';
+                        previewIcon.innerHTML = '<span class="text-gray-400 text-xs">Icon</span>';
+                        previewIcon.style.backgroundColor = '#F3F4F6';
+                    }
+                });
+
+                    
                 // NEW in 4.60.3: Attach the custom text handler to the main edit/new period selects
                 editPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
                 newPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
