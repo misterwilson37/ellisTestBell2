@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.30"
+        const APP_VERSION = "5.30.1"
         // Find those custom text bell images
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -7590,6 +7590,10 @@
                             console.log('Trying to set value to:', visualCue);
                             visualSelectElement.value = visualCue;
                             console.log('Actual value set:', visualSelectElement.value);
+                            
+                            // NEW 5.30.1: Manually trigger preview update for existing custom text
+                            const changeEvent = new Event('change', { bubbles: true });
+                            visualSelectElement.dispatchEvent(changeEvent);
                         }
 
                         // 3. Load text/color inputs for the custom text section (for pre-fill)
