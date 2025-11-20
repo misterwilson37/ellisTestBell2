@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.7"
+        const APP_VERSION = "5.25.8"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7582,7 +7582,7 @@
                     }
                 });
                 
-                // NEW V5.00: Attach the Custom Text Visual Modal submit logic to save back to the manager's hidden fields
+                // Edited V5.25.7: Attach the Custom Text Visual Modal submit logic to save back to the manager's hidden fields
                 customTextVisualForm.addEventListener('submit', (e) => {
                     e.preventDefault();
                     
@@ -7595,10 +7595,10 @@
                         } else {
                             // Fallback, just close
                             customTextVisualModal.classList.add('hidden');
+                            customQuickBellManagerModal.style.opacity = '1'; // NEW: Restore manager
                         }
                         return;
                     }
-
                     const customText = customTextInput.value.trim().toUpperCase().substring(0, 3);
                     const fgColor = customTextColorInput.value;
                     const bgColor = customTextBgColorInput.value;
@@ -7606,12 +7606,12 @@
                     // 1. Find the corresponding hidden inputs in the custom bell form
                     const formContainer = document.getElementById('custom-quick-bell-list-container');
                     
-                    // Update hidden inputs for the specific slot
+                    // Update hidden inputs for the specific slot - FIX: Use parentheses not backticks
                     const iconTextInput = formContainer.querySelector(`input[data-field="iconText"][data-bell-id="${currentCustomBellIconSlot}"]`);
                     const bgColorInput = formContainer.querySelector(`input[data-field="iconBgColor"][data-bell-id="${currentCustomBellIconSlot}"]`);
                     const fgColorInput = formContainer.querySelector(`input[data-field="iconFgColor"][data-bell-id="${currentCustomBellIconSlot}"]`);
                     
-                    // 2. Find the visible button to update its style
+                    // 2. Find the visible button to update its style - FIX: Use parentheses not backticks
                     const iconButton = formContainer.querySelector(`.custom-bell-icon-btn[data-bell-id="${currentCustomBellIconSlot}"]`);
                     
                     if (iconTextInput && iconButton) {
@@ -7631,8 +7631,9 @@
                     
                     // 3. Clear state and hide modal
                     currentCustomBellIconSlot = null;
-                        customTextVisualModal.classList.add('hidden');
-                        customTextVisualModal.querySelector('h3').textContent = `Set Custom Text Visual`;
+                    customTextVisualModal.classList.add('hidden');
+                    customQuickBellManagerModal.style.opacity = '1'; // NEW: Restore manager
+                    customTextVisualModal.querySelector('h3').textContent = `Set Custom Text Visual`;
                 });
                 
                 // NEW V5.01: Listener for the Active/Deactive checkbox (Toggle interaction)
@@ -8244,6 +8245,7 @@
                 // NEW in 4.60.3: Custom Text Modal Listeners
                 customTextCancelBtn.addEventListener('click', () => {
                     customTextVisualModal.classList.add('hidden');
+                    customQuickBellManagerModal.style.opacity = '1'; // NEW in 5.25.7: Restore manager
                     // MODIFIED V4.75: Do not reset the select, just close.
                     // The original value is preserved by the change handler.
                     currentVisualSelectTarget = null;
@@ -8354,6 +8356,7 @@
                         // Store the target select element
                         currentVisualSelectTarget = e.target;
                         console.log('Opening custom text modal, z-index 80'); // New in 5.25.6: Console logging!
+                        customQuickBellManagerModal.style.opacity = '0.3'; // New in 5.25.8: Dim the manager modal
                         customTextVisualModal.classList.remove('hidden');
                         customTextVisualModal.style.zIndex = '80'; // NEW in 5.25.?: Make sure it's on top of everything
 
