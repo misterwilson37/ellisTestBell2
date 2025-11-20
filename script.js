@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.8"
+        const APP_VERSION = "5.25.9"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -8359,6 +8359,12 @@
                         customQuickBellManagerModal.style.opacity = '0.3'; // New in 5.25.8: Dim the manager modal
                         customTextVisualModal.classList.remove('hidden');
                         customTextVisualModal.style.zIndex = '80'; // NEW in 5.25.?: Make sure it's on top of everything
+                        
+                        // NEW in 5.25.9: Show the custom text input section
+                        const customTextContainer = document.getElementById('custom-text-color-container');
+                        if (customTextContainer) {
+                            customTextContainer.classList.remove('hidden');
+                        }
 
                         // 5.25.7: More console logging
                         console.log('After removing hidden:', customTextVisualModal.classList.contains('hidden'));
