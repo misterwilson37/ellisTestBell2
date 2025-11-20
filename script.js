@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.32.1"
+        const APP_VERSION = "5.32.2"
         // clean up edit bell row buttons
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -1895,7 +1895,7 @@
                                 data-sound="${finalSound}" data-type="${bell.type}"
                                 data-bell-id="${bell.bellId || getBellId(bell)}"
                                 data-original-sound="${originalSound}" data-period-name="${period.name}"
-                                data-is-relative="${!!bell.relative}"> <!-- NEW in 4.31 -->
+                                data-is-relative="${!!bell.relative}"
                                 data-visual-cue="${bell.visualCue || ''}"
                                 data-visual-mode="${bell.visualMode || 'none'}">
                                 
