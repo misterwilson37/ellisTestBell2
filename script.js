@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.31.1"
+        const APP_VERSION = "5.31.2"
         // Per bell visual cues with before/after context
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -1410,10 +1410,16 @@
                     if (!visualHtml) {
                         visualHtml = getDefaultVisualCue("Passing Period");
                         visualSource = 'Passing Period (default)';
+                    }
                     
-                } catch (e) {
-                    console.error("Error updating visual cue:", e);
-                }
+                    console.log(`Visual: ${visualSource}`);
+                      
+                    // Inject into main container
+                    visualCueContainer.innerHTML = visualHtml;
+                        
+                    } catch (e) {
+                        console.error("Error updating visual cue:", e);
+                    }
             }
             
             // --- NEW: Quick Bell Function (MODIFIED V5.00) ---
