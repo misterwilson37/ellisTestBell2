@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.2"
+        const APP_VERSION = "5.25.3"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1592,7 +1592,7 @@
                         
                         if (visualCue.startsWith('http')) {
                             // It's an image URL
-                            visualContent = `<img src="${visualCue}" alt="${bell.name}" class="w-full h-full object-cover p-1">`;
+                            visualContent = `<img src="${visualCue}" alt="${bell.name}" class="w-full h-full object-contain">`;
                         } else if (visualCue.startsWith('[CUSTOM_TEXT]')) {
                             // It's custom text - extract text and colors
                             const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
@@ -8354,7 +8354,7 @@
                 }
                 // --- END V4.75 (FIX) ---
 
-                // NEW 5.25.2: Update quick bell visual previews when dropdown changes
+                // NEW 5.20: Update quick bell visual previews when dropdown changes
                 quickBellVisualSelect.addEventListener('change', (e) => {
                     const value = e.target.value;
                     const previewFull = document.getElementById('quick-bell-visual-preview-full');
@@ -8385,8 +8385,27 @@
                         previewIcon.innerHTML = '<span class="text-gray-400 text-xs">Icon</span>';
                         previewIcon.style.backgroundColor = '#F3F4F6';
                     }
+                    
+                    // NEW in 5.25.3: Also update the icon button in the manager if we know which slot
+                    if (currentCustomBellIconSlot) {
+                        const iconButton = document.querySelector(`.custom-bell-icon-btn[data-bell-id="${currentCustomBellIconSlot}"]`);
+                        if (iconButton) {
+                            // Update the button's visual content
+                            if (value.startsWith('http')) {
+                                iconButton.innerHTML = `<img src="${value}" class="w-full h-full object-contain p-1" alt="Visual">`;
+                            } else if (value.startsWith('[CUSTOM_TEXT]')) {
+                                const parts = value.replace('[CUSTOM_TEXT] ', '').split('|');
+                                const text = parts[0] || '?';
+                                iconButton.innerHTML = `<span class="text-xl font-bold">${text}</span>`;
+                            }
+                            // Update hidden input
+                            const hiddenInput = document.querySelector(`input[data-bell-id="${currentCustomBellIconSlot}"][data-field="visualCue"]`);
+                            if (hiddenInput) {
+                                hiddenInput.value = value;
+                            }
+                        }
+                    }
                 });
-
                     
                 // NEW in 4.60.3: Attach the custom text handler to the main edit/new period selects
                 editPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
