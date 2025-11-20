@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.26"
+        const APP_VERSION = "5.26.1"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1187,9 +1187,9 @@
                     }
                     countdownElement.textContent = countdownString;
                     
-                    // NEW: v4.13 - Add Period context to the label
+                    // Updated 5.26.1 - Add Period context to the label
                     let bellLabel = activeTimerLabel;
-                    if (scheduleBellObject && scheduleBellObject.periodName && activeTimerLabel !== "Quick Bell") {
+                    if (scheduleBellObject && scheduleBellObject.periodName && activeTimerLabel !== "Quick Bell" && millisToQuickBell >= Infinity) {
                         bellLabel = `${scheduleBellObject.periodName}: ${activeTimerLabel}`;
                     }
 
@@ -1350,6 +1350,11 @@
                     } else if (millisToQuickBell < Infinity) { // A Quick Bell is active
                         // Check if it's a Custom Quick Bell
                         const activeCustomBell = customQuickBells.find(b => b && b.name === nextPeriodName);
+
+                        // 5.26.1: Console logging to find big graphic
+                        console.log('Quick bell active. Timer label:', activeTimerLabel);
+                        console.log('Found custom bell?', activeCustomBell);
+                        if (activeCustomBell) console.log('Visual cue:', activeCustomBell.visualCue);
                         
                         if (activeCustomBell) {
                             // NEW 5.20: Use the bell's actual visualCue (which could be image URL or custom text)
