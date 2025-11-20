@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.25.4"
+        const APP_VERSION = "5.25.5"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -8345,11 +8345,15 @@
                             e.target.value = ""; 
                         }
                         
-                        // Show the modal
+                        // 5.25.5: Show the modal
                         // Store the target select element
                         currentVisualSelectTarget = e.target;
                         customTextVisualModal.classList.remove('hidden');
+                        customTextVisualModal.style.zIndex = '80'; // NEW: Make sure it's on top of everything
                         
+                        // Set focus and select current text
+                        setTimeout(() => customTextInput.select(), 50);
+                            
                         // Set focus and select current text
                         setTimeout(() => customTextInput.select(), 50);
                     }
