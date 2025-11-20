@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.26.1"
+        const APP_VERSION = "5.26.2"
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1350,6 +1350,8 @@
                     } else if (millisToQuickBell < Infinity) { // A Quick Bell is active
                         // Check if it's a Custom Quick Bell
                         const activeCustomBell = customQuickBells.find(b => b && b.name === nextPeriodName);
+                        console.log('All custom quick bells:', customQuickBells); // 5.26.2: Console logging for to try to find the quickbell graphic
+                        console.log('Quick bell active. Timer label:', activeTimerLabel);
 
                         // 5.26.1: Console logging to find big graphic
                         console.log('Quick bell active. Timer label:', activeTimerLabel);
