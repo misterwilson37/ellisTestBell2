@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.31.2"
-        // Per bell visual cues with before/after context
+        const APP_VERSION = "5.32"
+        // clean up edit bell row buttons
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -3977,38 +3977,68 @@
                     openEditRelativeModal(bell);
                 } else {
                     // It's a static bell, open the static editor
-                    // (This is the original logic)
                     currentEditingBell = { ...bell }; // Store state
                     
                     // Set fields
                     editBellTimeInput.value = bell.time;
                     editBellNameInput.value = bell.name;
+                    
                     // NEW 5.31: Set the visual mode radio button
                     const visualMode = bell.visualMode || 'none';
                     const visualRadio = document.querySelector(`input[name="edit-visual-mode"][value="${visualMode}"]`);
                     if (visualRadio) visualRadio.checked = true;
+                    
+                    // NEW 5.31: Set the visual cue dropdown
+                    const visualCue = bell.visualCue || '';
+                    const visualSelect = document.getElementById('edit-bell-visual');
+                    if (visualSelect) {
+                        updateVisualDropdowns(); // Populate options first
+                        visualSelect.value = visualCue;
+                    }
+                    
+                    // FIX 5.19: Use the bell's actual sound for custom bells, originalSound for shared bells
+                    const soundToShow = bell.type === 'custom' ? bell.sound : bell.originalSound;
+                    editBellSoundInput.value = soundToShow || 'ellisBell.mp3';
+                    
+                    editBellStatus.classList.add('hidden');
+                    
+                    updateSoundDropdowns();
+                    editBellSoundInput.value = soundToShow || 'ellisBell.mp3'; // Set again after dropdown update
+                    
+                    // NEW 5.32: Handle anchor bells (shared type) - lock time but allow visual/sound/name
+                    if (bell.type === 'shared') {
+                        // Disable time editing for anchor bells
+                        editBellTimeInput.disabled = true;
+                        editBellTimeInput.style.opacity = '0.5';
+                        editBellTimeInput.style.cursor = 'not-allowed';
                         
-                   // FIX 5.19: Use the bell's actual sound for custom bells, originalSound for shared bells
-                   const soundToShow = bell.type === 'custom' ? bell.sound : bell.originalSound;
-                   editBellSoundInput.value = soundToShow || 'ellisBell.mp3'; // Fallback to Ellis Bell if empty
+                        // Show message about locked time
+                        const timeLabel = editBellModal.querySelector('label[for="edit-bell-time"]');
+                        if (timeLabel && !timeLabel.querySelector('.lock-message')) {
+                            const lockMsg = document.createElement('span');
+                            lockMsg.className = 'lock-message text-xs text-gray-500 ml-2';
+                            lockMsg.textContent = '🔒 Only admin can change anchor bell times';
+                            timeLabel.appendChild(lockMsg);
+                        }
                         
-                   editBellStatus.classList.add('hidden'); // Clear status
-                        
-                   updateSoundDropdowns();
-                        
-                   editBellSoundInput.value = soundToShow || 'ellisBell.mp3'; // Set again after dropdown update 5.18.2
-                        
-                   if (bell.type === 'shared') {
                         editBellOverrideContainer.classList.remove('hidden');
                         editBellOverrideCheckbox.checked = false;
-                        // NEW V4.95: Disable sound select by default for shared bells
                         editBellSoundInput.disabled = true;
                     } else {
+                        // Custom bells - full editing allowed
+                        editBellTimeInput.disabled = false;
+                        editBellTimeInput.style.opacity = '1';
+                        editBellTimeInput.style.cursor = 'text';
+                        
+                        // Remove lock message if present
+                        const lockMsg = editBellModal.querySelector('.lock-message');
+                        if (lockMsg) lockMsg.remove();
+                        
                         editBellOverrideContainer.classList.add('hidden');
                         editBellOverrideCheckbox.checked = false;
-                        // NEW V4.95: Enable sound select for custom bells
                         editBellSoundInput.disabled = false;
                     }
+                    
                     editBellModal.classList.remove('hidden');
                 }
             }
