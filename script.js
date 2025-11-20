@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.30.2"
+        const APP_VERSION = "5.30.3"
         // Find those custom text bell images
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -1622,7 +1622,8 @@
                             // Fallback
                             visualContent = `<span class="text-xl font-bold block leading-none">${bell.iconText}</span>`;
                         }
-                        
+
+                        // 5.30.3 Add mouseover text to buttons
                         return `
                         <button data-custom-id="${bell.id}"
                                 data-minutes="${bell.minutes}"
@@ -1630,9 +1631,11 @@
                                 data-sound="${bell.sound}"
                                 data-name="${bell.name}"
                                 class="custom-quick-launch-btn font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 w-11 relative overflow-hidden group flex items-center justify-center"
-                                style="background-color: ${bell.iconBgColor || '#4338CA'}; color: ${bell.iconFgColor || '#FFFFFF'};"
-                                title="${bell.name}: ${formattedTime}">
-                            ${visualContent}
+                                style="background-color: ${bell.iconBgColor}; color: ${bell.iconFgColor};">
+                                ${visualContent}
+                                <span class="absolute inset-0 bg-black bg-opacity-75 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        ${formattedTime}
+                                </span>
                         </button>`;
                     }).join('');
                 } else {
