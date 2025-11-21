@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.39.1"
+        const APP_VERSION = "5.39.2"
         // edit bell modal issues
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -659,8 +659,10 @@
 
         // --- NEW in 4.44: Period Visual Override Functions ---
         function getVisualOverrideKey(scheduleId, originalPeriodName) {
-            if (!scheduleId || !originalPeriodName) return null;
-            return `${scheduleId}-${originalPeriodName}`;
+            // Use personal schedule ID if available, otherwise fall back to base schedule
+            const effectiveScheduleId = activePersonalScheduleId || scheduleId;
+            if (!effectiveScheduleId || !originalPeriodName) return null;
+            return `${effectiveScheduleId}-${originalPeriodName}`;
         }
 
         function loadVisualOverrides() {
