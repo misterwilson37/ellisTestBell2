@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.39.7"
-        // edit bell modal issues
+        const APP_VERSION = "5.40"
+        // Fixing custom bell audio
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -2526,6 +2526,16 @@
                 try {
                     // Filter out null/empty slots before saving
                     const bellsToSave = finalBells.filter(bell => bell && bell.name); 
+                    
+                    console.log("Saving bells to Firestore:");
+                    bellsToSave.forEach(bell => {
+                        console.log(`  Bell ${bell.id}:`, {
+                            name: bell.name,
+                            sound: bell.sound,
+                            minutes: bell.minutes,
+                            seconds: bell.seconds
+                        });
+                    });
 
                     await setDoc(quickBellDocRef, { bells: bellsToSave }, { merge: false });
                     console.log("Custom Quick Bells saved:", bellsToSave.length);
@@ -3307,7 +3317,9 @@
                 console.log("Listening for real-time custom quick bell updates...");
                 
                 customQuickBellsListenerUnsubscribe = onSnapshot(quickBellDocRef, (docSnap) => {
+                    console.log("Custom Quick Bells snapshot received");
                     if (docSnap.exists() && docSnap.data().bells) {
+                        console.log("Raw bells from Firestore:", docSnap.data().bells);
                         // Ensure we have max 4 and they are structured correctly
                         // Initialize bellId if missing and ensure proper structure
                         const bells = (docSnap.data().bells || []).slice(0, 4).map((b, index) => ({
@@ -3325,6 +3337,7 @@
                             sound: b.sound || 'ellisBell.mp3',
                             isActive: b.isActive !== false // 5.19.3 Default to TRUE (active/checked)
                         }));
+                        console.log("Processed bells:", bells);
                         customQuickBells = bells.filter(b => b.name); // Filter out empty slots if structure is clean
                     } else {
                         // Initialize the array to empty, renderCustomQuickBells will handle slots
@@ -7785,6 +7798,7 @@
                             }
                             
                             console.log(`Bell ${id} collected data:`, slotData);
+                            console.log(`Bell ${id} sound field:`, slotData.sound);
 
                             // 2. Check if the slot should be cleared or is empty
                             // 5.20 Don't save slots with no name OR no time
@@ -7817,7 +7831,20 @@
                             };
                         });
                         
-                        console.log('Bells to save:', newBells);
+                        console.log('Bells to save:');
+                        newBells.forEach((bell, idx) => {
+                            if (bell) {
+                                console.log(`  Bell ${bell.id}:`, {
+                                    name: bell.name,
+                                    sound: bell.sound,
+                                    minutes: bell.minutes,
+                                    seconds: bell.seconds
+                                });
+                            } else {
+                                console.log(`  Slot ${idx + 1}: null`);
+                            }
+                        });
+                        
                         await saveCustomQuickBells(newBells);
                         // 5.24: Don't close modal - let the Firestore listener re-render it
                         customQuickBellStatus.textContent = "Quick Bells Saved!";
