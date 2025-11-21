@@ -1,4 +1,4 @@
-const APP_VERSION = "5.34.1"
+const APP_VERSION = "5.34.2"
 // Fixed editBellOverrideCheckbox error and added visual rename functionality
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -451,7 +451,7 @@ let bellToDelete = null;
 let audioToDelete = null; // State for audio deletion
 let currentRenamingPeriod = null; // NEW in 4.19: Fix for missing declaration
 
- State for Req 1 (Now for Personal Bells)
+// State for Req 1 (Now for Personal Bells)
 let pendingPersonalBell = null;
 let pendingPersonalBellAction = 'add';
 let pendingPersonalBellOriginal = null;
