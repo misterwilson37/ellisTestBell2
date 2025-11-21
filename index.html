@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.34</title>
+    <title>Ellis Web Bell 5.23</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -209,17 +209,10 @@
 			    </select>
 			</div>
 
-			<!-- Visual Cue & Display (Side by Side with Preview) -->
+			<!-- Visual Display & Preview (Side by Side) -->
 			<div class="grid grid-cols-2 gap-4 mb-4">
-			    <!-- Left: Controls -->
+			    <!-- Left: Display Controls -->
 			    <div>
-			        <label for="edit-bell-visual" class="block text-sm font-medium text-gray-700 mb-1">Visual Cue</label>
-			        <select id="edit-bell-visual" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3">
-			            <option value="">[None / Period Default]</option>
-			            <option value="[UPLOAD]">Upload Image...</option>
-			            <option value="[CUSTOM_TEXT]">Custom Text/Color...</option>
-			        </select>
-
 			        <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
 			        <div class="space-y-2">
 			            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
@@ -426,7 +419,7 @@
         </form>
     </div>
 
-    <!-- **** NEW: v5.34 - Rename Visual Modal **** -->
+    <!-- **** NEW: v5.23 - Rename Visual Modal **** -->
     <div id="rename-visual-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
         <form id="rename-visual-form" class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
             <h3 class="text-2xl font-medium mb-6">Rename Visual File</h3>
@@ -1748,4 +1741,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.34 -->
+<!-- Version 5.23 -->
