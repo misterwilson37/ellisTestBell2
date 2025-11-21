@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.39"
+        const APP_VERSION = "5.39.1"
         // edit bell modal issues
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -666,9 +666,10 @@
         function loadVisualOverrides() {
             try {
                 const stored = localStorage.getItem('periodVisualOverrides');
+                console.log('Loading from localStorage:', stored);
                 if (stored) {
                     periodVisualOverrides = JSON.parse(stored);
-                    console.log(`Loaded ${Object.keys(periodVisualOverrides).length} period visual overrides.`);
+                    console.log(`Loaded ${Object.keys(periodVisualOverrides).length} period visual overrides:`, periodVisualOverrides);
                 }
             } catch (e) {
                 console.error("Failed to load visual overrides", e);
@@ -678,7 +679,9 @@
 
         function saveVisualOverrides() {
             try {
+                console.log('Saving to localStorage:', periodVisualOverrides);
                 localStorage.setItem('periodVisualOverrides', JSON.stringify(periodVisualOverrides));
+                console.log('Successfully saved to localStorage');
             } catch (e) {
                 console.error("Failed to save visual overrides", e);
             }
@@ -5877,6 +5880,8 @@
                 // Get saved visual
                 const visualKey = getVisualOverrideKey(activeBaseScheduleId, periodName);
                 const savedVisual = periodVisualOverrides[visualKey] || "";
+                console.log('Loading visual override:', { activeBaseScheduleId, periodName, visualKey, savedVisual });
+                console.log('All periodVisualOverrides:', periodVisualOverrides);
                 
                 // If saved visual is custom text, add it as an option to the dropdown
                 if (savedVisual.startsWith('[CUSTOM_TEXT]')) {
@@ -5969,11 +5974,13 @@
 
                     // NEW in 4.44: Save Visual Cue
                     const visualKey = getVisualOverrideKey(activeBaseScheduleId, originalPeriodName);
+                    console.log('Saving visual override:', { activeBaseScheduleId, originalPeriodName, visualKey, newVisualCue });
                     if (newVisualCue) {
                         periodVisualOverrides[visualKey] = newVisualCue;
                     } else {
                         delete periodVisualOverrides[visualKey]; // User selected [None/Default]
                     }
+                    console.log('periodVisualOverrides after save:', periodVisualOverrides);
                     saveVisualOverrides(); // Save to localStorage
 
                     // Force an immediate re-render and clock update
