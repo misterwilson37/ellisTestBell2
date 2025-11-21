@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.33.3"
-        // silence, visual preview, and small fixes
+        const APP_VERSION = "5.34"
+        // Fixed editBellOverrideCheckbox error and added visual rename functionality
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -116,6 +116,15 @@
         const renameAudioStatus = document.getElementById('rename-audio-status');
         const renameAudioCancelBtn = document.getElementById('rename-audio-cancel');
         let audioToRename = null; // NEW V4.97: State for renaming
+        
+        // NEW V5.34: Rename Visual Modal
+        const renameVisualModal = document.getElementById('rename-visual-modal');
+        const renameVisualForm = document.getElementById('rename-visual-form');
+        const renameVisualOldName = document.getElementById('rename-visual-old-name');
+        const renameVisualNewName = document.getElementById('rename-visual-new-name');
+        const renameVisualStatus = document.getElementById('rename-visual-status');
+        const renameVisualCancelBtn = document.getElementById('rename-visual-cancel');
+        let visualToRename = null; // NEW V5.34: State for renaming
         
         // Nearby Bell Modal (Custom)
         const nearbyBellModal = document.getElementById('nearby-bell-modal');
@@ -4025,7 +4034,7 @@
                                 
                             editBellOverrideContainer.classList.remove('hidden');
                             document.getElementById('edit-bell-visual-override-container')?.classList.remove('hidden'); // NEW 5.32
-                            editBellOverrideCheckbox.checked = false;
+                            if (editBellOverrideCheckbox) editBellOverrideCheckbox.checked = false;
                             editBellSoundInput.disabled = true;
                         } else {
                             // Teacher editing anchor bell - lock time, auto-override sound/name/visual
@@ -5563,8 +5572,12 @@
                         const userFilesResult = await listAll(userFolderRef);
                         userVisualFiles = await Promise.all(userFilesResult.items.map(async (itemRef) => {
                             const url = await getDownloadURL(itemRef);
-                            return { name: itemRef.name, url: url, path: itemRef.fullPath };
+                            const meta = await getMetadata(itemRef); // NEW V5.34
+                            const nickname = meta.customMetadata?.nickname || ''; // NEW V5.34
+                            return { name: itemRef.name, url: url, path: itemRef.fullPath, nickname: nickname }; // MODIFIED V5.34
                         }));
+                        // NEW V5.34: Sort by nickname if it exists, otherwise by name
+                        userVisualFiles.sort((a, b) => (a.nickname || a.name).localeCompare(b.nickname || b.name));
                     } catch (e) { 
                         console.error("Error loading user visuals:", e); 
                         userVisualFiles = [];
@@ -5582,8 +5595,11 @@
                         const url = await getDownloadURL(itemRef);
                         const meta = await getMetadata(itemRef);
                         const owner = meta.customMetadata?.ownerEmail || 'unknown';
-                        return { name: itemRef.name, url: url, path: itemRef.fullPath, owner: owner };
+                        const nickname = meta.customMetadata?.nickname || ''; // NEW V5.34
+                        return { name: itemRef.name, url: url, path: itemRef.fullPath, owner: owner, nickname: nickname }; // MODIFIED V5.34
                     }));
+                    // NEW V5.34: Sort by nickname if it exists, otherwise by name
+                    sharedVisualFiles.sort((a, b) => (a.nickname || a.name).localeCompare(b.nickname || b.name));
                 } catch (e) { 
                     console.error("Error loading shared visuals:", e); 
                     sharedVisualFiles = [];
@@ -5606,14 +5622,18 @@
                 } else {
                    myVisualFilesList.innerHTML = userVisualFiles.map(file => {
                         const isShared = sharedVisualFiles.some(sharedFile => sharedFile.name === file.name);
+                        // NEW V5.34: Display nickname or name
+                        const displayName = file.nickname || file.name;
+                        const title = file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name;
                         return `
                         <div class="relative group border rounded-lg overflow-hidden shadow-sm">
                             <!-- MODIFIED in 4.46: Changed h-24 to aspect-square for a square preview -->
                             <img src="${file.url}" alt="${file.name}" class="w-full aspect-square object-contain bg-gray-100" loading="lazy">
-                            <p class="text-xs text-gray-700 p-2 truncate" title="${file.name}">${file.name}</p>
+                            <p class="text-xs text-gray-700 p-2 truncate" title="${title}">${displayName}</p>
                             <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-2">
                                 ${!isShared && isAdmin ? `<button class="make-visual-public-btn text-xs px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 w-full" data-path="${file.path}" data-name="${file.name}">Make Public</button>` : ''}
                                 ${isShared ? `<span class="text-xs font-medium text-white">(Published)</span>` : ''}
+                                <button class="rename-visual-btn text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 w-full" data-path="${file.path}" data-name="${file.name}" data-nickname="${file.nickname || ''}">Rename</button>
                                 <button class="delete-visual-btn text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 w-full" data-path="${file.path}" data-url="${file.url}">Delete</button>
                             </div>
                         </div>`;
@@ -5624,17 +5644,22 @@
                 if (sharedVisualFiles.length === 0) {
                     sharedVisualFilesList.innerHTML = '<p class="text-gray-500 col-span-full">No shared visuals are available.</p>';
                 } else {
-                    sharedVisualFilesList.innerHTML = sharedVisualFiles.map(file => `
+                    sharedVisualFilesList.innerHTML = sharedVisualFiles.map(file => {
+                        // NEW V5.34: Display nickname or name
+                        const displayName = file.nickname || file.name;
+                        const title = file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name;
+                        return `
                         <div class="relative group border rounded-lg overflow-hidden shadow-sm">
                             <!-- MODIFIED in 4.46: Changed h-24 to aspect-square for a square preview -->
                             <img src="${file.url}" alt="${file.name}" class="w-full aspect-square object-contain bg-gray-100" loading="lazy">
-                            <p class="text-xs text-gray-700 p-2 truncate" title="${file.name}">${file.name}</p>
+                            <p class="text-xs text-gray-700 p-2 truncate" title="${title}">${displayName}</p>
                             <p class="text-xs text-gray-500 px-2 pb-2 truncate" title="Owner: ${file.owner}">(by ${file.owner})</p>
                             <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-2">
+                                ${isAdmin ? `<button class="rename-visual-btn text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 w-full" data-path="${file.path}" data-name="${file.name}" data-nickname="${file.nickname || ''}">Rename</button>` : ''}
                                 ${isAdmin ? `<button class="delete-visual-btn text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 w-full" data-path="${file.path}" data-url="${file.url}">Delete</button>` : ''}
                             </div>
                         </div>
-                    `).join('');
+                    `}).join('');
                 }
             }
 
@@ -5643,6 +5668,18 @@
              */
             async function handleVisualListClick(e) {
                 const target = e.target;
+                
+                // NEW V5.34: Handle Rename
+                const renameBtn = target.closest('.rename-visual-btn');
+                if (renameBtn) {
+                    const path = renameBtn.dataset.path;
+                    const name = renameBtn.dataset.name;
+                    const nickname = renameBtn.dataset.nickname;
+                    if (path && name) {
+                        openRenameVisualModal(path, name, nickname);
+                    }
+                    return;
+                }
                 
                 // Handle Delete
                 const deleteBtn = target.closest('.delete-visual-btn'); // Use closest() for robustness
@@ -6027,13 +6064,17 @@
                 const customTextOption = `<option value="[CUSTOM_TEXT]">Custom Text/Color...</option>`;
             
                 // 3. Create options for user files
+                // MODIFIED V5.34: Use nickname if available
                 const userHtml = userVisualFiles.map(file => {
-                    return `<option value="${file.url}">${file.name} (My File)</option>`;
+                    const displayName = file.nickname || file.name;
+                    return `<option value="${file.url}">${displayName} (My File)</option>`;
                 }).join('');
                 
                 // NEW V4.61.5: Create options for shared files (Fixes missing 'sharedHtml' variable error)
+                // MODIFIED V5.34: Use nickname if available
                 const sharedHtml = sharedVisualFiles.map(file => {
-                    return `<option value="${file.url}">${file.name} (Shared)</option>`;
+                    const displayName = file.nickname || file.name;
+                    return `<option value="${file.url}">${displayName} (Shared)</option>`;
                 }).join('');
 
                 // 4. Populate all select elements
@@ -6978,6 +7019,61 @@
                 } catch (error) {
                     console.error("Error saving audio nickname:", error);
                     renameAudioStatus.textContent = `Error: ${error.message}`;
+                }
+            }
+    
+            /**
+             * NEW: v5.34 - Opens the rename visual modal.
+             */
+            function openRenameVisualModal(path, name, nickname) {
+                visualToRename = { path, name, nickname }; // Store state
+                renameVisualOldName.textContent = name;
+                renameVisualNewName.value = nickname || '';
+                renameVisualStatus.classList.add('hidden');
+                renameVisualModal.classList.remove('hidden');
+            }
+
+            /**
+             * NEW: v5.34 - Submits the visual rename (nickname).
+             */
+            async function handleRenameVisualSubmit(e) {
+                e.preventDefault();
+                if (!visualToRename) return;
+
+                const newNickname = renameVisualNewName.value.trim();
+                const { path, name } = visualToRename;
+                
+                renameVisualStatus.textContent = "Saving...";
+                renameVisualStatus.classList.remove('hidden');
+
+                try {
+                    const storageRef = ref(storage, path);
+                    const metadata = await getMetadata(storageRef);
+                    
+                    // Create new metadata object, preserving existing custom metadata
+                    const newMetadata = {
+                        contentType: metadata.contentType,
+                        customMetadata: {
+                            ...(metadata.customMetadata || {}), // Preserve owner, etc.
+                            'nickname': newNickname // Add or update the nickname
+                        }
+                    };
+
+                    await updateMetadata(storageRef, newMetadata);
+                    
+                    renameVisualStatus.textContent = "Nickname saved! Refreshing lists...";
+
+                    // Reload all files to get updated nicknames and re-render
+                    await loadAllVisualFiles();
+
+                    setTimeout(() => {
+                        renameVisualModal.classList.add('hidden');
+                        visualToRename = null;
+                    }, 1000);
+
+                } catch (error) {
+                    console.error("Error saving visual nickname:", error);
+                    renameVisualStatus.textContent = `Error: ${error.message}`;
                 }
             }
     
@@ -8751,6 +8847,13 @@
                 renameAudioCancelBtn.addEventListener('click', () => {
                     renameAudioModal.classList.add('hidden');
                     audioToRename = null;
+                });
+                
+                // NEW V5.34: Rename Visual Modal Listeners
+                renameVisualForm.addEventListener('submit', handleRenameVisualSubmit);
+                renameVisualCancelBtn.addEventListener('click', () => {
+                    renameVisualModal.classList.add('hidden');
+                    visualToRename = null;
                 });
     
                 // DELETED: v3.03 - loadCustomBells()
