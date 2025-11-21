@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.34"
-        // Fixed editBellOverrideCheckbox error and added visual rename functionality
+const APP_VERSION = "5.35"
+        // Claude cleanup
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -9002,5 +9002,3 @@
                     console.warn("Error during app cleanup:", e);
                 }
             });
-            
-    
