@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.33.2"
+        const APP_VERSION = "5.33.3"
         // silence, visual preview, and small fixes
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
