@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.39.2"
+        const APP_VERSION = "5.39.3"
         // edit bell modal issues
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
