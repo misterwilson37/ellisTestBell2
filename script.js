@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.33.1"
+        const APP_VERSION = "5.33.2"
         // silence, visual preview, and small fixes
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -6022,8 +6022,6 @@
 
                 // NEW V4.76: Add [UPLOAD] option
                 const uploadHtml = `<option value="[UPLOAD]">Upload Audio...</option>`;
-                // NEW 5.33: Add [SILENT] option
-                const silentHtml = `<option value="[SILENT]">Silent / None</option>`;
 
                 // NEW V4.60.3: Add Custom Text entry option
                 const customTextOption = `<option value="[CUSTOM_TEXT]">Custom Text/Color...</option>`;
@@ -7169,6 +7167,8 @@
             
                 // NEW V4.76: Add [UPLOAD] option
                 const uploadHtml = `<option value="[UPLOAD]">Upload Audio...</option>`;
+                // NEW 5.32: Add [SILENT] option
+                const silentHtml = `<option value="[SILENT]">Silent / None</option>`;
                 
                 // Create options HTML
                 // --- THIS IS THE FIX from v2.24 ---
