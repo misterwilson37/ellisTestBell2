@@ -1,5 +1,5 @@
-const APP_VERSION = "5.35"
-// Claude Cleanup
+const APP_VERSION = "5.34.1"
+// Fixed editBellOverrideCheckbox error and added visual rename functionality
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
@@ -429,15 +429,15 @@ let sharedSchedulesListenerUnsubscribe = null; // v3.24 - For shared schedules
 let allSchedules = []; // Array of *all* shared schedules
 let allPersonalSchedules = []; // Array of *user's* personal schedules
 
-let activeBaseScheduleId = null;  Renamed from activeScheduleId
-let activePersonalScheduleId = null;  ID of active personal schedule
+let activeBaseScheduleId = null; // Renamed from activeScheduleId
+let activePersonalScheduleId = null; // ID of active personal schedule
 let activeScheduleListenerUnsubscribe = null; // For base schedule
-let activePersonalScheduleListenerUnsubscribe = null;  For personal schedule
-let personalSchedulesListenerUnsubscribe = null;  v3.09 - For the collection
+let activePersonalScheduleListenerUnsubscribe = null; // For personal schedule
+let personalSchedulesListenerUnsubscribe = null; // For the collection
 let customQuickBellsListenerUnsubscribe = null;
 let synths = {};
 let lastBellRingTime = null;
-let lastRingTimestamp = 0;  For ring cooldown
+let lastRingTimestamp = 0; // For ring cooldown
 const RING_COOLDOWN = 5000; // 5 seconds (5000ms)
 let clockIntervalId = null;
 
@@ -445,10 +445,10 @@ let clockIntervalId = null;
 let currentRelativePeriod = null; // For the Relative Bell Modal
 
 let currentEditingBell = null;
-let currentChangingSoundBell = null;  State for sound change
+let currentChangingSoundBell = null; // State for sound change
 let linkedEditData = null;
 let bellToDelete = null;
-let audioToDelete = null;  State for audio deletion
+let audioToDelete = null; // State for audio deletion
 let currentRenamingPeriod = null; // NEW in 4.19: Fix for missing declaration
 
  State for Req 1 (Now for Personal Bells)
@@ -469,7 +469,7 @@ let customQuickBells = []; // Array of { id, name, minutes, seconds, iconText, s
 window.customQuickBells = customQuickBells; // 5.30: Make it accessible from console
 
 let mutedBellIds = new Set();
-let bellSoundOverrides = {};  Store local sound overrides
+let bellSoundOverrides = {}; // Store local sound overrides
 let periodNameOverrides = {}; // NEW in 4.22: Store local period nicknames
 
 // --- NEW in 4.57: New Period state ---
