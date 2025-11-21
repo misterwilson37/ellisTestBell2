@@ -1,4 +1,4 @@
-const APP_VERSION = "5.34.2"
+const APP_VERSION = "5.34.3"
 // Fixed editBellOverrideCheckbox error and added visual rename functionality
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -667,7 +667,7 @@ function saveVisualOverrides() {
     }
 }
 
- Helper to format 24h time to 12h AM/PM
+// Helper to format 24h time to 12h AM/PM
 function formatTime12Hour(timeString, omitSecondsIfZero = false) {
     if (!timeString) return "--:--";
 
