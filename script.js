@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.40"
-        // Fixing custom bell audio
+        const APP_VERSION = "5.40.1"
+        // fixing custom bell audio
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1714,12 +1714,14 @@
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = sharedSoundSelect.innerHTML;
                 
-                // Select the current sound
+                // Select the current sound - use setAttribute to ensure it persists in HTML
                 const options = Array.from(tempDiv.querySelectorAll('option'));
                 options.forEach(opt => {
                     if (opt.value === currentSound) {
+                        opt.setAttribute('selected', 'selected');
                         opt.selected = true;
                     } else {
+                        opt.removeAttribute('selected');
                         opt.selected = false;
                     }
                 });
