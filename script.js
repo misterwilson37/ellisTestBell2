@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.39.5"
-        // edit bell modal issues
+        const APP_VERSION = "5.39.6"
+        // edit bell modal issues & quick bell audio
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1523,6 +1523,8 @@
                     const iconColor = bell ? (bell.iconBgColor || '#4338CA') : '#4338CA';
                     const textColor = bell ? (bell.iconFgColor || '#FFFFFF') : '#FFFFFF';
                     const sound = bell ? bell.sound : 'ellisBell.mp3';
+                    
+                    console.log(`Rendering bell ${id}:`, { name, sound, bell });
                     
                     // FIX 5.19.1: A slot is ACTIVE (editable) if the checkbox is checked.
                     // Default to TRUE (checked) for empty slots so users can fill them in.
@@ -7773,8 +7775,13 @@
                             if (slotInputs.length > 0) {
                                 slotInputs.forEach(input => {
                                     slotData[input.dataset.field] = input.value;
+                                    if (input.dataset.field === 'sound') {
+                                        console.log(`Bell ${id} sound input:`, input.value, input);
+                                    }
                                 });
                             }
+                            
+                            console.log(`Bell ${id} collected data:`, slotData);
 
                             // 2. Check if the slot should be cleared or is empty
                             // 5.20 Don't save slots with no name OR no time
@@ -7807,6 +7814,7 @@
                             };
                         });
                         
+                        console.log('Bells to save:', newBells);
                         await saveCustomQuickBells(newBells);
                         // 5.24: Don't close modal - let the Firestore listener re-render it
                         customQuickBellStatus.textContent = "Quick Bells Saved!";
@@ -8688,6 +8696,12 @@
                     }
                     
                     if (e.target.value === '[CUSTOM_TEXT]' || e.target.value.startsWith('[CUSTOM_TEXT] ')) {
+                        // Prevent opening if already open
+                        if (!customTextVisualModal.classList.contains('hidden')) {
+                            console.log('Modal already open, ignoring duplicate trigger');
+                            return;
+                        }
+                        
                         //5.25.7: Console logging
                         console.log('Custom text selected!');
                         console.log('customTextVisualModal:', customTextVisualModal);
