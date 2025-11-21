@@ -432,6 +432,26 @@
         </form>
     </div>
 
+    <!-- **** NEW: v5.21 - Rename Visual Modal **** -->
+    <div id="rename-visual-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+        <form id="rename-visual-form" class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+            <h3 class="text-2xl font-medium mb-6">Rename Visual File</h3>
+            <p class="text-gray-700 mb-2">
+                Original Filename: <strong id="rename-visual-old-name" class="block truncate text-sm bg-gray-100 p-2 rounded">...</strong>
+            </p>
+            <div class="mb-4">
+                <label for="rename-visual-new-name" class="block text-sm font-medium text-gray-700">New Nickname</label>
+                <input type="text" id="rename-visual-new-name" placeholder="e.g. First Period Image" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">This nickname will be shown in all dropdown menus.</p>
+            </div>
+            <p id="rename-visual-status" class="text-blue-600 text-sm mt-4 hidden"></p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="rename-visual-cancel" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Nickname</button>
+            </div>
+        </form>
+    </div>
+
     <!-- **** NEW: Nearby Bell Warning Modal (Req 1 - Custom Bells ONLY) **** -->
     <div id="nearby-bell-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
