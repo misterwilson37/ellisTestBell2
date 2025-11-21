@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.39.6"
-        // edit bell modal issues & quick bell audio
+        const APP_VERSION = "5.39.7"
+        // edit bell modal issues
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -7769,7 +7769,10 @@
                             
                             // 1. Collect data for this slot ID
                             const slotInputs = Array.from(formElements).filter(el => 
-                                parseInt(el.dataset.bellId) === id && !el.classList.contains('custom-quick-bell-toggle') && !el.classList.contains('clear-custom-quick-bell')
+                                parseInt(el.dataset.bellId) === id && 
+                                el.dataset.field && // CRITICAL: Only include elements that have a data-field attribute
+                                !el.classList.contains('custom-quick-bell-toggle') && 
+                                !el.classList.contains('clear-custom-quick-bell')
                             );
 
                             if (slotInputs.length > 0) {
@@ -8719,7 +8722,12 @@
                             originalValueCustom = selectedOption ? selectedOption.value : ''; 
                         }
                         
-                        // MODIFIED V4.75: Logic to pre-fill input AND colors
+                        // ALWAYS clear inputs first, then fill if there's a saved value
+                        customTextInput.value = ''; 
+                        customTextBgColorInput.value = '#4338CA';
+                        customTextColorInput.value = '#FFFFFF';
+                        
+                        // MODIFIED V4.75: Logic to pre-fill input AND colors if saved
                         if (originalValueCustom.startsWith('[CUSTOM_TEXT]')) {
                             const parts = originalValueCustom.replace('[CUSTOM_TEXT] ', '').split('|');
                             customTextInput.value = parts[0] || '';
@@ -8727,10 +8735,6 @@
                             customTextColorInput.value = parts[2] || '#FFFFFF';
                             e.target.value = originalValueCustom; // Keep the original custom value selected
                         } else {
-                            // No custom text saved, set defaults
-                            customTextInput.value = ''; 
-                            customTextBgColorInput.value = '#4338CA';
-                            customTextColorInput.value = '#FFFFFF';
                             // CRITICAL: Revert value to ""
                             e.target.value = ""; 
                         }
