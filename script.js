@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.32.3"
-        // clean up edit bell row buttons
+        const APP_VERSION = "5.33"
+        // silence, visual preview, and small fixes
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -3995,8 +3995,9 @@
                     const visualCue = bell.visualCue || '';
                     const visualSelect = document.getElementById('edit-bell-visual');
                     if (visualSelect) {
-                        updateVisualDropdowns(); // Populate options first
+                        updateVisualDropdowns();
                         visualSelect.value = visualCue;
+                        updateEditBellVisualPreview(); // NEW 5.33: Show initial preview
                     }
                     
                     // FIX 5.19: Use the bell's actual sound for custom bells, originalSound for shared bells
@@ -4018,11 +4019,12 @@
                             editBellTimeInput.style.opacity = '1';
                             editBellTimeInput.style.cursor = 'text';
                                 
-                            // Remove lock message if present
-                            const lockMsg = editBellModal.querySelector('.lock-message');
-                            if (lockMsg) lockMsg.remove();
+                            // Hide lock message
+                            const lockMsgDiv = document.getElementById('edit-time-lock-message');
+                            if (lockMsgDiv) lockMsgDiv.classList.add('hidden');
                                 
                             editBellOverrideContainer.classList.remove('hidden');
+                            document.getElementById('edit-bell-visual-override-container')?.classList.remove('hidden'); // NEW 5.32
                             editBellOverrideCheckbox.checked = false;
                             editBellSoundInput.disabled = true;
                         } else {
@@ -4031,20 +4033,16 @@
                             editBellTimeInput.style.opacity = '0.5';
                             editBellTimeInput.style.cursor = 'not-allowed';
                                 
-                            // Show message about locked time
-                            const timeLabel = editBellModal.querySelector('label[for="edit-bell-time"]');
-                            if (timeLabel && !timeLabel.querySelector('.lock-message')) {
-                                const lockMsg = document.createElement('span');
-                                lockMsg.className = 'lock-message text-xs text-gray-500 ml-2';
-                                lockMsg.textContent = '🔒 Only admin can change anchor bell times';
-                                timeLabel.appendChild(lockMsg);
-                            }
+                            // Show lock message in dedicated div
+                            const lockMsgDiv = document.getElementById('edit-time-lock-message');
+                            if (lockMsgDiv) lockMsgDiv.classList.remove('hidden');
                                 
-                            // Hide override checkbox - teachers always override
+                            // Hide override checkboxes - teachers always override
                             editBellOverrideContainer.classList.add('hidden');
+                            document.getElementById('edit-bell-visual-override-container')?.classList.add('hidden'); // NEW 5.32
                             // Enable sound editing (auto-override for teachers)
                             editBellSoundInput.disabled = false;
-                    }
+                        }
                 }
                     
                     editBellModal.classList.remove('hidden');
@@ -4053,7 +4051,18 @@
                 
             // DELETED in 4.31: Removed duplicate/old handleEditBellClick function.
             // The new router function is located below.
-    
+
+            // NEW 5.33: Update visual preview in edit modal
+            function updateEditBellVisualPreview() {
+                const visualSelect = document.getElementById('edit-bell-visual');
+                const preview = document.getElementById('edit-bell-visual-preview');
+                if (!visualSelect || !preview) return;
+            
+                const visualValue = visualSelect.value;
+                const html = getVisualHtml(visualValue, 'Preview');
+                preview.innerHTML = html;
+            }
+                
             /**
              * NEW: v3.25 (4.03?) - Executes the edit of a personal bell (used by conflict resolution).
              * @param {object} oldBell - Original bell data.
@@ -6011,8 +6020,10 @@
                     return `<option value="${key}">${name} (Default)</option>`;
                 }).join('');
 
-                // 2. Add custom image upload option (always available)
-                const uploadHtml = `<option value="[UPLOAD]">Upload Image...</option>`;
+                // NEW V4.76: Add [UPLOAD] option
+                const uploadHtml = `<option value="[UPLOAD]">Upload Audio...</option>`;
+                // NEW 5.33: Add [SILENT] option
+                const silentHtml = `<option value="[SILENT]">Silent / None</option>`;
 
                 // NEW V4.60.3: Add Custom Text entry option
                 const customTextOption = `<option value="[CUSTOM_TEXT]">Custom Text/Color...</option>`;
@@ -7171,17 +7182,23 @@
                     if (!item.el) return; // Guard clause
                     
                     // NEW V4.76: Inject [UPLOAD] option
-                    // Ensure it's not already there
                     if (!item.el.querySelector('option[value="[UPLOAD]"]')) {
-                        const defaultGroup = item.el.querySelector('optgroup[label="Default Sounds"]');
-                        if (defaultGroup) {
-                            // Insert upload option right before the default sounds
-                            defaultGroup.insertAdjacentHTML('beforebegin', uploadHtml);
-                        } else {
-                            // Fallback
-                            item.el.insertAdjacentHTML('afterbegin', uploadHtml);
-                        }
+                    const defaultGroup = item.el.querySelector('optgroup[label="Default Sounds"]');
+                    if (defaultGroup) {
+                        defaultGroup.insertAdjacentHTML('beforebegin', uploadHtml);
+                    } else {
+                        item.el.insertAdjacentHTML('afterbegin', uploadHtml);
                     }
+                }
+                
+                // NEW 5.33: Inject [SILENT] option at the top of Default Sounds
+                if (!item.el.querySelector('option[value="[SILENT]"]')) {
+                    const defaultGroup = item.el.querySelector('optgroup[label="Default Sounds"]');
+                    if (defaultGroup) {
+                        // Insert as first option inside Default Sounds group
+                        defaultGroup.insertAdjacentHTML('afterbegin', silentHtml);
+                    }
+                }
                     
                     // MODIFIED in 4.29: Find optgroups by class, not ID, since IDs aren't unique for new modals
                     const myGroup = item.el.querySelector('optgroup[label="My Sounds"]');
@@ -8616,7 +8633,10 @@
                 // NEW 5.31.1: Bell visual dropdowns
                 document.getElementById('add-static-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
                 document.getElementById('relative-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
-                document.getElementById('edit-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('edit-bell-visual')?.addEventListener('change', function() {
+                    visualSelectChangeHandler.call(this);
+                    updateEditBellVisualPreview(); // NEW 5.32: Update preview
+                });
                 document.getElementById('multi-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
                 document.getElementById('multi-relative-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
                     
