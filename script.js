@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.33"
+        const APP_VERSION = "5.33.1"
         // silence, visual preview, and small fixes
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -8058,9 +8058,9 @@
                 // NEW V4.95: Add listener for preview button
                 document.getElementById('preview-edit-sound').addEventListener('click', () => playBell(editBellSoundInput.value));
                 // NEW V4.95: Add listener for override checkbox to enable/disable sound select
-                editBellOverrideCheckbox.addEventListener('change', (e) => {
+                editBellOverrideCheckbox?.addEventListener('change', function() {
                     if (currentEditingBell && currentEditingBell.type === 'shared') {
-                        editBellSoundInput.disabled = !e.target.checked;
+                        editBellSoundInput.disabled = !this.checked; // Use 'this' instead of 'e.target'
                     }
                 });
                 
