@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.39.3"
+        const APP_VERSION = "5.39.4"
         // edit bell modal issues
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -5929,6 +5929,10 @@
                 const newNickname = editPeriodNewNameInput.value.trim();
                 const newVisualCue = editPeriodImageSelect.value; // NEW in 4.44
                 
+                console.log('Submitting edit period form:', { originalPeriodName, newNickname, newVisualCue });
+                console.log('Dropdown element:', editPeriodImageSelect);
+                console.log('All dropdown options:', Array.from(editPeriodImageSelect.options).map(o => ({value: o.value, text: o.textContent, selected: o.selected})));
+                
                 editPeriodStatusMsg.textContent = "Saving...";
                 editPeriodStatusMsg.classList.remove('hidden');
 
@@ -8358,10 +8362,12 @@
                 editPeriodImageSelect.addEventListener('change', (e) => {
                     // NEW in 4.44: Update the preview
                     const selectedValue = e.target.value; // Use e.target.value
+                    console.log('Edit period dropdown changed:', selectedValue);
                     
                     // MODIFIED V4.96: This listener must *not* fire if the 'visualSelectChangeHandler'
                     // is handling an [UPLOAD] or [CUSTOM_TEXT] action.
-                    if (selectedValue === '[UPLOAD]' || selectedValue === '[CUSTOM_TEXT]') {
+                    if (selectedValue === '[UPLOAD]' || selectedValue === '[CUSTOM_TEXT]' || selectedValue.startsWith('[CUSTOM_TEXT] ')) {
+                        console.log('Skipping preview update for upload/custom text trigger');
                         return;
                     }
 
@@ -8595,13 +8601,17 @@
                     const fgColor = customTextColorInput.value;
                     const bgColor = customTextBgColorInput.value;
                     
+                    console.log('Custom text form submitted:', { customText, fgColor, bgColor, currentVisualSelectTarget });
+                    
                     if (!customText || !currentVisualSelectTarget) {
+                        console.log('Missing text or target, closing modal');
                         customTextVisualModal.classList.add('hidden');
                         return;
                     }
 
                     // MODIFIED V4.75: The stored value now includes colors
                     const storedValue = `[CUSTOM_TEXT] ${customText}|${bgColor}|${fgColor}`;
+                    console.log('Creating custom text value:', storedValue);
                     
                     // Set the value in the original select element
                     // We must dynamically add the option first if it doesn't exist
@@ -8619,17 +8629,33 @@
                             // Fallback if the optgroup structure changes
                             currentVisualSelectTarget.appendChild(option);
                         }
+                        console.log('Created new option for custom text');
                     } else {
                         option.value = storedValue; // Update value to capture color changes
                         option.textContent = `Custom Text: ${customText}`; // Update existing option text
+                        console.log('Updated existing option for custom text');
                     }
                     
+                    console.log('Setting dropdown value to:', storedValue);
+                    console.log('Dropdown before set:', currentVisualSelectTarget.value);
                     currentVisualSelectTarget.value = storedValue;
-                    currentVisualSelectTarget.dispatchEvent(new Event('change')); // Trigger change event
+                    console.log('Dropdown after set:', currentVisualSelectTarget.value);
+                    
+                    // Update the preview if it's the period editor
+                    if (currentVisualSelectTarget.id === 'edit-period-image-select' && currentRenamingPeriod) {
+                        const periodName = currentRenamingPeriod.name;
+                        document.getElementById('edit-period-image-preview-full').innerHTML = getVisualHtml(storedValue, periodName);
+                        document.getElementById('edit-period-image-preview-icon').innerHTML = getVisualIconHtml(storedValue, periodName);
+                        console.log('Updated period editor preview');
+                    }
+                    
+                    // DON'T dispatch change event - it causes visualSelectChangeHandler to re-open the modal
+                    // The dropdown value is set, which is all we need
 
                     // Clear state and hide modal
                     currentVisualSelectTarget = null;
                     customTextVisualModal.classList.add('hidden');
+                    console.log('Modal hidden, target cleared');
                 });
                 
                 // --- DELETED V4.75 (FIX): Removing the duplicated, broken code block ---
