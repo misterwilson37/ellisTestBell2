@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.39.4"
+        const APP_VERSION = "5.39.5"
         // edit bell modal issues
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -7928,7 +7928,7 @@
                         }
                         return;
                     }
-                    const customText = customTextInput.value.trim().toUpperCase().substring(0, 3);
+                    const customText = customTextInput.value.trim().substring(0, 3);
                     const fgColor = customTextColorInput.value;
                     const bgColor = customTextBgColorInput.value;
                     
@@ -8596,7 +8596,7 @@
                     
                 customTextVisualForm.addEventListener('submit', (e) => {
                     e.preventDefault();
-                    const customText = customTextInput.value.trim().toUpperCase().substring(0, 3);
+                    const customText = customTextInput.value.trim().substring(0, 3);
                     // NEW V4.75: Get colors
                     const fgColor = customTextColorInput.value;
                     const bgColor = customTextBgColorInput.value;
@@ -8740,7 +8740,7 @@
                         customTextBgColorInput.addEventListener('input', updateCustomTextPreviews);
                         
                         function updateCustomTextPreviews() {
-                            const text = customTextInput.value.trim().toUpperCase().substring(0, 3) || '?';
+                            const text = customTextInput.value.trim().substring(0, 3) || '?';
                             const fgColor = customTextColorInput.value;
                             const bgColor = customTextBgColorInput.value;
                             
