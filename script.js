@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.40.1"
-        // fixing custom bell audio
+        const APP_VERSION = "5.41"
+        // Make visual previews more consistent
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4117,14 +4117,32 @@
             // The new router function is located below.
 
             // NEW 5.33: Update visual preview in edit modal
+            // MODIFIED V5.41: Updates both full and icon previews
             function updateEditBellVisualPreview() {
                 const visualSelect = document.getElementById('edit-bell-visual');
-                const preview = document.getElementById('edit-bell-visual-preview');
-                if (!visualSelect || !preview) return;
+                const previewFull = document.getElementById('edit-bell-visual-preview');
+                const previewIcon = document.getElementById('edit-bell-visual-preview-icon');
+                if (!visualSelect || !previewFull || !previewIcon) return;
             
                 const visualValue = visualSelect.value;
-                const html = getVisualHtml(visualValue, 'Preview');
-                preview.innerHTML = html;
+                const htmlFull = getVisualHtml(visualValue, 'Preview');
+                const htmlIcon = getVisualIconHtml(visualValue, 'Preview');
+                previewFull.innerHTML = htmlFull;
+                previewIcon.innerHTML = htmlIcon;
+            }
+
+            // NEW V5.41: Update visual preview in relative bell modal
+            function updateRelativeBellVisualPreview() {
+                const visualSelect = document.getElementById('relative-bell-visual');
+                const previewFull = document.getElementById('relative-bell-visual-preview-full');
+                const previewIcon = document.getElementById('relative-bell-visual-preview-icon');
+                if (!visualSelect || !previewFull || !previewIcon) return;
+            
+                const visualValue = visualSelect.value;
+                const htmlFull = getVisualHtml(visualValue, 'Preview');
+                const htmlIcon = getVisualIconHtml(visualValue, 'Preview');
+                previewFull.innerHTML = htmlFull;
+                previewIcon.innerHTML = htmlIcon;
             }
                 
             /**
@@ -5061,6 +5079,9 @@
     
                 // NEW: Populate visual dropdowns
                 updateVisualDropdowns();
+                
+                // NEW V5.41: Initialize visual previews
+                updateRelativeBellVisualPreview();
     
                 // Initial calculation
                 updateCalculatedTime(); 
@@ -6077,6 +6098,53 @@
             // --- NEW in 4.44: Visual Cue Display Logic ---
             
             /**
+             * NEW V5.41: Centralized Visual Configuration
+             * These constants ensure all previews match the actual display exactly.
+             */
+            const VISUAL_CONFIG = {
+                // Full-size display (countdown/period display)
+                full: {
+                    padding: 'p-8',           // Padding around the visual
+                    textColor: 'text-gray-400', // Default text color for SVGs
+                    customTextFontSize: {
+                        short: 80,              // Font size for 1-2 chars (getVisualHtml)
+                        long: 55                // Font size for 3+ chars (getVisualHtml)
+                    }
+                },
+                // Icon display (small circle next to period name)
+                icon: {
+                    size: 'w-10 h-10',        // Icon container size
+                    shape: 'rounded-full',     // Circle shape
+                    shadow: 'shadow-md',       // Shadow
+                    padding: 'p-1',           // Padding inside the icon
+                    bgColor: 'bg-gray-200',   // Background color
+                    textColor: 'text-blue-500', // Text color for SVGs
+                    customTextFontSize: {
+                        short: 40,              // Font size for 1-2 chars (getVisualIconHtml)
+                        long: 28                // Font size for 3+ chars (getVisualIconHtml)
+                    }
+                },
+                // Preview containers (in modals)
+                preview: {
+                    full: {
+                        containerSize: 'w-40 h-40',  // Container for full-size preview
+                        containerBg: 'bg-gray-100',
+                        containerRounded: 'rounded-lg',
+                        containerBorder: 'border border-gray-200',
+                        overflow: 'overflow-hidden',
+                        padding: 'p-2'           // Padding in preview container
+                    },
+                    icon: {
+                        containerSize: 'w-40 h-40',  // Container that holds the icon preview
+                        containerBg: 'bg-gray-100',
+                        containerRounded: 'rounded-lg',
+                        containerBorder: 'border border-gray-200',
+                        flex: 'flex items-center justify-center'
+                    }
+                }
+            };
+
+            /**
              * NEW: v4.44 - Generates default SVG visual cues.
              * @param {string} periodName - The name of the period.
              * @returns {string} An HTML string for an SVG or <img> tag.
@@ -6102,8 +6170,8 @@
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text></svg>`;
                 }
                 
-                // Return as a full HTML string for injection (MODIFIED V4.74: Removed wrapper div)
-                return `<div class="w-full h-full p-8 text-gray-400">${svgContent}</div>`;
+                // MODIFIED V5.41: Use centralized config
+                return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
             }
 
             /**
@@ -6198,19 +6266,19 @@
                     return getDefaultVisualCue(periodName);
                 }
                 if (value.startsWith('[CUSTOM_TEXT]')) {
-                    // MODIFIED V4.75: Parse color data
+                    // MODIFIED V5.41: Use centralized config
                     const parts = value.replace('[CUSTOM_TEXT] ', '').split('|');
                     const customText = parts[0] || '...';
                     const bgColor = parts[1] || '#4338CA'; // Default bg
                     const fgColor = parts[2] || '#FFFFFF'; // Default fg
                     
-                    // MODIFIED V4.78: Reduced 3-char font size & added font-family
-                    const svgFontSize = customText.length > 2 ? 55 : 80;
+                    const svgFontSize = customText.length > 2 ? 
+                        VISUAL_CONFIG.full.customTextFontSize.long : 
+                        VISUAL_CONFIG.full.customTextFontSize.short;
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
                         <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${customText}</text>
                     </svg>`;
-                    // MODIFIED V4.75: Use inline styles for custom colors
-                    return `<div class="w-full h-full p-8 flex items-center justify-center" style="background-color:${bgColor}; color:${fgColor};">
+                    return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} flex items-center justify-center" style="background-color:${bgColor}; color:${fgColor};">
                         ${svgContent}
                     </div>`;
                 }
@@ -6224,10 +6292,10 @@
                     return `<img src="${value}" alt="Visual Cue" class="w-full h-full object-contain">`;
                 
                 // NEW V4.89: Add default visual for standard Quick Bell
-                // MODIFIED V4.98: Moved from getDefaultVisualCue and changed icon
+                // MODIFIED V5.41: Use centralized config
                 } else if (value === "[DEFAULT] Quick Bell") {
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM11 15h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg>`;
-                    return `<div class="w-full h-full p-8 text-gray-400">${svgContent}</div>`;
+                    return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
                 }
                 
                 // Fallback
@@ -6267,50 +6335,45 @@
 
             /**
              * NEW: v4.45 - Gets the HTML for a *small icon* visual cue.
+             * MODIFIED V5.41: Uses centralized config for consistency
              */
             function getVisualIconHtml(value, periodName) {
-                // MODIFIED in 4.54: Added classes for circular clipping, sizing, and proper SVG padding.
-                // MODIFIED V4.60.2: Changed default text color to blue for visibility
-                const sharedClasses = "w-10 h-10 rounded-full shadow-md flex items-center justify-center overflow-hidden"; 
+                // Use centralized config for all icon classes
+                const sharedClasses = `${VISUAL_CONFIG.icon.size} ${VISUAL_CONFIG.icon.shape} ${VISUAL_CONFIG.icon.shadow} flex items-center justify-center overflow-hidden`; 
                 
                 if (!value) {
                     // If no image, return the default SVG, styled for the icon size/shape
-                    // MODIFIED V4.74: Call the new *raw* SVG function
                     const defaultSvgHtml = getRawDefaultVisualCueSvg(periodName);
-                    // MODIFIED V4.60.2: Changed SVG color to blue for better contrast
-                    return `<div class="${sharedClasses} bg-gray-200 text-blue-500 p-1">${defaultSvgHtml}</div>`;
+                    return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.bgColor} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}">${defaultSvgHtml}</div>`;
                 }
                 if (value.startsWith('[CUSTOM_TEXT]')) {
-                    // MODIFIED V4.75: Parse color data
                     const parts = value.replace('[CUSTOM_TEXT] ', '').split('|');
                     const customText = parts[0] || '...';
                     const bgColor = parts[1] || '#4338CA'; // Default bg
                     const fgColor = parts[2] || '#FFFFFF'; // Default fg
                     
-                    // MODIFIED V4.78: Reduced 3-char font size & added font-family
-                    const svgFontSize = customText.length > 2 ? 28 : 40; // Use larger font size for 1-2 chars
+                    const svgFontSize = customText.length > 2 ? 
+                        VISUAL_CONFIG.icon.customTextFontSize.long : 
+                        VISUAL_CONFIG.icon.customTextFontSize.short;
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
                         <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${customText}</text>
                     </svg>`;
-                    // MODIFIED V4.75: Use inline styles for custom colors
                     return `<div class="${sharedClasses} flex items-center justify-center" style="background-color:${bgColor}; color:${fgColor};">
                         ${svgContent}
                     </div>`;
                 }
                 if (value.startsWith('[DEFAULT]')) {
                     // Case 2: It's a default SVG key
-                    // MODIFIED V4.74: Call the new *raw* SVG function
                     const defaultSvgHtml = getRawDefaultVisualCueSvg(value.replace('[DEFAULT] ', ''));
-                    return `<div class="${sharedClasses} bg-gray-200 text-blue-500 p-1">${defaultSvgHtml}</div>`;
+                    return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.bgColor} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}">${defaultSvgHtml}</div>`;
                 }
                 if (value.startsWith('http')) {
                     // If uploaded image, use the URL and the shared classes (using object-cover for full circle fill)
-                    return `<img src="${value}" alt="Icon" class="w-full h-full object-cover rounded-full bg-gray-200">`;
+                    return `<img src="${value}" alt="Icon" class="w-full h-full object-cover ${VISUAL_CONFIG.icon.shape} ${VISUAL_CONFIG.icon.bgColor}">`;
                 }
                 // Fallback
-                // MODIFIED V4.74: Call the new *raw* SVG function
                 const defaultSvgHtml = getRawDefaultVisualCueSvg(periodName);
-                return `<div class="${sharedClasses} bg-gray-200 text-blue-500 p-1">${defaultSvgHtml}</div>`;
+                return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.bgColor} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}">${defaultSvgHtml}</div>`;
             }
     
             /**
@@ -8875,7 +8938,10 @@
 
                 // NEW 5.31.1: Bell visual dropdowns
                 document.getElementById('add-static-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
-                document.getElementById('relative-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('relative-bell-visual')?.addEventListener('change', function(e) {
+                    visualSelectChangeHandler.call(this, e);
+                    updateRelativeBellVisualPreview(); // NEW V5.41: Update preview
+                });
                 document.getElementById('edit-bell-visual')?.addEventListener('change', function(e) {
                     visualSelectChangeHandler.call(this, e);
                     updateEditBellVisualPreview(); // NEW 5.32: Update preview
