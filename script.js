@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.41"
-        // Make visual previews more consistent
+        const APP_VERSION = "5.41.1"
+        // making visual previews more consistent
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4117,32 +4117,37 @@
             // The new router function is located below.
 
             // NEW 5.33: Update visual preview in edit modal
-            // MODIFIED V5.41: Updates both full and icon previews
+            // MODIFIED V5.41: Single preview only (bells don't show icons)
             function updateEditBellVisualPreview() {
                 const visualSelect = document.getElementById('edit-bell-visual');
                 const previewFull = document.getElementById('edit-bell-visual-preview');
-                const previewIcon = document.getElementById('edit-bell-visual-preview-icon');
-                if (!visualSelect || !previewFull || !previewIcon) return;
+                if (!visualSelect || !previewFull) return;
             
                 const visualValue = visualSelect.value;
                 const htmlFull = getVisualHtml(visualValue, 'Preview');
-                const htmlIcon = getVisualIconHtml(visualValue, 'Preview');
                 previewFull.innerHTML = htmlFull;
-                previewIcon.innerHTML = htmlIcon;
             }
 
-            // NEW V5.41: Update visual preview in relative bell modal
+            // NEW V5.41: Update visual preview in relative bell modal (single preview only)
             function updateRelativeBellVisualPreview() {
                 const visualSelect = document.getElementById('relative-bell-visual');
                 const previewFull = document.getElementById('relative-bell-visual-preview-full');
-                const previewIcon = document.getElementById('relative-bell-visual-preview-icon');
-                if (!visualSelect || !previewFull || !previewIcon) return;
+                if (!visualSelect || !previewFull) return;
             
                 const visualValue = visualSelect.value;
                 const htmlFull = getVisualHtml(visualValue, 'Preview');
-                const htmlIcon = getVisualIconHtml(visualValue, 'Preview');
                 previewFull.innerHTML = htmlFull;
-                previewIcon.innerHTML = htmlIcon;
+            }
+
+            // NEW V5.41: Update visual preview in multi-add-bell modal
+            function updateMultiBellVisualPreview() {
+                const visualSelect = document.getElementById('multi-bell-visual');
+                const preview = document.getElementById('multi-bell-visual-preview');
+                if (!visualSelect || !preview) return;
+            
+                const visualValue = visualSelect.value;
+                const html = getVisualHtml(visualValue, 'Preview');
+                preview.innerHTML = html;
             }
                 
             /**
@@ -4507,6 +4512,7 @@
     
             /**
              * NEW: v3.02 (4.03?) - Opens the modal for adding a bell to multiple schedules.
+             * MODIFIED V5.41: Added visual dropdown population and preview update
              */
             function showMultiAddModal() {
                 // Re-render the schedule list every time
@@ -4514,6 +4520,12 @@
                 
                 // Populate sound dropdowns
                 updateSoundDropdowns();
+                
+                // NEW V5.41: Populate visual dropdowns
+                updateVisualDropdowns();
+                
+                // NEW V5.41: Initialize preview
+                updateMultiBellVisualPreview();
     
                 addBellModal.classList.remove('hidden');
             }
@@ -8946,7 +8958,10 @@
                     visualSelectChangeHandler.call(this, e);
                     updateEditBellVisualPreview(); // NEW 5.32: Update preview
                 });
-                document.getElementById('multi-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('multi-bell-visual')?.addEventListener('change', function(e) {
+                    visualSelectChangeHandler.call(this, e);
+                    updateMultiBellVisualPreview(); // NEW V5.41: Update preview
+                });
                 document.getElementById('multi-relative-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
                     
                 // --- NEW V4.76: Sound Select Change Handler (for [UPLOAD]) ---
