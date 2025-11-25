@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.41.2"
-        // making visual previews more consistent
+        const APP_VERSION = "5.41.3"
+        // Fix relative bell modal errors, add previews to static bell modal, center new period previews
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4149,6 +4149,17 @@
                 const html = getVisualHtml(visualValue, 'Preview');
                 preview.innerHTML = html;
             }
+
+            // NEW V5.42: Update visual preview in add-static-bell modal
+            function updateAddStaticBellVisualPreview() {
+                const visualSelect = document.getElementById('add-static-bell-visual');
+                const preview = document.getElementById('add-static-bell-visual-preview');
+                if (!visualSelect || !preview) return;
+            
+                const visualValue = visualSelect.value;
+                const html = getVisualHtml(visualValue, 'Preview');
+                preview.innerHTML = html;
+            }
                 
             /**
              * NEW: v3.25 (4.03?) - Executes the edit of a personal bell (used by conflict resolution).
@@ -5042,6 +5053,10 @@
                     addStaticBellSound.value = 'ellisBell.mp3'; // Reset to default
                 }
     
+                // NEW V5.42: Populate visual dropdowns and update preview
+                updateVisualDropdowns();
+                updateAddStaticBellVisualPreview();
+    
                 // 3. Show Modal
                 addStaticBellSound.value = 'ellisBell.mp3'; // Set default sound
                 addStaticBellModal.classList.remove('hidden');
@@ -5073,6 +5088,11 @@
     
                 // 4. Populate Modal UI
                 relativePeriodName.textContent = periodName;
+
+                // NEW V5.42: Reset editing state and hide convert-to-static (this is for "Add", not "Edit")
+                currentEditingBell = null;
+                const convertToStaticContainer = document.getElementById('convert-to-static-container');
+                if (convertToStaticContainer) convertToStaticContainer.classList.add('hidden');
 
                 const anchorOptionsHtml = resolvedBells.map(bell => `
                     <option value="${bell.bellId}">${bell.name} (${formatTime12Hour(bell.time, true)})</option>
@@ -8965,7 +8985,10 @@
                 quickBellVisualSelect.addEventListener('change', visualSelectChangeHandler); // NEW 5.24.4: Add quick bell support
 
                 // NEW 5.31.1: Bell visual dropdowns
-                document.getElementById('add-static-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('add-static-bell-visual')?.addEventListener('change', function(e) {
+                    visualSelectChangeHandler.call(this, e);
+                    updateAddStaticBellVisualPreview(); // NEW V5.42: Update preview
+                });
                 document.getElementById('relative-bell-visual')?.addEventListener('change', function(e) {
                     visualSelectChangeHandler.call(this, e);
                     updateRelativeBellVisualPreview(); // NEW V5.41: Update preview
