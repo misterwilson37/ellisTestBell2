@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.28.3</title>
+    <title>Ellis Web Bell 5.28.4</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -602,7 +602,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.28.3</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.28.4</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -958,6 +958,21 @@
                     </div>
                 </div>
 
+                <!-- Calculated Time Preview -->
+                <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Calculated Time</label>
+                    <span id="calculated-time" class="text-lg font-semibold text-blue-600">--:--:-- --</span>
+                </div>
+
+                <!-- Convert to Static (Edit Mode Only) -->
+                <div id="convert-to-static-container" class="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200 hidden">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="convert-to-static-checkbox" class="mr-2 h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
+                        <span class="text-sm font-medium text-gray-700">Convert to Static Bell</span>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1">This will set the bell's time to <strong id="convert-to-static-time">--:--:-- --</strong> and remove the relative dependency.</p>
+                </div>
+
                 <!-- Bell Name and Sound -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
@@ -1086,28 +1101,39 @@
 				    </select>
 				</div>
 
-				<!-- NEW 5.18: Visual Display Mode -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                            <input type="radio" name="add-static-visual-mode" value="none" checked class="mr-2">
-                            <span class="text-sm">None</span>
-                        </label>
-                        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                            <input type="radio" name="add-static-visual-mode" value="before" class="mr-2">
-                            <span class="text-sm">Before</span>
-                        </label>
-                        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                            <input type="radio" name="add-static-visual-mode" value="after" class="mr-2">
-                            <span class="text-sm">After</span>
-                        </label>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">
-                        <strong>Before:</strong> Show visual while counting down<br>
-                        <strong>After:</strong> Show visual after bell rings
-                    </p>
-                </div>
+				<!-- Visual Display Mode - Two Column Layout -->
+				<div class="mb-4 grid grid-cols-2 gap-4">
+				    <!-- Left Column: Visual Display Mode -->
+				    <div>
+				        <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
+				        <div class="grid grid-cols-1 gap-2">
+				            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				                <input type="radio" name="add-static-visual-mode" value="none" checked class="mr-2">
+				                <span class="text-sm">None</span>
+				            </label>
+				            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				                <input type="radio" name="add-static-visual-mode" value="before" class="mr-2">
+				                <span class="text-sm">Before</span>
+				            </label>
+				            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				                <input type="radio" name="add-static-visual-mode" value="after" class="mr-2">
+				                <span class="text-sm">After</span>
+				            </label>
+				        </div>
+				        <p class="text-xs text-gray-500 mt-2">
+				            <strong>Before:</strong> Show while counting down<br>
+				            <strong>After:</strong> Show after bell rings
+				        </p>
+				    </div>
+				    
+				    <!-- Right Column: Preview -->
+				    <div>
+				        <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+				        <div id="add-static-bell-visual-preview" class="w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 overflow-hidden p-2">
+				            <span class="text-sm text-gray-400">Select visual</span>
+				        </div>
+				    </div>
+				</div>
 
                 <p id="add-static-bell-status" class="text-red-600 text-sm mt-4 hidden"></p>
 
@@ -1235,14 +1261,14 @@
                     </select>
                     
                     <!-- Visual Preview (Two Column Layout) -->
-                    <div class="grid grid-cols-2 gap-4 mt-2">
-                        <div>
+                    <div class="grid grid-cols-2 gap-4 mt-2 justify-items-center">
+                        <div class="text-center">
                             <label class="block text-xs font-medium text-gray-600 mb-1">Full Preview</label>
                             <div id="new-period-image-preview-full" class="w-40 h-40 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden p-2 flex items-center justify-center">
                                 <span class="text-gray-400 text-xs">No visual selected</span>
                             </div>
                         </div>
-                        <div>
+                        <div class="text-center">
                             <label class="block text-xs font-medium text-gray-600 mb-1">Icon Preview</label>
                             <div id="new-period-image-preview-icon" class="w-40 h-40 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
                                 <span class="text-gray-400 text-xs">No visual selected</span>
@@ -1768,4 +1794,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.28.3 -->
+<!-- Version 5.28.4 -->
