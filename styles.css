@@ -119,7 +119,8 @@ body.admin-mode #combined-bell-list .delete-btn {
 #rename-personal-schedule-modal,
 #rename-shared-schedule-modal,
 #rename-audio-modal,
-#rename-visual-modal {
+#rename-visual-modal,
+#passing-period-visual-modal {
     z-index: 50;
 }
 
