@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.28.1</title>
+    <title>Ellis Web Bell 5.28.2</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -602,7 +602,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.28.1</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.28.2</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -1224,6 +1224,22 @@
                     <select id="new-period-image-select" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <!-- Options populated by JS -->
                     </select>
+                    
+                    <!-- Visual Preview (Two Column Layout) -->
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Full Preview</label>
+                            <div id="new-period-image-preview-full" class="w-40 h-40 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden p-2 flex items-center justify-center">
+                                <span class="text-gray-400 text-xs">No visual selected</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Icon Preview</label>
+                            <div id="new-period-image-preview-icon" class="w-40 h-40 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                                <span class="text-gray-400 text-xs">No visual selected</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- NEW: Static/Relative Toggle -->
@@ -1743,4 +1759,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.28.1 -->
+<!-- Version 5.28.2 -->
