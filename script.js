@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.41.3"
-        // Fix relative bell modal errors, add previews to static bell modal, center new period previews
+        const APP_VERSION = "5.41.4"
+        // Centralized visual preview CSS, fix relative bell modal two-column layout, fix modal errors
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4150,7 +4150,7 @@
                 preview.innerHTML = html;
             }
 
-            // NEW V5.42: Update visual preview in add-static-bell modal
+            // NEW V5.41.4: Update visual preview in add-static-bell modal
             function updateAddStaticBellVisualPreview() {
                 const visualSelect = document.getElementById('add-static-bell-visual');
                 const preview = document.getElementById('add-static-bell-visual-preview');
@@ -5053,7 +5053,7 @@
                     addStaticBellSound.value = 'ellisBell.mp3'; // Reset to default
                 }
     
-                // NEW V5.42: Populate visual dropdowns and update preview
+                // NEW V5.41.4: Populate visual dropdowns and update preview
                 updateVisualDropdowns();
                 updateAddStaticBellVisualPreview();
     
@@ -5089,7 +5089,7 @@
                 // 4. Populate Modal UI
                 relativePeriodName.textContent = periodName;
 
-                // NEW V5.42: Reset editing state and hide convert-to-static (this is for "Add", not "Edit")
+                // NEW V5.41.4: Reset editing state and hide convert-to-static (this is for "Add", not "Edit")
                 currentEditingBell = null;
                 const convertToStaticContainer = document.getElementById('convert-to-static-container');
                 if (convertToStaticContainer) convertToStaticContainer.classList.add('hidden');
@@ -8898,7 +8898,7 @@
                             </div>`;
                             
                             // Update quick bell button preview (small)
-                            const iconPreview = document.getElementById('quick-bell-visual-preview-icon-inner');
+                            const iconPreview = document.getElementById('quick-bell-visual-preview-icon');
                             iconPreview.innerHTML = `<span class="text-xl font-bold" style="color: ${fgColor};">${text}</span>`;
                             iconPreview.style.backgroundColor = bgColor;
                         }
@@ -8919,7 +8919,7 @@
                 quickBellVisualSelect.addEventListener('change', (e) => {
                     const value = e.target.value;
                     const previewFull = document.getElementById('quick-bell-visual-preview-full');
-                    const previewIcon = document.getElementById('quick-bell-visual-preview-icon-inner');
+                    const previewIcon = document.getElementById('quick-bell-visual-preview-icon');
                     
                     if (!previewFull || !previewIcon) return;
                     
@@ -8987,7 +8987,7 @@
                 // NEW 5.31.1: Bell visual dropdowns
                 document.getElementById('add-static-bell-visual')?.addEventListener('change', function(e) {
                     visualSelectChangeHandler.call(this, e);
-                    updateAddStaticBellVisualPreview(); // NEW V5.42: Update preview
+                    updateAddStaticBellVisualPreview(); // NEW V5.41.4: Update preview
                 });
                 document.getElementById('relative-bell-visual')?.addEventListener('change', function(e) {
                     visualSelectChangeHandler.call(this, e);
