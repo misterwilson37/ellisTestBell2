@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.28.4</title>
+    <title>Ellis Web Bell 5.28.5</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -106,12 +106,12 @@
 			</div>
 
 			<!-- NEW 5.18: Visual Display Mode -->
-			<!-- MODIFIED V5.41: Two-column layout - left: mode selector, right: preview -->
-			<div class="mb-4 grid grid-cols-2 gap-4">
+			<!-- MODIFIED V5.42: Two-column layout with centralized CSS -->
+			<div class="visual-mode-preview-grid">
 			    <!-- Left Column: Visual Display Mode -->
 			    <div>
 			        <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
-			        <div class="grid grid-cols-1 gap-2">
+			        <div class="visual-mode-stack">
 			            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
 			                <input type="radio" name="multi-add-visual-mode" value="none" checked class="mr-2">
 			                <span class="text-sm">None</span>
@@ -134,8 +134,8 @@
 			    <!-- Right Column: Preview -->
 			    <div>
 			        <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-			        <div id="multi-bell-visual-preview" class="w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 overflow-hidden p-2">
-			            <span class="text-sm text-gray-400">Select visual</span>
+			        <div id="multi-bell-visual-preview" class="visual-preview-full">
+			            <span class="visual-preview-placeholder">Select visual</span>
 			        </div>
 			    </div>
 			</div>
@@ -222,11 +222,12 @@
 			</div>
 
 			<!-- Visual Display & Preview (Side by Side) -->
-			<div class="grid grid-cols-2 gap-4 mb-4">
+			<!-- MODIFIED V5.42: Use centralized CSS classes -->
+			<div class="visual-mode-preview-grid">
 			    <!-- Left: Display Controls -->
 			    <div>
 			        <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
-			        <div class="space-y-2">
+			        <div class="visual-mode-stack">
 			            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
 			                <input type="radio" name="edit-visual-mode" value="none" checked class="mr-2">
 			                <span class="text-sm">None</span>
@@ -246,11 +247,11 @@
 			        </p>
 			    </div>
 
-			    <!-- Right: Preview (MODIFIED V5.41: Single preview for bells) -->
+			    <!-- Right: Preview -->
 			    <div>
-			        <label class="block text-sm font-medium text-gray-700 mb-1">Preview</label>
-			        <div id="edit-bell-visual-preview" class="w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 overflow-hidden p-2">
-			            <span class="text-sm text-gray-400">Select visual</span>
+			        <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+			        <div id="edit-bell-visual-preview" class="visual-preview-full">
+			            <span class="visual-preview-placeholder">Select visual</span>
 			        </div>
 			    </div>
 			</div>
@@ -602,7 +603,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.28.4</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.28.5</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -998,35 +999,37 @@
 				    </select>
 				</div>
 
-				<!-- NEW 5.18: Visual Display Mode -->
-				<div class="mb-4">
-				    <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
-				    <div class="grid grid-cols-3 gap-2">
-				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-				            <input type="radio" name="relative-visual-mode" value="none" checked class="mr-2">
-				            <span class="text-sm">None</span>
-				        </label>
-				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-				            <input type="radio" name="relative-visual-mode" value="before" class="mr-2">
-				            <span class="text-sm">Before</span>
-				        </label>
-				        <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-				            <input type="radio" name="relative-visual-mode" value="after" class="mr-2">
-				            <span class="text-sm">After</span>
-				        </label>
+				<!-- Visual Display Mode & Preview (Two Column) -->
+				<div class="visual-mode-preview-grid">
+				    <!-- Left Column: Visual Display Mode -->
+				    <div>
+				        <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
+				        <div class="visual-mode-stack">
+				            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				                <input type="radio" name="relative-visual-mode" value="none" checked class="mr-2">
+				                <span class="text-sm">None</span>
+				            </label>
+				            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				                <input type="radio" name="relative-visual-mode" value="before" class="mr-2">
+				                <span class="text-sm">Before</span>
+				            </label>
+				            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+				                <input type="radio" name="relative-visual-mode" value="after" class="mr-2">
+				                <span class="text-sm">After</span>
+				            </label>
+				        </div>
+				        <p class="text-xs text-gray-500 mt-2">
+				            <strong>Before:</strong> Show while counting down<br>
+				            <strong>After:</strong> Show after bell rings
+				        </p>
 				    </div>
-				    <p class="text-xs text-gray-500 mt-1">
-				        <strong>Before:</strong> Show visual while counting down<br>
-				        <strong>After:</strong> Show visual after bell rings
-				    </p>
-				</div>
-
-
-				<!-- NEW V5.41: Single Preview (bells don't show icons) -->
-				<div class="mb-4">
-				    <label class="block text-sm font-medium text-gray-700 mb-1">Preview</label>
-				    <div id="relative-bell-visual-preview-full" class="w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 overflow-hidden p-2">
-				        <span class="text-sm text-gray-400">Select visual</span>
+				    
+				    <!-- Right Column: Preview -->
+				    <div>
+				        <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+				        <div id="relative-bell-visual-preview-full" class="visual-preview-full">
+				            <span class="visual-preview-placeholder">Select visual</span>
+				        </div>
 				    </div>
 				</div>
 
@@ -1102,11 +1105,12 @@
 				</div>
 
 				<!-- Visual Display Mode - Two Column Layout -->
-				<div class="mb-4 grid grid-cols-2 gap-4">
+				<!-- MODIFIED V5.42: Use centralized CSS classes -->
+				<div class="visual-mode-preview-grid">
 				    <!-- Left Column: Visual Display Mode -->
 				    <div>
 				        <label class="block text-sm font-medium text-gray-700 mb-2">Visual Display</label>
-				        <div class="grid grid-cols-1 gap-2">
+				        <div class="visual-mode-stack">
 				            <label class="flex items-center px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
 				                <input type="radio" name="add-static-visual-mode" value="none" checked class="mr-2">
 				                <span class="text-sm">None</span>
@@ -1129,8 +1133,8 @@
 				    <!-- Right Column: Preview -->
 				    <div>
 				        <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-				        <div id="add-static-bell-visual-preview" class="w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 overflow-hidden p-2">
-				            <span class="text-sm text-gray-400">Select visual</span>
+				        <div id="add-static-bell-visual-preview" class="visual-preview-full">
+				            <span class="visual-preview-placeholder">Select visual</span>
 				        </div>
 				    </div>
 				</div>
@@ -1207,24 +1211,20 @@
                 </div>
 
                 <!-- NEW in 4.51: Two-Column Preview Layout (Full Size + Icon Size) -->
-                <div class="mb-4 grid grid-cols-2 gap-4">
+                <!-- MODIFIED V5.42: Use centralized CSS classes -->
+                <div class="visual-dual-preview-grid">
                     <!-- Column 1: Full Size Square Preview -->
-                    <div class="flex flex-col items-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 text-center">Full Size</label>
-                        <!-- MODIFIED in 4.53: Use a fixed, larger square container -->
-                        <div id="edit-period-image-preview-full" class="w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 overflow-hidden p-2">
-                            <span class="text-gray-400 text-xs">Preview</span>
+                    <div class="text-center">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Size</label>
+                        <div id="edit-period-image-preview-full" class="visual-preview-full">
+                            <span class="visual-preview-placeholder">Preview</span>
                         </div>
                     </div>
                     <!-- Column 2: Period Preview Size (Small Icon) -->
-                    <div class="flex flex-col items-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 text-center">Period Preview Size</label>
-                        <!-- MODIFIED in 4.53: Use a fixed, small container to hold the circle icon -->
-                        <div class="w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                            <!-- This inner DIV is the actual target for the tiny icon -->
-                            <div id="edit-period-image-preview-icon" class="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
-                                <span class="text-gray-400 text-xs">Icon</span>
-                            </div>
+                    <div class="text-center">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Period Preview Size</label>
+                        <div id="edit-period-image-preview-icon" class="visual-preview-icon-wrapper">
+                            <span class="visual-preview-placeholder text-xs">Icon</span>
                         </div>
                     </div>
                 </div>
@@ -1261,17 +1261,18 @@
                     </select>
                     
                     <!-- Visual Preview (Two Column Layout) -->
-                    <div class="grid grid-cols-2 gap-4 mt-2 justify-items-center">
+                    <!-- MODIFIED V5.42: Use centralized CSS classes -->
+                    <div class="visual-dual-preview-grid">
                         <div class="text-center">
                             <label class="block text-xs font-medium text-gray-600 mb-1">Full Preview</label>
-                            <div id="new-period-image-preview-full" class="w-40 h-40 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden p-2 flex items-center justify-center">
-                                <span class="text-gray-400 text-xs">No visual selected</span>
+                            <div id="new-period-image-preview-full" class="visual-preview-full">
+                                <span class="visual-preview-placeholder text-xs">No visual selected</span>
                             </div>
                         </div>
                         <div class="text-center">
                             <label class="block text-xs font-medium text-gray-600 mb-1">Icon Preview</label>
-                            <div id="new-period-image-preview-icon" class="w-40 h-40 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                                <span class="text-gray-400 text-xs">No visual selected</span>
+                            <div id="new-period-image-preview-icon" class="visual-preview-icon-wrapper">
+                                <span class="visual-preview-placeholder text-xs">No visual selected</span>
                             </div>
                         </div>
                     </div>
@@ -1462,20 +1463,17 @@
                 </div>
 
 
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                     <div class="flex flex-col items-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 text-center">Live Preview (Large)</label>
-                        <div id="quick-bell-visual-preview-full" class="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 overflow-hidden p-2">
-                            <span class="text-gray-400 text-xs">Preview</span>
+                <div class="visual-dual-preview-grid">
+                     <div class="text-center">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Live Preview (Large)</label>
+                        <div id="quick-bell-visual-preview-full" class="visual-preview-full">
+                            <span class="visual-preview-placeholder text-xs">Preview</span>
                         </div>
                     </div>
-                    <div class="flex flex-col items-center">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 text-center">Quick Bell Button</label>
-                        <div id="quick-bell-visual-preview-icon" class="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                            <!-- This inner DIV is the actual icon preview -->
-                            <div id="quick-bell-visual-preview-icon-inner" class="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
-                                <span class="text-gray-400 text-xs">Icon</span>
-                            </div>
+                    <div class="text-center">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quick Bell Button</label>
+                        <div id="quick-bell-visual-preview-icon" class="visual-preview-icon-wrapper">
+                            <span class="visual-preview-placeholder text-xs">Icon</span>
                         </div>
                     </div>
                 </div>
@@ -1794,4 +1792,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.28.4 -->
+<!-- Version 5.28.5 -->
