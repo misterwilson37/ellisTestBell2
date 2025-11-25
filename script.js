@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.41.4"
-        // Centralized visual preview CSS, fix relative bell modal two-column layout, fix modal errors
+        const APP_VERSION = "5.41.5"
+        // Centralized visual preview CSS, fix preview sizing to match actual display, add multi-relative preview
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4150,10 +4150,21 @@
                 preview.innerHTML = html;
             }
 
-            // NEW V5.41.4: Update visual preview in add-static-bell modal
+            // NEW V5.42: Update visual preview in add-static-bell modal
             function updateAddStaticBellVisualPreview() {
                 const visualSelect = document.getElementById('add-static-bell-visual');
                 const preview = document.getElementById('add-static-bell-visual-preview');
+                if (!visualSelect || !preview) return;
+            
+                const visualValue = visualSelect.value;
+                const html = getVisualHtml(visualValue, 'Preview');
+                preview.innerHTML = html;
+            }
+
+            // NEW V5.42: Update visual preview in multi-relative-bell modal
+            function updateMultiRelativeBellVisualPreview() {
+                const visualSelect = document.getElementById('multi-relative-bell-visual');
+                const preview = document.getElementById('multi-relative-bell-visual-preview');
                 if (!visualSelect || !preview) return;
             
                 const visualValue = visualSelect.value;
@@ -5053,7 +5064,7 @@
                     addStaticBellSound.value = 'ellisBell.mp3'; // Reset to default
                 }
     
-                // NEW V5.41.4: Populate visual dropdowns and update preview
+                // NEW V5.42: Populate visual dropdowns and update preview
                 updateVisualDropdowns();
                 updateAddStaticBellVisualPreview();
     
@@ -5089,7 +5100,7 @@
                 // 4. Populate Modal UI
                 relativePeriodName.textContent = periodName;
 
-                // NEW V5.41.4: Reset editing state and hide convert-to-static (this is for "Add", not "Edit")
+                // NEW V5.42: Reset editing state and hide convert-to-static (this is for "Add", not "Edit")
                 currentEditingBell = null;
                 const convertToStaticContainer = document.getElementById('convert-to-static-container');
                 if (convertToStaticContainer) convertToStaticContainer.classList.add('hidden');
@@ -5408,6 +5419,10 @@
                         `;
                     }).join('');
                 }
+                
+                // NEW V5.42: Populate visual dropdowns and update preview
+                updateVisualDropdowns();
+                updateMultiRelativeBellVisualPreview();
                 
                 // 4. Show the modal
                 multiAddRelativeBellModal.classList.remove('hidden');
@@ -8987,7 +9002,7 @@
                 // NEW 5.31.1: Bell visual dropdowns
                 document.getElementById('add-static-bell-visual')?.addEventListener('change', function(e) {
                     visualSelectChangeHandler.call(this, e);
-                    updateAddStaticBellVisualPreview(); // NEW V5.41.4: Update preview
+                    updateAddStaticBellVisualPreview(); // NEW V5.42: Update preview
                 });
                 document.getElementById('relative-bell-visual')?.addEventListener('change', function(e) {
                     visualSelectChangeHandler.call(this, e);
@@ -9001,7 +9016,10 @@
                     visualSelectChangeHandler.call(this, e);
                     updateMultiBellVisualPreview(); // NEW V5.41: Update preview
                 });
-                document.getElementById('multi-relative-bell-visual')?.addEventListener('change', visualSelectChangeHandler);
+                document.getElementById('multi-relative-bell-visual')?.addEventListener('change', function(e) {
+                    visualSelectChangeHandler.call(this, e);
+                    updateMultiRelativeBellVisualPreview(); // NEW V5.42: Update preview
+                });
                     
                 // --- NEW V4.76: Sound Select Change Handler (for [UPLOAD]) ---
                 function changeSoundSelectHandler(e) {
