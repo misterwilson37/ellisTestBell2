@@ -3,6 +3,80 @@ body {
     font-family: 'Century Gothic', 'Questrial', 'sans-serif';
 }
 
+/* ============================================
+   VISUAL PREVIEW SYSTEM (Centralized)
+   Change these values to update all previews
+   ============================================ */
+
+/* Full-size preview container (used in all modals) */
+.visual-preview-full {
+    width: 10rem;      /* w-40 = 160px */
+    height: 10rem;     /* h-40 = 160px */
+    background-color: #f3f4f6;  /* bg-gray-100 */
+    border-radius: 0.5rem;      /* rounded-lg */
+    border: 1px solid #e5e7eb;  /* border-gray-200 */
+    overflow: hidden;
+    padding: 0.5rem;   /* p-2 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Icon preview wrapper (holds the small circle, same size as full for alignment) */
+.visual-preview-icon-wrapper {
+    width: 10rem;      /* w-40 */
+    height: 10rem;     /* h-40 */
+    background-color: #f3f4f6;  /* bg-gray-100 */
+    border-radius: 0.5rem;      /* rounded-lg */
+    border: 1px solid #e5e7eb;  /* border-gray-200 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The actual small circle icon inside the wrapper */
+.visual-preview-icon-circle {
+    width: 2.5rem;     /* w-10 */
+    height: 2.5rem;    /* h-10 */
+    border-radius: 9999px;  /* rounded-full */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Two-column layout for visual mode + preview (bells) */
+.visual-mode-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;         /* gap-4 */
+    margin-bottom: 1rem;
+}
+
+/* Two-column layout for full + icon preview (periods) */
+.visual-dual-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;         /* gap-4 */
+    margin-top: 0.5rem;
+    justify-items: center;
+}
+
+/* Stacked radio buttons for visual mode */
+.visual-mode-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;       /* gap-2 */
+}
+
+/* Placeholder text in empty previews */
+.visual-preview-placeholder {
+    font-size: 0.875rem;  /* text-sm */
+    color: #9ca3af;       /* text-gray-400 */
+}
+
+/* ============================================ */
+
 /* Admin Controls Visibility */
 .admin-control,
 #combined-bell-list .delete-btn {
