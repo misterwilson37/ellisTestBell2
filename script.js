@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.41.5"
-        // Centralized visual preview CSS, fix preview sizing to match actual display, add multi-relative preview
+        const APP_VERSION = "5.42.0"
+        // V5.42.0: Implement passing period visual logic with proper period boundary detection
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -546,6 +546,10 @@
         let visualFileToUpload = null; // Holds the Image File object
         let visualToDelete = null; // State for visual deletion
         let periodVisualOverrides = {}; // Store local visual cue choices
+
+        // NEW V5.42.0: Passing Period Visual State
+        let personalPassingPeriodVisual = null;  // From personal schedule
+        let sharedPassingPeriodVisual = null;    // From shared schedule (admin-set default)
 
         let currentSoundSelectTarget = null; // NEW V4.76: Stores <select> for audio modal
 
@@ -1345,65 +1349,50 @@
                     if (isAudioReady) statusElement.textContent = "Monitoring...";
                 }
 
-                // --- NEW in 4.44: Update Visual Cue ---
+                // --- MODIFIED V5.42.0: Update Visual Cue with proper period boundary detection ---
                 try {
-                    // Find the *current* period based on the countdown
-                    // Check 1: Is it a Quick Bell? OR is it counting down to the next day (> 6 hours = 21600000ms)?
-                    const isNextDayBell = activeTimerMillis > (6 * 3600 * 1000); // More than 6 hours
+                    const now = new Date();
+                    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
                     
-                    const currentPeriod = (activeTimerMillis < millisToScheduleBell || isNextDayBell) 
-                        ? null // It's a Quick Bell OR it's the next day (End of Day)
-                        : (scheduleBellObject ? calculatedPeriodsList.find(p => p.name === scheduleBellObject.periodName) : null);
-
-                    // Determine the name of the period whose visual cue we SHOULD be displaying
-                    const nextPeriodName = currentPeriod ? currentPeriod.name : 
-                                           (millisToQuickBell < Infinity ? "Quick Bell" : "Passing Period");
-                    
-                    // Store the new period name
-                    currentVisualPeriodName = nextPeriodName; 
                     let visualHtml = '';
                     let visualSource = ''; // For debugging
                     let newVisualKey = ''; // Track what visual should be showing
-                        
-                    // NEW 5.31: Check for per-bell visual modes (before/after)
-                    // Priority: 1) After-mode bells that recently rang, 2) Before-mode upcoming bell, 3) Period default
-                      
+                    
                     // Get all bells from current schedule, sorted by time
                     const allBells = calculatedPeriodsList.flatMap(p => 
                         p.bells.map(b => ({ ...b, periodName: p.name }))
                     ).sort((a, b) => a.time.localeCompare(b.time));
-                        
-                    // Find the current time
-                    const now = new Date();
-                    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-                        
+                    
                     // Find the most recent bell that has already rung
                     const previousBell = allBells
-                        .filter(b => b.time < currentTimeStr)
+                        .filter(b => b.time <= currentTimeStr)
                         .sort((a, b) => b.time.localeCompare(a.time))[0]; // Most recent first
-                        
-                    // scheduleBellObject is already the next upcoming bell
-                        
-                    // Priority 1: Show "after" visual from previous bell (if it has one)
-                    // This shows from when the bell rang until the next bell rings
+                    
+                    // Find the next upcoming bell
+                    const nextBell = allBells
+                        .filter(b => b.time > currentTimeStr)
+                        .sort((a, b) => a.time.localeCompare(b.time))[0];
+                    
+                    // Priority 1: "After" visual from previous bell
+                    // Shows from when the bell rang until the next bell rings
                     if (previousBell && previousBell.visualMode === 'after' && previousBell.visualCue) {
                         visualHtml = getVisualHtml(previousBell.visualCue, previousBell.name);
                         visualSource = `After: ${previousBell.name}`;
                         newVisualKey = `after:${previousBell.bellId}`;
                     }
-                        
-                    // Priority 2: Show "before" visual from upcoming bell (if it has one and no "after" is showing)
-                    // This shows from when previous bell rang until this bell rings
-                    if (!visualHtml && scheduleBellObject && scheduleBellObject.visualMode === 'before' && scheduleBellObject.visualCue) {
-                        visualHtml = getVisualHtml(scheduleBellObject.visualCue, scheduleBellObject.name);
-                        visualSource = `Before: ${scheduleBellObject.name}`;
-                        newVisualKey = `before:${scheduleBellObject.bellId}`;
+                    
+                    // Priority 2: "Before" visual from upcoming bell
+                    // Shows during countdown to the bell
+                    if (!visualHtml && nextBell && nextBell.visualMode === 'before' && nextBell.visualCue) {
+                        visualHtml = getVisualHtml(nextBell.visualCue, nextBell.name);
+                        visualSource = `Before: ${nextBell.name}`;
+                        newVisualKey = `before:${nextBell.bellId}`;
                     }
-                        
-                    // 3. Quick bells (existing logic)
+                    
+                    // Priority 3: Quick Bell (if active)
                     if (!visualHtml && millisToQuickBell < Infinity) {
                         const activeCustomBell = customQuickBells.find(b => b && b.isActive !== false && b.name === activeTimerLabel);
-                          
+                        
                         if (activeCustomBell) {
                             const visualCue = activeCustomBell.visualCue || `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${activeCustomBell.iconBgColor}|${activeCustomBell.iconFgColor}`;
                             visualHtml = getVisualHtml(visualCue, activeCustomBell.name);
@@ -1415,21 +1404,28 @@
                             newVisualKey = 'quickbell:generic';
                         }
                     }
-                     
-                    // 4. Fall back to period visual
-                    if (!visualHtml && currentPeriod) {
-                        const visualKey = getVisualOverrideKey(activeBaseScheduleId, currentPeriod.name);
-                        const visualValue = periodVisualOverrides[visualKey] || "";
-                        visualHtml = getVisualHtml(visualValue, currentPeriod.name);
-                        visualSource = `Period: ${currentPeriod.name}`;
-                        newVisualKey = `period:${currentPeriod.name}`;
-                    }
-                        
-                    // 5. Default passing period
+                    
+                    // Priority 4 & 5: Period visual OR Passing period
+                    // V5.42.0: Now based on TIME within period boundaries, not next bell association
                     if (!visualHtml) {
-                        visualHtml = getDefaultVisualCue("Passing Period");
-                        visualSource = 'Passing Period (default)';
-                        newVisualKey = 'passing';
+                        const currentPeriod = findCurrentPeriodByTime(currentTimeStr, calculatedPeriodsList);
+                        
+                        if (currentPeriod) {
+                            // Inside a period - show period visual
+                            const visualKey = getVisualOverrideKey(activeBaseScheduleId, currentPeriod.name);
+                            const visualValue = periodVisualOverrides[visualKey] || "";
+                            visualHtml = getVisualHtml(visualValue, currentPeriod.name);
+                            visualSource = `Period: ${currentPeriod.name}`;
+                            newVisualKey = `period:${currentPeriod.name}`;
+                            currentVisualPeriodName = currentPeriod.name;
+                        } else {
+                            // Outside all periods - show passing period visual
+                            const passingVisual = getPassingPeriodVisualCue();
+                            visualHtml = getVisualHtml(passingVisual, 'Passing Period');
+                            visualSource = 'Passing Period';
+                            newVisualKey = 'passing';
+                            currentVisualPeriodName = 'Passing Period';
+                        }
                     }
                     
                     // Only update the DOM if the visual has actually changed
@@ -1438,10 +1434,10 @@
                         visualCueContainer.innerHTML = visualHtml;
                         currentVisualKey = newVisualKey;
                     }
-                        
-                    } catch (e) {
-                        console.error("Error updating visual cue:", e);
-                    }
+                    
+                } catch (e) {
+                    console.error("Error updating visual cue:", e);
+                }
             }
             
             // --- NEW: Quick Bell Function (MODIFIED V5.00) ---
@@ -3413,11 +3409,19 @@
                 localSchedule = []; // Reset flat list
                 personalBells = []; // Reset flat list
                 
+                // NEW V5.42.0: Reset passing period visual variables
+                personalPassingPeriodVisual = null;
+                sharedPassingPeriodVisual = null;
+                
                 // v3.05: Disable manager buttons
                 renamePersonalScheduleBtn.disabled = true;
                 backupPersonalScheduleBtn.disabled = true;
                 restorePersonalScheduleBtn.disabled = true;
                 showMultiAddRelativeModalBtn.disabled = true; // NEW in 4.42: Reset button state
+                
+                // NEW V5.42.0: Disable passing period visual button
+                const passingPeriodVisualBtn = document.getElementById('passing-period-visual-btn');
+                if (passingPeriodVisualBtn) passingPeriodVisualBtn.disabled = true;
                 
                 // NEW V4.90: Disable admin import/export buttons
                 exportCurrentScheduleBtn.disabled = true;
@@ -3557,6 +3561,10 @@
                     // NEW in 4.57: Enable new period button
                     newPeriodBtn.disabled = false;
                     
+                    // NEW V5.42.0: Enable passing period visual button
+                    const passingPeriodVisualBtn = document.getElementById('passing-period-visual-btn');
+                    if (passingPeriodVisualBtn) passingPeriodVisualBtn.disabled = false;
+                    
                     // 1. Listen to the BASE shared schedule
                     scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
                     activeScheduleListenerUnsubscribe = onSnapshot(scheduleRef, (docSnap) => {
@@ -3599,6 +3607,9 @@
                                     .catch(err => console.error("Error saving shared bellId migration:", err));
                             }
                             // --- END V4.90 Migration ---
+                            
+                            // NEW V5.42.0: Load passing period visual from shared schedule (admin-set default)
+                            sharedPassingPeriodVisual = scheduleData.passingPeriodVisual || null;
                             
                             console.log("Active shared schedule updated.");
 
@@ -3674,11 +3685,16 @@
                             
                             personalBellsPeriods = periodsToUse;
                             
+                            // NEW V5.42.0: Load passing period visual from personal schedule
+                            personalPassingPeriodVisual = personalData.passingPeriodVisual || null;
+                            
                             console.log("Personal schedule bells updated.");
                         } else {
                             console.warn("Personal schedule removed.");
                             personalBellsPeriods = [];
                             personalBells = [];
+                            // NEW V5.42.0: Clear passing period visual when schedule is removed
+                            personalPassingPeriodVisual = null;
                         }
                         // NEW: v4.10.3 - Run the master calculation engine
                         recalculateAndRenderAll();
@@ -6243,6 +6259,7 @@
 
             function updateVisualDropdowns() {
                 // Added 5.31.1: Dropdowns to add images to individual bells
+                // MODIFIED V5.42.0: Added passing period visual select
                 const selects = [ 
                     editPeriodImageSelect, 
                     newPeriodImageSelect, 
@@ -6251,7 +6268,8 @@
                     document.getElementById('relative-bell-visual'),
                     document.getElementById('edit-bell-visual'),
                     document.getElementById('multi-bell-visual'),
-                    document.getElementById('multi-relative-bell-visual')
+                    document.getElementById('multi-relative-bell-visual'),
+                    document.getElementById('passing-period-visual-select') // NEW V5.42.0
                 ];
                 // 1. Create options for default SVGs (dynamically)
                 // MODIFIED V4.61: Removed static number options ('1st Period', '2nd Period')
@@ -6422,6 +6440,145 @@
                 const defaultSvgHtml = getRawDefaultVisualCueSvg(periodName);
                 return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.bgColor} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}">${defaultSvgHtml}</div>`;
             }
+
+            // ============================================
+            // NEW V5.42.0: Passing Period Visual Functions
+            // ============================================
+            
+            /**
+             * V5.42.0: Get period boundaries (first/last bell times)
+             * @param {Object} period - A period object with a bells array
+             * @returns {Object|null} Object with name, startTime, endTime, period reference, or null if no bells
+             */
+            function getPeriodBoundaries(period) {
+                if (!period.bells || period.bells.length === 0) return null;
+                
+                const sortedBells = [...period.bells].sort((a, b) => a.time.localeCompare(b.time));
+                
+                return {
+                    name: period.name,
+                    startTime: sortedBells[0].time,
+                    endTime: sortedBells[sortedBells.length - 1].time,
+                    period: period  // Keep reference for accessing visualCue
+                };
+            }
+
+            /**
+             * V5.42.0: Find which period we're currently inside (if any)
+             * @param {string} currentTimeStr - Current time in HH:MM:SS format
+             * @param {Array} periodsList - Array of period objects (calculatedPeriodsList)
+             * @returns {Object|null} The period object we're inside, or null (passing period)
+             */
+            function findCurrentPeriodByTime(currentTimeStr, periodsList) {
+                const activePeriods = [];
+                
+                for (const period of periodsList) {
+                    const bounds = getPeriodBoundaries(period);
+                    if (!bounds) continue;
+                    
+                    // Check if current time is within period boundaries (inclusive)
+                    if (currentTimeStr >= bounds.startTime && currentTimeStr <= bounds.endTime) {
+                        activePeriods.push(bounds);
+                    }
+                }
+                
+                if (activePeriods.length === 0) return null;  // Passing period
+                if (activePeriods.length === 1) return activePeriods[0].period;
+                
+                // Multiple overlapping periods - return the one ending soonest
+                activePeriods.sort((a, b) => a.endTime.localeCompare(b.endTime));
+                return activePeriods[0].period;
+            }
+
+            /**
+             * V5.42.0: Get the resolved passing period visual cue
+             * Priority: 1) Personal override, 2) Shared schedule default, 3) System default (empty string)
+             * @returns {string} The visual cue value to use
+             */
+            function getPassingPeriodVisualCue() {
+                // 1. Check personal schedule override
+                if (activePersonalScheduleId && personalPassingPeriodVisual) {
+                    return personalPassingPeriodVisual;
+                }
+                
+                // 2. Check shared schedule default (admin-set)
+                if (activeBaseScheduleId && sharedPassingPeriodVisual) {
+                    return sharedPassingPeriodVisual;
+                }
+                
+                // 3. System default (empty string triggers getDefaultVisualCue)
+                return '';
+            }
+
+            /**
+             * V5.42.0: Update preview in passing period visual modal
+             */
+            function updatePassingPeriodVisualPreview() {
+                const visualSelect = document.getElementById('passing-period-visual-select');
+                const preview = document.getElementById('passing-period-visual-preview');
+                if (!visualSelect || !preview) return;
+
+                const visualValue = visualSelect.value;
+                const html = getVisualHtml(visualValue || '', 'Passing Period');
+                preview.innerHTML = html;
+            }
+
+            /**
+             * V5.42.0: Open the passing period visual modal
+             */
+            function openPassingPeriodVisualModal() {
+                if (!activePersonalScheduleId) {
+                    showUserMessage("Please select a personal schedule first.");
+                    return;
+                }
+                
+                // Populate visual dropdowns
+                updateVisualDropdowns();
+                
+                // Set current value
+                const select = document.getElementById('passing-period-visual-select');
+                if (select) {
+                    select.value = personalPassingPeriodVisual || '';
+                }
+                
+                // Update preview
+                updatePassingPeriodVisualPreview();
+                
+                // Show modal
+                document.getElementById('passing-period-visual-modal').classList.remove('hidden');
+            }
+
+            /**
+             * V5.42.0: Save passing period visual to personal schedule
+             */
+            async function handlePassingPeriodVisualSubmit(e) {
+                e.preventDefault();
+                
+                const visualValue = document.getElementById('passing-period-visual-select').value;
+                const statusEl = document.getElementById('passing-period-visual-status');
+                
+                try {
+                    const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
+                    await updateDoc(personalScheduleRef, { passingPeriodVisual: visualValue });
+                    
+                    personalPassingPeriodVisual = visualValue;
+                    
+                    document.getElementById('passing-period-visual-modal').classList.add('hidden');
+                    showUserMessage("Passing period visual saved!");
+                    
+                    // Force visual update
+                    updateClock();
+                } catch (error) {
+                    console.error("Error saving passing period visual:", error);
+                    if (statusEl) {
+                        statusEl.textContent = `Error: ${error.message}`;
+                        statusEl.classList.remove('hidden');
+                    }
+                }
+            }
+            // ============================================
+            // END V5.42.0: Passing Period Visual Functions
+            // ============================================
     
             /**
              * NEW: v4.58 - Shows a confirmation modal, returning a promise that resolves on OK/CONFIRM.
@@ -8460,6 +8617,23 @@
                     });
                 });
                 // --- End New Period Modal Listeners ---
+                
+                // --- NEW V5.42.0: Passing Period Visual Modal Listeners ---
+                document.getElementById('passing-period-visual-btn')?.addEventListener('click', openPassingPeriodVisualModal);
+                document.getElementById('passing-period-visual-form')?.addEventListener('submit', handlePassingPeriodVisualSubmit);
+                document.getElementById('passing-period-visual-cancel')?.addEventListener('click', () => {
+                    document.getElementById('passing-period-visual-modal').classList.add('hidden');
+                });
+                document.getElementById('passing-period-visual-select')?.addEventListener('change', function(e) {
+                    // Handle [UPLOAD] and [CUSTOM_TEXT] special values
+                    visualSelectChangeHandler.call(this, e);
+                    // Update preview (only if not a special value that opens another modal)
+                    const val = e.target.value;
+                    if (val !== '[UPLOAD]' && val !== '[CUSTOM_TEXT]') {
+                        updatePassingPeriodVisualPreview();
+                    }
+                });
+                // --- End V5.42.0: Passing Period Visual Modal Listeners ---
                 
                 signOutBtn.addEventListener('click', signOutUser);
                 // Sound previews
