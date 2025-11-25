@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.41.1"
+        const APP_VERSION = "5.41.2"
         // making visual previews more consistent
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -6452,6 +6452,11 @@
                 newPeriodStatus.classList.add('hidden');
                 updateVisualDropdowns();
                 
+                // Initialize visual previews with default
+                const defaultVisual = newPeriodImageSelect.value || '';
+                document.getElementById('new-period-image-preview-full').innerHTML = getVisualHtml(defaultVisual, 'New Period');
+                document.getElementById('new-period-image-preview-icon').innerHTML = getVisualIconHtml(defaultVisual, 'New Period');
+                
                 // NEW V4.81: Populate all sound dropdowns
                 const soundSelects = [
                     document.getElementById('new-period-start-sound'),
@@ -8945,7 +8950,18 @@
                     
                 // NEW in 4.60.3: Attach the custom text handler to the main edit/new period selects
                 editPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
-                newPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
+                newPeriodImageSelect.addEventListener('change', (e) => {
+                    // First handle special cases like [UPLOAD] and [CUSTOM_TEXT]
+                    visualSelectChangeHandler(e);
+                    
+                    // Then update previews if it's a regular visual selection
+                    const selectedValue = e.target.value;
+                    if (selectedValue === '[UPLOAD]' || selectedValue === '[CUSTOM_TEXT]' || selectedValue.startsWith('[CUSTOM_TEXT] ')) {
+                        return; // Skip preview update for special triggers
+                    }
+                    document.getElementById('new-period-image-preview-full').innerHTML = getVisualHtml(selectedValue, 'New Period');
+                    document.getElementById('new-period-image-preview-icon').innerHTML = getVisualIconHtml(selectedValue, 'New Period');
+                });
                 quickBellVisualSelect.addEventListener('change', visualSelectChangeHandler); // NEW 5.24.4: Add quick bell support
 
                 // NEW 5.31.1: Bell visual dropdowns
