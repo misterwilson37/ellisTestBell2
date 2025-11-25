@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.42.0"
+        const APP_VERSION = "5.42.1"
         // V5.42.0: Implement passing period visual logic with proper period boundary detection
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -6324,13 +6324,23 @@
 
             /**
              * NEW: v4.44 - Gets the HTML for a given visual cue value.
+             * MODIFIED V5.29.0: Support [BG:#hexcolor] prefix for custom backgrounds
              */
             function getVisualHtml(value, periodName) {
+                // V5.29.0: Check for background color prefix
+                let customBgColor = null;
+                if (value && value.startsWith('[BG:')) {
+                    const parsed = parseVisualBgColor(value);
+                    customBgColor = parsed.bgColor;
+                    value = parsed.baseValue;
+                }
+
+                let baseHtml = '';
+                
                 if (!value) {
                     // Case 1: Value is "" (None/Default)
-                    return getDefaultVisualCue(periodName);
-                }
-                if (value.startsWith('[CUSTOM_TEXT]')) {
+                    baseHtml = getDefaultVisualCue(periodName);
+                } else if (value.startsWith('[CUSTOM_TEXT]')) {
                     // MODIFIED V5.41: Use centralized config
                     const parts = value.replace('[CUSTOM_TEXT] ', '').split('|');
                     const customText = parts[0] || '...';
@@ -6343,28 +6353,38 @@
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
                         <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${customText}</text>
                     </svg>`;
+                    // Custom text has its own bg, don't apply custom bg
                     return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} flex items-center justify-center" style="background-color:${bgColor}; color:${fgColor};">
                         ${svgContent}
                     </div>`;
-                }
-                if (value.startsWith('[DEFAULT]')) {
+                } else if (value.startsWith('[DEFAULT]')) {
                     // Case 2: It's a default SVG key
-                    return getDefaultVisualCue(value.replace('[DEFAULT] ', ''));
-                }
-                if (value.startsWith('http')) {
+                    baseHtml = getDefaultVisualCue(value.replace('[DEFAULT] ', ''));
+                } else if (value.startsWith('http')) {
                     // Case 3: It's an uploaded image URL
-                    // MODIFIED in 4.54: Force image to fill and be contained by its parent DIV (fixing overlap).
+                    // V5.29.0: Support custom background for images
+                    if (customBgColor) {
+                        return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} flex items-center justify-center" style="background-color:${customBgColor};">
+                            <img src="${value}" alt="Visual Cue" class="max-w-full max-h-full object-contain">
+                        </div>`;
+                    }
                     return `<img src="${value}" alt="Visual Cue" class="w-full h-full object-contain">`;
-                
-                // NEW V4.89: Add default visual for standard Quick Bell
-                // MODIFIED V5.41: Use centralized config
                 } else if (value === "[DEFAULT] Quick Bell") {
+                    // NEW V4.89: Add default visual for standard Quick Bell
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM11 15h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg>`;
-                    return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
+                    baseHtml = `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
+                } else {
+                    // Fallback
+                    baseHtml = getDefaultVisualCue(periodName);
                 }
                 
-                // Fallback
-                return getDefaultVisualCue(periodName);
+                // V5.29.0: Apply custom background color if specified
+                if (customBgColor && baseHtml) {
+                    // Wrap the content with a background div
+                    return `<div class="w-full h-full flex items-center justify-center" style="background-color:${customBgColor};">${baseHtml}</div>`;
+                }
+                
+                return baseHtml;
             }
 
             /**
@@ -6512,6 +6532,7 @@
 
             /**
              * V5.42.0: Update preview in passing period visual modal
+             * V5.29.0: Handle custom background colors
              */
             function updatePassingPeriodVisualPreview() {
                 const visualSelect = document.getElementById('passing-period-visual-select');
@@ -6519,12 +6540,22 @@
                 if (!visualSelect || !preview) return;
 
                 const visualValue = visualSelect.value;
+                
+                // V5.29.0: Check for custom background color
+                const { bgColor } = parseVisualBgColor(visualValue);
+                if (bgColor) {
+                    preview.style.backgroundColor = bgColor;
+                } else {
+                    preview.style.backgroundColor = ''; // Reset to CSS default
+                }
+                
                 const html = getVisualHtml(visualValue || '', 'Passing Period');
                 preview.innerHTML = html;
             }
 
             /**
              * V5.42.0: Open the passing period visual modal
+             * V5.29.0: Set up clickable preview for background color customization
              */
             function openPassingPeriodVisualModal() {
                 if (!activePersonalScheduleId) {
@@ -6543,6 +6574,21 @@
                 
                 // Update preview
                 updatePassingPeriodVisualPreview();
+                
+                // V5.29.0: Set up clickable preview for background color customization
+                const preview = document.getElementById('passing-period-visual-preview');
+                if (preview) {
+                    preview.classList.add('clickable');
+                    preview.title = 'Click to customize background color';
+                    preview.onclick = () => {
+                        const val = select ? select.value : '';
+                        if (supportsBackgroundColor(val)) {
+                            openBgColorPicker(val, 'passing-period-visual-select', 'Passing Period');
+                        } else {
+                            showUserMessage('This visual type has its own background color setting.', 'Info');
+                        }
+                    };
+                }
                 
                 // Show modal
                 document.getElementById('passing-period-visual-modal').classList.remove('hidden');
@@ -6578,6 +6624,207 @@
             }
             // ============================================
             // END V5.42.0: Passing Period Visual Functions
+            // ============================================
+
+            // ============================================
+            // NEW V5.29.0: Visual Background Color Picker
+            // ============================================
+            
+            // State for background color picker
+            let bgColorPickerState = {
+                originalValue: '',      // The original visual value (without BG prefix)
+                currentBgColor: '#1f2937',  // Default dark gray
+                targetSelectId: null,   // Which select element to update
+                periodName: 'Visual'    // For preview rendering
+            };
+            const DEFAULT_VISUAL_BG = '#1f2937';  // bg-gray-800
+
+            /**
+             * V5.29.0: Parse a visual value to extract background color and base value
+             * Format: [BG:#hexcolor]originalValue or just originalValue
+             */
+            function parseVisualBgColor(value) {
+                if (!value) return { bgColor: null, baseValue: '' };
+                
+                const bgMatch = value.match(/^\[BG:(#[0-9A-Fa-f]{6})\](.*)$/);
+                if (bgMatch) {
+                    return { bgColor: bgMatch[1], baseValue: bgMatch[2] };
+                }
+                return { bgColor: null, baseValue: value };
+            }
+
+            /**
+             * V5.29.0: Format a visual value with background color
+             */
+            function formatVisualWithBg(baseValue, bgColor) {
+                // Don't add BG prefix if it's the default color or no color
+                if (!bgColor || bgColor === DEFAULT_VISUAL_BG) {
+                    return baseValue;
+                }
+                return `[BG:${bgColor}]${baseValue}`;
+            }
+
+            /**
+             * V5.29.0: Check if a visual value supports background color customization
+             * (SVGs and images, but not custom text which already has its own bg)
+             */
+            function supportsBackgroundColor(value) {
+                if (!value) return true;  // Default SVGs support it
+                const { baseValue } = parseVisualBgColor(value);
+                // Custom text already has its own background color
+                if (baseValue.startsWith('[CUSTOM_TEXT]')) return false;
+                // Upload and custom text triggers don't support it
+                if (baseValue === '[UPLOAD]' || baseValue === '[CUSTOM_TEXT]') return false;
+                return true;
+            }
+
+            /**
+             * V5.29.0: Open background color picker modal
+             */
+            function openBgColorPicker(visualValue, targetSelectId, periodName = 'Visual') {
+                const { bgColor, baseValue } = parseVisualBgColor(visualValue);
+                
+                bgColorPickerState = {
+                    originalValue: baseValue,
+                    currentBgColor: bgColor || DEFAULT_VISUAL_BG,
+                    targetSelectId: targetSelectId,
+                    periodName: periodName
+                };
+                
+                // Set color inputs
+                const colorInput = document.getElementById('visual-bg-color-input');
+                const hexInput = document.getElementById('visual-bg-color-hex');
+                if (colorInput) colorInput.value = bgColorPickerState.currentBgColor;
+                if (hexInput) hexInput.value = bgColorPickerState.currentBgColor;
+                
+                // Render before preview (with original/current color)
+                updateBgColorBeforePreview();
+                // Render after preview (starts same as before)
+                updateBgColorAfterPreview();
+                
+                // Show modal
+                document.getElementById('visual-bg-color-modal').classList.remove('hidden');
+            }
+
+            /**
+             * V5.29.0: Update the "before" preview in bg color picker
+             */
+            function updateBgColorBeforePreview() {
+                const preview = document.getElementById('visual-bg-before-preview');
+                if (!preview) return;
+                
+                const html = getVisualHtmlWithBg(bgColorPickerState.originalValue, bgColorPickerState.periodName, bgColorPickerState.currentBgColor);
+                preview.innerHTML = html;
+            }
+
+            /**
+             * V5.29.0: Update the "after" preview in bg color picker
+             */
+            function updateBgColorAfterPreview() {
+                const preview = document.getElementById('visual-bg-after-preview');
+                const hexInput = document.getElementById('visual-bg-color-hex');
+                if (!preview || !hexInput) return;
+                
+                const newColor = hexInput.value;
+                const html = getVisualHtmlWithBg(bgColorPickerState.originalValue, bgColorPickerState.periodName, newColor);
+                preview.innerHTML = html;
+                // Also update the preview container's background
+                preview.style.backgroundColor = newColor;
+            }
+
+            /**
+             * V5.29.0: Get visual HTML with a specific background color
+             */
+            function getVisualHtmlWithBg(value, periodName, bgColor) {
+                // Get the base HTML
+                let html = getVisualHtml(value, periodName);
+                
+                // For images, wrap with background
+                if (value && value.startsWith('http')) {
+                    return `<div class="w-full h-full flex items-center justify-center" style="background-color:${bgColor};">
+                        <img src="${value}" alt="Visual Cue" class="max-w-full max-h-full object-contain p-2">
+                    </div>`;
+                }
+                
+                // For default SVGs, the text color needs to be visible on the bg
+                // The default uses text-gray-400 which works on dark bg
+                // If user chooses light bg, we might need to adjust - but let's keep it simple for now
+                return html;
+            }
+
+            /**
+             * V5.29.0: Apply the selected background color
+             */
+            function applyBgColor() {
+                const hexInput = document.getElementById('visual-bg-color-hex');
+                if (!hexInput) return;
+                
+                const newColor = hexInput.value;
+                const newValue = formatVisualWithBg(bgColorPickerState.originalValue, newColor);
+                
+                // Update the target select's value
+                if (bgColorPickerState.targetSelectId) {
+                    const select = document.getElementById(bgColorPickerState.targetSelectId);
+                    if (select) {
+                        // We need to add a custom option if it doesn't exist
+                        let option = select.querySelector(`option[value="${CSS.escape(newValue)}"]`);
+                        if (!option) {
+                            option = document.createElement('option');
+                            option.value = newValue;
+                            option.textContent = `Custom Background`;
+                            select.appendChild(option);
+                        }
+                        select.value = newValue;
+                        // Trigger change event
+                        select.dispatchEvent(new Event('change'));
+                    }
+                }
+                
+                // Close modal
+                document.getElementById('visual-bg-color-modal').classList.add('hidden');
+            }
+
+            /**
+             * V5.29.0: Sync color picker and hex input
+             */
+            function syncBgColorInputs(source) {
+                const colorInput = document.getElementById('visual-bg-color-input');
+                const hexInput = document.getElementById('visual-bg-color-hex');
+                
+                if (source === 'picker' && colorInput && hexInput) {
+                    hexInput.value = colorInput.value;
+                } else if (source === 'hex' && colorInput && hexInput) {
+                    // Validate hex format
+                    const hex = hexInput.value;
+                    if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+                        colorInput.value = hex;
+                    }
+                }
+                
+                // Update after preview
+                updateBgColorAfterPreview();
+            }
+
+            /**
+             * V5.29.0: Make a preview element clickable for bg color customization
+             */
+            function makePreviewClickable(previewElement, selectId, periodName) {
+                if (!previewElement) return;
+                
+                previewElement.classList.add('clickable');
+                previewElement.title = 'Click to customize background color';
+                previewElement.onclick = () => {
+                    const select = document.getElementById(selectId);
+                    if (!select) return;
+                    
+                    const value = select.value;
+                    if (supportsBackgroundColor(value)) {
+                        openBgColorPicker(value, selectId, periodName);
+                    }
+                };
+            }
+            // ============================================
+            // END V5.29.0: Visual Background Color Picker
             // ============================================
     
             /**
@@ -8634,6 +8881,22 @@
                     }
                 });
                 // --- End V5.42.0: Passing Period Visual Modal Listeners ---
+                
+                // --- NEW V5.29.0: Background Color Picker Modal Listeners ---
+                document.getElementById('visual-bg-color-input')?.addEventListener('input', () => syncBgColorInputs('picker'));
+                document.getElementById('visual-bg-color-hex')?.addEventListener('input', () => syncBgColorInputs('hex'));
+                document.getElementById('visual-bg-reset-btn')?.addEventListener('click', () => {
+                    const colorInput = document.getElementById('visual-bg-color-input');
+                    const hexInput = document.getElementById('visual-bg-color-hex');
+                    if (colorInput) colorInput.value = DEFAULT_VISUAL_BG;
+                    if (hexInput) hexInput.value = DEFAULT_VISUAL_BG;
+                    updateBgColorAfterPreview();
+                });
+                document.getElementById('visual-bg-apply')?.addEventListener('click', applyBgColor);
+                document.getElementById('visual-bg-cancel')?.addEventListener('click', () => {
+                    document.getElementById('visual-bg-color-modal').classList.add('hidden');
+                });
+                // --- End V5.29.0: Background Color Picker Modal Listeners ---
                 
                 signOutBtn.addEventListener('click', signOutUser);
                 // Sound previews
