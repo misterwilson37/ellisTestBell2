@@ -16,7 +16,7 @@ body {
     border-radius: 0.5rem;      /* rounded-lg */
     border: 1px solid #e5e7eb;  /* border-gray-200 */
     overflow: hidden;
-    padding: 0.5rem;   /* p-2 */
+    /* NO padding here - content provides its own padding to match actual display */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -51,6 +51,7 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;         /* gap-4 */
     margin-bottom: 1rem;
+    justify-items: center;  /* Center columns like period modals */
 }
 
 /* Two-column layout for full + icon preview (periods) */
