@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.28.2</title>
+    <title>Ellis Web Bell 5.28.3</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -602,7 +602,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.28.2</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.28.3</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -1014,6 +1014,15 @@
 				        <span class="text-sm text-gray-400">Select visual</span>
 				    </div>
 				</div>
+
+                <p id="relative-bell-status" class="text-red-600 text-sm mt-4 hidden"></p>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" id="relative-bell-cancel" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Add Bell</button>
+                </div>
+            </form>
+        </div>
 
         <!-- **** NEW: v4.28 - Add Bell Type (Choice) Modal **** -->
         <div id="add-bell-type-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
@@ -1759,4 +1768,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.28.2 -->
+<!-- Version 5.28.3 -->
