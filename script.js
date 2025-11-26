@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.43.1"
-        // V5.43.1: Redesign custom quick bell manager layout with dropdown and two-column preview
+        const APP_VERSION = "5.43.2"
+        // V5.43.2: Fix button preview background color to match full preview when [BG:...] prefix is used
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1519,9 +1519,17 @@
                     // V5.03: Read/default the full visual cue (which includes custom text/colors or URL)
                     const rawVisualCue = bell ? (bell.visualCue || '[CUSTOM_TEXT] ?|#4338CA|#FFFFFF') : '[CUSTOM_TEXT] ?|#4338CA|#FFFFFF'; 
                     const rawIconText = bell ? bell.iconText : String(id); // Legacy/Custom Text value
-                    const iconColor = bell ? (bell.iconBgColor || '#4338CA') : '#4338CA';
-                    const textColor = bell ? (bell.iconFgColor || '#FFFFFF') : '#FFFFFF';
+                    let iconColor = bell ? (bell.iconBgColor || '#4338CA') : '#4338CA';
+                    let textColor = bell ? (bell.iconFgColor || '#FFFFFF') : '#FFFFFF';
                     const sound = bell ? bell.sound : 'ellisBell.mp3';
+                    
+                    // V5.43.2: Extract background color from [BG:...] prefix if present
+                    if (rawVisualCue && rawVisualCue.startsWith('[BG:')) {
+                        const parsed = parseVisualBgColor(rawVisualCue);
+                        if (parsed.bgColor) {
+                            iconColor = parsed.bgColor;
+                        }
+                    }
                     
                     console.log(`Rendering bell ${id}:`, { name, sound, bell });
                     
@@ -2553,15 +2561,30 @@
              * @returns {string} HTML content for the button (Icon or Text)
              */
             function getCustomBellIconHtml(visualCue, iconText, bgColor, fgColor) {
+                // V5.43.2: Extract background color from [BG:...] prefix if present
+                let customBgColor = null;
+                let baseVisualCue = visualCue;
+                if (visualCue && visualCue.startsWith('[BG:')) {
+                    const parsed = parseVisualBgColor(visualCue);
+                    customBgColor = parsed.bgColor;
+                    baseVisualCue = parsed.baseValue;
+                }
+                
                 // If it's a URL, use the image tag
                 // V5.03: object-contain ensures it fits the square button
-                if (visualCue && visualCue.startsWith('http')) {
-                    return `<img src="${visualCue}" alt="Custom Visual" class="w-full h-full object-contain p-1">`;
+                if (baseVisualCue && baseVisualCue.startsWith('http')) {
+                    if (customBgColor) {
+                        return `<div class="w-full h-full flex items-center justify-center" style="background-color:${customBgColor};"><img src="${baseVisualCue}" alt="Custom Visual" class="max-w-full max-h-full object-contain p-1"></div>`;
+                    }
+                    return `<img src="${baseVisualCue}" alt="Custom Visual" class="w-full h-full object-contain p-1">`;
                 }
                 
                 // If it's a default SVG
-                if (visualCue && visualCue.startsWith('[DEFAULT]')) {
-                    const defaultSvgHtml = getRawDefaultVisualCueSvg(visualCue.replace('[DEFAULT] ', ''));
+                if (baseVisualCue && baseVisualCue.startsWith('[DEFAULT]')) {
+                    const defaultSvgHtml = getRawDefaultVisualCueSvg(baseVisualCue.replace('[DEFAULT] ', ''));
+                    if (customBgColor) {
+                        return `<div class="w-full h-full p-1 flex items-center justify-center text-blue-500" style="background-color:${customBgColor};">${defaultSvgHtml}</div>`;
+                    }
                     // V5.03: Added p-1 for padding
                     return `<div class="w-full h-full p-1 flex items-center justify-center text-blue-500">${defaultSvgHtml}</div>`;
                 }
@@ -7127,7 +7150,9 @@
                         
                         const buttonPreview = row.querySelector('.custom-bell-button-preview');
                         if (buttonPreview) {
-                            buttonPreview.innerHTML = getCustomBellIconHtml(newValue, '', '#4338CA', '#FFFFFF');
+                            // V5.43.2: Set button preview background to match
+                            buttonPreview.style.backgroundColor = newColor;
+                            buttonPreview.innerHTML = getCustomBellIconHtml(newValue, '', newColor, '#FFFFFF');
                         }
                     }
                     
@@ -9019,11 +9044,15 @@
                         
                         const buttonPreview = row.querySelector('.custom-bell-button-preview');
                         if (buttonPreview) {
-                            // For button preview, need to determine bg/fg colors
+                            // V5.43.2: Determine bg/fg colors from value
                             let bgColor = '#4338CA';
                             let fgColor = '#FFFFFF';
                             
-                            if (selectedValue.startsWith('[CUSTOM_TEXT] ')) {
+                            // Check for [BG:...] prefix first
+                            if (selectedValue.startsWith('[BG:')) {
+                                const parsed = parseVisualBgColor(selectedValue);
+                                bgColor = parsed.bgColor || bgColor;
+                            } else if (selectedValue.startsWith('[CUSTOM_TEXT] ')) {
                                 const parts = selectedValue.replace('[CUSTOM_TEXT] ', '').split('|');
                                 bgColor = parts[1] || bgColor;
                                 fgColor = parts[2] || fgColor;
