@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.6"
-        // V5.42.6: More detailed logging for visual preview debugging
+        const APP_VERSION = "5.42.7"
+        // V5.42.7: Fix background color picker for images, fix preview update timing
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -197,6 +197,7 @@
         const customTextColorInput = document.getElementById('custom-text-color');
         const customTextBgColorInput = document.getElementById('custom-text-bg-color');
         let currentVisualSelectTarget = null; // Stores the <select> element that opened the modal
+        let customTextJustSaved = false; // FIX V5.42.7: Flag to prevent modal re-open after save
 
         // NEW in 4.57: New Period Modal Variables
         const newPeriodModal = document.getElementById('new-period-modal');
@@ -4169,13 +4170,16 @@
                 const htmlFull = getVisualHtml(visualValue, periodName);
                 previewFull.innerHTML = htmlFull;
                 
-                // FIX V5.42: Make preview clickable if showing custom text
+                // FIX V5.42.7: Make preview clickable based on visual type
                 if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
                     makePreviewClickableForCustomText(previewFull, visualSelect);
+                } else if (visualValue && supportsBackgroundColor(visualValue)) {
+                    makePreviewClickable(previewFull, 'edit-bell-visual', periodName);
                 } else {
                     previewFull.style.cursor = 'default';
                     previewFull.onclick = null;
                     previewFull.title = '';
+                    previewFull.classList.remove('clickable');
                 }
             }
 
@@ -4192,13 +4196,16 @@
                 const htmlFull = getVisualHtml(visualValue, periodName);
                 previewFull.innerHTML = htmlFull;
                 
-                // FIX V5.42: Make preview clickable if showing custom text
+                // FIX V5.42.7: Make preview clickable based on visual type
                 if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
                     makePreviewClickableForCustomText(previewFull, visualSelect);
+                } else if (visualValue && supportsBackgroundColor(visualValue)) {
+                    makePreviewClickable(previewFull, 'relative-bell-visual', periodName);
                 } else {
                     previewFull.style.cursor = 'default';
                     previewFull.onclick = null;
                     previewFull.title = '';
+                    previewFull.classList.remove('clickable');
                 }
             }
 
@@ -4215,13 +4222,16 @@
                 const html = getVisualHtml(visualValue, periodName);
                 preview.innerHTML = html;
                 
-                // FIX V5.42: Make preview clickable if showing custom text
+                // FIX V5.42.7: Make preview clickable based on visual type
                 if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
                     makePreviewClickableForCustomText(preview, visualSelect);
+                } else if (visualValue && supportsBackgroundColor(visualValue)) {
+                    makePreviewClickable(preview, 'multi-bell-visual', periodName);
                 } else {
                     preview.style.cursor = 'default';
                     preview.onclick = null;
                     preview.title = '';
+                    preview.classList.remove('clickable');
                 }
             }
 
@@ -4246,13 +4256,18 @@
                 preview.innerHTML = html;
                 console.log('Preview innerHTML NOW:', preview.innerHTML.substring(0, 50)); // DEBUG - verify it was set
                 
-                // FIX V5.42: Make preview clickable if showing custom text
+                // FIX V5.42.7: Make preview clickable based on visual type
                 if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
+                    // Custom text: click to edit text/colors
                     makePreviewClickableForCustomText(preview, visualSelect);
+                } else if (visualValue && supportsBackgroundColor(visualValue)) {
+                    // Images/SVGs: click to change background color
+                    makePreviewClickable(preview, 'add-static-bell-visual', periodName);
                 } else {
                     preview.style.cursor = 'default';
                     preview.onclick = null;
                     preview.title = '';
+                    preview.classList.remove('clickable');
                 }
             }
 
@@ -4269,13 +4284,16 @@
                 const html = getVisualHtml(visualValue, periodName);
                 preview.innerHTML = html;
                 
-                // FIX V5.42: Make preview clickable if showing custom text
+                // FIX V5.42.7: Make preview clickable based on visual type
                 if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
                     makePreviewClickableForCustomText(preview, visualSelect);
+                } else if (visualValue && supportsBackgroundColor(visualValue)) {
+                    makePreviewClickable(preview, 'multi-relative-bell-visual', periodName);
                 } else {
                     preview.style.cursor = 'default';
                     preview.onclick = null;
                     preview.title = '';
+                    preview.classList.remove('clickable');
                 }
             }
                 
@@ -9348,6 +9366,10 @@
                     const storedValue = `[CUSTOM_TEXT] ${customText}|${bgColor}|${fgColor}`;
                     console.log('Creating custom text value:', storedValue);
                     
+                    // FIX V5.42.7: Set flag to prevent change handler from re-opening modal
+                    customTextJustSaved = true;
+                    setTimeout(() => { customTextJustSaved = false; }, 100);
+                    
                     // Set the value in the original select element
                     // We must dynamically add the option first if it doesn't exist
                     let option = currentVisualSelectTarget.querySelector(`option[value="${storedValue}"]`);
@@ -9373,11 +9395,24 @@
                     
                     console.log('Setting dropdown value to:', storedValue);
                     console.log('Dropdown before set:', currentVisualSelectTarget.value);
+                    
+                    // FIX V5.42.7: Store target ID before clearing it
+                    const targetId = currentVisualSelectTarget.id;
                     currentVisualSelectTarget.value = storedValue;
                     console.log('Dropdown after set:', currentVisualSelectTarget.value);
                     
-                    // Update the preview if it's the period editor
-                    if (currentVisualSelectTarget.id === 'edit-period-image-select' && currentRenamingPeriod) {
+                    // FIX V5.42.7: Manually update the preview for this dropdown
+                    if (targetId === 'add-static-bell-visual') {
+                        updateAddStaticBellVisualPreview();
+                    } else if (targetId === 'relative-bell-visual') {
+                        updateRelativeBellVisualPreview();
+                    } else if (targetId === 'edit-bell-visual') {
+                        updateEditBellVisualPreview();
+                    } else if (targetId === 'multi-bell-visual') {
+                        updateMultiBellVisualPreview();
+                    } else if (targetId === 'multi-relative-bell-visual') {
+                        updateMultiRelativeBellVisualPreview();
+                    } else if (targetId === 'edit-period-image-select' && currentRenamingPeriod) {
                         const periodName = currentRenamingPeriod.name;
                         document.getElementById('edit-period-image-preview-full').innerHTML = getVisualHtml(storedValue, periodName);
                         document.getElementById('edit-period-image-preview-icon').innerHTML = getVisualIconHtml(storedValue, periodName);
