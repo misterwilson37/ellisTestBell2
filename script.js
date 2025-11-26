@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.43.0"
-        // V5.43.0: Fix preview color mismatch - full and icon previews now use same colors
+        const APP_VERSION = "5.43.1"
+        // V5.43.1: Redesign custom quick bell manager layout with dropdown and two-column preview
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1535,21 +1535,26 @@
                     // Generate Sound Options for this slot
                     const soundOptionsHtml = getCustomBellSoundOptions(sound);
                     
-                    // V5.03: Use helper to render the content inside the large button
-                    const iconButtonContent = getCustomBellIconHtml(rawVisualCue, rawIconText, iconColor, textColor);
+                    // V5.43.1: Generate visual dropdown options
+                    const visualOptionsHtml = getCustomBellVisualOptions(rawVisualCue);
+                    
+                    // V5.43.1: Generate full-size preview HTML
+                    const fullPreviewHtml = getVisualHtml(rawVisualCue, name || 'Preview');
+                    
+                    // V5.43.1: Generate button preview HTML  
+                    const buttonPreviewHtml = getCustomBellIconHtml(rawVisualCue, rawIconText, iconColor, textColor);
 
                     return `
-                        <div class="p-4 border rounded-xl shadow-md ${hasData ? 'border-indigo-300 bg-white' : 'border-dashed border-gray-300 bg-gray-50'} space-y-3">
+                        <div class="p-4 border rounded-xl shadow-md ${hasData ? 'border-indigo-300 bg-white' : 'border-dashed border-gray-300 bg-gray-50'} space-y-4">
                             
                             <!-- ROW 1: Checkbox, Name, Time, Clear -->
                             <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                                 
                                 <!-- Col 1: Active Checkbox (Col Span 1) -->
                                 <div class="col-span-1 flex justify-center" title="${hasData ? 'Activate/Deactivate Bell' : 'Click to activate this slot'}">
-                                    <!-- V5.04 FIX: Checkbox is always ENABLED, even if slot is empty, allowing user to activate the row. -->
                                     <input type="checkbox" data-bell-id="${id}" name="custom-bell-toggle-${id}" 
                                            class="custom-quick-bell-toggle h-5 w-5 text-indigo-600 focus:ring-indigo-500 rounded-md" 
-                                           ${isActive ? 'checked' : ''}> <!-- 5.19.2 Fix the checkbox! -->
+                                           ${isActive ? 'checked' : ''}>
                                 </div>
                                 
                                 <!-- Col 2: Display Name (Col Span 5) -->
@@ -1587,50 +1592,60 @@
 
                             </div>
                             
-                            <!-- ROW 2: Icon/Visual and Sound -->
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                                
-                                <!-- Col 1: Icon/Visual Button (Col Span 3 - Large button) -->
-                                <div class="col-span-3">
-                                    <label class="block text-xs font-medium text-gray-500 mb-1">Visual Cue</label>
-                                    <button type="button" data-bell-id="${id}" 
-                                            data-icon-text="${rawIconText}" 
-                                            data-bg-color="${iconColor}" 
-                                            data-fg-color="${textColor}"
-                                            data-visual-cue="${rawVisualCue}"
-                                            class="custom-bell-icon-btn custom-bell-editable-input w-12 h-12 text-sm bg-gray-200 text-gray-700 rounded-lg hover:opacity-80 flex items-center justify-center gap-2 font-bold transition-opacity duration-150 ${disabledClass} overflow-hidden"
-                                            style="background-color: ${iconColor}; color: ${textColor};"
-                                            title="Edit Icon/Visual" ${disabledAttr}>
-                                        ${iconButtonContent}
-                                    </button>
-                                    <!-- Hidden inputs to store visual state -->
-                                    <input type="hidden" data-bell-id="${id}" data-field="iconText" name="iconText-${id}" value="${rawIconText}">
-                                    <input type="hidden" data-bell-id="${id}" data-field="iconBgColor" name="iconBgColor-${id}" value="${iconColor}">
-                                    <input type="hidden" data-bell-id="${id}" data-field="iconFgColor" name="iconFgColor-${id}" value="${textColor}">
-                                    <input type="hidden" data-bell-id="${id}" data-field="visualCue" name="visualCue-${id}" value="${rawVisualCue}">
+                            <!-- ROW 2: Sound (full width) -->
+                            <div class="flex items-end gap-2">
+                                <div class="flex-grow">
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Ring Sound</label>
+                                    <select data-bell-id="${id}" data-field="sound" name="sound-${id}" 
+                                            class="custom-bell-editable-input w-full px-2 py-1 border border-gray-300 rounded-lg custom-bell-sound-select truncate ${disabledClass}" 
+                                            ${disabledAttr}>
+                                        ${soundOptionsHtml}
+                                    </select>
                                 </div>
-                                
-                                <!-- Col 2: Sound & Preview (Col Span 9) -->
-                                <div class="col-span-9 flex items-end gap-2">
-                                    <div class="flex-grow">
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">Ring Sound</label>
-                                        <select data-bell-id="${id}" data-field="sound" name="sound-${id}" 
-                                                class="custom-bell-editable-input w-full px-2 py-1 border border-gray-300 rounded-lg custom-bell-sound-select truncate ${disabledClass} h-[34px]" 
-                                                ${disabledAttr}>
-                                            ${soundOptionsHtml}
-                                        </select>
+                                <button type="button" data-bell-id="${id}" data-sound="${sound}" 
+                                        class="preview-audio-btn custom-bell-editable-input w-8 h-8 flex-shrink-0 flex items-center justify-center text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors ${disabledClass}" 
+                                        aria-label="Preview" ${disabledAttr}>&#9654;</button>
+                            </div>
+                            
+                            <!-- ROW 3: Visual Cue Dropdown (full width) -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Visual Cue</label>
+                                <select data-bell-id="${id}" data-field="visualCue" name="visualCue-${id}" 
+                                        class="custom-bell-visual-select custom-bell-editable-input w-full px-2 py-1 border border-gray-300 rounded-lg ${disabledClass}" 
+                                        ${disabledAttr}>
+                                    ${visualOptionsHtml}
+                                </select>
+                                <!-- Hidden inputs for legacy icon data -->
+                                <input type="hidden" data-bell-id="${id}" data-field="iconText" name="iconText-${id}" value="${rawIconText}">
+                                <input type="hidden" data-bell-id="${id}" data-field="iconBgColor" name="iconBgColor-${id}" value="${iconColor}">
+                                <input type="hidden" data-bell-id="${id}" data-field="iconFgColor" name="iconFgColor-${id}" value="${textColor}">
+                            </div>
+                            
+                            <!-- ROW 4: Two-column preview -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Full Size Preview -->
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1 text-center">Full Preview</label>
+                                    <div data-bell-id="${id}" class="custom-bell-full-preview visual-preview-full mx-auto cursor-pointer ${disabledClass}" 
+                                         style="width: 10rem; height: 10rem;" title="Click to customize">
+                                        ${fullPreviewHtml}
                                     </div>
-                                    <button type="button" data-bell-id="${id}" data-sound="${sound}" 
-                                            class="preview-audio-btn custom-bell-editable-input w-8 h-8 flex-shrink-0 flex items-center justify-center text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors ${disabledClass}" 
-                                            aria-label="Preview" ${disabledAttr}>&#9654;</button>
+                                </div>
+                                <!-- Button Preview -->
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1 text-center">Button Preview</label>
+                                    <div class="flex items-center justify-center h-40">
+                                        <div data-bell-id="${id}" class="custom-bell-button-preview w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden ${disabledClass}"
+                                             style="background-color: ${iconColor}; color: ${textColor};">
+                                            ${buttonPreviewHtml}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                         </div>
                     `;
                 }).join('');
-
-                customQuickBellListContainer.innerHTML = managerSlots;
 
                 customQuickBellListContainer.innerHTML = managerSlots;
 
@@ -1717,6 +1732,57 @@
                 const options = Array.from(tempDiv.querySelectorAll('option'));
                 options.forEach(opt => {
                     if (opt.value === currentSound) {
+                        opt.setAttribute('selected', 'selected');
+                        opt.selected = true;
+                    } else {
+                        opt.removeAttribute('selected');
+                        opt.selected = false;
+                    }
+                });
+                
+                return tempDiv.innerHTML;
+            }
+            
+            /**
+             * V5.43.1: Generate visual dropdown options for custom quick bells
+             * @param {string} currentVisual - The currently selected visual cue value
+             * @returns {string} HTML options for a select element
+             */
+            function getCustomBellVisualOptions(currentVisual) {
+                // Get options from the edit period dropdown (which has all visuals)
+                const editPeriodSelect = document.getElementById('edit-period-image-select');
+                if (!editPeriodSelect) {
+                    return `<option value="">[None / Default]</option>
+                            <option value="[CUSTOM_TEXT]">Custom Text/Color...</option>`;
+                }
+                
+                // Clone the content
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = editPeriodSelect.innerHTML;
+                
+                // If currentVisual is a custom text value that doesn't exist as an option, add it
+                if (currentVisual && currentVisual.startsWith('[CUSTOM_TEXT] ')) {
+                    let existingOption = tempDiv.querySelector(`option[value="${currentVisual}"]`);
+                    if (!existingOption) {
+                        const parts = currentVisual.replace('[CUSTOM_TEXT] ', '').split('|');
+                        const customText = parts[0] || '?';
+                        const newOption = document.createElement('option');
+                        newOption.value = currentVisual;
+                        newOption.textContent = `Custom Text: ${customText}`;
+                        // Insert before the Custom Text trigger option
+                        const customTextTrigger = tempDiv.querySelector('option[value="[CUSTOM_TEXT]"]');
+                        if (customTextTrigger) {
+                            customTextTrigger.insertAdjacentElement('afterend', newOption);
+                        } else {
+                            tempDiv.appendChild(newOption);
+                        }
+                    }
+                }
+                
+                // Select the current visual
+                const options = Array.from(tempDiv.querySelectorAll('option'));
+                options.forEach(opt => {
+                    if (opt.value === currentVisual) {
                         opt.setAttribute('selected', 'selected');
                         opt.selected = true;
                     } else {
@@ -6896,7 +6962,8 @@
                 originalValue: '',      // The original visual value (without BG prefix)
                 currentBgColor: '#1f2937',  // Default dark gray
                 targetSelectId: null,   // Which select element to update
-                periodName: 'Visual'    // For preview rendering
+                periodName: 'Visual',   // For preview rendering
+                customBellId: null      // V5.43.1: For custom quick bell editing
             };
             const DEFAULT_VISUAL_BG = '#1f2937';  // bg-gray-800
 
@@ -7023,8 +7090,51 @@
                 const newColor = hexInput.value;
                 const newValue = formatVisualWithBg(bgColorPickerState.originalValue, newColor);
                 
-                // Update the target select's value
-                if (bgColorPickerState.targetSelectId) {
+                // V5.43.1: Handle custom bell bg color
+                if (bgColorPickerState.customBellId) {
+                    const formContainer = document.getElementById('custom-quick-bell-list-container');
+                    const bellId = bgColorPickerState.customBellId;
+                    
+                    // Update hidden input
+                    const visualCueInput = formContainer.querySelector(`input[data-field="visualCue"][data-bell-id="${bellId}"]`);
+                    if (visualCueInput) {
+                        visualCueInput.value = newValue;
+                    }
+                    
+                    // Update dropdown
+                    const visualSelect = formContainer.querySelector(`.custom-bell-visual-select[data-bell-id="${bellId}"]`);
+                    if (visualSelect) {
+                        let option = visualSelect.querySelector(`option[value="${CSS.escape(newValue)}"]`);
+                        if (!option) {
+                            option = document.createElement('option');
+                            option.value = newValue;
+                            option.textContent = `Custom Background`;
+                            visualSelect.appendChild(option);
+                        }
+                        visualSelect.value = newValue;
+                    }
+                    
+                    // Update previews
+                    const row = formContainer.querySelector(`.custom-bell-full-preview[data-bell-id="${bellId}"]`)?.closest('.p-4');
+                    if (row) {
+                        const nameInput = row.querySelector(`input[data-field="name"]`);
+                        const bellName = nameInput?.value || 'Preview';
+                        
+                        const fullPreview = row.querySelector('.custom-bell-full-preview');
+                        if (fullPreview) {
+                            fullPreview.innerHTML = getVisualHtml(newValue, bellName);
+                        }
+                        
+                        const buttonPreview = row.querySelector('.custom-bell-button-preview');
+                        if (buttonPreview) {
+                            buttonPreview.innerHTML = getCustomBellIconHtml(newValue, '', '#4338CA', '#FFFFFF');
+                        }
+                    }
+                    
+                    bgColorPickerState.customBellId = null;
+                }
+                // Update the target select's value (for period/bell modals)
+                else if (bgColorPickerState.targetSelectId) {
                     const select = document.getElementById(bgColorPickerState.targetSelectId);
                     if (select) {
                         // We need to add a custom option if it doesn't exist
@@ -8648,7 +8758,7 @@
                 customQuickBellListContainer.addEventListener('click', (e) => {
                     const clearBtn = e.target.closest('.clear-custom-quick-bell');
                     const previewBtn = e.target.closest('.preview-audio-btn');
-                    const iconBtn = e.target.closest('.custom-bell-icon-btn'); // NEW V5.00: Icon button
+                    const fullPreview = e.target.closest('.custom-bell-full-preview'); // V5.43.1: Full preview click
                     
                     // NEW 5.22: Handle Add button
                     if (e.target.id === 'add-custom-bell-slot-btn') {
@@ -8686,49 +8796,39 @@
                         } // Only one bracket here!
                     } else if (previewBtn) {
                         playBell(previewBtn.dataset.sound);
-                    } else if (iconBtn) { // NEW V5.00: Open Icon Modal
-                        //5.20: Added logging.
-                        console.log('Icon button clicked!', iconBtn.dataset.bellId);
-                        currentCustomBellIconSlot = parseInt(iconBtn.dataset.bellId);
+                    } else if (fullPreview) {
+                        // V5.43.1: Handle full preview click - open custom text or bg color picker
+                        const bellId = parseInt(fullPreview.dataset.bellId);
+                        const row = fullPreview.closest('.p-4');
+                        const visualSelect = row?.querySelector('.custom-bell-visual-select');
+                        const visualCue = visualSelect?.value || '';
                         
-                        const bellData = customQuickBells.find(b => b && b.id === currentCustomBellIconSlot);
-                        console.log('Bell data:', bellData);
-                        // V5.03: Use the new data attribute for the visual cue
-                        const visualCue = iconBtn.dataset.visualCue; 
-                        const bellName = bellData?.name || `Slot ${currentCustomBellIconSlot}`;
-
-                        // 1. Update modal title
-                        customTextVisualModal.querySelector('h3').textContent = `Edit Visual for: ${bellName}`;
-                        
-                        // 5.21: Use the existing quick bell sound select that's in the custom text visual modal
-                        const visualSelectElement = document.getElementById('quick-bell-visual-select');
-                        console.log('Visual select element:', visualSelectElement);
-                        if (visualSelectElement) {
-                            updateVisualDropdowns(); // 5.22.3: No parameter - it updates all dropdowns including quickBellVisualSelect
-                            console.log('Options after update:', visualSelectElement.innerHTML);
-                            console.log('Trying to set value to:', visualCue);
-                            visualSelectElement.value = visualCue;
-                            console.log('Actual value set:', visualSelectElement.value);
+                        if (visualCue.startsWith('[CUSTOM_TEXT]')) {
+                            // Open custom text editor
+                            currentCustomBellIconSlot = bellId;
+                            const bellData = customQuickBells.find(b => b && b.id === bellId);
+                            const bellName = bellData?.name || `Slot ${bellId}`;
                             
-                            // NEW 5.30.1: Manually trigger preview update for existing custom text
-                            const changeEvent = new Event('change', { bubbles: true });
-                            visualSelectElement.dispatchEvent(changeEvent);
+                            customTextVisualModal.querySelector('h3').textContent = `Edit Visual for: ${bellName}`;
+                            
+                            if (visualCue.startsWith('[CUSTOM_TEXT] ')) {
+                                const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
+                                customTextInput.value = parts[0] || '';
+                                customTextBgColorInput.value = parts[1] || '#4338CA';
+                                customTextColorInput.value = parts[2] || '#FFFFFF';
+                            }
+                            
+                            customTextVisualModal.style.zIndex = '60';
+                            customTextVisualModal.classList.remove('hidden');
+                        } else if (supportsBackgroundColor(visualCue)) {
+                            // Open background color picker
+                            currentCustomBellIconSlot = bellId;
+                            const bellData = customQuickBells.find(b => b && b.id === bellId);
+                            const bellName = bellData?.name || `Slot ${bellId}`;
+                            openBgColorPicker(visualCue, null, bellName);
+                            // Store a reference so we know to update the custom bell
+                            bgColorPickerState.customBellId = bellId;
                         }
-
-                        // 3. Load text/color inputs for the custom text section (for pre-fill)
-                        customTextInput.value = iconBtn.dataset.iconText;
-                        customTextBgColorInput.value = iconBtn.dataset.bgColor;
-                        customTextColorInput.value = iconBtn.dataset.fgColor;
-                        
-                        // 4. Force change event to update previews and toggle custom text container
-                        // Updated 5.24 to replace quickBellVisualSelect.dispatchEvent(new Event('change'));
-                        if (visualSelectElement) {
-                            visualSelectElement.dispatchEvent(new Event('change'));
-                        }
-
-                        // 5. Show the modal (needs higher z-index than manager's z-50)
-                        customTextVisualModal.style.zIndex = '60';
-                        customTextVisualModal.classList.remove('hidden');
                     }
                 });
                 
@@ -8755,33 +8855,57 @@
                     // 1. Find the corresponding hidden inputs in the custom bell form
                     const formContainer = document.getElementById('custom-quick-bell-list-container');
                     
-                    // Update hidden inputs for the specific slot - FIX: Use parentheses not backticks
+                    // Update hidden inputs for the specific slot
                     const iconTextInput = formContainer.querySelector(`input[data-field="iconText"][data-bell-id="${currentCustomBellIconSlot}"]`);
                     const bgColorInput = formContainer.querySelector(`input[data-field="iconBgColor"][data-bell-id="${currentCustomBellIconSlot}"]`);
                     const fgColorInput = formContainer.querySelector(`input[data-field="iconFgColor"][data-bell-id="${currentCustomBellIconSlot}"]`);
+                    const visualCueInput = formContainer.querySelector(`input[data-field="visualCue"][data-bell-id="${currentCustomBellIconSlot}"]`);
                     
-                    // 2. Find the visible button to update its style - FIX: Use parentheses not backticks
-                    const iconButton = formContainer.querySelector(`.custom-bell-icon-btn[data-bell-id="${currentCustomBellIconSlot}"]`);
+                    const storedValue = `[CUSTOM_TEXT] ${customText}|${bgColor}|${fgColor}`;
                     
-                    if (iconTextInput && iconButton) {
-                        // Update hidden inputs (read by the main form submit)
-                        iconTextInput.value = customText;
-                        if (bgColorInput) bgColorInput.value = bgColor;
-                        if (fgColorInput) fgColorInput.value = fgColor;
-                            
-                        // NEW 5.30: Update the visualCue hidden input with the full custom text format
-                        const visualCueInput = formContainer.querySelector(`input[data-field="visualCue"][data-bell-id="${currentCustomBellIconSlot}"]`);
-                        if (visualCueInput) {
-                            visualCueInput.value = `[CUSTOM_TEXT] ${customText}|${bgColor}|${fgColor}`;
+                    if (iconTextInput) iconTextInput.value = customText;
+                    if (bgColorInput) bgColorInput.value = bgColor;
+                    if (fgColorInput) fgColorInput.value = fgColor;
+                    if (visualCueInput) visualCueInput.value = storedValue;
+                    
+                    // V5.43.1: Update the visual dropdown to show the custom text option
+                    const visualSelect = formContainer.querySelector(`.custom-bell-visual-select[data-bell-id="${currentCustomBellIconSlot}"]`);
+                    if (visualSelect) {
+                        // Add option if it doesn't exist
+                        let option = visualSelect.querySelector(`option[value="${storedValue}"]`);
+                        if (!option) {
+                            option = document.createElement('option');
+                            option.value = storedValue;
+                            option.textContent = `Custom Text: ${customText}`;
+                            const customTextTrigger = visualSelect.querySelector('option[value="[CUSTOM_TEXT]"]');
+                            if (customTextTrigger) {
+                                customTextTrigger.insertAdjacentElement('afterend', option);
+                            } else {
+                                visualSelect.appendChild(option);
+                            }
+                        } else {
+                            option.textContent = `Custom Text: ${customText}`;
                         }
-                            
-                        // Update visible button (for immediate visual feedback)
-                        iconButton.dataset.iconText = customText;
-                        iconButton.dataset.bgColor = bgColor;
-                        iconButton.dataset.fgColor = fgColor;
-                        iconButton.style.backgroundColor = bgColor;
-                        iconButton.style.color = fgColor;
-                        iconButton.querySelector('span:first-child').textContent = customText;
+                        visualSelect.value = storedValue;
+                    }
+                    
+                    // V5.43.1: Update the previews
+                    const row = formContainer.querySelector(`.custom-bell-full-preview[data-bell-id="${currentCustomBellIconSlot}"]`)?.closest('.p-4');
+                    if (row) {
+                        const nameInput = row.querySelector(`input[data-field="name"]`);
+                        const bellName = nameInput?.value || 'Preview';
+                        
+                        const fullPreview = row.querySelector('.custom-bell-full-preview');
+                        if (fullPreview) {
+                            fullPreview.innerHTML = getVisualHtml(storedValue, bellName);
+                        }
+                        
+                        const buttonPreview = row.querySelector('.custom-bell-button-preview');
+                        if (buttonPreview) {
+                            buttonPreview.style.backgroundColor = bgColor;
+                            buttonPreview.style.color = fgColor;
+                            buttonPreview.innerHTML = getCustomBellIconHtml(storedValue, customText, bgColor, fgColor);
+                        }
                     }
                     
                     // 3. Clear state and hide modal
@@ -8791,10 +8915,13 @@
                 });
                 
                 // NEW V5.01: Listener for the Active/Deactive checkbox (Toggle interaction)
+                // V5.43.1: Also handle visual dropdown changes
                 customQuickBellListContainer.addEventListener('change', (e) => {
                     const toggle = e.target.closest('.custom-quick-bell-toggle');
+                    const visualSelect = e.target.closest('.custom-bell-visual-select');
+                    
                     if (toggle) {
-                        const row = toggle.closest('.p-3');
+                        const row = toggle.closest('.p-4');
                         
                         if (!row) return;
 
@@ -8814,9 +8941,104 @@
                                 }
                             }
                         });
-
-                        // All inputs/buttons are now handled by the generic .custom-bell-editable-input query.
-                        // The special handling is now unnecessary and removed for V5.02.
+                        
+                        // V5.43.1: Also handle the preview divs
+                        const fullPreview = row.querySelector('.custom-bell-full-preview');
+                        const buttonPreview = row.querySelector('.custom-bell-button-preview');
+                        if (fullPreview) {
+                            if (!isChecked) {
+                                fullPreview.classList.add('opacity-50', 'pointer-events-none');
+                            } else {
+                                fullPreview.classList.remove('opacity-50', 'pointer-events-none');
+                            }
+                        }
+                        if (buttonPreview) {
+                            if (!isChecked) {
+                                buttonPreview.classList.add('opacity-50', 'pointer-events-none');
+                            } else {
+                                buttonPreview.classList.remove('opacity-50', 'pointer-events-none');
+                            }
+                        }
+                    }
+                    
+                    // V5.43.1: Handle visual dropdown changes
+                    if (visualSelect) {
+                        const bellId = parseInt(visualSelect.dataset.bellId);
+                        const selectedValue = visualSelect.value;
+                        const row = visualSelect.closest('.p-4');
+                        
+                        console.log('Custom bell visual dropdown changed:', bellId, selectedValue);
+                        
+                        // Handle special values
+                        if (selectedValue === '[UPLOAD]') {
+                            currentCustomBellIconSlot = bellId;
+                            uploadVisualModal.style.zIndex = '70';
+                            uploadVisualModal.classList.remove('hidden');
+                            visualUploadStatus.classList.add('hidden');
+                            return;
+                        }
+                        
+                        if (selectedValue === '[CUSTOM_TEXT]' || selectedValue.startsWith('[CUSTOM_TEXT] ')) {
+                            currentCustomBellIconSlot = bellId;
+                            const bellData = customQuickBells.find(b => b && b.id === bellId);
+                            const bellName = bellData?.name || `Slot ${bellId}`;
+                            
+                            // Pre-fill custom text modal
+                            customTextVisualModal.querySelector('h3').textContent = `Edit Visual for: ${bellName}`;
+                            
+                            if (selectedValue.startsWith('[CUSTOM_TEXT] ')) {
+                                const parts = selectedValue.replace('[CUSTOM_TEXT] ', '').split('|');
+                                customTextInput.value = parts[0] || '';
+                                customTextBgColorInput.value = parts[1] || '#4338CA';
+                                customTextColorInput.value = parts[2] || '#FFFFFF';
+                            } else {
+                                customTextInput.value = '';
+                                customTextBgColorInput.value = '#4338CA';
+                                customTextColorInput.value = '#FFFFFF';
+                            }
+                            
+                            customTextVisualModal.style.zIndex = '60';
+                            customTextVisualModal.classList.remove('hidden');
+                            return;
+                        }
+                        
+                        // Update hidden inputs
+                        const visualCueInput = row.querySelector(`input[data-field="visualCue"][data-bell-id="${bellId}"]`);
+                        if (visualCueInput) {
+                            visualCueInput.value = selectedValue;
+                        }
+                        
+                        // Update previews
+                        const nameInput = row.querySelector(`input[data-field="name"][data-bell-id="${bellId}"]`);
+                        const bellName = nameInput?.value || 'Preview';
+                        
+                        const fullPreview = row.querySelector('.custom-bell-full-preview');
+                        if (fullPreview) {
+                            fullPreview.innerHTML = getVisualHtml(selectedValue, bellName);
+                        }
+                        
+                        const buttonPreview = row.querySelector('.custom-bell-button-preview');
+                        if (buttonPreview) {
+                            // For button preview, need to determine bg/fg colors
+                            let bgColor = '#4338CA';
+                            let fgColor = '#FFFFFF';
+                            
+                            if (selectedValue.startsWith('[CUSTOM_TEXT] ')) {
+                                const parts = selectedValue.replace('[CUSTOM_TEXT] ', '').split('|');
+                                bgColor = parts[1] || bgColor;
+                                fgColor = parts[2] || fgColor;
+                            }
+                            
+                            buttonPreview.style.backgroundColor = bgColor;
+                            buttonPreview.style.color = fgColor;
+                            buttonPreview.innerHTML = getCustomBellIconHtml(selectedValue, '', bgColor, fgColor);
+                            
+                            // Update hidden icon inputs
+                            const bgColorInput = row.querySelector(`input[data-field="iconBgColor"][data-bell-id="${bellId}"]`);
+                            const fgColorInput = row.querySelector(`input[data-field="iconFgColor"][data-bell-id="${bellId}"]`);
+                            if (bgColorInput) bgColorInput.value = bgColor;
+                            if (fgColorInput) fgColorInput.value = fgColor;
+                        }
                     }
                 });
 
