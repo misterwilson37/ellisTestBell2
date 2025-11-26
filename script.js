@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.12"
-        // V5.42.12: Make edit period preview clickable for bg color and custom text
+        const APP_VERSION = "5.43.0"
+        // V5.43.0: Fix preview color mismatch - full and icon previews now use same colors
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -6407,7 +6407,8 @@
                 // Full-size display (countdown/period display)
                 full: {
                     padding: 'p-8',           // Padding around the visual
-                    textColor: 'text-gray-400', // Default text color for SVGs
+                    textColor: 'text-blue-500', // FIX V5.43.0: Match icon color for consistency
+                    bgColor: 'bg-gray-200',     // FIX V5.43.0: Match icon background for previews
                     customTextFontSize: {
                         short: 80,              // Font size for 1-2 chars (getVisualHtml)
                         long: 55                // Font size for 3+ chars (getVisualHtml)
@@ -6472,8 +6473,8 @@
                     svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text></svg>`;
                 }
                 
-                // MODIFIED V5.41: Use centralized config
-                return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
+                // MODIFIED V5.43.0: Use centralized config with matching colors
+                return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.bgColor} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
             }
 
             /**
@@ -6621,8 +6622,9 @@
                     return `<img src="${value}" alt="Visual Cue" class="w-full h-full object-contain">`;
                 } else if (value === "[DEFAULT] Quick Bell") {
                     // NEW V4.89: Add default visual for standard Quick Bell
+                    // FIX V5.43.0: Use matching background color
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM11 15h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg>`;
-                    baseHtml = `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
+                    baseHtml = `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.bgColor} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
                 } else {
                     // Fallback
                     baseHtml = getDefaultVisualCue(periodName);
