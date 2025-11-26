@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.3"
-        // V5.42.3: Bug fixes - status stuck, edit bell permissions, preview updates
+        const APP_VERSION = "5.42.4"
+        // V5.42.4: Debug logging for visual preview/custom text issues
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4228,14 +4228,18 @@
             // NEW V5.42: Update visual preview in add-static-bell modal
             // FIX V5.42: Use actual period name from currentRelativePeriod for accurate preview
             function updateAddStaticBellVisualPreview() {
+                console.log('updateAddStaticBellVisualPreview called'); // DEBUG
                 const visualSelect = document.getElementById('add-static-bell-visual');
                 const preview = document.getElementById('add-static-bell-visual-preview');
+                console.log('visualSelect:', visualSelect, 'preview:', preview); // DEBUG
                 if (!visualSelect || !preview) return;
             
                 const visualValue = visualSelect.value;
                 // Use the period name from context, or 'Preview' as fallback
                 const periodName = currentRelativePeriod?.name || 'Preview';
+                console.log('visualValue:', visualValue, 'periodName:', periodName); // DEBUG
                 const html = getVisualHtml(visualValue, periodName);
+                console.log('generated html:', html?.substring(0, 100)); // DEBUG
                 preview.innerHTML = html;
                 
                 // FIX V5.42: Make preview clickable if showing custom text
@@ -9394,6 +9398,7 @@
                 // This was accidentally removed with the broken code block.
                 // Converted to a 'function' to fix hoisting-related ReferenceError.
                 function visualSelectChangeHandler(e) {
+                    console.log('visualSelectChangeHandler called! target:', e.target.id, 'value:', e.target.value); // DEBUG
                     
                     // MODIFIED V4.75: Handle [UPLOAD] option to open the new modal
                     if (e.target.value === '[UPLOAD]') {
@@ -9605,23 +9610,31 @@
                 quickBellVisualSelect.addEventListener('change', visualSelectChangeHandler); // NEW 5.24.4: Add quick bell support
 
                 // NEW 5.31.1: Bell visual dropdowns
-                document.getElementById('add-static-bell-visual')?.addEventListener('change', function(e) {
+                console.log('Setting up bell visual dropdown listeners...'); // DEBUG
+                const addStaticEl = document.getElementById('add-static-bell-visual');
+                console.log('add-static-bell-visual element:', addStaticEl); // DEBUG
+                addStaticEl?.addEventListener('change', function(e) {
+                    console.log('add-static-bell-visual change fired!'); // DEBUG
                     visualSelectChangeHandler.call(this, e);
                     updateAddStaticBellVisualPreview(); // NEW V5.42: Update preview
                 });
                 document.getElementById('relative-bell-visual')?.addEventListener('change', function(e) {
+                    console.log('relative-bell-visual change fired!'); // DEBUG
                     visualSelectChangeHandler.call(this, e);
                     updateRelativeBellVisualPreview(); // NEW V5.41: Update preview
                 });
                 document.getElementById('edit-bell-visual')?.addEventListener('change', function(e) {
+                    console.log('edit-bell-visual change fired!'); // DEBUG
                     visualSelectChangeHandler.call(this, e);
                     updateEditBellVisualPreview(); // NEW 5.32: Update preview
                 });
                 document.getElementById('multi-bell-visual')?.addEventListener('change', function(e) {
+                    console.log('multi-bell-visual change fired!'); // DEBUG
                     visualSelectChangeHandler.call(this, e);
                     updateMultiBellVisualPreview(); // NEW V5.41: Update preview
                 });
                 document.getElementById('multi-relative-bell-visual')?.addEventListener('change', function(e) {
+                    console.log('multi-relative-bell-visual change fired!'); // DEBUG
                     visualSelectChangeHandler.call(this, e);
                     updateMultiRelativeBellVisualPreview(); // NEW V5.42: Update preview
                 });
