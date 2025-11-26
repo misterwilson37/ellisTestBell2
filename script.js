@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.1"
-        // V5.42.0: Implement passing period visual logic with proper period boundary detection
+        const APP_VERSION = "5.42.2"
+        // Implement passing period visual logic with proper period boundary detection
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -148,7 +148,7 @@
         const editBellStatus = document.getElementById('edit-bell-status');
         // NEW in 4.21: Override checkbox for Edit Bell modal
         const editBellOverrideContainer = document.getElementById('edit-bell-override-container');
-        const editBellOverrideCheckbox = document.getElementById('edit-bell-override-sound');
+        const editBellOverrideCheckbox = document.getElementById('edit-bell-override-checkbox'); // FIX V5.42: Corrected ID
         
         // Change Sound Modal
         const changeSoundModal = document.getElementById('change-sound-modal');
@@ -1324,6 +1324,7 @@
                                     statusElement.textContent = `Skipped (Muted): ${bell.name}`;
                                 } else {
                                     ringBell(bell); // fire-and-forget
+                                    lastBellRingTime = currentTimeHHMMSS; // FIX V5.42: Track ring time for status reset
                                 }
                             lastRingTimestamp = nowTimestamp; // Set cooldown
                         }
@@ -1337,6 +1338,7 @@
                 if (quickBellEndTime && nowTimestamp >= quickBellEndTime.getTime() && (nowTimestamp - lastRingTimestamp > RING_COOLDOWN)) {
                     console.log("Ringing Quick Bell");
                     ringBell({ name: "Quick Bell", sound: quickBellSound });
+                    lastBellRingTime = currentTimeHHMMSS; // FIX V5.42: Track ring time for status reset
                     // MODIFIED in 4.39: DO NOT set the lastRingTimestamp.
                     // This prevents a quick bell from "eating" a nearby schedule bell.
                     // lastRingTimestamp = nowTimestamp;
@@ -3419,7 +3421,7 @@
                 restorePersonalScheduleBtn.disabled = true;
                 showMultiAddRelativeModalBtn.disabled = true; // NEW in 4.42: Reset button state
                 
-                // NEW V5.42.0: Disable passing period visual button
+                // NEW V5.42.2: Disable passing period visual button
                 const passingPeriodVisualBtn = document.getElementById('passing-period-visual-btn');
                 if (passingPeriodVisualBtn) passingPeriodVisualBtn.disabled = true;
                 
@@ -3561,7 +3563,7 @@
                     // NEW in 4.57: Enable new period button
                     newPeriodBtn.disabled = false;
                     
-                    // NEW V5.42.0: Enable passing period visual button
+                    // NEW V5.42.2: Enable passing period visual button
                     const passingPeriodVisualBtn = document.getElementById('passing-period-visual-btn');
                     if (passingPeriodVisualBtn) passingPeriodVisualBtn.disabled = false;
                     
@@ -4132,60 +4134,141 @@
             // DELETED in 4.31: Removed duplicate/old handleEditBellClick function.
             // The new router function is located below.
 
+            /**
+             * FIX V5.42: Make a preview element clickable to re-edit custom text
+             * @param {HTMLElement} previewElement - The preview container element
+             * @param {HTMLElement} selectElement - The associated select dropdown
+             */
+            function makePreviewClickableForCustomText(previewElement, selectElement) {
+                if (!previewElement || !selectElement) return;
+                
+                previewElement.style.cursor = 'pointer';
+                previewElement.title = 'Click to edit custom text';
+                
+                previewElement.onclick = () => {
+                    const currentValue = selectElement.value;
+                    // Only trigger if showing custom text
+                    if (currentValue && currentValue.startsWith('[CUSTOM_TEXT]')) {
+                        // Trigger the change event to open the custom text modal
+                        selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                };
+            }
+
             // NEW 5.33: Update visual preview in edit modal
             // MODIFIED V5.41: Single preview only (bells don't show icons)
+            // FIX V5.42: Use actual period name from currentEditingBell for accurate preview
             function updateEditBellVisualPreview() {
                 const visualSelect = document.getElementById('edit-bell-visual');
                 const previewFull = document.getElementById('edit-bell-visual-preview');
                 if (!visualSelect || !previewFull) return;
             
                 const visualValue = visualSelect.value;
-                const htmlFull = getVisualHtml(visualValue, 'Preview');
+                // Use the period name from the bell being edited, or 'Preview' as fallback
+                const periodName = currentEditingBell?.periodName || 'Preview';
+                const htmlFull = getVisualHtml(visualValue, periodName);
                 previewFull.innerHTML = htmlFull;
+                
+                // FIX V5.42: Make preview clickable if showing custom text
+                if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
+                    makePreviewClickableForCustomText(previewFull, visualSelect);
+                } else {
+                    previewFull.style.cursor = 'default';
+                    previewFull.onclick = null;
+                    previewFull.title = '';
+                }
             }
 
             // NEW V5.41: Update visual preview in relative bell modal (single preview only)
+            // FIX V5.42: Use actual period name from context
             function updateRelativeBellVisualPreview() {
                 const visualSelect = document.getElementById('relative-bell-visual');
                 const previewFull = document.getElementById('relative-bell-visual-preview-full');
                 if (!visualSelect || !previewFull) return;
             
                 const visualValue = visualSelect.value;
-                const htmlFull = getVisualHtml(visualValue, 'Preview');
+                // Use the period name from context
+                const periodName = currentRelativePeriod?.name || 'Preview';
+                const htmlFull = getVisualHtml(visualValue, periodName);
                 previewFull.innerHTML = htmlFull;
+                
+                // FIX V5.42: Make preview clickable if showing custom text
+                if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
+                    makePreviewClickableForCustomText(previewFull, visualSelect);
+                } else {
+                    previewFull.style.cursor = 'default';
+                    previewFull.onclick = null;
+                    previewFull.title = '';
+                }
             }
 
             // NEW V5.41: Update visual preview in multi-add-bell modal
+            // FIX V5.42: Use actual period name from context
             function updateMultiBellVisualPreview() {
                 const visualSelect = document.getElementById('multi-bell-visual');
                 const preview = document.getElementById('multi-bell-visual-preview');
                 if (!visualSelect || !preview) return;
             
                 const visualValue = visualSelect.value;
-                const html = getVisualHtml(visualValue, 'Preview');
+                // Use the period name from context (multi-bell uses currentMultiAddPeriod or currentRelativePeriod)
+                const periodName = currentRelativePeriod?.name || 'Preview';
+                const html = getVisualHtml(visualValue, periodName);
                 preview.innerHTML = html;
+                
+                // FIX V5.42: Make preview clickable if showing custom text
+                if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
+                    makePreviewClickableForCustomText(preview, visualSelect);
+                } else {
+                    preview.style.cursor = 'default';
+                    preview.onclick = null;
+                    preview.title = '';
+                }
             }
 
             // NEW V5.42: Update visual preview in add-static-bell modal
+            // FIX V5.42: Use actual period name from currentRelativePeriod for accurate preview
             function updateAddStaticBellVisualPreview() {
                 const visualSelect = document.getElementById('add-static-bell-visual');
                 const preview = document.getElementById('add-static-bell-visual-preview');
                 if (!visualSelect || !preview) return;
             
                 const visualValue = visualSelect.value;
-                const html = getVisualHtml(visualValue, 'Preview');
+                // Use the period name from context, or 'Preview' as fallback
+                const periodName = currentRelativePeriod?.name || 'Preview';
+                const html = getVisualHtml(visualValue, periodName);
                 preview.innerHTML = html;
+                
+                // FIX V5.42: Make preview clickable if showing custom text
+                if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
+                    makePreviewClickableForCustomText(preview, visualSelect);
+                } else {
+                    preview.style.cursor = 'default';
+                    preview.onclick = null;
+                    preview.title = '';
+                }
             }
 
             // NEW V5.42: Update visual preview in multi-relative-bell modal
+            // FIX V5.42: Use actual period name from context
             function updateMultiRelativeBellVisualPreview() {
                 const visualSelect = document.getElementById('multi-relative-bell-visual');
                 const preview = document.getElementById('multi-relative-bell-visual-preview');
                 if (!visualSelect || !preview) return;
             
                 const visualValue = visualSelect.value;
-                const html = getVisualHtml(visualValue, 'Preview');
+                // Use the period name from context
+                const periodName = currentRelativePeriod?.name || 'Preview';
+                const html = getVisualHtml(visualValue, periodName);
                 preview.innerHTML = html;
+                
+                // FIX V5.42: Make preview clickable if showing custom text
+                if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
+                    makePreviewClickableForCustomText(preview, visualSelect);
+                } else {
+                    preview.style.cursor = 'default';
+                    preview.onclick = null;
+                    preview.title = '';
+                }
             }
                 
             /**
@@ -4235,7 +4318,8 @@
                 };
 
                 // NEW in 4.21: Check if we should override the sound
-                if (oldBell.type === 'shared' && editBellOverrideCheckbox.checked) {
+                // FIX V5.42: Add null check for checkbox
+                if (oldBell.type === 'shared' && editBellOverrideCheckbox?.checked) {
                     // The override box is checked, so take the new sound
                     newBell.sound = editBellSoundInput.value;
                 } else if (oldBell.type === 'custom') {
@@ -6259,7 +6343,7 @@
 
             function updateVisualDropdowns() {
                 // Added 5.31.1: Dropdowns to add images to individual bells
-                // MODIFIED V5.42.0: Added passing period visual select
+                // MODIFIED V5.42.2: Added passing period visual select
                 const selects = [ 
                     editPeriodImageSelect, 
                     newPeriodImageSelect, 
@@ -6531,8 +6615,9 @@
             }
 
             /**
-             * V5.42.0: Update preview in passing period visual modal
+             * V5.42.2: Update preview in passing period visual modal
              * V5.29.0: Handle custom background colors
+             * FIX V5.42: Make preview clickable for custom text editing
              */
             function updatePassingPeriodVisualPreview() {
                 const visualSelect = document.getElementById('passing-period-visual-select');
@@ -6551,6 +6636,14 @@
                 
                 const html = getVisualHtml(visualValue || '', 'Passing Period');
                 preview.innerHTML = html;
+                
+                // FIX V5.42: Make preview clickable if showing custom text
+                if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
+                    makePreviewClickableForCustomText(preview, visualSelect);
+                } else {
+                    preview.style.cursor = 'pointer'; // Keep pointer for bg color picker
+                    // Don't clear onclick - it's set in openPassingPeriodVisualModal for bg color
+                }
             }
 
             /**
@@ -9327,10 +9420,37 @@
                         customTextVisualModal.classList.remove('hidden');
                         customTextVisualModal.style.zIndex = '80'; // NEW in 5.25.?: Make sure it's on top of everything
                         
-                        // NEW in 5.25.9: Show the custom text input section
-                        const customTextContainer = document.getElementById('custom-text-color-container');
-                        if (customTextContainer) {
-                            customTextContainer.classList.remove('hidden');
+                        // FIX V5.42: Set context-aware labels and icon preview shape
+                        const fullLabel = document.getElementById('custom-text-preview-full-label');
+                        const iconLabel = document.getElementById('custom-text-preview-icon-label');
+                        const iconInner = document.getElementById('quick-bell-visual-preview-icon-inner');
+                        
+                        // Determine context from the target select ID
+                        const isQuickBell = e.target.id.includes('quick-bell') || e.target.closest('#custom-quick-bell-manager-modal');
+                        const isPeriod = e.target.id === 'edit-period-image-select';
+                        
+                        if (fullLabel && iconLabel) {
+                            if (isQuickBell) {
+                                fullLabel.textContent = 'Full Size Preview';
+                                iconLabel.textContent = 'Button Preview';
+                            } else if (isPeriod) {
+                                fullLabel.textContent = 'Full Size Preview';
+                                iconLabel.textContent = 'Period Icon Preview';
+                            } else {
+                                fullLabel.textContent = 'Full Size Preview';
+                                iconLabel.textContent = 'Icon Preview';
+                            }
+                        }
+                        
+                        // Set icon preview shape based on context
+                        if (iconInner) {
+                            if (isQuickBell) {
+                                // Square button shape
+                                iconInner.className = 'w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden bg-gray-200';
+                            } else {
+                                // Circle icon shape (for periods)
+                                iconInner.className = 'visual-preview-icon-circle bg-gray-200';
+                            }
                         }
 
                         // NEW 5.30.2: Add live preview updates
@@ -9338,6 +9458,7 @@
                         customTextColorInput.addEventListener('input', updateCustomTextPreviews);
                         customTextBgColorInput.addEventListener('input', updateCustomTextPreviews);
                         
+                        // FIX V5.42: Updated preview function to use inner element for proper icon shape
                         function updateCustomTextPreviews() {
                             const text = customTextInput.value.trim().substring(0, 3) || '?';
                             const fgColor = customTextColorInput.value;
@@ -9349,11 +9470,16 @@
                                 <span class="text-6xl font-bold" style="color: ${fgColor};">${text}</span>
                             </div>`;
                             
-                            // Update quick bell button preview (small)
-                            const iconPreview = document.getElementById('quick-bell-visual-preview-icon');
-                            iconPreview.innerHTML = `<span class="text-xl font-bold" style="color: ${fgColor};">${text}</span>`;
-                            iconPreview.style.backgroundColor = bgColor;
+                            // Update icon preview (small) - use inner element for proper shape
+                            const iconInner = document.getElementById('quick-bell-visual-preview-icon-inner');
+                            if (iconInner) {
+                                iconInner.innerHTML = `<span class="text-lg font-bold" style="color: ${fgColor};">${text}</span>`;
+                                iconInner.style.backgroundColor = bgColor;
+                            }
                         }
+                        
+                        // Trigger initial preview update
+                        updateCustomTextPreviews();
                             
                         // 5.25.7: More console logging
                         console.log('After removing hidden:', customTextVisualModal.classList.contains('hidden'));
