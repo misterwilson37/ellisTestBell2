@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.43.2"
-        // V5.43.2: Fix button preview background color to match full preview when [BG:...] prefix is used
+        const APP_VERSION = "5.43.3"
+        // V5.43.3: Sync form values before adding/clearing custom quick bells to preserve edits
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -1749,6 +1749,58 @@
                 });
                 
                 return tempDiv.innerHTML;
+            }
+            
+            /**
+             * V5.43.3: Sync form values back to the customQuickBells array
+             * Called before re-rendering to preserve user edits
+             */
+            function syncCustomBellFormToArray() {
+                const formContainer = document.getElementById('custom-quick-bell-list-container');
+                if (!formContainer) return;
+                
+                // Get all bell IDs currently in the form
+                const toggles = formContainer.querySelectorAll('.custom-quick-bell-toggle');
+                
+                toggles.forEach(toggle => {
+                    const bellId = parseInt(toggle.dataset.bellId);
+                    const row = toggle.closest('.p-4');
+                    if (!row) return;
+                    
+                    // Find or create bell in array
+                    let bellIndex = customQuickBells.findIndex(b => b && b.id === bellId);
+                    if (bellIndex === -1) {
+                        // Bell doesn't exist yet, create it
+                        customQuickBells.push({
+                            id: bellId,
+                            isActive: toggle.checked
+                        });
+                        bellIndex = customQuickBells.length - 1;
+                    }
+                    
+                    const bell = customQuickBells[bellIndex];
+                    if (!bell) return;
+                    
+                    // Sync all form values
+                    const nameInput = row.querySelector(`input[data-field="name"][data-bell-id="${bellId}"]`);
+                    const minutesInput = row.querySelector(`input[data-field="minutes"][data-bell-id="${bellId}"]`);
+                    const secondsInput = row.querySelector(`input[data-field="seconds"][data-bell-id="${bellId}"]`);
+                    const soundSelect = row.querySelector(`select[data-field="sound"][data-bell-id="${bellId}"]`);
+                    const visualCueInput = row.querySelector(`input[data-field="visualCue"][data-bell-id="${bellId}"]`);
+                    const iconTextInput = row.querySelector(`input[data-field="iconText"][data-bell-id="${bellId}"]`);
+                    const iconBgColorInput = row.querySelector(`input[data-field="iconBgColor"][data-bell-id="${bellId}"]`);
+                    const iconFgColorInput = row.querySelector(`input[data-field="iconFgColor"][data-bell-id="${bellId}"]`);
+                    
+                    bell.isActive = toggle.checked;
+                    if (nameInput) bell.name = nameInput.value;
+                    if (minutesInput) bell.minutes = parseInt(minutesInput.value) || 0;
+                    if (secondsInput) bell.seconds = parseInt(secondsInput.value) || 0;
+                    if (soundSelect) bell.sound = soundSelect.value;
+                    if (visualCueInput) bell.visualCue = visualCueInput.value;
+                    if (iconTextInput) bell.iconText = iconTextInput.value;
+                    if (iconBgColorInput) bell.iconBgColor = iconBgColorInput.value;
+                    if (iconFgColorInput) bell.iconFgColor = iconFgColorInput.value;
+                });
             }
             
             /**
@@ -8787,6 +8839,9 @@
                     
                     // NEW 5.22: Handle Add button
                     if (e.target.id === 'add-custom-bell-slot-btn') {
+                        // V5.43.3: Sync current form values before adding new bell
+                        syncCustomBellFormToArray();
+                        
                         const usedIds = customQuickBells.filter(b => b).map(b => b.id);
                         let newId = 1;
                         while (usedIds.includes(newId) && newId <= 4) {
@@ -8812,6 +8867,9 @@
                         
                     // Re-written in 5.19.4
                     if (clearBtn) {
+                        // V5.43.3: Sync form values before clearing to preserve other bells' edits
+                        syncCustomBellFormToArray();
+                        
                         const id = parseInt(clearBtn.dataset.bellId);
                         const index = customQuickBells.findIndex(b => b && b.id === id);
                         if (index > -1) {
