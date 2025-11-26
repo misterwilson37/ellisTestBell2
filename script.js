@@ -1,5 +1,10 @@
-        const APP_VERSION = "5.43.3"
-        // V5.43.3: Sync form values before adding/clearing custom quick bells to preserve edits
+        const APP_VERSION = "5.44.0"
+        // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
+        // - New "Create Custom Standalone Schedule" button and modal
+        // - Standalone schedules have baseScheduleId: null, isStandalone: true
+        // - Schedule selector now shows three groups: Personal, Standalone, Shared
+        // - Standalone badge displays when viewing a standalone schedule
+        // - Anchor dropdowns now show bells from ALL periods (for cross-period relative bells)
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -58,6 +63,15 @@
         const createPersonalScheduleStatus = document.getElementById('create-personal-schedule-status');
         const createPersonalScheduleCancelBtn = document.getElementById('create-personal-schedule-cancel');
         const createPersonalScheduleBtn = document.getElementById('create-personal-schedule-btn');
+
+        // V5.44: Standalone Schedule Modal
+        const createStandaloneScheduleModal = document.getElementById('create-standalone-schedule-modal');
+        const createStandaloneScheduleForm = document.getElementById('create-standalone-schedule-form');
+        const standaloneScheduleNameInput = document.getElementById('standalone-schedule-name');
+        const createStandaloneStatus = document.getElementById('create-standalone-status');
+        const createStandaloneCancelBtn = document.getElementById('create-standalone-cancel');
+        const createStandaloneScheduleBtn = document.getElementById('create-standalone-schedule-btn');
+        const standaloneScheduleBadge = document.getElementById('standalone-schedule-badge');
 
         // Delete Personal Schedule Modal
         const confirmDeletePersonalModal = document.getElementById('confirm-delete-personal-modal');
@@ -2131,6 +2145,7 @@
     
             function renderScheduleSelector() {
                 // MODIFIED: v3.03 - Renders with optgroups
+                // MODIFIED: V5.44 - Added standalone schedules optgroup
                 const lastSelectedId = localStorage.getItem('activeScheduleId') || (allSchedules.length > 0 ? `shared-${allSchedules[0].id}` : '');
                 
                 if (allSchedules.length === 0 && allPersonalSchedules.length === 0) {
@@ -2139,9 +2154,19 @@
                      return;
                 }
                 
-                let personalOptions = allPersonalSchedules.map(schedule => 
+                // V5.44: Separate personal schedules into linked and standalone
+                const linkedPersonalSchedules = allPersonalSchedules.filter(s => s.baseScheduleId && !s.isStandalone);
+                const standaloneSchedules = allPersonalSchedules.filter(s => !s.baseScheduleId || s.isStandalone);
+                
+                let personalOptions = linkedPersonalSchedules.map(schedule => 
                     `<option value="personal-${schedule.id}" ${`personal-${schedule.id}` === lastSelectedId ? 'selected' : ''}>
                         ${schedule.name} (Personal)
+                    </option>`
+                ).join('');
+                
+                let standaloneOptions = standaloneSchedules.map(schedule => 
+                    `<option value="personal-${schedule.id}" ${`personal-${schedule.id}` === lastSelectedId ? 'selected' : ''}>
+                        ${schedule.name}
                     </option>`
                 ).join('');
     
@@ -2154,6 +2179,9 @@
                 scheduleSelector.innerHTML = `
                     <optgroup label="My Personal Schedules" id="personal-schedules-optgroup">
                         ${personalOptions || '<option value="" disabled>No personal schedules created.</option>'}
+                    </optgroup>
+                    <optgroup label="My Custom Standalone Schedules" id="standalone-schedules-optgroup">
+                        ${standaloneOptions || '<option value="" disabled>No standalone schedules created.</option>'}
                     </optgroup>
                     <optgroup label="Shared Schedules" id="shared-schedules-optgroup">
                         ${sharedOptions}
@@ -3197,11 +3225,17 @@
                                 // NEW V5.00: Enable custom quick bell button
                                 showCustomQuickBellManagerBtn.disabled = false;
                                 showCustomQuickBellManagerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                                // V5.44: Enable standalone schedule button
+                                createStandaloneScheduleBtn.disabled = false;
+                                createStandaloneScheduleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                             } else {
                                 allPersonalSchedules = []; // Clear personal schedules
                                 // NEW V5.00: Disable custom quick bell button
                                 showCustomQuickBellManagerBtn.disabled = true;
                                 showCustomQuickBellManagerBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                                // V5.44: Disable standalone schedule button
+                                createStandaloneScheduleBtn.disabled = true;
+                                createStandaloneScheduleBtn.classList.add('opacity-50', 'cursor-not-allowed');
                             }
                             schedulesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedules');
                             // MODIFIED: v3.24 - Changed to real-time listener
@@ -3601,6 +3635,11 @@
                     console.log("Setting active SHARED schedule:", scheduleId);
                     activeBaseScheduleId = scheduleId;
                     activePersonalScheduleId = null;
+                    
+                    // V5.44: Hide standalone badge for shared schedules
+                    if (standaloneScheduleBadge) {
+                        standaloneScheduleBadge.classList.add('hidden');
+                    }
     
                     const scheduleData = allSchedules.find(s => s.id === scheduleId);
                     if (scheduleData) {
@@ -3685,9 +3724,21 @@
                         console.error("Could not find personal schedule data.");
                         return;
                     }
-    
+                    
+                    // V5.44: Check if this is a standalone schedule
+                    const isStandalone = !personalSchedule.baseScheduleId || personalSchedule.isStandalone;
+                    
                     activeBaseScheduleId = personalSchedule.baseScheduleId;
                     scheduleTitle.textContent = personalSchedule.name;
+                    
+                    // V5.44: Show/hide standalone badge
+                    if (standaloneScheduleBadge) {
+                        if (isStandalone) {
+                            standaloneScheduleBadge.classList.remove('hidden');
+                        } else {
+                            standaloneScheduleBadge.classList.add('hidden');
+                        }
+                    }
                     
                     // DELETED in 4.40: Removed logic for old personal bell form
                     
@@ -3709,140 +3760,189 @@
                     const passingPeriodVisualBtn = document.getElementById('passing-period-visual-btn');
                     if (passingPeriodVisualBtn) passingPeriodVisualBtn.disabled = false;
                     
-                    // 1. Listen to the BASE shared schedule
-                    scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
-                    activeScheduleListenerUnsubscribe = onSnapshot(scheduleRef, (docSnap) => {
-                        // NEW in 4.35: Set the base loaded flag
-                        isBaseScheduleLoaded = true;
+                    // V5.44: For standalone schedules, skip the base schedule listener
+                    if (isStandalone) {
+                        console.log("This is a STANDALONE schedule - no base schedule to load");
+                        isBaseScheduleLoaded = true;  // Mark as loaded since there's nothing to load
+                        localSchedulePeriods = [];     // No shared periods
+                        sharedPassingPeriodVisual = null;
+                        
+                        // Only set up the personal schedule listener
+                        const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
+                        activePersonalScheduleListenerUnsubscribe = onSnapshot(personalScheduleRef, (docSnap) => {
+                            isPersonalScheduleLoaded = true;
 
-                        if (docSnap.exists()) {
-                            const scheduleData = docSnap.data();
-                            // V4.0 FINAL: Check for PERIODS structure first. If not found, use legacy BELLS structure.
-                            if (scheduleData.periods && scheduleData.periods.length > 0) {
-                                localSchedulePeriods = scheduleData.periods;
-                            } else if (scheduleData.bells && scheduleData.bells.length > 0) {
-                                // If only old 'bells' exist, migrate it in memory.
-                                localSchedulePeriods = migrateLegacyBellsToPeriods(scheduleData.bells);
-                                console.log("Reading base shared schedule using LEGACY structure.");
+                            if (docSnap.exists()) {
+                                const personalData = docSnap.data();
+                                let periodsToUse = personalData.periods || [];
+                                let needsMigration = false;
+                                
+                                // Check for missing bellIds
+                                periodsToUse.forEach(period => {
+                                    period.bells.forEach(bell => {
+                                        if (!bell.bellId) {
+                                            bell.bellId = generateBellId();
+                                            needsMigration = true;
+                                            console.log(`Assigning new bellId to ${bell.name} in ${period.name}`);
+                                        }
+                                    });
+                                });
+
+                                if (needsMigration) {
+                                    updateDoc(personalScheduleRef, { periods: periodsToUse })
+                                        .then(() => console.log("Standalone schedule bellId migration successful."))
+                                        .catch(err => console.error("Error saving bellId migration:", err));
+                                }
+                                
+                                personalBellsPeriods = periodsToUse;
+                                personalPassingPeriodVisual = personalData.passingPeriodVisual || null;
+                                
+                                console.log("Standalone schedule updated:", periodsToUse.length, "periods");
                             } else {
+                                console.warn("Standalone schedule removed.");
+                                personalBellsPeriods = [];
+                                personalPassingPeriodVisual = null;
+                            }
+                            recalculateAndRenderAll();
+                        });
+                        
+                    } else {
+                        // ORIGINAL: Listen to both base and personal schedules
+                        // 1. Listen to the BASE shared schedule
+                        scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
+                        activeScheduleListenerUnsubscribe = onSnapshot(scheduleRef, (docSnap) => {
+                            // NEW in 4.35: Set the base loaded flag
+                            isBaseScheduleLoaded = true;
+
+                            if (docSnap.exists()) {
+                                const scheduleData = docSnap.data();
+                                // V4.0 FINAL: Check for PERIODS structure first. If not found, use legacy BELLS structure.
+                                if (scheduleData.periods && scheduleData.periods.length > 0) {
+                                    localSchedulePeriods = scheduleData.periods;
+                                } else if (scheduleData.bells && scheduleData.bells.length > 0) {
+                                    // If only old 'bells' exist, migrate it in memory.
+                                    localSchedulePeriods = migrateLegacyBellsToPeriods(scheduleData.bells);
+                                    console.log("Reading base shared schedule using LEGACY structure.");
+                                } else {
+                                    localSchedulePeriods = [];
+                                }
+
+                                // --- NEW V4.90: One-Time Bell ID Migration for SHARED bells ---
+                                // This fixes the bug where overrides wouldn't save on refresh.
+                                let needsSharedMigration = false;
+                                localSchedulePeriods.forEach(period => {
+                                    period.bells.forEach(bell => {
+                                        if (!bell.bellId) {
+                                            bell.bellId = generateBellId();
+                                            needsSharedMigration = true;
+                                            console.log(`Assigning new bellId to SHARED bell: ${bell.name} in ${period.name}`);
+                                        }
+                                    });
+                                });
+
+                                if (needsSharedMigration && document.body.classList.contains('admin-mode')) {
+                                    console.log("Saving migrated bellId data back to SHARED schedule...");
+                                    // Fire-and-forget update.
+                                    // We only save if user is an admin to prevent write errors.
+                                    // Non-admins will still have the IDs in-memory for this session.
+                                    updateDoc(scheduleRef, { periods: localSchedulePeriods }) 
+                                        .then(() => console.log("Shared schedule bellId migration successful."))
+                                        .catch(err => console.error("Error saving shared bellId migration:", err));
+                                }
+                                // --- END V4.90 Migration ---
+                                
+                                // NEW V5.42.0: Load passing period visual from shared schedule (admin-set default)
+                                sharedPassingPeriodVisual = scheduleData.passingPeriodVisual || null;
+                                
+                                console.log("Active shared schedule updated.");
+
+                            } else {
+                                console.warn("Base schedule does not exist.");
                                 localSchedulePeriods = [];
+                                localSchedule = [];
                             }
+                            // NEW: v4.10.3 - Run the master calculation engine
+                            recalculateAndRenderAll();
+                        });
+                        
+                        // 2. Listen to the PERSONAL schedule
+                        const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
+                        activePersonalScheduleListenerUnsubscribe = onSnapshot(personalScheduleRef, (docSnap) => {
+                            // NEW in 4.32: Mark personal schedule as loaded
+                            isPersonalScheduleLoaded = true;
 
-                            // --- NEW V4.90: One-Time Bell ID Migration for SHARED bells ---
-                            // This fixes the bug where overrides wouldn't save on refresh.
-                            let needsSharedMigration = false;
-                            localSchedulePeriods.forEach(period => {
-                                period.bells.forEach(bell => {
-                                    if (!bell.bellId) {
-                                        bell.bellId = generateBellId();
-                                        needsSharedMigration = true;
-                                        console.log(`Assigning new bellId to SHARED bell: ${bell.name} in ${period.name}`);
+                            if (docSnap.exists()) {
+                                const personalData = docSnap.data();
+
+                                // --- NEW in 4.38: One-Time Bell ID Migration ---
+                                let needsMigration = false;
+                                let periodsToUse = [];
+                                let fieldsToUpdate = {}; // NEW: Track updates
+
+                                // --- MODIFIED V4.69: Prioritize 'periods' field ---
+                                // If the 'periods' field exists (even if empty), use it.
+                                if (personalData.periods !== undefined) {
+                                    periodsToUse = personalData.periods;
+                                    // If the old 'bells' field *also* exists, mark it for deletion.
+                                    if (personalData.bells && personalData.bells.length > 0) {
+                                        fieldsToUpdate.bells = []; // Mark for deletion
+                                        needsMigration = true; // Trigger the update
+                                        console.log("Marking deprecated 'bells' field for cleanup.");
                                     }
-                                });
-                            });
-
-                            if (needsSharedMigration && document.body.classList.contains('admin-mode')) {
-                                console.log("Saving migrated bellId data back to SHARED schedule...");
-                                // Fire-and-forget update.
-                                // We only save if user is an admin to prevent write errors.
-                                // Non-admins will still have the IDs in-memory for this session.
-                                updateDoc(scheduleRef, { periods: localSchedulePeriods }) 
-                                    .then(() => console.log("Shared schedule bellId migration successful."))
-                                    .catch(err => console.error("Error saving shared bellId migration:", err));
-                            }
-                            // --- END V4.90 Migration ---
-                            
-                            // NEW V5.42.0: Load passing period visual from shared schedule (admin-set default)
-                            sharedPassingPeriodVisual = scheduleData.passingPeriodVisual || null;
-                            
-                            console.log("Active shared schedule updated.");
-
-                        } else {
-                            console.warn("Base schedule does not exist.");
-                            localSchedulePeriods = [];
-                            localSchedule = [];
-                        }
-                        // NEW: v4.10.3 - Run the master calculation engine
-                        recalculateAndRenderAll();
-                    });
-                    
-                    // 2. Listen to the PERSONAL schedule
-                    const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
-                    activePersonalScheduleListenerUnsubscribe = onSnapshot(personalScheduleRef, (docSnap) => {
-                        // NEW in 4.32: Mark personal schedule as loaded
-                        isPersonalScheduleLoaded = true;
-
-                        if (docSnap.exists()) {
-                            const personalData = docSnap.data();
-
-                            // --- NEW in 4.38: One-Time Bell ID Migration ---
-                            let needsMigration = false;
-                            let periodsToUse = [];
-                            let fieldsToUpdate = {}; // NEW: Track updates
-
-                            // --- MODIFIED V4.69: Prioritize 'periods' field ---
-                            // If the 'periods' field exists (even if empty), use it.
-                            if (personalData.periods !== undefined) {
-                                periodsToUse = personalData.periods;
-                                // If the old 'bells' field *also* exists, mark it for deletion.
-                                if (personalData.bells && personalData.bells.length > 0) {
-                                    fieldsToUpdate.bells = []; // Mark for deletion
-                                    needsMigration = true; // Trigger the update
-                                    console.log("Marking deprecated 'bells' field for cleanup.");
+                                } 
+                                // Only if 'periods' does NOT exist, fall back to 'bells' for migration.
+                                else if (personalData.bells && personalData.bells.length > 0) {
+                                    // This is a legacy schedule, migrate it
+                                    periodsToUse = migrateLegacyBellsToPeriods(personalData.bells);
+                                    fieldsToUpdate.periods = periodsToUse; // Add new periods
+                                    fieldsToUpdate.bells = []; // Delete old bells
+                                    needsMigration = true; // Force save if we just migrated periods
+                                    console.log("Running migration from flat 'bells' to 'periods' structure.");
                                 }
-                            } 
-                            // Only if 'periods' does NOT exist, fall back to 'bells' for migration.
-                            else if (personalData.bells && personalData.bells.length > 0) {
-                                // This is a legacy schedule, migrate it
-                                periodsToUse = migrateLegacyBellsToPeriods(personalData.bells);
-                                fieldsToUpdate.periods = periodsToUse; // Add new periods
-                                fieldsToUpdate.bells = []; // Delete old bells
-                                needsMigration = true; // Force save if we just migrated periods
-                                console.log("Running migration from flat 'bells' to 'periods' structure.");
-                            }
-                            
-                            // Now check for missing bellIds within the periods
-                            periodsToUse.forEach(period => {
-                                period.bells.forEach(bell => {
-                                    if (!bell.bellId) {
-                                        bell.bellId = generateBellId();
-                                        needsMigration = true;
-                                        console.log(`Assigning new permanent bellId to ${bell.name} in ${period.name}`);
+                                
+                                // Now check for missing bellIds within the periods
+                                periodsToUse.forEach(period => {
+                                    period.bells.forEach(bell => {
+                                        if (!bell.bellId) {
+                                            bell.bellId = generateBellId();
+                                            needsMigration = true;
+                                            console.log(`Assigning new permanent bellId to ${bell.name} in ${period.name}`);
+                                        }
+                                    });
+                                });
+
+                                if (needsMigration) {
+                                    // If we are *only* migrating IDs, we need to add periods to the update object
+                                    if (!fieldsToUpdate.periods) {
+                                        fieldsToUpdate.periods = periodsToUse;
                                     }
-                                });
-                            });
 
-                            if (needsMigration) {
-                                // If we are *only* migrating IDs, we need to add periods to the update object
-                                if (!fieldsToUpdate.periods) {
-                                    fieldsToUpdate.periods = periodsToUse;
+                                    console.log("Saving migrated/cleaned bell data back to Firestore...", fieldsToUpdate);
+                                    // Save the updated data back.
+                                    // We do this as a 'fire-and-forget' in the background.
+                                    updateDoc(personalScheduleRef, fieldsToUpdate) 
+                                        .then(() => console.log("Personal schedule migration/cleanup successful."))
+                                        .catch(err => console.error("Error saving bellId migration:", err));
                                 }
-
-                                console.log("Saving migrated/cleaned bell data back to Firestore...", fieldsToUpdate);
-                                // Save the updated data back.
-                                // We do this as a 'fire-and-forget' in the background.
-                                updateDoc(personalScheduleRef, fieldsToUpdate) 
-                                    .then(() => console.log("Personal schedule migration/cleanup successful."))
-                                    .catch(err => console.error("Error saving bellId migration:", err));
+                                // --- END 4.38 Migration ---
+                                
+                                personalBellsPeriods = periodsToUse;
+                                
+                                // NEW V5.42.0: Load passing period visual from personal schedule
+                                personalPassingPeriodVisual = personalData.passingPeriodVisual || null;
+                                
+                                console.log("Personal schedule bells updated.");
+                            } else {
+                                console.warn("Personal schedule removed.");
+                                personalBellsPeriods = [];
+                                personalBells = [];
+                                // NEW V5.42.0: Clear passing period visual when schedule is removed
+                                personalPassingPeriodVisual = null;
                             }
-                            // --- END 4.38 Migration ---
-                            
-                            personalBellsPeriods = periodsToUse;
-                            
-                            // NEW V5.42.0: Load passing period visual from personal schedule
-                            personalPassingPeriodVisual = personalData.passingPeriodVisual || null;
-                            
-                            console.log("Personal schedule bells updated.");
-                        } else {
-                            console.warn("Personal schedule removed.");
-                            personalBellsPeriods = [];
-                            personalBells = [];
-                            // NEW V5.42.0: Clear passing period visual when schedule is removed
-                            personalPassingPeriodVisual = null;
-                        }
-                        // NEW: v4.10.3 - Run the master calculation engine
-                        recalculateAndRenderAll();
-                    });
+                            // NEW: v4.10.3 - Run the master calculation engine
+                            recalculateAndRenderAll();
+                        });
+                    }
                 }
             }
     
@@ -4085,17 +4185,29 @@
                 currentEditingBell = rawBell;
 
                 // 2. We need to populate the "Parent Bell" dropdown
-                // This re-uses the logic from `openRelativeBellModal`
+                // V5.44: Use all periods for anchor options, not just the current period
                 const targetPeriod = calculatedPeriodsList.find(p => p.name === bell.periodName);
                 if (!targetPeriod) {
                     showUserMessage(`Error: Could not find period ${bell.periodName}.`);
                     return;
                 }
-                const resolvedBells = targetPeriod.bells;
-                // Store resolved bells for the time calculator
+                
+                // V5.44: Collect all bells from all periods
+                const allResolvedBells = [];
+                calculatedPeriodsList.forEach(p => {
+                    p.bells.forEach(b => {
+                        allResolvedBells.push({
+                            ...b,
+                            _periodName: p.name,
+                            _periodOrigin: p.origin
+                        });
+                    });
+                });
+                
+                // Store ALL bells for the time calculator
                 currentRelativePeriod = {
                     name: bell.periodName,
-                    bells: resolvedBells
+                    bells: allResolvedBells
                 };
                 
                 // 3. Populate Modal UI
@@ -4111,17 +4223,15 @@
                 const modalTitle = relativeBellModal.querySelector('h3');
                 if (modalTitle) modalTitle.textContent = "Edit Relative Bell";
 
-                // 4. Populate Parent Bell dropdown
-                const anchorOptionsHtml = resolvedBells.map(b => `
-                    <option value="${b.bellId}">${b.name} (${formatTime12Hour(b.time, true)})</option>
-                `).join('');
+                // 4. Populate Parent Bell dropdown - V5.44: Use helper for all periods
+                const anchorOptionsHtml = generateAnchorOptionsHtml(allResolvedBells, bell.periodName);
                 relativeAnchorBellSelect.innerHTML = anchorOptionsHtml;
 
                 // 5. Populate fields with the bell's saved data
                 // Check for specific parent bell ID first
                 if (rawBell.relative.parentBellId) {
-                    // Check if this bell ID actually exists in the dropdown
-                    const parentExists = resolvedBells.some(b => b.bellId === rawBell.relative.parentBellId);
+                    // Check if this bell ID actually exists in the dropdown (now checking all bells)
+                    const parentExists = allResolvedBells.some(b => b.bellId === rawBell.relative.parentBellId);
                     if (parentExists) {
                         relativeAnchorBellSelect.value = rawBell.relative.parentBellId;
                     } else {
@@ -4132,7 +4242,7 @@
                 } else if (rawBell.relative.parentPeriodName && rawBell.relative.parentAnchorType) {
                     // Multi-period relative bell - anchored to first/last anchor bell of each period
                     // Find anchor bells in this period (bells with type 'shared')
-                    const anchorBells = resolvedBells.filter(b => b.type === 'shared');
+                    const anchorBells = targetPeriod.bells.filter(b => b.type === 'shared');
                     
                     if (anchorBells.length > 0) {
                         if (rawBell.relative.parentAnchorType === 'period_start') {
@@ -5454,6 +5564,51 @@
             }
 
             /**
+             * V5.44: Generate HTML options for the anchor bell dropdown.
+             * Groups bells by period and shows the current period's bells first.
+             * @param {Array} allBells - All resolved bells with _periodName and _periodOrigin
+             * @param {string} currentPeriodName - The period the new bell will be added to
+             * @returns {string} HTML string of option elements
+             */
+            function generateAnchorOptionsHtml(allBells, currentPeriodName) {
+                // Group bells by period
+                const periodGroups = {};
+                allBells.forEach(bell => {
+                    const pName = bell._periodName || 'Unknown';
+                    if (!periodGroups[pName]) {
+                        periodGroups[pName] = [];
+                    }
+                    periodGroups[pName].push(bell);
+                });
+                
+                let html = '';
+                
+                // Current period first (if it has bells)
+                if (periodGroups[currentPeriodName] && periodGroups[currentPeriodName].length > 0) {
+                    html += `<optgroup label="This Period: ${currentPeriodName}">`;
+                    periodGroups[currentPeriodName].forEach(bell => {
+                        html += `<option value="${bell.bellId}">${bell.name} (${formatTime12Hour(bell.time, true)})</option>`;
+                    });
+                    html += `</optgroup>`;
+                }
+                
+                // Other periods
+                Object.keys(periodGroups).forEach(pName => {
+                    if (pName !== currentPeriodName && periodGroups[pName].length > 0) {
+                        const origin = periodGroups[pName][0]._periodOrigin;
+                        const label = origin === 'personal' ? `Custom: ${pName}` : pName;
+                        html += `<optgroup label="${label}">`;
+                        periodGroups[pName].forEach(bell => {
+                            html += `<option value="${bell.bellId}">${bell.name} (${formatTime12Hour(bell.time, true)})</option>`;
+                        });
+                        html += `</optgroup>`;
+                    }
+                });
+                
+                return html;
+            }
+
+            /**
              * NEW: v4.28 - Opens the Relative Bell Modal (contains old logic from handleShowAddBellForm).
              */
             function openRelativeBellModal() {
@@ -5472,10 +5627,20 @@
                 }
                 
                 // 2. Use time-resolved bells as anchors
-                const resolvedBells = targetPeriod.bells;
+                // V5.44: Include bells from ALL periods, not just the current one
+                const allResolvedBells = [];
+                calculatedPeriodsList.forEach(p => {
+                    p.bells.forEach(b => {
+                        allResolvedBells.push({
+                            ...b,
+                            _periodName: p.name,
+                            _periodOrigin: p.origin
+                        });
+                    });
+                });
 
-                // 3. Store Anchor Data in State (add bells to existing state)
-                currentRelativePeriod.bells = resolvedBells;
+                // 3. Store Anchor Data in State (include ALL bells for time calculation)
+                currentRelativePeriod.bells = allResolvedBells;
     
                 // 4. Populate Modal UI
                 relativePeriodName.textContent = periodName;
@@ -5485,9 +5650,8 @@
                 const convertToStaticContainer = document.getElementById('convert-to-static-container');
                 if (convertToStaticContainer) convertToStaticContainer.classList.add('hidden');
 
-                const anchorOptionsHtml = resolvedBells.map(bell => `
-                    <option value="${bell.bellId}">${bell.name} (${formatTime12Hour(bell.time, true)})</option>
-                `).join('');
+                // V5.44: Group anchor options by period for better organization
+                const anchorOptionsHtml = generateAnchorOptionsHtml(allResolvedBells, periodName);
                 relativeAnchorBellSelect.innerHTML = anchorOptionsHtml;
     
                 // Populate sound dropdowns
@@ -9202,6 +9366,55 @@
                         createPersonalScheduleStatus.textContent = "Error creating schedule.";
                     } finally {
                         setTimeout(() => createPersonalScheduleStatus.classList.add('hidden'), 2000);
+                    }
+                });
+                
+                // V5.44: Standalone Schedule Modal Events
+                createStandaloneScheduleBtn.addEventListener('click', () => {
+                    createStandaloneScheduleModal.classList.remove('hidden');
+                    standaloneScheduleNameInput.value = '';
+                    createStandaloneStatus.classList.add('hidden');
+                });
+                createStandaloneCancelBtn.addEventListener('click', () => {
+                    createStandaloneScheduleModal.classList.add('hidden');
+                    createStandaloneScheduleForm.reset();
+                });
+                createStandaloneScheduleForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = standaloneScheduleNameInput.value.trim();
+                    if (!name) return;
+                    
+                    createStandaloneStatus.textContent = "Creating...";
+                    createStandaloneStatus.classList.remove('hidden');
+                    createStandaloneStatus.classList.remove('text-red-600');
+                    createStandaloneStatus.classList.add('text-blue-600');
+                    
+                    try {
+                        const personalSchedulesRef = collection(db, 'artifacts', appId, 'users', userId, 'personal_schedules');
+                        const newDocRef = await addDoc(personalSchedulesRef, {
+                            name: name,
+                            baseScheduleId: null,       // Key differentiator - no base
+                            isStandalone: true,         // Explicit flag
+                            periods: [],                // Starts empty
+                            passingPeriodVisual: '',
+                            createdAt: new Date()
+                        });
+                        
+                        console.log("Standalone schedule created with ID:", newDocRef.id);
+                        
+                        // Automatically select the new schedule
+                        scheduleSelector.value = `personal-${newDocRef.id}`;
+                        setActiveSchedule(scheduleSelector.value);
+                        
+                        createStandaloneScheduleModal.classList.add('hidden');
+                        createStandaloneScheduleForm.reset();
+                        
+                        showUserMessage(`Standalone schedule "${name}" created!`);
+                    } catch (error) {
+                        console.error("Error creating standalone schedule:", error);
+                        createStandaloneStatus.textContent = "Error: " + error.message;
+                        createStandaloneStatus.classList.remove('text-blue-600');
+                        createStandaloneStatus.classList.add('text-red-600');
                     }
                 });
     
