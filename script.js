@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.10"
-        // V5.42.10: Fix relative bell edit modal not showing preview
+        const APP_VERSION = "5.42.11"
+        // V5.42.11: Fix pre-period bells to show passing period visual as default
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4037,14 +4037,30 @@
                 const relativeBellVisualSelect = document.getElementById('relative-bell-visual');
                 if (relativeBellVisualSelect) {
                     updateVisualDropdowns(); // Make sure dropdowns are populated
-                    const visualCue = rawBell.visualCue || '';
+                    let visualCue = rawBell.visualCue || '';
                     relativeBellVisualSelect.value = visualCue;
                     
-                    // FIX V5.42.10: Directly set preview with known value
+                    // FIX V5.42.11: Directly set preview with known value
                     const preview = document.getElementById('relative-bell-visual-preview-full');
                     if (preview) {
                         const periodName = bell.periodName || 'Preview';
-                        preview.innerHTML = getVisualHtml(visualCue, periodName);
+                        
+                        // FIX V5.42.11: For bells outside period bounds with no custom visual, use passing period visual
+                        let previewVisualCue = visualCue;
+                        if (!visualCue) {
+                            // Check if this bell is outside the period's anchor bells
+                            const anchorBells = resolvedBells.filter(b => b.type === 'shared');
+                            if (anchorBells.length > 0) {
+                                const firstAnchorTime = anchorBells[0].time;
+                                const lastAnchorTime = anchorBells[anchorBells.length - 1].time;
+                                if (bell.time < firstAnchorTime || bell.time > lastAnchorTime) {
+                                    // This bell rings outside period bounds - use passing period visual
+                                    previewVisualCue = getPassingPeriodVisualCue();
+                                }
+                            }
+                        }
+                        
+                        preview.innerHTML = getVisualHtml(previewVisualCue, periodName);
                         
                         // Set up click handlers
                         if (visualCue && visualCue.startsWith('[CUSTOM_TEXT]')) {
@@ -4228,10 +4244,27 @@
                 const previewFull = document.getElementById('relative-bell-visual-preview-full');
                 if (!visualSelect || !previewFull) return;
             
-                const visualValue = visualSelect.value;
+                let visualValue = visualSelect.value;
                 // Use the period name from context
                 const periodName = currentRelativePeriod?.name || 'Preview';
-                const htmlFull = getVisualHtml(visualValue, periodName);
+                
+                // FIX V5.42.11: For bells outside period bounds with no custom visual, use passing period visual
+                let previewVisualValue = visualValue;
+                if (!visualValue && currentRelativePeriod?.bells) {
+                    // Check if this bell would be outside the period's anchor bells
+                    const anchorBells = currentRelativePeriod.bells.filter(b => b.type === 'shared');
+                    if (anchorBells.length > 0) {
+                        const firstAnchorTime = anchorBells[0].time;
+                        const lastAnchorTime = anchorBells[anchorBells.length - 1].time;
+                        const calculatedTime = updateCalculatedTime();
+                        if (calculatedTime && (calculatedTime < firstAnchorTime || calculatedTime > lastAnchorTime)) {
+                            // This bell rings outside period bounds - use passing period visual
+                            previewVisualValue = getPassingPeriodVisualCue();
+                        }
+                    }
+                }
+                
+                const htmlFull = getVisualHtml(previewVisualValue, periodName);
                 previewFull.innerHTML = htmlFull;
                 
                 // FIX V5.42.7: Make preview clickable based on visual type
