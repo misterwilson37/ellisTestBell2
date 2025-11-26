@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.11"
-        // V5.42.11: Fix pre-period bells to show passing period visual as default
+        const APP_VERSION = "5.42.12"
+        // V5.42.12: Make edit period preview clickable for bg color and custom text
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -6234,8 +6234,24 @@
                 }
                 
                 // Show previews (MODIFIED in 4.51: Split into two columns)
-                document.getElementById('edit-period-image-preview-full').innerHTML = getVisualHtml(savedVisual, periodName);
+                const previewFull = document.getElementById('edit-period-image-preview-full');
+                previewFull.innerHTML = getVisualHtml(savedVisual, periodName);
                 document.getElementById('edit-period-image-preview-icon').innerHTML = getVisualIconHtml(savedVisual, periodName);
+                
+                // FIX V5.42.12: Make preview clickable based on visual type
+                if (savedVisual && savedVisual.startsWith('[CUSTOM_TEXT]')) {
+                    makePreviewClickableForCustomText(previewFull, editPeriodImageSelect);
+                } else if (savedVisual && supportsBackgroundColor(savedVisual)) {
+                    makePreviewClickable(previewFull, 'edit-period-image-select', periodName);
+                } else if (!savedVisual) {
+                    // Empty value (period default) - still allow bg color change
+                    makePreviewClickable(previewFull, 'edit-period-image-select', periodName);
+                } else {
+                    previewFull.style.cursor = 'default';
+                    previewFull.onclick = null;
+                    previewFull.title = '';
+                    previewFull.classList.remove('clickable');
+                }
                 
                 editPeriodStatusMsg.classList.add('hidden');
                 editPeriodModal.classList.remove('hidden');
@@ -9209,8 +9225,24 @@
                     // FIX: Use 'Default' fallback
                     const periodName = currentRenamingPeriod ? currentRenamingPeriod.name : "Default"; 
                     
-                    document.getElementById('edit-period-image-preview-full').innerHTML = getVisualHtml(selectedValue, periodName);
+                    const previewFull = document.getElementById('edit-period-image-preview-full');
+                    previewFull.innerHTML = getVisualHtml(selectedValue, periodName);
                     document.getElementById('edit-period-image-preview-icon').innerHTML = getVisualIconHtml(selectedValue, periodName);
+                    
+                    // FIX V5.42.12: Make preview clickable based on visual type
+                    if (selectedValue && selectedValue.startsWith('[CUSTOM_TEXT]')) {
+                        makePreviewClickableForCustomText(previewFull, editPeriodImageSelect);
+                    } else if (selectedValue && supportsBackgroundColor(selectedValue)) {
+                        makePreviewClickable(previewFull, 'edit-period-image-select', periodName);
+                    } else if (!selectedValue) {
+                        // Empty value (period default) - still allow bg color change
+                        makePreviewClickable(previewFull, 'edit-period-image-select', periodName);
+                    } else {
+                        previewFull.style.cursor = 'default';
+                        previewFull.onclick = null;
+                        previewFull.title = '';
+                        previewFull.classList.remove('clickable');
+                    }
                 });
 
                 // DELETED in 4.44: Old Period Rename Listeners
@@ -9496,8 +9528,12 @@
                         updateMultiRelativeBellVisualPreview();
                     } else if (targetId === 'edit-period-image-select' && currentRenamingPeriod) {
                         const periodName = currentRenamingPeriod.name;
-                        document.getElementById('edit-period-image-preview-full').innerHTML = getVisualHtml(storedValue, periodName);
+                        const previewFull = document.getElementById('edit-period-image-preview-full');
+                        previewFull.innerHTML = getVisualHtml(storedValue, periodName);
                         document.getElementById('edit-period-image-preview-icon').innerHTML = getVisualIconHtml(storedValue, periodName);
+                        
+                        // FIX V5.42.12: Make preview clickable for custom text
+                        makePreviewClickableForCustomText(previewFull, document.getElementById('edit-period-image-select'));
                         console.log('Updated period editor preview');
                     }
                     
