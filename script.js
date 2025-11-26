@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.8"
-        // V5.42.8: Fix Upload Image text, add more debug logging
+        const APP_VERSION = "5.42.9"
+        // V5.42.9: Fix preview not showing on modal open - direct value set, period override lookup
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4080,7 +4080,25 @@
                     if (visualSelect) {
                         updateVisualDropdowns();
                         visualSelect.value = visualCue;
-                        updateEditBellVisualPreview(); // NEW 5.33: Show initial preview
+                        
+                        // FIX V5.42.9: Directly set preview with known value instead of relying on dropdown read
+                        const preview = document.getElementById('edit-bell-visual-preview');
+                        if (preview) {
+                            const periodName = currentEditingBell?.periodName || 'Preview';
+                            preview.innerHTML = getVisualHtml(visualCue, periodName);
+                            
+                            // Set up click handlers
+                            if (visualCue && visualCue.startsWith('[CUSTOM_TEXT]')) {
+                                makePreviewClickableForCustomText(preview, visualSelect);
+                            } else if (visualCue && supportsBackgroundColor(visualCue)) {
+                                makePreviewClickable(preview, 'edit-bell-visual', periodName);
+                            } else {
+                                preview.style.cursor = 'default';
+                                preview.onclick = null;
+                                preview.title = '';
+                                preview.classList.remove('clickable');
+                            }
+                        }
                     }
                     
                     // FIX 5.19: Use the bell's actual sound for custom bells, originalSound for shared bells
@@ -6492,6 +6510,15 @@
                 
                 if (!value) {
                     // Case 1: Value is "" (None/Default)
+                    // FIX V5.42.9: Check for user's custom period visual override
+                    const visualKey = getVisualOverrideKey(activeBaseScheduleId, periodName);
+                    const periodOverride = periodVisualOverrides[visualKey];
+                    if (periodOverride && periodOverride !== '') {
+                        // User has a custom visual for this period - use it
+                        // Recursive call to handle the override value (could be URL, custom text, etc.)
+                        return getVisualHtml(periodOverride, periodName);
+                    }
+                    // No override - use generated default
                     baseHtml = getDefaultVisualCue(periodName);
                 } else if (value.startsWith('[CUSTOM_TEXT]')) {
                     // MODIFIED V5.41: Use centralized config
