@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.7"
-        // V5.42.7: Fix background color picker for images, fix preview update timing
+        const APP_VERSION = "5.42.8"
+        // V5.42.8: Fix Upload Image text, add more debug logging
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -6432,7 +6432,8 @@
                 }).join('');
 
                 // NEW V4.76: Add [UPLOAD] option
-                const uploadHtml = `<option value="[UPLOAD]">Upload Audio...</option>`;
+                // FIX V5.42.8: Changed from "Audio" to "Image" - this is visual dropdown
+                const uploadHtml = `<option value="[UPLOAD]">Upload Image...</option>`;
 
                 // NEW V4.60.3: Add Custom Text entry option
                 const customTextOption = `<option value="[CUSTOM_TEXT]">Custom Text/Color...</option>`;
@@ -6514,6 +6515,7 @@
                     baseHtml = getDefaultVisualCue(value.replace('[DEFAULT] ', ''));
                 } else if (value.startsWith('http')) {
                     // Case 3: It's an uploaded image URL
+                    console.log('getVisualHtml: http URL detected:', value.substring(0, 50)); // DEBUG
                     // V5.29.0: Support custom background for images
                     if (customBgColor) {
                         return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} flex items-center justify-center" style="background-color:${customBgColor};">
@@ -9656,11 +9658,26 @@
                 console.log('Setting up bell visual dropdown listeners...'); // DEBUG
                 const addStaticEl = document.getElementById('add-static-bell-visual');
                 console.log('add-static-bell-visual element:', addStaticEl); // DEBUG
-                addStaticEl?.addEventListener('change', function(e) {
-                    console.log('add-static-bell-visual change fired!'); // DEBUG
+                
+                // FIX V5.42.8: Use a named function so we can verify it's attached
+                function handleAddStaticVisualChange(e) {
+                    console.log('=== ADD STATIC VISUAL CHANGE ==='); // DEBUG
+                    console.log('Event target:', e.target.id);
+                    console.log('New value:', e.target.value);
+                    console.log('Calling visualSelectChangeHandler...');
                     visualSelectChangeHandler.call(this, e);
-                    updateAddStaticBellVisualPreview(); // NEW V5.42: Update preview
-                });
+                    console.log('Calling updateAddStaticBellVisualPreview...');
+                    updateAddStaticBellVisualPreview();
+                    console.log('=== END CHANGE HANDLER ===');
+                }
+                
+                if (addStaticEl) {
+                    addStaticEl.addEventListener('change', handleAddStaticVisualChange);
+                    console.log('Event listener attached to add-static-bell-visual');
+                } else {
+                    console.error('add-static-bell-visual element NOT FOUND');
+                }
+                
                 document.getElementById('relative-bell-visual')?.addEventListener('change', function(e) {
                     console.log('relative-bell-visual change fired!'); // DEBUG
                     visualSelectChangeHandler.call(this, e);
