@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.2"
-        // Implement passing period visual logic with proper period boundary detection
+        const APP_VERSION = "5.42.3"
+        // V5.42.3: Bug fixes - status stuck, edit bell permissions, preview updates
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -3421,7 +3421,7 @@
                 restorePersonalScheduleBtn.disabled = true;
                 showMultiAddRelativeModalBtn.disabled = true; // NEW in 4.42: Reset button state
                 
-                // NEW V5.42.2: Disable passing period visual button
+                // NEW V5.42.0: Disable passing period visual button
                 const passingPeriodVisualBtn = document.getElementById('passing-period-visual-btn');
                 if (passingPeriodVisualBtn) passingPeriodVisualBtn.disabled = true;
                 
@@ -3563,7 +3563,7 @@
                     // NEW in 4.57: Enable new period button
                     newPeriodBtn.disabled = false;
                     
-                    // NEW V5.42.2: Enable passing period visual button
+                    // NEW V5.42.0: Enable passing period visual button
                     const passingPeriodVisualBtn = document.getElementById('passing-period-visual-btn');
                     if (passingPeriodVisualBtn) passingPeriodVisualBtn.disabled = false;
                     
@@ -4349,12 +4349,54 @@
                 editBellStatus.classList.remove('hidden');
     
                 try {
-                    // --- Case 1: Editing a Shared Bell (Admin Only) ---
+                    // --- Case 1: Editing a Shared Bell ---
                     if (oldBell.type === 'shared') {
-                        if (!document.body.classList.contains('admin-mode')) {
-                            throw new Error("Permission denied. Admin mode required to edit shared bells.");
+                        const isAdmin = document.body.classList.contains('admin-mode');
+                        
+                        // FIX V5.42.3: Non-admins can save personal overrides (nickname, visual)
+                        // They just can't edit the actual shared bell data
+                        if (!isAdmin) {
+                            // Save as personal override to personal schedule
+                            if (!activePersonalScheduleId) {
+                                throw new Error("Please select a personal schedule to save your customizations.");
+                            }
+                            
+                            const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
+                            const docSnap = await getDoc(personalScheduleRef);
+                            if (!docSnap.exists()) throw new Error("Personal schedule document not found.");
+                            
+                            // Get or create bell overrides object
+                            const currentData = docSnap.data();
+                            const bellOverrides = currentData.bellOverrides || {};
+                            
+                            // Save the override for this bell
+                            bellOverrides[oldBell.bellId] = {
+                                nickname: newBell.name !== oldBell.originalName ? newBell.name : null,
+                                visualCue: visualCue || null,
+                                visualMode: visualMode !== 'none' ? visualMode : null,
+                                sound: editBellOverrideCheckbox?.checked ? editBellSoundInput.value : null
+                            };
+                            
+                            // Clean up null values
+                            Object.keys(bellOverrides[oldBell.bellId]).forEach(key => {
+                                if (bellOverrides[oldBell.bellId][key] === null) {
+                                    delete bellOverrides[oldBell.bellId][key];
+                                }
+                            });
+                            
+                            // If no overrides left, remove the entry
+                            if (Object.keys(bellOverrides[oldBell.bellId]).length === 0) {
+                                delete bellOverrides[oldBell.bellId];
+                            }
+                            
+                            await updateDoc(personalScheduleRef, { bellOverrides });
+                            
+                            editBellStatus.textContent = "Personal customization saved.";
+                            closeEditBellModal();
+                            return;
                         }
                         
+                        // Admin path: Actually edit the shared bell
                         // V4.0 LOGIC: Find and update the bell within the periods array
                         const currentSchedule = allSchedules.find(s => s.id === activeBaseScheduleId);
                         if (!currentSchedule) throw new Error("Active shared schedule not found.");
@@ -6343,7 +6385,7 @@
 
             function updateVisualDropdowns() {
                 // Added 5.31.1: Dropdowns to add images to individual bells
-                // MODIFIED V5.42.2: Added passing period visual select
+                // MODIFIED V5.42.0: Added passing period visual select
                 const selects = [ 
                     editPeriodImageSelect, 
                     newPeriodImageSelect, 
@@ -6615,7 +6657,7 @@
             }
 
             /**
-             * V5.42.2: Update preview in passing period visual modal
+             * V5.42.0: Update preview in passing period visual modal
              * V5.29.0: Handle custom background colors
              * FIX V5.42: Make preview clickable for custom text editing
              */
