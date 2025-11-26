@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.5"
-        // V5.42.5: Fix null quickBellVisualSelect crash that blocked all event listeners
+        const APP_VERSION = "5.42.6"
+        // V5.42.6: More detailed logging for visual preview debugging
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4232,7 +4232,10 @@
                 const visualSelect = document.getElementById('add-static-bell-visual');
                 const preview = document.getElementById('add-static-bell-visual-preview');
                 console.log('visualSelect:', visualSelect, 'preview:', preview); // DEBUG
-                if (!visualSelect || !preview) return;
+                if (!visualSelect || !preview) {
+                    console.log('Early return - missing elements'); // DEBUG
+                    return;
+                }
             
                 const visualValue = visualSelect.value;
                 // Use the period name from context, or 'Preview' as fallback
@@ -4241,6 +4244,7 @@
                 const html = getVisualHtml(visualValue, periodName);
                 console.log('generated html:', html?.substring(0, 100)); // DEBUG
                 preview.innerHTML = html;
+                console.log('Preview innerHTML NOW:', preview.innerHTML.substring(0, 50)); // DEBUG - verify it was set
                 
                 // FIX V5.42: Make preview clickable if showing custom text
                 if (visualValue && visualValue.startsWith('[CUSTOM_TEXT]')) {
