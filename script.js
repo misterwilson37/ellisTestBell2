@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.9"
-        // V5.42.9: Fix preview not showing on modal open - direct value set, period override lookup
+        const APP_VERSION = "5.42.10"
+        // V5.42.10: Fix relative bell edit modal not showing preview
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -4037,7 +4037,27 @@
                 const relativeBellVisualSelect = document.getElementById('relative-bell-visual');
                 if (relativeBellVisualSelect) {
                     updateVisualDropdowns(); // Make sure dropdowns are populated
-                    relativeBellVisualSelect.value = rawBell.visualCue || '';
+                    const visualCue = rawBell.visualCue || '';
+                    relativeBellVisualSelect.value = visualCue;
+                    
+                    // FIX V5.42.10: Directly set preview with known value
+                    const preview = document.getElementById('relative-bell-visual-preview-full');
+                    if (preview) {
+                        const periodName = bell.periodName || 'Preview';
+                        preview.innerHTML = getVisualHtml(visualCue, periodName);
+                        
+                        // Set up click handlers
+                        if (visualCue && visualCue.startsWith('[CUSTOM_TEXT]')) {
+                            makePreviewClickableForCustomText(preview, relativeBellVisualSelect);
+                        } else if (visualCue && supportsBackgroundColor(visualCue)) {
+                            makePreviewClickable(preview, 'relative-bell-visual', periodName);
+                        } else {
+                            preview.style.cursor = 'default';
+                            preview.onclick = null;
+                            preview.title = '';
+                            preview.classList.remove('clickable');
+                        }
+                    }
                 }
 
                 // 7. Show "Convert to Static" checkbox
