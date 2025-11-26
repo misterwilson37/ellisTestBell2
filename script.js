@@ -1,5 +1,5 @@
-        const APP_VERSION = "5.42.4"
-        // V5.42.4: Debug logging for visual preview/custom text issues
+        const APP_VERSION = "5.42.5"
+        // V5.42.5: Fix null quickBellVisualSelect crash that blocked all event listeners
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         
@@ -9541,7 +9541,9 @@
                 // --- END V4.75 (FIX) ---
 
                 // NEW 5.20: Update quick bell visual previews when dropdown changes
-                quickBellVisualSelect.addEventListener('change', (e) => {
+                // FIX V5.42.4: Add null check - element may not exist
+                if (quickBellVisualSelect) {
+                    quickBellVisualSelect.addEventListener('change', (e) => {
                     const value = e.target.value;
                     const previewFull = document.getElementById('quick-bell-visual-preview-full');
                     const previewIcon = document.getElementById('quick-bell-visual-preview-icon');
@@ -9592,6 +9594,7 @@
                         }
                     }
                 });
+                } // FIX V5.42.4: Close null check for quickBellVisualSelect
                     
                 // NEW in 4.60.3: Attach the custom text handler to the main edit/new period selects
                 editPeriodImageSelect.addEventListener('change', visualSelectChangeHandler);
@@ -9607,7 +9610,8 @@
                     document.getElementById('new-period-image-preview-full').innerHTML = getVisualHtml(selectedValue, 'New Period');
                     document.getElementById('new-period-image-preview-icon').innerHTML = getVisualIconHtml(selectedValue, 'New Period');
                 });
-                quickBellVisualSelect.addEventListener('change', visualSelectChangeHandler); // NEW 5.24.4: Add quick bell support
+                // FIX V5.42.4: Add null check - element may not exist
+                quickBellVisualSelect?.addEventListener('change', visualSelectChangeHandler); // NEW 5.24.4: Add quick bell support
 
                 // NEW 5.31.1: Bell visual dropdowns
                 console.log('Setting up bell visual dropdown listeners...'); // DEBUG
