@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.11"
+        const APP_VERSION = "5.44.12"
         // V5.44.11: Consistent icon/text sizing across all quick bell previews
         // - Modal previews, manager previews, and actual buttons now all use SVG text
         // - SVG text scales proportionally to container, ensuring consistent appearance
@@ -1736,23 +1736,23 @@
                             // Constantly updating in 5.25 to get the appearance right.
                             visualContent = `<img src="${visualCue}" alt="${bell.name}" class="absolute inset-0 w-full h-full object-contain p-1">`;
                         } else if (visualCue.startsWith('[CUSTOM_TEXT]')) {
-                            // V5.44.11: Use SVG text for consistent sizing across all contexts
+                            // V5.44.12: Use SVG text with absolute positioning to fill button (ignoring padding)
                             const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
                             const text = parts[0] || bell.iconText || bell.id;
                             const fontSize = text.length > 2 ? 50 : 70;  // Match getCustomBellIconHtml
-                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
+                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full p-1">
                                 <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text>
                             </svg>`;
                         } else if (visualCue.startsWith('[DEFAULT]')) {
                             // V5.44.11: Use SVG text for default fallback too
                             const fontSize = bell.iconText.length > 2 ? 50 : 70;
-                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
+                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full p-1">
                                 <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${bell.iconText}</text>
                             </svg>`;
                         } else {
                             // V5.44.11: Fallback with SVG text
                             const fontSize = bell.iconText.length > 2 ? 50 : 70;
-                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
+                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full p-1">
                                 <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${bell.iconText}</text>
                             </svg>`;
                         }
