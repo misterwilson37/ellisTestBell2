@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.7"
+        const APP_VERSION = "5.44.8"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -495,7 +495,7 @@
         let quickBellSound = 'ellisBell.mp3'; // Default sound
         
         // NEW V5.00: Custom Quick Bell State
-        let customQuickBells = []; // Array of { id, name, minutes, seconds, iconText, sound, isActive }
+        let customQuickBells = []; // Array of { id, name, hours, minutes, seconds, iconText, sound, isActive }
         window.customQuickBells = customQuickBells; // 5.30: Make it accessible from console
 
         let mutedBellIds = new Set(); 
@@ -1465,9 +1465,10 @@
             }
             
             // --- NEW: Quick Bell Function (MODIFIED V5.00) ---
-            function startQuickBell(minutes, seconds = 0, sound, name = "Quick Bell") {
+            function startQuickBell(hours = 0, minutes = 0, seconds = 0, sound, name = "Quick Bell") {
                 const now = new Date();
-                const totalMillis = (minutes * 60000) + (seconds * 1000);
+                // V5.44.8: Include hours in calculation
+                const totalMillis = (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
                 
                 quickBellEndTime = new Date(now.getTime() + totalMillis);
                 document.getElementById('cancel-quick-bell-btn').classList.remove('hidden'); // 5.27: Show cancel button
@@ -1477,7 +1478,7 @@
                 // NEW V5.00: Store quick bell name for countdown display
                 quickBellEndTime.bellName = name; 
 
-                console.log(`Quick bell set for ${minutes}m ${seconds}s from now. Sound: ${quickBellSound}`);
+                console.log(`Quick bell set for ${hours}h ${minutes}m ${seconds}s from now. Sound: ${quickBellSound}`);
                 updateClock(); // Update display immediately
             }
             
@@ -1535,6 +1536,7 @@
                     
                     // Defaults for empty slots
                     const name = bell ? bell.name : `Slot ${id}`;
+                    const hours = bell ? (bell.hours || 0) : 0;
                     const minutes = bell ? bell.minutes : 5;
                     const seconds = bell ? bell.seconds : 0;
                     // V5.03: Read/default the full visual cue (which includes custom text/colors or URL)
@@ -1594,18 +1596,24 @@
                                            placeholder="e.g. Hamburger Time" ${disabledAttr}>
                                 </div>
 
-                                <!-- Col 3: Time (Min/Sec) (Col Span 4) -->
-                                <div class="col-span-4 grid grid-cols-2 gap-2">
+                                <!-- Col 3: Time (Hr/Min/Sec) (Col Span 4) - V5.44.8 -->
+                                <div class="col-span-4 grid grid-cols-3 gap-1">
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">Minutes</label>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Hr</label>
+                                        <input type="number" data-bell-id="${id}" data-field="hours" name="hours-${id}" value="${hours}" min="0" max="23" 
+                                           ${isActive ? 'required' : ''} class="custom-bell-editable-input w-full px-1 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
+                                           placeholder="Hr" ${disabledAttr}>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Min</label>
                                         <input type="number" data-bell-id="${id}" data-field="minutes" name="minutes-${id}" value="${minutes}" min="0" max="59" 
-                                           ${isActive ? 'required' : ''} class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
+                                           ${isActive ? 'required' : ''} class="custom-bell-editable-input w-full px-1 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
                                            placeholder="Min" ${disabledAttr}>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">Seconds</label>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Sec</label>
                                         <input type="number" data-bell-id="${id}" data-field="seconds" name="seconds-${id}" value="${seconds}" min="0" max="59" 
-                                           ${isActive ? 'required' : ''} class="custom-bell-editable-input w-full px-2 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
+                                           ${isActive ? 'required' : ''} class="custom-bell-editable-input w-full px-1 py-1 text-sm border border-gray-300 rounded-lg text-center ${disabledClass}" 
                                            placeholder="Sec" ${disabledAttr}>
                                     </div>
                                 </div>
@@ -1697,10 +1705,18 @@
                 if (activeCustomBells.length > 0) {
                     customQuickBellSeparator.classList.remove('hidden');
                     customQuickBellsContainer.innerHTML = activeCustomBells.map(bell => {
-                        // V5.30.4: Format tooltip time to omit seconds or minutes if zero
-                        const formattedTime = bell.minutes > 0 
-                            ? (bell.seconds > 0 ? `${bell.minutes}m ${bell.seconds}s` : `${bell.minutes}m`)
-                            : `${bell.seconds}s`;
+                        // V5.44.8: Format tooltip time to include hours if present
+                        const hours = bell.hours || 0;
+                        const minutes = bell.minutes || 0;
+                        const seconds = bell.seconds || 0;
+                        let formattedTime = '';
+                        if (hours > 0) {
+                            formattedTime = seconds > 0 ? `${hours}h ${minutes}m ${seconds}s` : (minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`);
+                        } else if (minutes > 0) {
+                            formattedTime = seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+                        } else {
+                            formattedTime = `${seconds}s`;
+                        }
                         
                         // NEW 5.20: Get the visual content (image or text)
                         const visualCue = bell.visualCue || `[CUSTOM_TEXT] ${bell.iconText}|${bell.iconBgColor}|${bell.iconFgColor}`;
@@ -1723,11 +1739,12 @@
                             visualContent = `<span class="text-xl font-bold block leading-none">${bell.iconText}</span>`;
                         }
 
-                        // 5.30.3 Add mouseover text to buttons
+                        // V5.44.8: Add hours data attribute
                         return `
                         <button data-custom-id="${bell.id}"
-                                data-minutes="${bell.minutes}"
-                                data-seconds="${bell.seconds}"
+                                data-hours="${hours}"
+                                data-minutes="${minutes}"
+                                data-seconds="${seconds}"
                                 data-sound="${bell.sound}"
                                 data-name="${bell.name}"
                                 class="custom-quick-launch-btn font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 w-11 relative overflow-hidden group flex items-center justify-center"
@@ -1804,6 +1821,7 @@
                     
                     // Sync all form values
                     const nameInput = row.querySelector(`input[data-field="name"][data-bell-id="${bellId}"]`);
+                    const hoursInput = row.querySelector(`input[data-field="hours"][data-bell-id="${bellId}"]`);
                     const minutesInput = row.querySelector(`input[data-field="minutes"][data-bell-id="${bellId}"]`);
                     const secondsInput = row.querySelector(`input[data-field="seconds"][data-bell-id="${bellId}"]`);
                     const soundSelect = row.querySelector(`select[data-field="sound"][data-bell-id="${bellId}"]`);
@@ -1814,6 +1832,7 @@
                     
                     bell.isActive = toggle.checked;
                     if (nameInput) bell.name = nameInput.value;
+                    if (hoursInput) bell.hours = parseInt(hoursInput.value) || 0;
                     if (minutesInput) bell.minutes = parseInt(minutesInput.value) || 0;
                     if (secondsInput) bell.seconds = parseInt(secondsInput.value) || 0;
                     if (soundSelect) bell.sound = soundSelect.value;
@@ -1965,9 +1984,31 @@
                             <div class="flex-grow flex flex-col sm:flex-row items-start sm:items-center justify-between">
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 mb-2 sm:mb-0">
                                     <span class="text-xl font-bold text-gray-800" ${titleAttr}>${displayPeriodName}</span>
-                                    <!-- V5.44.7: Show CUSTOM badge for fluke periods, link icon for shared/merged periods -->
-                                ${period.origin === 'personal' ? '<span class="text-xs font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full" title="This is a custom period you created.">CUSTOM</span>' : 
-                                  (period.origin === 'shared' || period.origin === 'merged') ? '<span class="text-blue-500 ml-1" title="Linked to shared schedule"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>' : ''}
+                                    <!-- V5.44.8: Show badges based on context -->
+                                ${(() => {
+                                    // Check if this is a standalone schedule (no shared bells anywhere)
+                                    const isStandalone = localSchedulePeriods.length === 0;
+                                    
+                                    // Check if this period has relative anchor bells (meaning it's linked to another period)
+                                    // Anchor bells are identified by anchorRole OR by name "Period Start"/"Period End"
+                                    const hasRelativeAnchors = period.bells.some(b => {
+                                        const isAnchorBell = b.anchorRole || b.name === 'Period Start' || b.name === 'Period End';
+                                        return isAnchorBell && b.relative;
+                                    });
+                                    
+                                    if (period.origin === 'shared' || period.origin === 'merged') {
+                                        // Shared/merged period - show blue link icon
+                                        return '<span class="text-blue-500 ml-1" title="Linked to shared schedule"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>';
+                                    } else if (hasRelativeAnchors) {
+                                        // Personal period with relative anchors - show purple link icon
+                                        return '<span class="text-purple-500 ml-1" title="Period anchors are linked to another period"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>';
+                                    } else if (period.origin === 'personal' && !isStandalone) {
+                                        // Custom period on a LINKED schedule - show CUSTOM badge
+                                        return '<span class="text-xs font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full" title="This is a custom period you created.">CUSTOM</span>';
+                                    }
+                                    // Standalone schedule with no relative anchors - show nothing
+                                    return '';
+                                })()}
                                 <span class="text-gray-600 text-sm mt-1 sm:mt-0">${firstBellTime} - ${lastBellTime}</span>
                             </div>
                             
@@ -2082,19 +2123,19 @@
                                         <!-- MODIFIED V4.87: Removed all custom coloring for a cleaner UI -->
                                         <span class="font-medium text-gray-800 truncate block flex items-center" title="${safeName}">
                                             ${safeName}
-                                            <!-- V5.44.7: Anchor icon for bells with anchorRole (fluke period anchors) -->
-                                            ${bell.anchorRole ?
-                                                `<span class="ml-2 text-amber-600" title="Anchor Bell (${bell.anchorRole === 'start' ? 'Period Start' : 'Period End'})">
+                                            <!-- V5.44.8: Anchor icon for anchor bells (by anchorRole OR name) -->
+                                            ${(bell.anchorRole || bell.name === 'Period Start' || bell.name === 'Period End') && !bell.type?.includes('shared') ?
+                                                `<span class="ml-2 text-amber-600" title="Anchor Bell (${bell.anchorRole === 'start' || bell.name === 'Period Start' ? 'Period Start' : 'Period End'})">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 15l1.55 1.55c-.96 1.69-3.33 3.04-5.55 3.37V11h3V9h-3V7.82C14.16 7.4 15 6.3 15 5c0-1.65-1.35-3-3-3S9 3.35 9 5c0 1.3.84 2.4 2 2.82V9H8v2h3v8.92c-2.22-.33-4.59-1.68-5.55-3.37L7 15l-4-3v3c0 3.88 4.92 7 9 7s9-3.12 9-7v-3l-4 3zM12 5c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z"/></svg>
                                                 </span>` : ''}
-                                            <!-- MODIFIED V5.44.7: Show shared icon only for shared bells WITHOUT anchorRole -->
-                                            ${bell.type === 'shared' && !bell.anchorRole ?
+                                            <!-- V5.44.8: Show shared icon only for shared bells that aren't anchor bells -->
+                                            ${bell.type === 'shared' && !bell.anchorRole && bell.name !== 'Period Start' && bell.name !== 'Period End' ?
                                                 `<span class="ml-2 text-blue-500" title="Shared Bell (Admin Controlled)">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                                                 </span>` : ''}
                                             
-                                            <!-- NEW: v4.10.3 - Relative Bell Icon -->
-                                            ${bell.relative ? 
+                                            <!-- V5.44.8: Relative Bell Icon - only for non-anchor relative bells -->
+                                            ${bell.relative && !bell.anchorRole && bell.name !== 'Period Start' && bell.name !== 'Period End' ? 
                                                 `<span class="ml-2 text-purple-600" title="Relative Bell (Time is calculated)">
                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v2H8v-2z"/></svg>
                                                 </span>` : ''}
@@ -2725,6 +2766,7 @@
                         console.log(`  Bell ${bell.id}:`, {
                             name: bell.name,
                             sound: bell.sound,
+                            hours: bell.hours || 0,
                             minutes: bell.minutes,
                             seconds: bell.seconds
                         });
@@ -9459,11 +9501,12 @@
                 quickBellControls.addEventListener('click', (e) => {
                     const customBtn = e.target.closest('.custom-quick-launch-btn');
                     if (customBtn) {
-                        const minutes = parseInt(customBtn.dataset.minutes, 10);
-                        const seconds = parseInt(customBtn.dataset.seconds, 10);
+                        const hours = parseInt(customBtn.dataset.hours, 10) || 0;
+                        const minutes = parseInt(customBtn.dataset.minutes, 10) || 0;
+                        const seconds = parseInt(customBtn.dataset.seconds, 10) || 0;
                         const sound = customBtn.dataset.sound;
                         const name = customBtn.dataset.name;
-                        startQuickBell(minutes, seconds, sound, name);
+                        startQuickBell(hours, minutes, seconds, sound, name);
                     }
                 });
                 
@@ -9695,7 +9738,7 @@
                 quickBellControls.addEventListener('click', (e) => {
                     if (e.target.matches('.quick-bell-btn')) {
                         const minutes = parseInt(e.target.dataset.minutes, 10);
-                        startQuickBell(minutes);
+                        startQuickBell(0, minutes, 0); // V5.44.8: hours=0, minutes, seconds=0
                     }
                 });
                 quickBellSoundSelect.addEventListener('change', () => {
