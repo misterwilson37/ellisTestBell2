@@ -1,4 +1,10 @@
-        const APP_VERSION = "5.44.12"
+        const APP_VERSION = "5.45.0"
+        // V5.45.0: Comprehensive personal schedule backup/restore
+        // - Backup now saves: periods (v4 structure), period visual overrides, custom quick bells
+        // - Backup includes references to custom audio/visual files (URLs)
+        // - Restore supports both v1 (legacy bells) and v2 (full) formats
+        // - Restore prompts to optionally restore quick bells
+        // - Backup filename now includes date
         // V5.44.11: Consistent icon/text sizing across all quick bell previews
         // - Modal previews, manager previews, and actual buttons now all use SVG text
         // - SVG text scales proportionally to container, ensuring consistent appearance
@@ -1736,7 +1742,7 @@
                             // Constantly updating in 5.25 to get the appearance right.
                             visualContent = `<img src="${visualCue}" alt="${bell.name}" class="absolute inset-0 w-full h-full object-contain p-1">`;
                         } else if (visualCue.startsWith('[CUSTOM_TEXT]')) {
-                            // V5.44.12: Use SVG text with absolute positioning to fill button (ignoring padding)
+                            // V5.44.11: Use SVG text with absolute positioning to fill button (ignoring padding)
                             const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
                             const text = parts[0] || bell.iconText || bell.id;
                             const fontSize = text.length > 2 ? 50 : 70;  // Match getCustomBellIconHtml
@@ -5444,12 +5450,80 @@
                 const schedule = allPersonalSchedules.find(s => s.id === activePersonalScheduleId);
                 if (!schedule) return;
     
-                // Create a clean backup object
+                // V5.45.0: Comprehensive backup including all user customizations
+                
+                // 1. Collect period visual overrides for this schedule's base
+                const relevantVisualOverrides = {};
+                const baseId = schedule.baseScheduleId || 'standalone';
+                for (const key in periodVisualOverrides) {
+                    // Keys are formatted as "{scheduleId}:{periodName}"
+                    if (key.startsWith(`${baseId}:`)) {
+                        relevantVisualOverrides[key] = periodVisualOverrides[key];
+                    }
+                }
+                
+                // 2. Get custom quick bells (if any)
+                const quickBellsBackup = customQuickBells.filter(b => b !== null);
+                
+                // 3. Collect all referenced audio/visual URLs from the schedule
+                const referencedMedia = {
+                    audio: new Set(),
+                    visuals: new Set()
+                };
+                
+                // Scan periods for custom sounds and visuals
+                const periods = schedule.periods || [];
+                periods.forEach(period => {
+                    if (period.bells) {
+                        period.bells.forEach(bell => {
+                            // Check for custom audio (URLs start with http)
+                            if (bell.sound && bell.sound.startsWith('http')) {
+                                referencedMedia.audio.add(bell.sound);
+                            }
+                            // Check for custom visuals
+                            if (bell.visualCue && bell.visualCue.startsWith('http')) {
+                                referencedMedia.visuals.add(bell.visualCue);
+                            }
+                        });
+                    }
+                });
+                
+                // Scan visual overrides for custom visuals
+                for (const key in relevantVisualOverrides) {
+                    const value = relevantVisualOverrides[key];
+                    if (value && value.startsWith('http')) {
+                        referencedMedia.visuals.add(value);
+                    }
+                }
+                
+                // Scan quick bells for custom media
+                quickBellsBackup.forEach(bell => {
+                    if (bell.sound && bell.sound.startsWith('http')) {
+                        referencedMedia.audio.add(bell.sound);
+                    }
+                    if (bell.visualCue && bell.visualCue.startsWith('http')) {
+                        referencedMedia.visuals.add(bell.visualCue);
+                    }
+                });
+                
+                // Create comprehensive backup object
                 const backupData = {
-                    type: "EllisWebBell_PersonalSchedule_v1",
-                    name: schedule.name,
-                    baseScheduleId: schedule.baseScheduleId,
-                    bells: schedule.bells
+                    type: "EllisWebBell_PersonalSchedule_v2",  // NEW version!
+                    exportedAt: new Date().toISOString(),
+                    schedule: {
+                        name: schedule.name,
+                        baseScheduleId: schedule.baseScheduleId || null,
+                        isStandalone: schedule.isStandalone || false,
+                        periods: periods  // The full v4 structure
+                    },
+                    periodVisualOverrides: relevantVisualOverrides,
+                    customQuickBells: quickBellsBackup,
+                    referencedMedia: {
+                        audio: Array.from(referencedMedia.audio),
+                        visuals: Array.from(referencedMedia.visuals)
+                    },
+                    // Legacy compatibility - flatten to bells array
+                    _legacyBells: flattenPeriodsToLegacyBells(periods)
                 };
     
                 try {
@@ -5459,13 +5533,25 @@
                     const a = document.createElement('a');
                     a.href = url;
                     const filename = (schedule.name || 'personal_schedule').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                    a.download = `ellisbell_backup_${filename}.json`;
+                    const dateStr = new Date().toISOString().split('T')[0];
+                    a.download = `ellisbell_backup_${filename}_${dateStr}.json`;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
+                    
+                    // Show confirmation with media count
+                    const audioCount = referencedMedia.audio.size;
+                    const visualCount = referencedMedia.visuals.size;
+                    let message = `Backup saved! Includes ${periods.length} periods`;
+                    if (audioCount > 0 || visualCount > 0) {
+                        message += ` and references to ${audioCount} audio + ${visualCount} visual files`;
+                    }
+                    showUserMessage(message);
+                    
                 } catch (error) {
                      console.error("Error backing up schedule:", error);
+                     showUserMessage("Error creating backup: " + error.message);
                 }
             }
             
@@ -5476,19 +5562,81 @@
                 reader.onload = (event) => {
                     try {
                         const data = JSON.parse(event.target.result);
-                        // Validate
-                        if (data.type !== "EllisWebBell_PersonalSchedule_v1" || data.name === undefined || data.baseScheduleId === undefined || !Array.isArray(data.bells)) {
-                            throw new Error("Invalid or corrupt backup file.");
+                        
+                        // V5.45.0: Support both v1 and v2 formats
+                        const isV2 = data.type === "EllisWebBell_PersonalSchedule_v2";
+                        const isV1 = data.type === "EllisWebBell_PersonalSchedule_v1";
+                        
+                        if (!isV1 && !isV2) {
+                            throw new Error("Invalid backup file type. Expected EllisWebBell_PersonalSchedule_v1 or v2.");
                         }
-                        pendingRestoreData = data; // Store data
+                        
+                        // Validate based on version
+                        if (isV1) {
+                            if (data.name === undefined || data.baseScheduleId === undefined || !Array.isArray(data.bells)) {
+                                throw new Error("Invalid or corrupt v1 backup file.");
+                            }
+                            // Convert v1 to internal format
+                            pendingRestoreData = {
+                                version: 1,
+                                name: data.name,
+                                baseScheduleId: data.baseScheduleId,
+                                periods: [], // V1 didn't have periods, will use bells
+                                bells: data.bells,
+                                periodVisualOverrides: {},
+                                customQuickBells: [],
+                                referencedMedia: { audio: [], visuals: [] }
+                            };
+                        } else {
+                            // V2 format
+                            if (!data.schedule || data.schedule.name === undefined || !Array.isArray(data.schedule.periods)) {
+                                throw new Error("Invalid or corrupt v2 backup file.");
+                            }
+                            pendingRestoreData = {
+                                version: 2,
+                                name: data.schedule.name,
+                                baseScheduleId: data.schedule.baseScheduleId,
+                                isStandalone: data.schedule.isStandalone || false,
+                                periods: data.schedule.periods,
+                                periodVisualOverrides: data.periodVisualOverrides || {},
+                                customQuickBells: data.customQuickBells || [],
+                                referencedMedia: data.referencedMedia || { audio: [], visuals: [] }
+                            };
+                        }
                         
                         const schedule = allPersonalSchedules.find(s => s.id === activePersonalScheduleId);
                         
-                        confirmRestoreText.textContent = `Overwrite "${schedule.name}" with data from "${data.name}" (from file ${file.name})? This cannot be undone.`;
+                        // Build confirmation message
+                        let confirmMsg = `Overwrite "${schedule.name}" with data from "${pendingRestoreData.name}" (from file ${file.name})?`;
+                        
+                        if (pendingRestoreData.version === 2) {
+                            const periodCount = pendingRestoreData.periods.length;
+                            const audioCount = pendingRestoreData.referencedMedia.audio.length;
+                            const visualCount = pendingRestoreData.referencedMedia.visuals.length;
+                            const quickBellCount = pendingRestoreData.customQuickBells.length;
+                            const overrideCount = Object.keys(pendingRestoreData.periodVisualOverrides).length;
+                            
+                            confirmMsg += `\n\nThis backup includes:`;
+                            confirmMsg += `\n• ${periodCount} periods`;
+                            if (overrideCount > 0) confirmMsg += `\n• ${overrideCount} visual customizations`;
+                            if (quickBellCount > 0) confirmMsg += `\n• ${quickBellCount} quick bells`;
+                            if (audioCount > 0 || visualCount > 0) {
+                                confirmMsg += `\n• References to ${audioCount} audio + ${visualCount} visual files`;
+                                confirmMsg += `\n  (Files must exist in your account or they'll fall back to defaults)`;
+                            }
+                        } else {
+                            confirmMsg += `\n\n⚠️ This is an older v1 backup with limited data.`;
+                        }
+                        
+                        confirmMsg += `\n\nThis cannot be undone.`;
+                        
+                        confirmRestoreText.textContent = confirmMsg;
+                        confirmRestoreText.style.whiteSpace = 'pre-line'; // Allow line breaks
                         confirmRestoreModal.classList.remove('hidden');
     
                     } catch (error) {
                         console.error("Restore file read failed:", error);
+                        showUserMessage("Error reading backup: " + error.message);
                     } finally {
                         restoreFileInput.value = ''; // Clear input
                     }
@@ -5499,21 +5647,62 @@
             async function confirmRestorePersonalSchedule() {
                 if (!pendingRestoreData || !activePersonalScheduleId) return;
     
-                const { name, baseScheduleId, bells } = pendingRestoreData;
+                const { version, name, baseScheduleId, isStandalone, periods, bells, periodVisualOverrides: backupOverrides, customQuickBells: backupQuickBells } = pendingRestoreData;
                 const docRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
                 
                 try {
-                    // setDoc will overwrite
-                    await setDoc(docRef, { name, baseScheduleId, bells });
-                    console.log("Schedule restored.");
+                    if (version === 2) {
+                        // V5.45.0: Full v2 restore
+                        
+                        // 1. Restore schedule data
+                        const scheduleData = { 
+                            name, 
+                            baseScheduleId: baseScheduleId || null,
+                            periods 
+                        };
+                        if (isStandalone) {
+                            scheduleData.isStandalone = true;
+                        }
+                        await setDoc(docRef, scheduleData);
+                        
+                        // 2. Restore period visual overrides to localStorage
+                        if (backupOverrides && Object.keys(backupOverrides).length > 0) {
+                            // Merge with existing overrides (don't lose unrelated overrides)
+                            for (const key in backupOverrides) {
+                                periodVisualOverrides[key] = backupOverrides[key];
+                            }
+                            savePeriodVisualOverrides();
+                            console.log(`Restored ${Object.keys(backupOverrides).length} period visual overrides.`);
+                        }
+                        
+                        // 3. Restore custom quick bells (if any)
+                        if (backupQuickBells && backupQuickBells.length > 0) {
+                            // Ask user if they want to overwrite quick bells
+                            const restoreQuickBells = confirm(`This backup includes ${backupQuickBells.length} custom quick bells. Do you want to restore them?\n\n(This will replace your current quick bells.)`);
+                            
+                            if (restoreQuickBells) {
+                                await saveCustomQuickBells(backupQuickBells);
+                                console.log(`Restored ${backupQuickBells.length} custom quick bells.`);
+                            }
+                        }
+                        
+                        console.log("V2 schedule restored successfully.");
+                        showUserMessage(`Restored "${name}" with ${periods.length} periods.`);
+                        
+                    } else {
+                        // V1 legacy restore (bells array only)
+                        await setDoc(docRef, { name, baseScheduleId, bells });
+                        console.log("V1 schedule restored (legacy format).");
+                        showUserMessage(`Restored "${name}" (legacy format).`);
+                    }
                     
-                    // MODIFIED: v3.09 - No longer need to call loadPersonalSchedules()
-                    // The listener will handle the update.
+                    // Refresh the UI
                     scheduleSelector.value = `personal-${activePersonalScheduleId}`;
                     setActiveSchedule(scheduleSelector.value);
     
                 } catch (error) {
                     console.error("Error restoring schedule:", error);
+                    showUserMessage("Error restoring: " + error.message);
                 } finally {
                     pendingRestoreData = null;
                     confirmRestoreModal.classList.add('hidden');
