@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.6"
+        const APP_VERSION = "5.44.7"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -1965,8 +1965,9 @@
                             <div class="flex-grow flex flex-col sm:flex-row items-start sm:items-center justify-between">
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 mb-2 sm:mb-0">
                                     <span class="text-xl font-bold text-gray-800" ${titleAttr}>${displayPeriodName}</span>
-                                    <!-- MODIFIED in 4.29: Use 'period.origin' and only show "CUSTOM" for periods created by the user -->
-                                ${period.origin === 'personal' ? '<span class="text-xs font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full" title="This is a custom period you created.">CUSTOM</span>' : ''}
+                                    <!-- V5.44.7: Show CUSTOM badge for fluke periods, link icon for shared/merged periods -->
+                                ${period.origin === 'personal' ? '<span class="text-xs font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full" title="This is a custom period you created.">CUSTOM</span>' : 
+                                  (period.origin === 'shared' || period.origin === 'merged') ? '<span class="text-blue-500 ml-1" title="Linked to shared schedule"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>' : ''}
                                 <span class="text-gray-600 text-sm mt-1 sm:mt-0">${firstBellTime} - ${lastBellTime}</span>
                             </div>
                             
@@ -2081,11 +2082,15 @@
                                         <!-- MODIFIED V4.87: Removed all custom coloring for a cleaner UI -->
                                         <span class="font-medium text-gray-800 truncate block flex items-center" title="${safeName}">
                                             ${safeName}
-                                            <!-- MODIFIED in 4.32: Anchor icon now indicates a 'shared' (admin-controlled) bell, not first/last in period -->
-                                            ${bell.type === 'shared' ?
+                                            <!-- V5.44.7: Anchor icon for bells with anchorRole (fluke period anchors) -->
+                                            ${bell.anchorRole ?
+                                                `<span class="ml-2 text-amber-600" title="Anchor Bell (${bell.anchorRole === 'start' ? 'Period Start' : 'Period End'})">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 15l1.55 1.55c-.96 1.69-3.33 3.04-5.55 3.37V11h3V9h-3V7.82C14.16 7.4 15 6.3 15 5c0-1.65-1.35-3-3-3S9 3.35 9 5c0 1.3.84 2.4 2 2.82V9H8v2h3v8.92c-2.22-.33-4.59-1.68-5.55-3.37L7 15l-4-3v3c0 3.88 4.92 7 9 7s9-3.12 9-7v-3l-4 3zM12 5c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z"/></svg>
+                                                </span>` : ''}
+                                            <!-- MODIFIED V5.44.7: Show shared icon only for shared bells WITHOUT anchorRole -->
+                                            ${bell.type === 'shared' && !bell.anchorRole ?
                                                 `<span class="ml-2 text-blue-500" title="Shared Bell (Admin Controlled)">
-                                                    <!-- MODIFIED in 4.32: Replaced disjointed path with a single, connected path -->
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-1 6v5.24c-1.72-.4-3-1.89-3-3.74h-2c0 2.8 2.2 5 5 5v2h2v-2c2.8 0 5-2.2 5-5h-2c0 1.85-1.28 3.34-3 3.74V11h-2z"/></svg>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                                                 </span>` : ''}
                                             
                                             <!-- NEW: v4.10.3 - Relative Bell Icon -->
@@ -7727,7 +7732,9 @@
                     newPeriodEndStaticDiv.classList.remove('hidden');
                     newPeriodStartRelativeDiv.classList.add('hidden');
                     newPeriodEndRelativeDiv.classList.add('hidden');
-                    // Mark static inputs as required
+                    // V5.44.7: Re-enable and mark static inputs as required
+                    newPeriodStartTime.disabled = false;
+                    newPeriodEndTime.disabled = false;
                     newPeriodStartTime.required = true;
                     newPeriodEndTime.required = true;
                 } else {
