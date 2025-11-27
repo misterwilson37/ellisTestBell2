@@ -1,4 +1,8 @@
-        const APP_VERSION = "5.44.10"
+        const APP_VERSION = "5.44.11"
+        // V5.44.11: Consistent icon/text sizing across all quick bell previews
+        // - Modal previews, manager previews, and actual buttons now all use SVG text
+        // - SVG text scales proportionally to container, ensuring consistent appearance
+        // - Font sizes: 80/45 for full preview, 70/50 for button preview (short/long text)
         // V5.44.10: Fix custom text/color modal for quick bells
         // - Created setupCustomTextModalPreviews() helper function for consistent preview behavior
         // - Live preview now updates in real-time when editing custom text/colors for quick bells
@@ -1732,16 +1736,25 @@
                             // Constantly updating in 5.25 to get the appearance right.
                             visualContent = `<img src="${visualCue}" alt="${bell.name}" class="absolute inset-0 w-full h-full object-contain p-1">`;
                         } else if (visualCue.startsWith('[CUSTOM_TEXT]')) {
-                            // It's custom text - extract text and colors
+                            // V5.44.11: Use SVG text for consistent sizing across all contexts
                             const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
                             const text = parts[0] || bell.iconText || bell.id;
-                            visualContent = `<span class="text-xl font-bold block leading-none">${text}</span>`;
+                            const fontSize = text.length > 2 ? 50 : 70;  // Match getCustomBellIconHtml
+                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
+                                <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text>
+                            </svg>`;
                         } else if (visualCue.startsWith('[DEFAULT]')) {
-                            // It's a default SVG - just show the icon text as fallback
-                            visualContent = `<span class="text-xl font-bold block leading-none">${bell.iconText}</span>`;
+                            // V5.44.11: Use SVG text for default fallback too
+                            const fontSize = bell.iconText.length > 2 ? 50 : 70;
+                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
+                                <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${bell.iconText}</text>
+                            </svg>`;
                         } else {
-                            // Fallback
-                            visualContent = `<span class="text-xl font-bold block leading-none">${bell.iconText}</span>`;
+                            // V5.44.11: Fallback with SVG text
+                            const fontSize = bell.iconText.length > 2 ? 50 : 70;
+                            visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
+                                <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${bell.iconText}</text>
+                            </svg>`;
                         }
 
                         // V5.44.8: Add hours data attribute
@@ -2782,24 +2795,33 @@
                 }
                 
                 // Define the preview update function
+                // V5.44.11: Use SVG text for consistent sizing across all preview contexts
                 function updatePreviews() {
                     const text = customTextInput.value.trim().substring(0, 3) || '?';
                     const fgColor = customTextColorInput.value;
                     const bgColor = customTextBgColorInput.value;
                     
-                    // Update full size preview
+                    // V5.44.11: Calculate font sizes based on text length (matching VISUAL_CONFIG)
+                    const fullFontSize = text.length > 2 ? 45 : 80;  // Match VISUAL_CONFIG.full.customTextFontSize
+                    const iconFontSize = text.length > 2 ? 50 : 70;  // Match getCustomBellIconHtml
+                    
+                    // Update full size preview - using SVG for consistent scaling
                     const livePreview = document.getElementById('quick-bell-visual-preview-full');
                     if (livePreview) {
-                        livePreview.innerHTML = `<div class="w-full h-full flex items-center justify-center" style="background-color: ${bgColor};">
-                            <span class="text-6xl font-bold" style="color: ${fgColor};">${text}</span>
+                        livePreview.innerHTML = `<div class="w-full h-full p-8 flex items-center justify-center" style="background-color: ${bgColor};">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
+                                <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fullFontSize}" font-weight="bold" fill="${fgColor}" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text>
+                            </svg>
                         </div>`;
                     }
                     
-                    // Update icon preview (small) - use inner element for proper shape
+                    // Update icon preview (small) - using SVG for consistent scaling
                     const iconInnerEl = document.getElementById('quick-bell-visual-preview-icon-inner');
                     if (iconInnerEl) {
-                        iconInnerEl.innerHTML = `<span class="text-lg font-bold" style="color: ${fgColor};">${text}</span>`;
                         iconInnerEl.style.backgroundColor = bgColor;
+                        iconInnerEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
+                            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${iconFontSize}" font-weight="bold" fill="${fgColor}" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text>
+                        </svg>`;
                     }
                 }
                 
