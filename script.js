@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.3"
+        const APP_VERSION = "5.44.4"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -5031,8 +5031,15 @@
                         
                         // Create a new bells array for this period
                         const updatedBells = [...period.bells];
-                        // Replace the old bell with the new bell
-                        updatedBells[bellIndex] = newBell;
+                        
+                        // V5.44.4: Preserve anchorRole from original bell (critical for fluke periods)
+                        const originalAnchorRole = period.bells[bellIndex].anchorRole;
+                        const updatedBell = originalAnchorRole 
+                            ? { ...newBell, anchorRole: originalAnchorRole }
+                            : newBell;
+                        
+                        // Replace the old bell with the updated bell
+                        updatedBells[bellIndex] = updatedBell;
                         
                         // Return the updated period object
                         return { ...period, bells: updatedBells };
@@ -6126,7 +6133,7 @@
                     bellSound = 'ellisBell.mp3';
                 }
                 
-                // 3. Calculate offset - V5.44.3: Include hours
+                // 3. Calculate offset - V5.44.2: Include hours
                 let totalOffsetSeconds = (hours * 3600) + (minutes * 60) + seconds;
                 if (direction === 'before') {
                     totalOffsetSeconds = -totalOffsetSeconds;
@@ -6815,7 +6822,7 @@
                     bgColor: 'bg-gray-200',     // FIX V5.43.0: Match icon background for previews
                     customTextFontSize: {
                         short: 80,              // Font size for 1-2 chars (getVisualHtml)
-                        long: 55                // Font size for 3+ chars (getVisualHtml)
+                        long: 45                // V5.44.4: Reduced from 55 to prevent cropping
                     }
                 },
                 // Icon display (small circle next to period name)
@@ -7821,15 +7828,16 @@
                         return;
                     }
 
-                    const updatedPeriods = [...existingPeriods, newPeriod];
-                    await updateDoc(personalScheduleRef, { periods: updatedPeriods });
-
-                    // 4. Save visual cue override if selected
+                    // V5.44.4: Save visual cue override BEFORE Firestore update
+                    // This ensures the visual is available when the listener re-renders the list
                     if (visualCue) {
                         const visualKey = getVisualOverrideKey(activeBaseScheduleId, periodName);
                         periodVisualOverrides[visualKey] = visualCue;
                         saveVisualOverrides();
                     }
+
+                    const updatedPeriods = [...existingPeriods, newPeriod];
+                    await updateDoc(personalScheduleRef, { periods: updatedPeriods });
 
                     showUserMessage(`New period "${periodName}" created successfully!`);
                     closeNewPeriodModal();
