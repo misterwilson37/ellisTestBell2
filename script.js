@@ -1,4 +1,9 @@
-        const APP_VERSION = "5.44.9"
+        const APP_VERSION = "5.44.10"
+        // V5.44.10: Fix custom text/color modal for quick bells
+        // - Created setupCustomTextModalPreviews() helper function for consistent preview behavior
+        // - Live preview now updates in real-time when editing custom text/colors for quick bells
+        // - Icon preview shape is now a rounded square (matching button) instead of a circle
+        // - Fixed hours field not loading from Firestore for custom quick bells
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -2747,6 +2752,73 @@
                         <span class="absolute right-1 bottom-1 text-xs text-black/50">&#9998;</span> <!-- Pencil Icon -->
                     </div>
                 `;
+            }
+
+            /**
+             * V5.44.10: Helper function to set up the custom text modal previews.
+             * This ensures live preview updates work regardless of which code path opens the modal.
+             * @param {boolean} isQuickBell - Whether this is for a quick bell (uses square icon) or period (uses circle icon)
+             */
+            function setupCustomTextModalPreviews(isQuickBell = false) {
+                const iconInner = document.getElementById('quick-bell-visual-preview-icon-inner');
+                const fullLabel = document.getElementById('custom-text-preview-full-label');
+                const iconLabel = document.getElementById('custom-text-preview-icon-label');
+                
+                // Set labels based on context
+                if (fullLabel && iconLabel) {
+                    fullLabel.textContent = 'Full Size Preview';
+                    iconLabel.textContent = isQuickBell ? 'Button Preview' : 'Icon Preview';
+                }
+                
+                // Set icon shape based on context
+                if (iconInner) {
+                    if (isQuickBell) {
+                        // Square button shape with rounded corners (matches quick bell buttons)
+                        iconInner.className = 'w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden bg-gray-200';
+                    } else {
+                        // Circle icon shape (for periods)
+                        iconInner.className = 'visual-preview-icon-circle bg-gray-200';
+                    }
+                }
+                
+                // Define the preview update function
+                function updatePreviews() {
+                    const text = customTextInput.value.trim().substring(0, 3) || '?';
+                    const fgColor = customTextColorInput.value;
+                    const bgColor = customTextBgColorInput.value;
+                    
+                    // Update full size preview
+                    const livePreview = document.getElementById('quick-bell-visual-preview-full');
+                    if (livePreview) {
+                        livePreview.innerHTML = `<div class="w-full h-full flex items-center justify-center" style="background-color: ${bgColor};">
+                            <span class="text-6xl font-bold" style="color: ${fgColor};">${text}</span>
+                        </div>`;
+                    }
+                    
+                    // Update icon preview (small) - use inner element for proper shape
+                    const iconInnerEl = document.getElementById('quick-bell-visual-preview-icon-inner');
+                    if (iconInnerEl) {
+                        iconInnerEl.innerHTML = `<span class="text-lg font-bold" style="color: ${fgColor};">${text}</span>`;
+                        iconInnerEl.style.backgroundColor = bgColor;
+                    }
+                }
+                
+                // Remove any existing listeners to prevent stacking (use a named function reference)
+                // We store the current handler on the element to be able to remove it later
+                if (customTextInput._previewHandler) {
+                    customTextInput.removeEventListener('input', customTextInput._previewHandler);
+                    customTextColorInput.removeEventListener('input', customTextInput._previewHandler);
+                    customTextBgColorInput.removeEventListener('input', customTextInput._previewHandler);
+                }
+                
+                // Store and add the new handler
+                customTextInput._previewHandler = updatePreviews;
+                customTextInput.addEventListener('input', updatePreviews);
+                customTextColorInput.addEventListener('input', updatePreviews);
+                customTextBgColorInput.addEventListener('input', updatePreviews);
+                
+                // Trigger initial preview update
+                updatePreviews();
             }
 
             /**
@@ -9275,6 +9347,11 @@
                             
                             customTextVisualModal.style.zIndex = '60';
                             customTextVisualModal.classList.remove('hidden');
+                            
+                            // V5.44.10: Set up live preview with square icon shape for quick bells
+                            setupCustomTextModalPreviews(true);
+                            
+                            setTimeout(() => customTextInput.select(), 50);
                         } else if (supportsBackgroundColor(visualCue)) {
                             // Open background color picker
                             currentCustomBellIconSlot = bellId;
@@ -9455,8 +9532,10 @@
                             customTextVisualModal.style.zIndex = '60';
                             customTextVisualModal.classList.remove('hidden');
                             
-                            // V5.44.9: Trigger preview update by dispatching input event
-                            customTextInput.dispatchEvent(new Event('input'));
+                            // V5.44.10: Set up live preview with square icon shape for quick bells
+                            setupCustomTextModalPreviews(true);
+                            
+                            setTimeout(() => customTextInput.select(), 50);
                             return;
                         }
                         
@@ -10370,72 +10449,14 @@
                         customTextVisualModal.classList.remove('hidden');
                         customTextVisualModal.style.zIndex = '80'; // NEW in 5.25.?: Make sure it's on top of everything
                         
-                        // FIX V5.42: Set context-aware labels and icon preview shape
-                        const fullLabel = document.getElementById('custom-text-preview-full-label');
-                        const iconLabel = document.getElementById('custom-text-preview-icon-label');
-                        const iconInner = document.getElementById('quick-bell-visual-preview-icon-inner');
-                        
                         // Determine context from the target select ID
                         const isQuickBell = e.target.id.includes('quick-bell') || e.target.closest('#custom-quick-bell-manager-modal');
-                        const isPeriod = e.target.id === 'edit-period-image-select';
                         
-                        if (fullLabel && iconLabel) {
-                            if (isQuickBell) {
-                                fullLabel.textContent = 'Full Size Preview';
-                                iconLabel.textContent = 'Button Preview';
-                            } else if (isPeriod) {
-                                fullLabel.textContent = 'Full Size Preview';
-                                iconLabel.textContent = 'Period Icon Preview';
-                            } else {
-                                fullLabel.textContent = 'Full Size Preview';
-                                iconLabel.textContent = 'Icon Preview';
-                            }
-                        }
-                        
-                        // Set icon preview shape based on context
-                        if (iconInner) {
-                            if (isQuickBell) {
-                                // Square button shape
-                                iconInner.className = 'w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden bg-gray-200';
-                            } else {
-                                // Circle icon shape (for periods)
-                                iconInner.className = 'visual-preview-icon-circle bg-gray-200';
-                            }
-                        }
-
-                        // NEW 5.30.2: Add live preview updates
-                        customTextInput.addEventListener('input', updateCustomTextPreviews);
-                        customTextColorInput.addEventListener('input', updateCustomTextPreviews);
-                        customTextBgColorInput.addEventListener('input', updateCustomTextPreviews);
-                        
-                        // FIX V5.42: Updated preview function to use inner element for proper icon shape
-                        function updateCustomTextPreviews() {
-                            const text = customTextInput.value.trim().substring(0, 3) || '?';
-                            const fgColor = customTextColorInput.value;
-                            const bgColor = customTextBgColorInput.value;
-                            
-                            // Update live preview (large)
-                            const livePreview = document.getElementById('quick-bell-visual-preview-full');
-                            livePreview.innerHTML = `<div class="w-full h-full flex items-center justify-center" style="background-color: ${bgColor};">
-                                <span class="text-6xl font-bold" style="color: ${fgColor};">${text}</span>
-                            </div>`;
-                            
-                            // Update icon preview (small) - use inner element for proper shape
-                            const iconInner = document.getElementById('quick-bell-visual-preview-icon-inner');
-                            if (iconInner) {
-                                iconInner.innerHTML = `<span class="text-lg font-bold" style="color: ${fgColor};">${text}</span>`;
-                                iconInner.style.backgroundColor = bgColor;
-                            }
-                        }
-                        
-                        // Trigger initial preview update
-                        updateCustomTextPreviews();
+                        // V5.44.10: Use the centralized helper function for preview setup
+                        setupCustomTextModalPreviews(isQuickBell);
                             
                         // 5.25.7: More console logging
                         console.log('After removing hidden:', customTextVisualModal.classList.contains('hidden'));
-                            
-                        // Set focus and select current text
-                        setTimeout(() => customTextInput.select(), 50);
                             
                         // Set focus and select current text
                         setTimeout(() => customTextInput.select(), 50);
