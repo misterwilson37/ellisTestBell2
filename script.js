@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.2"
+        const APP_VERSION = "5.44.3"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -6101,6 +6101,7 @@
                 let bellSound = multiAddRelativeBellSound.value;
                 const parentAnchorType = multiAddRelativeParentAnchor.value; // 'period_start' or 'period_end'
                 const direction = multiAddRelativeDirection.value;
+                const hours = parseInt(document.getElementById('multi-add-relative-hours')?.value) || 0;
                 const minutes = parseInt(multiAddRelativeMinutes.value) || 0;
                 const seconds = parseInt(multiAddRelativeSeconds.value) || 0;
                 
@@ -6125,8 +6126,8 @@
                     bellSound = 'ellisBell.mp3';
                 }
                 
-                // 3. Calculate offset
-                let totalOffsetSeconds = (minutes * 60) + seconds;
+                // 3. Calculate offset - V5.44.3: Include hours
+                let totalOffsetSeconds = (hours * 3600) + (minutes * 60) + seconds;
                 if (direction === 'before') {
                     totalOffsetSeconds = -totalOffsetSeconds;
                 }
