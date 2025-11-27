@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.5"
+        const APP_VERSION = "5.44.6"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -5070,7 +5070,7 @@
                         // Create a new bells array for this period
                         const updatedBells = [...period.bells];
                         
-                        // V5.44.5: Preserve anchorRole from original bell (critical for fluke periods)
+                        // V5.44.4: Preserve anchorRole from original bell (critical for fluke periods)
                         const originalAnchorRole = period.bells[bellIndex].anchorRole;
                         const updatedBell = originalAnchorRole 
                             ? { ...newBell, anchorRole: originalAnchorRole }
@@ -7803,13 +7803,15 @@
                         const parentName = document.getElementById(`${prefix}-parent`).value;
                         const anchorType = document.getElementById(`${prefix}-anchor-type`).value;
                         const direction = document.getElementById(`${prefix}-direction`).value;
+                        const hours = parseInt(document.getElementById(`${prefix}-hours`)?.value) || 0;
                         const minutes = parseInt(document.getElementById(`${prefix}-minutes`).value) || 0;
                         const seconds = parseInt(document.getElementById(`${prefix}-seconds`).value) || 0;
                         
                         // V5.44.1: Validate against all periods including flukes
                         if (!parentName || !validAnchorPeriodNames.includes(parentName)) throw new Error(`Invalid anchor period for ${prefix.split('-')[1]}.`);
 
-                        let offsetSeconds = (minutes * 60) + seconds;
+                        // V5.44.6: Include hours in offset calculation
+                        let offsetSeconds = (hours * 3600) + (minutes * 60) + seconds;
                         if (direction === 'before') offsetSeconds = -offsetSeconds;
                         
                         return {
@@ -7866,7 +7868,7 @@
                         return;
                     }
 
-                    // V5.44.5: Save visual cue override BEFORE Firestore update
+                    // V5.44.4: Save visual cue override BEFORE Firestore update
                     // This ensures the visual is available when the listener re-renders the list
                     if (visualCue) {
                         const visualKey = getVisualOverrideKey(activeBaseScheduleId, periodName);
