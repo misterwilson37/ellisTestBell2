@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.31.4</title>
+    <title>Ellis Web Bell 5.31.5</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -624,7 +624,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.31.4</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.31.5</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -1356,46 +1356,47 @@
                             </select>
                         </div>
                     </div>
-                    <!-- Relative Inputs - V5.44.6: Two-column layout with hours -->
+                    <!-- Relative Inputs - V5.44.7: Three-row layout with aligned pairs -->
                     <div id="new-period-start-relative" class="hidden space-y-3">
+                        <!-- Row 1: Anchor Period + Hours -->
                         <div class="grid grid-cols-2 gap-4">
-                            <!-- Left Column: Stacked dropdowns -->
-                            <div class="space-y-3">
-                                <div>
-                                    <label for="new-period-start-parent" class="block text-sm font-medium text-gray-700">Anchor Period</label>
-                                    <select id="new-period-start-parent" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                        <!-- Base Periods populated by JS -->
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="new-period-start-anchor-type" class="block text-sm font-medium text-gray-700">Anchor Bell</label>
-                                    <select id="new-period-start-anchor-type" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                        <option value="period_start">Period Start</option>
-                                        <option value="period_end">Period End</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="new-period-start-direction" class="block text-sm font-medium text-gray-700">Direction</label>
-                                    <select id="new-period-start-direction" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                        <option value="before">Before</option>
-                                        <option value="after">After</option>
-                                    </select>
-                                </div>
+                            <div>
+                                <label for="new-period-start-parent" class="block text-sm font-medium text-gray-700">Anchor Period</label>
+                                <select id="new-period-start-parent" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <!-- Base Periods populated by JS -->
+                                </select>
                             </div>
-                            <!-- Right Column: Time inputs with inline labels -->
-                            <div class="space-y-3">
-                                <div class="flex items-center gap-2">
-                                    <label for="new-period-start-hours" class="text-sm font-medium text-gray-700 w-16">Hours</label>
-                                    <input type="number" id="new-period-start-hours" value="0" min="0" max="23" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <label for="new-period-start-minutes" class="text-sm font-medium text-gray-700 w-16">Minutes</label>
-                                    <input type="number" id="new-period-start-minutes" value="0" min="0" max="59" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <label for="new-period-start-seconds" class="text-sm font-medium text-gray-700 w-16">Seconds</label>
-                                    <input type="number" id="new-period-start-seconds" value="0" min="0" max="59" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                </div>
+                            <div>
+                                <label for="new-period-start-hours" class="block text-sm font-medium text-gray-700">Hours</label>
+                                <input type="number" id="new-period-start-hours" value="0" min="0" max="23" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                        </div>
+                        <!-- Row 2: Anchor Bell + Minutes -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="new-period-start-anchor-type" class="block text-sm font-medium text-gray-700">Anchor Bell</label>
+                                <select id="new-period-start-anchor-type" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="period_start">Period Start</option>
+                                    <option value="period_end">Period End</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="new-period-start-minutes" class="block text-sm font-medium text-gray-700">Minutes</label>
+                                <input type="number" id="new-period-start-minutes" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                        </div>
+                        <!-- Row 3: Direction + Seconds -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="new-period-start-direction" class="block text-sm font-medium text-gray-700">Direction</label>
+                                <select id="new-period-start-direction" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="before">Before</option>
+                                    <option value="after">After</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="new-period-start-seconds" class="block text-sm font-medium text-gray-700">Seconds</label>
+                                <input type="number" id="new-period-start-seconds" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                             </div>
                         </div>
 
@@ -1425,46 +1426,47 @@
                             </select>
                         </div>
                     </div>
-                    <!-- Relative Inputs - V5.44.6: Two-column layout with hours -->
+                    <!-- Relative Inputs - V5.44.7: Three-row layout with aligned pairs -->
                     <div id="new-period-end-relative" class="hidden space-y-3">
+                        <!-- Row 1: Anchor Period + Hours -->
                         <div class="grid grid-cols-2 gap-4">
-                            <!-- Left Column: Stacked dropdowns -->
-                            <div class="space-y-3">
-                                <div>
-                                    <label for="new-period-end-parent" class="block text-sm font-medium text-gray-700">Anchor Period</label>
-                                    <select id="new-period-end-parent" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                        <!-- Base Periods populated by JS -->
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="new-period-end-anchor-type" class="block text-sm font-medium text-gray-700">Anchor Bell</label>
-                                    <select id="new-period-end-anchor-type" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                        <option value="period_start">Period Start</option>
-                                        <option value="period_end">Period End</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="new-period-end-direction" class="block text-sm font-medium text-gray-700">Direction</label>
-                                    <select id="new-period-end-direction" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                        <option value="before">Before</option>
-                                        <option value="after">After</option>
-                                    </select>
-                                </div>
+                            <div>
+                                <label for="new-period-end-parent" class="block text-sm font-medium text-gray-700">Anchor Period</label>
+                                <select id="new-period-end-parent" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <!-- Base Periods populated by JS -->
+                                </select>
                             </div>
-                            <!-- Right Column: Time inputs with inline labels -->
-                            <div class="space-y-3">
-                                <div class="flex items-center gap-2">
-                                    <label for="new-period-end-hours" class="text-sm font-medium text-gray-700 w-16">Hours</label>
-                                    <input type="number" id="new-period-end-hours" value="0" min="0" max="23" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <label for="new-period-end-minutes" class="text-sm font-medium text-gray-700 w-16">Minutes</label>
-                                    <input type="number" id="new-period-end-minutes" value="0" min="0" max="59" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <label for="new-period-end-seconds" class="text-sm font-medium text-gray-700 w-16">Seconds</label>
-                                    <input type="number" id="new-period-end-seconds" value="0" min="0" max="59" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                </div>
+                            <div>
+                                <label for="new-period-end-hours" class="block text-sm font-medium text-gray-700">Hours</label>
+                                <input type="number" id="new-period-end-hours" value="0" min="0" max="23" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                        </div>
+                        <!-- Row 2: Anchor Bell + Minutes -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="new-period-end-anchor-type" class="block text-sm font-medium text-gray-700">Anchor Bell</label>
+                                <select id="new-period-end-anchor-type" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="period_start">Period Start</option>
+                                    <option value="period_end">Period End</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="new-period-end-minutes" class="block text-sm font-medium text-gray-700">Minutes</label>
+                                <input type="number" id="new-period-end-minutes" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                        </div>
+                        <!-- Row 3: Direction + Seconds -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="new-period-end-direction" class="block text-sm font-medium text-gray-700">Direction</label>
+                                <select id="new-period-end-direction" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="before">Before</option>
+                                    <option value="after">After</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="new-period-end-seconds" class="block text-sm font-medium text-gray-700">Seconds</label>
+                                <input type="number" id="new-period-end-seconds" value="0" min="0" max="59" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                             </div>
                         </div>
 
@@ -1951,4 +1953,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.31.4 - V5.44.6: Hours field for new period relative, edit relative bell fix -->
+<!-- Version 5.31.5 - V5.44.7: Fixed static time input, aligned relative layout, icon fixes -->
