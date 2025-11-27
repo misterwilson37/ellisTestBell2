@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.1"
+        const APP_VERSION = "5.44.2"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -2388,25 +2388,36 @@
                     // Note: We MUST recursively find the time for these, as they could also be relative.
                     let anchorBell;
                        
-                    // --- MODIFIED V4.78 & V5.28: Only anchor to SHARED bells ---
-                    // Relative bells should ONLY anchor to admin-controlled shared bells,
-                    // never to teacher-added personal bells. This keeps anchors stable.
+                    // --- MODIFIED V5.44.1: Use anchorRole for fluke periods, shared bells for linked periods ---
+                    // Determine if this is a shared/linked period or a custom/fluke period
                     const sharedStaticBells = parentPeriod.bells.filter(b => 
                         !b.relative && b._originType === 'shared'
                     );
                     
-                    if (sharedStaticBells.length === 0) {
-                        console.warn(`No shared anchor bells in period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
+                    if (sharedStaticBells.length > 0) {
+                        // LINKED PERIOD: Use first/last shared static bell as anchor
+                        if (parentAnchorType === 'period_start') {
+                            anchorBell = sharedStaticBells[0];
+                        } else {
+                            anchorBell = sharedStaticBells[sharedStaticBells.length - 1];
+                        }
+                    } else {
+                        // FLUKE/STANDALONE PERIOD: Find bells with explicit anchorRole
+                        const targetRole = parentAnchorType === 'period_start' ? 'start' : 'end';
+                        anchorBell = parentPeriod.bells.find(b => b.anchorRole === targetRole);
+                        
+                        // Legacy fallback: look for "Period Start" / "Period End" names
+                        if (!anchorBell) {
+                            const targetName = parentAnchorType === 'period_start' ? 'Period Start' : 'Period End';
+                            anchorBell = parentPeriod.bells.find(b => b.name === targetName && !b.relative);
+                        }
+                    }
+                    
+                    if (!anchorBell) {
+                        console.warn(`No anchor bell found in period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
                         return { ...bell, isOrphan: true, fallbackTime: "00:00:00" };
                     }
-                        
-                    if (parentAnchorType === 'period_start') {
-                       anchorBell = sharedStaticBells[0]; // First shared bell
-                    } else {
-                       // 'period_end'
-                       anchorBell = sharedStaticBells[sharedStaticBells.length - 1]; // Last shared bell
-                    }
-                    // --- END V4.78/V5.28 FIX ---
+                    // --- END V5.44.1 FIX ---
 
                     // 2d. Recursively find the anchor bell's time
                     const anchorTime = calculateRelativeBellTime(anchorBell, bellMap, allPeriods, new Set(visited));
@@ -2764,20 +2775,42 @@
             function findBellChildren(parentBellId) {
                 if (!parentBellId) return [];
 
-                // --- MODIFIED V4.80: CRITICAL BUG FIX ---
+                // --- MODIFIED V4.80 & V5.44.1: CRITICAL BUG FIX ---
                 // We must use the time-resolved, sorted *calculatedPeriodsList* to find
                 // the true anchors. Using the raw 'allPeriods' list was causing
                 // new bells (at the end of the raw array) to be misidentified as anchors.
                 const allPeriods = [...localSchedulePeriods, ...personalBellsPeriods]; // Raw data for iteration
                 const calculatedParentPeriod = calculatedPeriodsList.find(p => p.bells.some(b => b.bellId === parentBellId));
                 
-                let trueFirstBell, trueLastBell;
+                // V5.44.1: Determine anchor bells based on period type
+                let startAnchorBell = null;
+                let endAnchorBell = null;
+                
                 if (calculatedParentPeriod && calculatedParentPeriod.bells.length > 0) {
-                    // This list IS sorted by time.
-                    trueFirstBell = calculatedParentPeriod.bells[0];
-                    trueLastBell = calculatedParentPeriod.bells[calculatedParentPeriod.bells.length - 1];
+                    // Check if this is a shared/linked period or a fluke period
+                    const sharedStaticBells = calculatedParentPeriod.bells.filter(b => 
+                        !b.relative && b._originType === 'shared'
+                    );
+                    
+                    if (sharedStaticBells.length > 0) {
+                        // SHARED/LINKED PERIOD: Anchors are first/last shared static bells by time
+                        startAnchorBell = sharedStaticBells[0];
+                        endAnchorBell = sharedStaticBells[sharedStaticBells.length - 1];
+                    } else {
+                        // FLUKE PERIOD: Find bells with explicit anchorRole
+                        startAnchorBell = calculatedParentPeriod.bells.find(b => b.anchorRole === 'start');
+                        endAnchorBell = calculatedParentPeriod.bells.find(b => b.anchorRole === 'end');
+                        
+                        // Legacy fallback: look for "Period Start" / "Period End" names
+                        if (!startAnchorBell) {
+                            startAnchorBell = calculatedParentPeriod.bells.find(b => b.name === 'Period Start' && !b.relative);
+                        }
+                        if (!endAnchorBell) {
+                            endAnchorBell = calculatedParentPeriod.bells.find(b => b.name === 'Period End' && !b.relative);
+                        }
+                    }
                 }
-                // --- END V4.80 FIX ---
+                // --- END V4.80 & V5.44.1 FIX ---
 
                 let children = [];
                 
@@ -2790,22 +2823,20 @@
                         
                         // Check for new-style anchor link
                         let isAnchorMatch = false;
-                        // MODIFIED V4.80 & V5.28.1: Use calculated anchor bells AND check they're shared
-                        if (bell.relative.parentPeriodName && calculatedParentPeriod && trueFirstBell && trueLastBell) {
+                        if (bell.relative.parentPeriodName && calculatedParentPeriod) {
                             const isSamePeriod = bell.relative.parentPeriodName === calculatedParentPeriod.name;
                             const anchorType = bell.relative.parentAnchorType; // 'period_start' or 'period_end'
                             
-                            // NEW V5.28.1: Only match if the anchor bell is SHARED (not personal)
-                            // This prevents personal static bells from being treated as anchors
+                            // V5.44.1: Check if the bell being deleted IS the anchor for this relative bell
                             const isStartAnchor = isSamePeriod && 
                                                  anchorType === 'period_start' && 
-                                                 trueFirstBell.bellId === parentBellId &&
-                                                 trueFirstBell._originType === 'shared';
+                                                 startAnchorBell &&
+                                                 startAnchorBell.bellId === parentBellId;
                                                  
                             const isEndAnchor = isSamePeriod && 
                                                anchorType === 'period_end' && 
-                                               trueLastBell.bellId === parentBellId &&
-                                               trueLastBell._originType === 'shared';
+                                               endAnchorBell &&
+                                               endAnchorBell.bellId === parentBellId;
                             
                             if (isStartAnchor || isEndAnchor) {
                                 isAnchorMatch = true;
@@ -3794,6 +3825,22 @@
                                         }
                                     });
                                 });
+                                
+                                // V5.44.1: Migrate legacy anchor bells in standalone schedules
+                                periodsToUse.forEach(period => {
+                                    period.bells.forEach(bell => {
+                                        if (bell.name === 'Period Start' && !bell.anchorRole && !bell.relative) {
+                                            bell.anchorRole = 'start';
+                                            needsMigration = true;
+                                            console.log(`Assigning anchorRole 'start' to "${bell.name}" in ${period.name}`);
+                                        }
+                                        if (bell.name === 'Period End' && !bell.anchorRole && !bell.relative) {
+                                            bell.anchorRole = 'end';
+                                            needsMigration = true;
+                                            console.log(`Assigning anchorRole 'end' to "${bell.name}" in ${period.name}`);
+                                        }
+                                    });
+                                });
 
                                 if (needsMigration) {
                                     updateDoc(personalScheduleRef, { periods: periodsToUse })
@@ -3916,6 +3963,26 @@
                                             console.log(`Assigning new permanent bellId to ${bell.name} in ${period.name}`);
                                         }
                                     });
+                                });
+                                
+                                // V5.44.1: Migrate legacy fluke period anchor bells
+                                // If a period has bells named "Period Start"/"Period End" without anchorRole, add it
+                                periodsToUse.forEach(period => {
+                                    // Only check personal/fluke periods (origin === 'personal' or no origin)
+                                    if (period.origin === 'personal' || !period.origin) {
+                                        period.bells.forEach(bell => {
+                                            if (bell.name === 'Period Start' && !bell.anchorRole && !bell.relative) {
+                                                bell.anchorRole = 'start';
+                                                needsMigration = true;
+                                                console.log(`Assigning anchorRole 'start' to "${bell.name}" in ${period.name}`);
+                                            }
+                                            if (bell.name === 'Period End' && !bell.anchorRole && !bell.relative) {
+                                                bell.anchorRole = 'end';
+                                                needsMigration = true;
+                                                console.log(`Assigning anchorRole 'end' to "${bell.name}" in ${period.name}`);
+                                            }
+                                        });
+                                    }
                                 });
 
                                 if (needsMigration) {
@@ -7558,22 +7625,11 @@
                 }
                 
                 // 2. Populate relative anchor period dropdowns
-                // FIX V5.44.1: For standalone schedules, use custom periods instead of base periods
-                let anchorPeriodNames = [];
-                
-                // Check if this is a standalone schedule (no base schedule)
-                const isStandaloneSchedule = localSchedulePeriods.length === 0;
-                
-                if (isStandaloneSchedule) {
-                    // Use calculatedPeriodsList which contains all periods including custom ones
-                    // Filter to only include periods with at least one bell (so we have something to anchor to)
-                    anchorPeriodNames = calculatedPeriodsList
-                        .filter(p => p.name !== 'Orphaned Bells' && p.bells && p.bells.length > 0)
-                        .map(p => p.name);
-                } else {
-                    // Use base schedule periods for linked schedules
-                    anchorPeriodNames = localSchedulePeriods.map(p => p.name);
-                }
+                // FIX V5.44.1: Include ALL periods with bells (shared AND custom/fluke)
+                // Use calculatedPeriodsList which contains merged periods from both sources
+                const anchorPeriodNames = calculatedPeriodsList
+                    .filter(p => p.name !== 'Orphaned Bells' && p.bells && p.bells.length > 0)
+                    .map(p => p.name);
                 
                 const periodOptionsHtml = anchorPeriodNames.map(name => `<option value="${name}">${name}</option>`).join('');
                 
@@ -7590,11 +7646,8 @@
 
                 // Add an empty option if no periods exist
                 if (anchorPeriodNames.length === 0) {
-                     const noPeriodsMsg = isStandaloneSchedule 
-                         ? 'Create a Static period first' 
-                         : 'No Base Periods Available';
-                     newPeriodStartParent.innerHTML = `<option value="" disabled selected>${noPeriodsMsg}</option>`;
-                     newPeriodEndParent.innerHTML = `<option value="" disabled selected>${noPeriodsMsg}</option>`;
+                     newPeriodStartParent.innerHTML = '<option value="" disabled selected>No periods with bells available</option>';
+                     newPeriodEndParent.innerHTML = '<option value="" disabled selected>No periods with bells available</option>';
                 }
 
 
@@ -7665,7 +7718,10 @@
                 
                 // 1. Create the bells array and validate inputs
                 const newBells = [];
-                const basePeriodNames = localSchedulePeriods.map(p => p.name);
+                // V5.44.1: Use all calculated periods (including flukes) for anchor validation
+                const validAnchorPeriodNames = calculatedPeriodsList
+                    .filter(p => p.name !== 'Orphaned Bells' && p.bells && p.bells.length > 0)
+                    .map(p => p.name);
                 
                 // Helper to validate and build bell data
                 const buildBellData = (type, prefix) => {
@@ -7704,7 +7760,8 @@
                         const minutes = parseInt(document.getElementById(`${prefix}-minutes`).value) || 0;
                         const seconds = parseInt(document.getElementById(`${prefix}-seconds`).value) || 0;
                         
-                        if (!parentName || !basePeriodNames.includes(parentName)) throw new Error(`Invalid anchor period for ${prefix.split('-')[1]}.`);
+                        // V5.44.1: Validate against all periods including flukes
+                        if (!parentName || !validAnchorPeriodNames.includes(parentName)) throw new Error(`Invalid anchor period for ${prefix.split('-')[1]}.`);
 
                         let offsetSeconds = (minutes * 60) + seconds;
                         if (direction === 'before') offsetSeconds = -offsetSeconds;
@@ -7726,18 +7783,18 @@
                     const startBellData = buildBellData(mode, 'new-period-start');
                     newBells.push({
                         ...startBellData,
-                        name: 'Period Start', // Critical for anchoring/fluke logic
-                        // sound: 'ellisBell.mp3', // DELETED V4.81: Sound is now in startBellData
-                        bellId: generateBellId()
+                        name: 'Period Start',
+                        bellId: generateBellId(),
+                        anchorRole: 'start' // V5.44.1: Explicit anchor identification
                     });
 
                     // --- End Bell ---
                     const endBellData = buildBellData(mode, 'new-period-end');
                     newBells.push({
                         ...endBellData,
-                        name: 'Period End', // Critical for anchoring/fluke logic
-                        // sound: 'ellisBell.mp3', // DELETED V4.81: Sound is now in endBellData
-                        bellId: generateBellId()
+                        name: 'Period End',
+                        bellId: generateBellId(),
+                        anchorRole: 'end' // V5.44.1: Explicit anchor identification
                     });
 
                     // 2. Create the new period object
