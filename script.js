@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.8"
+        const APP_VERSION = "5.44.9"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -9027,7 +9027,7 @@
                 });
     
                 // NEW: v3.09 - Add click-to-refresh for Audio Manager
-                const audioManagerHeader = document.querySelector('#audio-manager-panel h2');
+                const audioManagerHeader = document.querySelector('#audio-manager-panel h3');
                 if (audioManagerHeader) {
                     audioManagerHeader.addEventListener('click', () => {
                         console.log("User clicked audio manager header, refreshing file lists...");
@@ -9142,7 +9142,8 @@
                             if (!slotData.name || slotData.name.trim() === '') {
                                 return null; // No name = empty slot
                             }
-                            if (slotData.minutes === '0' && slotData.seconds === '0') {
+                            // V5.44.9: Include hours in time validation
+                            if (slotData.hours === '0' && slotData.minutes === '0' && slotData.seconds === '0') {
                                 return null; // No time = invalid bell
                             }
 
@@ -9154,6 +9155,7 @@
                             return {
                                 id: id,
                                 name: slotData.name.trim(),
+                                hours: parseInt(slotData.hours) || 0, // V5.44.9: Include hours
                                 minutes: parseInt(slotData.minutes) || 0,
                                 seconds: parseInt(slotData.seconds) || 0,
                                 
@@ -9174,6 +9176,7 @@
                                 console.log(`  Bell ${bell.id}:`, {
                                     name: bell.name,
                                     sound: bell.sound,
+                                    hours: bell.hours,
                                     minutes: bell.minutes,
                                     seconds: bell.seconds
                                 });
@@ -9450,6 +9453,9 @@
                             
                             customTextVisualModal.style.zIndex = '60';
                             customTextVisualModal.classList.remove('hidden');
+                            
+                            // V5.44.9: Trigger preview update by dispatching input event
+                            customTextInput.dispatchEvent(new Event('input'));
                             return;
                         }
                         
@@ -9921,7 +9927,7 @@
                 document.getElementById('visual-manager-panel').addEventListener('click', handleVisualListClick);
                 
                 // NEW in 4.44: Add click-to-refresh for Visual Manager header
-                document.querySelector('#visual-manager-panel h2').addEventListener('click', () => {
+                document.querySelector('#visual-manager-panel h3').addEventListener('click', () => {
                     visualUploadStatus.textContent = "Refreshing file lists...";
                     visualUploadStatus.classList.remove('hidden');
                     loadAllVisualFiles().then(() => {
@@ -10182,6 +10188,8 @@
                     // MODIFIED V4.75: Do not reset the select, just close.
                     // The original value is preserved by the change handler.
                     currentVisualSelectTarget = null;
+                    // V5.44.9: Also clear custom bell slot
+                    currentCustomBellIconSlot = null;
                 });
 
                 document.getElementById('cancel-quick-bell-btn').addEventListener('click', () => {
