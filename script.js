@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.10"
+        const APP_VERSION = "5.44.11"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -7537,32 +7537,54 @@
             }
             
             /**
-             * V5.44.10: Set up custom text modal for a specific context
+             * V5.44.11: Set up custom text modal for a specific context
              * @param {boolean} isQuickBell - Whether this is for a quick bell button
              */
             function setupCustomTextModalContext(isQuickBell) {
-                const fullLabel = document.getElementById('custom-text-preview-full-label');
-                const iconLabel = document.getElementById('custom-text-preview-icon-label');
-                const iconInner = document.getElementById('quick-bell-visual-preview-icon-inner');
+                console.log('setupCustomTextModalContext called with isQuickBell:', isQuickBell);
                 
-                if (fullLabel && iconLabel) {
-                    fullLabel.textContent = 'Full Size Preview';
-                    iconLabel.textContent = isQuickBell ? 'Button Preview' : 'Icon Preview';
-                }
-                
-                // Set icon preview shape based on context
-                if (iconInner) {
-                    if (isQuickBell) {
-                        // Square button shape for quick bells
-                        iconInner.className = 'w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden bg-gray-200';
-                    } else {
-                        // Circle icon shape (for periods)
-                        iconInner.className = 'visual-preview-icon-circle bg-gray-200';
+                try {
+                    const fullLabel = document.getElementById('custom-text-preview-full-label');
+                    const iconLabel = document.getElementById('custom-text-preview-icon-label');
+                    const iconInner = document.getElementById('quick-bell-visual-preview-icon-inner');
+                    
+                    console.log('Elements found:', { 
+                        fullLabel: fullLabel ? fullLabel.textContent : null, 
+                        iconLabel: iconLabel ? iconLabel.textContent : null, 
+                        iconInner: iconInner ? iconInner.className : null 
+                    });
+                    
+                    if (fullLabel) {
+                        fullLabel.textContent = 'Full Size Preview';
                     }
+                    if (iconLabel) {
+                        iconLabel.textContent = isQuickBell ? 'Button Preview' : 'Icon Preview';
+                        console.log('Label updated to:', iconLabel.textContent);
+                    }
+                    
+                    // Set icon preview shape based on context - use both className and classList for robustness
+                    if (iconInner) {
+                        // First clear all classes
+                        iconInner.className = '';
+                        
+                        if (isQuickBell) {
+                            // Square button shape for quick bells
+                            iconInner.className = 'w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden';
+                            console.log('Set square button shape, className now:', iconInner.className);
+                        } else {
+                            // Circle icon shape (for periods)
+                            iconInner.className = 'visual-preview-icon-circle';
+                            console.log('Set circle icon shape, className now:', iconInner.className);
+                        }
+                    } else {
+                        console.error('iconInner element not found!');
+                    }
+                    
+                    // Update previews immediately
+                    updateCustomTextModalPreviews();
+                } catch (err) {
+                    console.error('Error in setupCustomTextModalContext:', err);
                 }
-                
-                // Update previews immediately
-                updateCustomTextModalPreviews(isQuickBell);
             }
 
             /**
@@ -9509,11 +9531,12 @@
                             customTextVisualModal.style.zIndex = '60';
                             customTextVisualModal.classList.remove('hidden');
                             
-                            // V5.44.10: Set up context and update previews
-                            setupCustomTextModalContext(true); // true = quick bell (square button)
-                            
-                            // Set focus and select current text
-                            setTimeout(() => customTextInput.select(), 50);
+                            // V5.44.11: Use setTimeout to ensure modal is rendered before setting up context
+                            setTimeout(() => {
+                                console.log('Setting up custom text modal for quick bell');
+                                setupCustomTextModalContext(true); // true = quick bell (square button)
+                                customTextInput.select();
+                            }, 10);
                             
                             return;
                         }
