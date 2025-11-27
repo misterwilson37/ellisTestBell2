@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.4"
+        const APP_VERSION = "5.44.5"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -4315,8 +4315,22 @@
                     }
                 } else if (rawBell.relative.parentPeriodName && rawBell.relative.parentAnchorType) {
                     // Multi-period relative bell - anchored to first/last anchor bell of each period
-                    // Find anchor bells in this period (bells with type 'shared')
-                    const anchorBells = targetPeriod.bells.filter(b => b.type === 'shared');
+                    // V5.44.4: Find anchor bells based on period type
+                    const sharedStaticBells = targetPeriod.bells.filter(b => 
+                        !b.relative && b._originType === 'shared'
+                    );
+                    
+                    let anchorBells = [];
+                    if (sharedStaticBells.length > 0) {
+                        // Shared/linked period: use shared static bells
+                        anchorBells = sharedStaticBells;
+                    } else {
+                        // Fluke period: find bells with anchorRole
+                        const startAnchor = targetPeriod.bells.find(b => b.anchorRole === 'start');
+                        const endAnchor = targetPeriod.bells.find(b => b.anchorRole === 'end');
+                        if (startAnchor) anchorBells.push(startAnchor);
+                        if (endAnchor) anchorBells.push(endAnchor);
+                    }
                     
                     if (anchorBells.length > 0) {
                         if (rawBell.relative.parentAnchorType === 'period_start') {
@@ -4379,11 +4393,23 @@
                     if (preview) {
                         const periodName = bell.periodName || 'Preview';
                         
-                        // FIX V5.42.11: For bells outside period bounds with no custom visual, use passing period visual
+                        // FIX V5.42.11 & V5.44.4: For bells outside period bounds with no custom visual, use passing period visual
                         let previewVisualCue = visualCue;
                         if (!visualCue) {
                             // Check if this bell is outside the period's anchor bells
-                            const anchorBells = resolvedBells.filter(b => b.type === 'shared');
+                            // V5.44.4: Use proper anchor detection based on period type
+                            const sharedStatic = targetPeriod.bells.filter(b => !b.relative && b._originType === 'shared');
+                            let anchorBells = [];
+                            if (sharedStatic.length > 0) {
+                                anchorBells = sharedStatic;
+                            } else {
+                                // Fluke period - use anchorRole
+                                const startAnchor = targetPeriod.bells.find(b => b.anchorRole === 'start');
+                                const endAnchor = targetPeriod.bells.find(b => b.anchorRole === 'end');
+                                if (startAnchor) anchorBells.push(startAnchor);
+                                if (endAnchor) anchorBells.push(endAnchor);
+                            }
+                            
                             if (anchorBells.length > 0) {
                                 const firstAnchorTime = anchorBells[0].time;
                                 const lastAnchorTime = anchorBells[anchorBells.length - 1].time;
@@ -4582,11 +4608,23 @@
                 // Use the period name from context
                 const periodName = currentRelativePeriod?.name || 'Preview';
                 
-                // FIX V5.42.11: For bells outside period bounds with no custom visual, use passing period visual
+                // FIX V5.42.11 & V5.44.4: For bells outside period bounds with no custom visual, use passing period visual
                 let previewVisualValue = visualValue;
                 if (!visualValue && currentRelativePeriod?.bells) {
                     // Check if this bell would be outside the period's anchor bells
-                    const anchorBells = currentRelativePeriod.bells.filter(b => b.type === 'shared');
+                    // V5.44.4: Use proper anchor detection based on period type
+                    const sharedStatic = currentRelativePeriod.bells.filter(b => !b.relative && b._originType === 'shared');
+                    let anchorBells = [];
+                    if (sharedStatic.length > 0) {
+                        anchorBells = sharedStatic;
+                    } else {
+                        // Fluke period - use anchorRole
+                        const startAnchor = currentRelativePeriod.bells.find(b => b.anchorRole === 'start');
+                        const endAnchor = currentRelativePeriod.bells.find(b => b.anchorRole === 'end');
+                        if (startAnchor) anchorBells.push(startAnchor);
+                        if (endAnchor) anchorBells.push(endAnchor);
+                    }
+                    
                     if (anchorBells.length > 0) {
                         const firstAnchorTime = anchorBells[0].time;
                         const lastAnchorTime = anchorBells[anchorBells.length - 1].time;
@@ -5032,7 +5070,7 @@
                         // Create a new bells array for this period
                         const updatedBells = [...period.bells];
                         
-                        // V5.44.4: Preserve anchorRole from original bell (critical for fluke periods)
+                        // V5.44.5: Preserve anchorRole from original bell (critical for fluke periods)
                         const originalAnchorRole = period.bells[bellIndex].anchorRole;
                         const updatedBell = originalAnchorRole 
                             ? { ...newBell, anchorRole: originalAnchorRole }
@@ -7828,7 +7866,7 @@
                         return;
                     }
 
-                    // V5.44.4: Save visual cue override BEFORE Firestore update
+                    // V5.44.5: Save visual cue override BEFORE Firestore update
                     // This ensures the visual is available when the listener re-renders the list
                     if (visualCue) {
                         const visualKey = getVisualOverrideKey(activeBaseScheduleId, periodName);
