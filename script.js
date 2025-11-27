@@ -3586,6 +3586,7 @@
                         const bells = (docSnap.data().bells || []).slice(0, 4).map((b, index) => ({
                             id: index + 1, // Use index + 1 as the ID 
                             name: b.name || `Custom Timer ${index + 1}`,
+                            hours: b.hours || 0,   // V5.44.9: Include hours field
                             minutes: b.minutes || 0,
                             seconds: b.seconds || 0,
                             // NEW V5.00: Read Icon Colors
