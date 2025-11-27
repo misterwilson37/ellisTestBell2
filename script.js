@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.44.0"
+        const APP_VERSION = "5.44.1"
         // V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
         // - New "Create Custom Standalone Schedule" button and modal
         // - Standalone schedules have baseScheduleId: null, isStandalone: true
@@ -46,6 +46,7 @@
         const relativePeriodName = document.getElementById('relative-period-name');
         const relativeAnchorBellSelect = document.getElementById('relative-anchor-bell'); 
         const relativeDirection = document.getElementById('relative-direction');
+        const relativeHoursInput = document.getElementById('relative-hours');
         const relativeMinutesInput = document.getElementById('relative-minutes');
         const relativeSecondsInput = document.getElementById('relative-seconds');
         const relativeBellNameInput = document.getElementById('relative-bell-name');
@@ -818,6 +819,7 @@
             /**
              * NEW in 4.18: Handles time calculation for the Relative Bell Modal. (MOVED/REFACTORED)
              * Reads from the new anchor bell dropdown.
+             * MODIFIED V5.44.1: Added hours support
              */
             const updateCalculatedTime = () => { 
                 if (!currentRelativePeriod || !currentRelativePeriod.bells) {
@@ -827,6 +829,7 @@
 
                 const anchorBellSelect = document.getElementById('relative-anchor-bell');
                 const relativeDirection = document.getElementById('relative-direction');
+                const relativeHoursInput = document.getElementById('relative-hours');
                 const relativeMinutesInput = document.getElementById('relative-minutes');
                 const relativeSecondsInput = document.getElementById('relative-seconds');
                 const calculatedTimeDisplay = document.getElementById('calculated-time');
@@ -846,12 +849,16 @@
                 }
 
                 const direction = relativeDirection.value;
+                const hours = parseInt(relativeHoursInput?.value) || 0;
                 const minutes = parseInt(relativeMinutesInput.value) || 0; 
                 const seconds = parseInt(relativeSecondsInput.value) || 0;
                 
+                // V5.44.1: Convert hours to minutes for calculation
+                const totalMinutes = (hours * 60) + minutes;
+                
                 const anchorSeconds = timeToSeconds(parentBell.time);
 
-                const calculatedTimeHHMMSS = calculateRelativeTime(anchorSeconds, direction, minutes, seconds);
+                const calculatedTimeHHMMSS = calculateRelativeTime(anchorSeconds, direction, totalMinutes, seconds);
                 
                 calculatedTimeDisplay.textContent = formatTime12Hour(calculatedTimeHHMMSS, false);
                 
@@ -4264,16 +4271,25 @@
                 relativeBellNameInput.value = rawBell.name;
                 relativeBellSoundSelect.value = rawBell.sound;
 
+                // V5.44.1: Populate hours, minutes, and seconds from offset
                 const offset = rawBell.relative.offsetSeconds;
+                const absOffset = Math.abs(offset);
+                const relativeHoursInput = document.getElementById('relative-hours');
+                
                 if (offset < 0) {
                     relativeDirection.value = 'before';
-                    relativeMinutesInput.value = Math.floor(Math.abs(offset) / 60);
-                    relativeSecondsInput.value = Math.abs(offset) % 60;
                 } else {
                     relativeDirection.value = 'after';
-                    relativeMinutesInput.value = Math.floor(offset / 60);
-                    relativeSecondsInput.value = offset % 60;
                 }
+                
+                const hours = Math.floor(absOffset / 3600);
+                const remainingAfterHours = absOffset % 3600;
+                const minutes = Math.floor(remainingAfterHours / 60);
+                const seconds = remainingAfterHours % 60;
+                
+                if (relativeHoursInput) relativeHoursInput.value = hours;
+                relativeMinutesInput.value = minutes;
+                relativeSecondsInput.value = seconds;
                 
                 // 6. Populate sound dropdowns
                 // MODIFIED in 4.40: Use sharedSoundInput as the template, not the deleted personalSoundInput
@@ -5704,6 +5720,7 @@
                 const bellSound = document.getElementById('relative-bell-sound').value;
                 const parentBellId = document.getElementById('relative-anchor-bell').value;
                 const direction = document.getElementById('relative-direction').value;
+                const hours = parseInt(document.getElementById('relative-hours')?.value) || 0;
                 const minutes = parseInt(document.getElementById('relative-minutes').value) || 0;
                 const seconds = parseInt(document.getElementById('relative-seconds').value) || 0;
                 
@@ -5731,8 +5748,8 @@
                 }
                 // --- END V4.68 VALIDATION ---
 
-                // 2. Calculate the offset in seconds
-                let totalOffsetSeconds = (minutes * 60) + seconds;
+                // 2. Calculate the offset in seconds - V5.44.1: Include hours
+                let totalOffsetSeconds = (hours * 3600) + (minutes * 60) + seconds;
                 if (direction === 'before') {
                     totalOffsetSeconds = -totalOffsetSeconds; // Make it negative
                 }
@@ -5766,30 +5783,44 @@
                 }
 
                 // --- NEW in 4.48: Check if we can use a stable anchor ---
-                // We check if the selected parentBellId is *also* the first or last
-                // bell in the period. If so, we save a stable anchor instead.
-                const period = calculatedPeriodsList.find(p => p.name === currentRelativePeriod.name);
-                if (period && period.bells.length > 0) {
-                    const firstBell = period.bells[0];
-                    const lastBell = period.bells[period.bells.length - 1];
+                // MODIFIED V5.44.1: For cross-period anchoring, check if the anchor bell is 
+                // the first or last bell of ITS period (not the period we're adding to)
+                
+                // Find which period the anchor bell belongs to
+                let anchorPeriod = null;
+                for (const p of calculatedPeriodsList) {
+                    if (p.bells && p.bells.some(b => b.bellId === parentBellId)) {
+                        anchorPeriod = p;
+                        break;
+                    }
+                }
+                
+                if (anchorPeriod && anchorPeriod.bells.length > 0) {
+                    const firstBell = anchorPeriod.bells[0];
+                    const lastBell = anchorPeriod.bells[anchorPeriod.bells.length - 1];
 
                     if (parentBellId === firstBell.bellId) {
                         // It's anchored to Period Start!
                         finalBell.relative = {
-                            parentPeriodName: period.name,
+                            parentPeriodName: anchorPeriod.name,
                             parentAnchorType: 'period_start',
                             offsetSeconds: totalOffsetSeconds
                         };
-                        console.log("Saving relative bell with stable 'period_start' anchor.");
+                        console.log(`Saving relative bell with stable 'period_start' anchor to ${anchorPeriod.name}.`);
                     } else if (parentBellId === lastBell.bellId) {
                         // It's anchored to Period End!
                         finalBell.relative = {
-                            parentPeriodName: period.name,
+                            parentPeriodName: anchorPeriod.name,
                             parentAnchorType: 'period_end',
                             offsetSeconds: totalOffsetSeconds
                         };
-                        console.log("Saving relative bell with stable 'period_end' anchor.");
-                    };
+                        console.log(`Saving relative bell with stable 'period_end' anchor to ${anchorPeriod.name}.`);
+                    } else {
+                        // It's anchored to a middle bell - keep the parentBellId
+                        console.log(`Keeping parentBellId ${parentBellId} - anchor is not a period start/end.`);
+                    }
+                } else {
+                    console.warn(`Could not find anchor period for parentBellId ${parentBellId}`);
                 }
                 
                 // NEW in 4.57: If a stable anchor was assigned above, remove the parentBellId to prevent conflicting logic.
@@ -7527,9 +7558,24 @@
                 }
                 
                 // 2. Populate relative anchor period dropdowns
-                // Only use the BASE shared periods for anchoring
-                const basePeriodNames = localSchedulePeriods.map(p => p.name);
-                const periodOptionsHtml = basePeriodNames.map(name => `<option value="${name}">${name}</option>`).join('');
+                // FIX V5.44.1: For standalone schedules, use custom periods instead of base periods
+                let anchorPeriodNames = [];
+                
+                // Check if this is a standalone schedule (no base schedule)
+                const isStandaloneSchedule = localSchedulePeriods.length === 0;
+                
+                if (isStandaloneSchedule) {
+                    // Use calculatedPeriodsList which contains all periods including custom ones
+                    // Filter to only include periods with at least one bell (so we have something to anchor to)
+                    anchorPeriodNames = calculatedPeriodsList
+                        .filter(p => p.name !== 'Orphaned Bells' && p.bells && p.bells.length > 0)
+                        .map(p => p.name);
+                } else {
+                    // Use base schedule periods for linked schedules
+                    anchorPeriodNames = localSchedulePeriods.map(p => p.name);
+                }
+                
+                const periodOptionsHtml = anchorPeriodNames.map(name => `<option value="${name}">${name}</option>`).join('');
                 
                 newPeriodStartParent.innerHTML = periodOptionsHtml;
                 newPeriodEndParent.innerHTML = periodOptionsHtml;
@@ -7543,9 +7589,12 @@
                 newPeriodEndAnchorType.value = 'period_start'; // Default end anchor to Period Start
 
                 // Add an empty option if no periods exist
-                if (basePeriodNames.length === 0) {
-                     newPeriodStartParent.innerHTML = '<option value="" disabled selected>No Base Periods Available</option>';
-                     newPeriodEndParent.innerHTML = '<option value="" disabled selected>No Base Periods Available</option>';
+                if (anchorPeriodNames.length === 0) {
+                     const noPeriodsMsg = isStandaloneSchedule 
+                         ? 'Create a Static period first' 
+                         : 'No Base Periods Available';
+                     newPeriodStartParent.innerHTML = `<option value="" disabled selected>${noPeriodsMsg}</option>`;
+                     newPeriodEndParent.innerHTML = `<option value="" disabled selected>${noPeriodsMsg}</option>`;
                 }
 
 
@@ -9597,6 +9646,7 @@
                 // MODIFIED: v4.10.2a - Use the new variable name
                 relativeAnchorBellSelect.addEventListener('change', updateCalculatedTime);
                 relativeDirection.addEventListener('change', updateCalculatedTime);
+                if (relativeHoursInput) relativeHoursInput.addEventListener('input', updateCalculatedTime);
                 relativeMinutesInput.addEventListener('input', updateCalculatedTime);
                 relativeSecondsInput.addEventListener('input', updateCalculatedTime);
 
@@ -10050,6 +10100,13 @@
                         updateMultiBellVisualPreview();
                     } else if (targetId === 'multi-relative-bell-visual') {
                         updateMultiRelativeBellVisualPreview();
+                    } else if (targetId === 'new-period-image-select') {
+                        // FIX V5.44.1: Update new period modal preview for custom text
+                        document.getElementById('new-period-image-preview-full').innerHTML = getVisualHtml(storedValue, 'New Period');
+                        document.getElementById('new-period-image-preview-icon').innerHTML = getVisualIconHtml(storedValue, 'New Period');
+                        const previewFull = document.getElementById('new-period-image-preview-full');
+                        makePreviewClickableForCustomText(previewFull, document.getElementById('new-period-image-select'));
+                        console.log('Updated new period modal preview');
                     } else if (targetId === 'edit-period-image-select' && currentRenamingPeriod) {
                         const periodName = currentRenamingPeriod.name;
                         const previewFull = document.getElementById('edit-period-image-preview-full');
