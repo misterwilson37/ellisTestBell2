@@ -1,4 +1,10 @@
-        const APP_VERSION = "5.45.4"
+        const APP_VERSION = "5.46.0"
+        // V5.46.0: Bulk Edit for Audio and Visual Cues
+        // - Added "Bulk Edit" button to schedule list controls (visible when personal schedule is active)
+        // - Click to enter selection mode, checkboxes appear next to each bell
+        // - Select bells, click button again to open bulk edit modal
+        // - Change audio and/or visual cue for all selected bells at once
+        // - Purple themed UI to distinguish from other edit modes
         // V5.45.4: Remove inconsistent "Override:" prefix from sound display
         // - The sound name alone is sufficient information
         // - Removes confusing inconsistency where some overridden bells showed it and others didn't
@@ -596,6 +602,10 @@
         // NEW V5.42.0: Passing Period Visual State
         let personalPassingPeriodVisual = null;  // From personal schedule
         let sharedPassingPeriodVisual = null;    // From shared schedule (admin-set default)
+
+        // NEW V5.46.0: Bulk Edit State
+        let bulkEditMode = false;
+        let bulkSelectedBells = new Set(); // Set of bell IDs
 
         let currentSoundSelectTarget = null; // NEW V4.76: Stores <select> for audio modal
 
@@ -1938,6 +1948,12 @@
                 // NEW V5.05: Update header buttons state before rendering bell list
                 updateMuteButtonsUI(); 
                 
+                // NEW V5.46.0: Update bulk edit button visibility
+                const bulkEditBtn = document.getElementById('bulk-edit-toggle-btn');
+                if (bulkEditBtn) {
+                    bulkEditBtn.classList.toggle('hidden', !activePersonalScheduleId);
+                }
+                
                 // Use the calculated, merged, and time-resolved periods passed from the engine
                 const combinedPeriods = calculatedPeriods || [];
             
@@ -2148,6 +2164,12 @@
                                 data-is-relative="${!!bell.relative}"
                                 data-visual-cue="${bell.visualCue || ''}"
                                 data-visual-mode="${bell.visualMode || 'none'}">
+                                
+                                <!-- V5.46.0: Bulk Edit Checkbox (hidden by default) -->
+                                <input type="checkbox" 
+                                    class="bulk-edit-checkbox h-5 w-5 text-purple-600 rounded focus:ring-purple-500 mr-3 flex-shrink-0 ${bulkEditMode ? '' : 'hidden'}"
+                                    data-bell-id="${bell.bellId || getBellId(bell)}"
+                                    ${bulkSelectedBells.has(bell.bellId || getBellId(bell)) ? 'checked' : ''}>
                                 
                                 <!-- Bell Info (Time, Name, Sound) (left) -->
                                 <div class="flex items-center space-x-4 min-w-0 flex-grow">
@@ -10946,6 +10968,243 @@
                     recalculateAndRenderAll();
                     updateClock();
                 });
+
+                // ============================================
+                // V5.46.0: BULK EDIT FUNCTIONALITY
+                // ============================================
+                const bulkEditToggleBtn = document.getElementById('bulk-edit-toggle-btn');
+                const bulkEditModal = document.getElementById('bulk-edit-modal');
+                const bulkEditCount = document.getElementById('bulk-edit-count');
+                const bulkEditSound = document.getElementById('bulk-edit-sound');
+                const bulkEditVisual = document.getElementById('bulk-edit-visual');
+                const bulkVisualModeContainer = document.getElementById('bulk-visual-mode-container');
+                const bulkEditApply = document.getElementById('bulk-edit-apply');
+                const bulkEditCancel = document.getElementById('bulk-edit-cancel');
+                const bulkPreviewSound = document.getElementById('bulk-preview-sound');
+                const bulkEditStatus = document.getElementById('bulk-edit-status');
+
+                // Show bulk edit button when user has a personal schedule
+                function updateBulkEditButtonVisibility() {
+                    if (bulkEditToggleBtn) {
+                        bulkEditToggleBtn.classList.toggle('hidden', !activePersonalScheduleId);
+                    }
+                }
+
+                // Toggle bulk edit mode
+                bulkEditToggleBtn?.addEventListener('click', () => {
+                    if (!bulkEditMode) {
+                        // Enter bulk edit mode
+                        bulkEditMode = true;
+                        bulkSelectedBells.clear();
+                        bulkEditToggleBtn.textContent = 'Done Selecting';
+                        bulkEditToggleBtn.classList.remove('bg-purple-100', 'text-purple-700');
+                        bulkEditToggleBtn.classList.add('bg-purple-600', 'text-white');
+                        recalculateAndRenderAll();
+                    } else if (bulkSelectedBells.size > 0) {
+                        // In bulk edit mode with selections - open modal
+                        openBulkEditModal();
+                    } else {
+                        // In bulk edit mode with no selections - exit
+                        bulkEditMode = false;
+                        bulkEditToggleBtn.textContent = 'Bulk Edit';
+                        bulkEditToggleBtn.classList.remove('bg-purple-600', 'text-white');
+                        bulkEditToggleBtn.classList.add('bg-purple-100', 'text-purple-700');
+                        recalculateAndRenderAll();
+                    }
+                });
+
+                // Handle checkbox changes via delegation
+                combinedBellListElement.addEventListener('change', (e) => {
+                    if (e.target.classList.contains('bulk-edit-checkbox')) {
+                        const bellId = e.target.dataset.bellId;
+                        if (e.target.checked) {
+                            bulkSelectedBells.add(bellId);
+                        } else {
+                            bulkSelectedBells.delete(bellId);
+                        }
+                        updateBulkEditUI();
+                    }
+                });
+
+                // Update UI based on selections
+                function updateBulkEditUI() {
+                    const count = bulkSelectedBells.size;
+                    
+                    // Update button text to show count
+                    if (bulkEditMode && count > 0) {
+                        bulkEditToggleBtn.textContent = `Edit ${count} Bell${count > 1 ? 's' : ''}`;
+                    } else if (bulkEditMode) {
+                        bulkEditToggleBtn.textContent = 'Done Selecting';
+                    }
+                }
+
+                function openBulkEditModal() {
+                    if (bulkSelectedBells.size === 0) return;
+                    
+                    // Populate dropdowns
+                    populateBulkEditDropdowns();
+                    
+                    // Update count
+                    bulkEditCount.textContent = `${bulkSelectedBells.size} bell${bulkSelectedBells.size > 1 ? 's' : ''} selected`;
+                    
+                    // Reset selections
+                    bulkEditSound.value = '[NO_CHANGE]';
+                    bulkEditVisual.value = '[NO_CHANGE]';
+                    bulkVisualModeContainer.classList.add('hidden');
+                    bulkEditStatus.classList.add('hidden');
+                    
+                    bulkEditModal.classList.remove('hidden');
+                }
+
+                function populateBulkEditDropdowns() {
+                    // Populate sound dropdown
+                    const bulkMySounds = document.getElementById('bulk-my-sounds-optgroup');
+                    const bulkSharedSounds = document.getElementById('bulk-shared-sounds-optgroup');
+                    
+                    if (bulkMySounds) {
+                        bulkMySounds.innerHTML = '';
+                        userAudioFiles.forEach(file => {
+                            const opt = document.createElement('option');
+                            opt.value = file.url;
+                            opt.textContent = file.nickname || file.name;
+                            bulkMySounds.appendChild(opt);
+                        });
+                    }
+                    
+                    if (bulkSharedSounds) {
+                        bulkSharedSounds.innerHTML = '';
+                        sharedAudioFiles.forEach(file => {
+                            const opt = document.createElement('option');
+                            opt.value = file.url;
+                            opt.textContent = file.nickname || file.name;
+                            bulkSharedSounds.appendChild(opt);
+                        });
+                    }
+                    
+                    // Populate visual dropdown
+                    const bulkMyVisuals = document.getElementById('bulk-my-visuals-optgroup');
+                    const bulkSharedVisuals = document.getElementById('bulk-shared-visuals-optgroup');
+                    
+                    if (bulkMyVisuals) {
+                        bulkMyVisuals.innerHTML = '';
+                        userVisualFiles.forEach(file => {
+                            const opt = document.createElement('option');
+                            opt.value = file.url;
+                            opt.textContent = file.nickname || file.name;
+                            bulkMyVisuals.appendChild(opt);
+                        });
+                    }
+                    
+                    if (bulkSharedVisuals) {
+                        bulkSharedVisuals.innerHTML = '';
+                        sharedVisualFiles.forEach(file => {
+                            const opt = document.createElement('option');
+                            opt.value = file.url;
+                            opt.textContent = file.nickname || file.name;
+                            bulkSharedVisuals.appendChild(opt);
+                        });
+                    }
+                }
+
+                // Show visual mode options when visual is selected
+                bulkEditVisual?.addEventListener('change', () => {
+                    const val = bulkEditVisual.value;
+                    const showMode = val && val !== '[NO_CHANGE]' && val !== '';
+                    bulkVisualModeContainer.classList.toggle('hidden', !showMode);
+                    
+                    // Handle custom text selection
+                    if (val === '[CUSTOM_TEXT]') {
+                        // Open custom text modal, then return value
+                        openCustomTextModal('bulk');
+                    }
+                });
+
+                // Preview sound
+                bulkPreviewSound?.addEventListener('click', () => {
+                    const sound = bulkEditSound.value;
+                    if (sound && sound !== '[NO_CHANGE]') {
+                        playBell(sound);
+                    }
+                });
+
+                // Cancel
+                bulkEditCancel?.addEventListener('click', () => {
+                    bulkEditModal.classList.add('hidden');
+                });
+
+                // Apply bulk edits
+                bulkEditApply?.addEventListener('click', async () => {
+                    if (bulkSelectedBells.size === 0 || !activePersonalScheduleId) return;
+                    
+                    const newSound = bulkEditSound.value;
+                    const newVisual = bulkEditVisual.value;
+                    const newVisualMode = document.querySelector('input[name="bulk-visual-mode"]:checked')?.value || 'before';
+                    
+                    // Nothing to change
+                    if (newSound === '[NO_CHANGE]' && newVisual === '[NO_CHANGE]') {
+                        bulkEditStatus.textContent = 'Please select at least one change.';
+                        bulkEditStatus.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    try {
+                        bulkEditStatus.textContent = 'Applying changes...';
+                        bulkEditStatus.classList.remove('hidden');
+                        
+                        // Get current periods
+                        const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
+                        const existingPeriods = [...personalBellsPeriods];
+                        
+                        let updatedCount = 0;
+                        
+                        // Update matching bells in periods
+                        const updatedPeriods = existingPeriods.map(period => {
+                            const updatedBells = period.bells.map(bell => {
+                                const bellId = bell.bellId || getBellId(bell);
+                                if (bulkSelectedBells.has(bellId)) {
+                                    const updatedBell = { ...bell };
+                                    
+                                    if (newSound !== '[NO_CHANGE]') {
+                                        updatedBell.sound = newSound;
+                                    }
+                                    
+                                    if (newVisual !== '[NO_CHANGE]') {
+                                        updatedBell.visualCue = newVisual === '' ? '' : newVisual;
+                                        updatedBell.visualMode = newVisual === '' ? 'none' : newVisualMode;
+                                    }
+                                    
+                                    updatedCount++;
+                                    return updatedBell;
+                                }
+                                return bell;
+                            });
+                            return { ...period, bells: updatedBells };
+                        });
+                        
+                        // Save to Firestore
+                        await updateDoc(personalScheduleRef, { periods: updatedPeriods });
+                        
+                        bulkEditStatus.textContent = `Updated ${updatedCount} bell${updatedCount > 1 ? 's' : ''}!`;
+                        
+                        // Exit bulk edit mode
+                        setTimeout(() => {
+                            bulkEditModal.classList.add('hidden');
+                            bulkEditMode = false;
+                            bulkSelectedBells.clear();
+                            bulkEditToggleBtn.textContent = 'Bulk Edit';
+                            bulkEditToggleBtn.classList.remove('bg-purple-600', 'text-white');
+                            bulkEditToggleBtn.classList.add('bg-purple-100', 'text-purple-700');
+                            recalculateAndRenderAll();
+                        }, 1000);
+                        
+                    } catch (error) {
+                        console.error('Bulk edit error:', error);
+                        bulkEditStatus.textContent = 'Error: ' + error.message;
+                    }
+                });
+                // ============================================
+                // END V5.46.0: BULK EDIT FUNCTIONALITY
+                // ============================================
     
                 // Import/Export
                 exportSchedulesBtn.addEventListener('click', handleExportSchedules);
