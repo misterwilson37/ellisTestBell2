@@ -1,11 +1,11 @@
-        const APP_VERSION = "5.46.1"
+        const APP_VERSION = "5.46.2"
         // V5.46.0: Bulk Edit for Audio and Visual Cues
         // - Added "Bulk Edit" button to schedule list controls (visible when personal schedule is active)
         // - Click to enter selection mode, checkboxes appear next to each bell
         // - Select bells, click button again to open bulk edit modal
         // - Change audio and/or visual cue for all selected bells at once
         // - Custom bells: Updated directly in Firestore periods
-        // - Shared bells: Sound overrides use localStorage (existing system), visuals require individual edit
+        // - Shared bells: Sound overrides saved to localStorage, visual overrides saved to bellOverrides
         // - Purple themed UI to distinguish from other edit modes
         // V5.45.4: Remove inconsistent "Override:" prefix from sound display
         // - The sound name alone is sufficient information
@@ -11154,12 +11154,12 @@
                         bulkEditStatus.classList.remove('hidden');
                         
                         let updatedCustomCount = 0;
-                        let updatedSharedSoundCount = 0;
+                        let updatedSharedCount = 0;
                         
                         // --- Identify which bells are custom vs shared ---
                         const allCalculatedBells = [...localSchedule, ...personalBells];
                         const customBellIds = new Set();
-                        const sharedBellIds = new Set();
+                        const sharedBellsToUpdate = []; // Store actual bell objects for shared bells
                         
                         allCalculatedBells.forEach(bell => {
                             const bellId = bell.bellId || getBellId(bell);
@@ -11167,17 +11167,17 @@
                                 if (bell.type === 'custom') {
                                     customBellIds.add(bellId);
                                 } else if (bell.type === 'shared') {
-                                    sharedBellIds.add(bellId);
+                                    sharedBellsToUpdate.push(bell);
                                 }
                             }
                         });
                         
+                        const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
+                        
                         // --- Handle CUSTOM bells (update periods in Firestore) ---
+                        let updatedPeriods = [...personalBellsPeriods];
                         if (customBellIds.size > 0) {
-                            const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
-                            const existingPeriods = [...personalBellsPeriods];
-                            
-                            const updatedPeriods = existingPeriods.map(period => {
+                            updatedPeriods = updatedPeriods.map(period => {
                                 const updatedBells = period.bells.map(bell => {
                                     const bellId = bell.bellId || getBellId(bell);
                                     if (customBellIds.has(bellId)) {
@@ -11199,37 +11199,65 @@
                                 });
                                 return { ...period, bells: updatedBells };
                             });
-                            
-                            await updateDoc(personalScheduleRef, { periods: updatedPeriods });
                         }
                         
-                        // --- Handle SHARED bells (use localStorage override system) ---
-                        if (sharedBellIds.size > 0 && newSound !== '[NO_CHANGE]') {
-                            // Find the actual bell objects to get proper override keys
-                            allCalculatedBells.forEach(bell => {
-                                const bellId = bell.bellId || getBellId(bell);
-                                if (sharedBellIds.has(bellId) && bell.type === 'shared') {
-                                    const overrideKey = getBellOverrideKey(activeBaseScheduleId, bell);
-                                    if (overrideKey) {
-                                        bellSoundOverrides[overrideKey] = newSound;
-                                        updatedSharedSoundCount++;
-                                    }
+                        // --- Handle SHARED bells ---
+                        // Get current bellOverrides from Firestore
+                        const docSnap = await getDoc(personalScheduleRef);
+                        const currentData = docSnap.exists() ? docSnap.data() : {};
+                        const bellOverrides = currentData.bellOverrides || {};
+                        
+                        sharedBellsToUpdate.forEach(bell => {
+                            const bellId = bell.bellId || getBellId(bell);
+                            
+                            // Initialize override object if needed
+                            if (!bellOverrides[bellId]) {
+                                bellOverrides[bellId] = {};
+                            }
+                            
+                            // Handle sound override (uses localStorage system)
+                            if (newSound !== '[NO_CHANGE]') {
+                                const overrideKey = getBellOverrideKey(activeBaseScheduleId, bell);
+                                if (overrideKey) {
+                                    bellSoundOverrides[overrideKey] = newSound;
                                 }
-                            });
+                                // Also store in bellOverrides for consistency
+                                bellOverrides[bellId].sound = newSound;
+                            }
+                            
+                            // Handle visual override (uses Firestore bellOverrides)
+                            if (newVisual !== '[NO_CHANGE]') {
+                                if (newVisual === '') {
+                                    // Clear visual
+                                    delete bellOverrides[bellId].visualCue;
+                                    delete bellOverrides[bellId].visualMode;
+                                } else {
+                                    bellOverrides[bellId].visualCue = newVisual;
+                                    bellOverrides[bellId].visualMode = newVisualMode;
+                                }
+                            }
+                            
+                            // Clean up empty override objects
+                            if (Object.keys(bellOverrides[bellId]).length === 0) {
+                                delete bellOverrides[bellId];
+                            }
+                            
+                            updatedSharedCount++;
+                        });
+                        
+                        // Save sound overrides to localStorage
+                        if (newSound !== '[NO_CHANGE]' && sharedBellsToUpdate.length > 0) {
                             saveSoundOverrides();
                         }
                         
-                        // Note about shared bell visuals
-                        if (sharedBellIds.size > 0 && newVisual !== '[NO_CHANGE]') {
-                            console.log('Note: Visual changes for shared bells require individual editing.');
-                        }
+                        // Save everything to Firestore
+                        await updateDoc(personalScheduleRef, { 
+                            periods: updatedPeriods,
+                            bellOverrides: bellOverrides
+                        });
                         
-                        const totalUpdated = updatedCustomCount + updatedSharedSoundCount;
-                        let statusMsg = `Updated ${totalUpdated} bell${totalUpdated !== 1 ? 's' : ''}!`;
-                        if (sharedBellIds.size > 0 && newVisual !== '[NO_CHANGE]') {
-                            statusMsg += ' (Visual changes apply to custom bells only)';
-                        }
-                        bulkEditStatus.textContent = statusMsg;
+                        const totalUpdated = updatedCustomCount + updatedSharedCount;
+                        bulkEditStatus.textContent = `Updated ${totalUpdated} bell${totalUpdated !== 1 ? 's' : ''}!`;
                         
                         // Exit bulk edit mode
                         setTimeout(() => {
@@ -11240,7 +11268,7 @@
                             bulkEditToggleBtn.classList.remove('bg-purple-600', 'text-white');
                             bulkEditToggleBtn.classList.add('bg-purple-100', 'text-purple-700');
                             recalculateAndRenderAll();
-                        }, 1500);
+                        }, 1000);
                         
                     } catch (error) {
                         console.error('Bulk edit error:', error);
