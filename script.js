@@ -1,4 +1,7 @@
-        const APP_VERSION = "5.45.2"
+        const APP_VERSION = "5.45.3"
+        // V5.45.3: Fix background color picker preview for [DEFAULT] SVGs
+        // - getVisualHtmlWithBg now properly handles [DEFAULT] SVGs and empty values
+        // - "New" preview now updates in real-time when changing the color
         // V5.45.2: Custom background colors for default SVGs (pedestrian, lunch, numbers)
         // - [BG:#hexcolor] prefix now works with [DEFAULT] SVGs, not just images
         // - Uses raw SVG content to avoid nested backgrounds
@@ -7844,11 +7847,9 @@
 
             /**
              * V5.29.0: Get visual HTML with a specific background color
+             * MODIFIED V5.45.3: Properly handle [DEFAULT] SVGs with custom backgrounds
              */
             function getVisualHtmlWithBg(value, periodName, bgColor) {
-                // Get the base HTML
-                let html = getVisualHtml(value, periodName);
-                
                 // For images, wrap with background
                 if (value && value.startsWith('http')) {
                     return `<div class="w-full h-full flex items-center justify-center" style="background-color:${bgColor};">
@@ -7856,10 +7857,26 @@
                     </div>`;
                 }
                 
-                // For default SVGs, the text color needs to be visible on the bg
-                // The default uses text-gray-400 which works on dark bg
-                // If user chooses light bg, we might need to adjust - but let's keep it simple for now
-                return html;
+                // V5.45.3: For [DEFAULT] SVGs, render with the specified background
+                if (value && value.startsWith('[DEFAULT]')) {
+                    const rawSvg = getRawDefaultVisualCueSvg(value.replace('[DEFAULT] ', ''));
+                    return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor} flex items-center justify-center" style="background-color:${bgColor};">${rawSvg}</div>`;
+                }
+                
+                // V5.45.3: For empty value (auto-generated default), also use raw SVG with custom bg
+                if (!value || value === '') {
+                    const rawSvg = getRawDefaultVisualCueSvg(periodName);
+                    return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor} flex items-center justify-center" style="background-color:${bgColor};">${rawSvg}</div>`;
+                }
+                
+                // For custom text, it has its own background - just return as-is
+                if (value && value.startsWith('[CUSTOM_TEXT]')) {
+                    return getVisualHtml(value, periodName);
+                }
+                
+                // Fallback - use default SVG with custom background
+                const rawSvg = getRawDefaultVisualCueSvg(periodName);
+                return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor} flex items-center justify-center" style="background-color:${bgColor};">${rawSvg}</div>`;
             }
 
             /**
