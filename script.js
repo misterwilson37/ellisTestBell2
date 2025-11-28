@@ -1,4 +1,8 @@
-        const APP_VERSION = "5.46.3"
+        const APP_VERSION = "5.46.4"
+        // V5.46.4: Three Important Fixes
+        // - Fixed "Duplicate as Another Personal Schedule" to copy ALL data (periods, bellOverrides, passingPeriodVisual, isStandalone)
+        // - Restore from backup now allows editing the schedule name (pre-filled with backup's name)
+        // - Added global ESC key handler to close any open modal without saving
         // V5.46.1: Fix Shared Bell Visual Overrides Persistence
         // - Added personalBellOverrides variable to store shared bell customizations
         // - Load bellOverrides from Firestore when personal schedule loads
@@ -5719,6 +5723,13 @@
                         
                         confirmRestoreText.textContent = confirmMsg;
                         confirmRestoreText.style.whiteSpace = 'pre-line'; // Allow line breaks
+                        
+                        // V5.46.4: Pre-fill name input with backup's name
+                        const restoreNameInput = document.getElementById('restore-schedule-name');
+                        if (restoreNameInput) {
+                            restoreNameInput.value = pendingRestoreData.name;
+                        }
+                        
                         confirmRestoreModal.classList.remove('hidden');
     
                     } catch (error) {
@@ -5734,7 +5745,12 @@
             async function confirmRestorePersonalSchedule() {
                 if (!pendingRestoreData || !activePersonalScheduleId) return;
     
-                const { version, name, baseScheduleId, isStandalone, periods, bells, periodVisualOverrides: backupOverrides, customQuickBells: backupQuickBells } = pendingRestoreData;
+                const { version, baseScheduleId, isStandalone, periods, bells, periodVisualOverrides: backupOverrides, customQuickBells: backupQuickBells } = pendingRestoreData;
+                
+                // V5.46.4: Use name from input field instead of backup
+                const restoreNameInput = document.getElementById('restore-schedule-name');
+                const name = restoreNameInput?.value.trim() || pendingRestoreData.name;
+                
                 const docRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
                 
                 try {
@@ -9976,24 +9992,37 @@
                     let newSchedule;
                     
                     // v3.05: Check if we are duplicating or copying
+                    // V5.46.4: Fixed to copy ALL data including periods, bellOverrides, etc.
                     if (activePersonalScheduleId) {
-                        // DUPLICATING
+                        // DUPLICATING - copy everything from the source schedule
                         const scheduleToDupe = allPersonalSchedules.find(s => s.id === activePersonalScheduleId);
                         if (!scheduleToDupe) {
                              createPersonalScheduleStatus.textContent = "Error: Source schedule not found.";
                              return;
                         }
+                        
+                        // Deep copy all the important data
                         newSchedule = {
                             name: name,
-                            baseScheduleId: scheduleToDupe.baseScheduleId, // Use the dupe's base
-                            bells: [...scheduleToDupe.bells] // CRITICAL: new array copy of bells
+                            baseScheduleId: scheduleToDupe.baseScheduleId || null,
+                            isStandalone: scheduleToDupe.isStandalone || false,
+                            // Deep copy periods (includes all custom bells)
+                            periods: scheduleToDupe.periods ? JSON.parse(JSON.stringify(scheduleToDupe.periods)) : [],
+                            // Deep copy bell overrides (shared bell customizations)
+                            bellOverrides: scheduleToDupe.bellOverrides ? JSON.parse(JSON.stringify(scheduleToDupe.bellOverrides)) : {},
+                            // Copy passing period visual
+                            passingPeriodVisual: scheduleToDupe.passingPeriodVisual || null,
+                            // Legacy bells array (for backward compatibility)
+                            bells: scheduleToDupe.bells ? [...scheduleToDupe.bells] : []
                         };
                     } else if (activeBaseScheduleId) {
-                        // COPYING (existing logic)
+                        // COPYING (creating new personal schedule from shared)
                         newSchedule = {
                             name: name,
                             baseScheduleId: activeBaseScheduleId,
-                            bells: [] // Starts empty
+                            periods: [], // Starts empty
+                            bellOverrides: {},
+                            bells: [] // Legacy, starts empty
                         };
                     } else {
                         createPersonalScheduleStatus.textContent = "Error: No base schedule selected.";
@@ -11318,6 +11347,51 @@
                 });
                 // ============================================
                 // END V5.46.0: BULK EDIT FUNCTIONALITY
+                // ============================================
+
+                // ============================================
+                // V5.46.4: GLOBAL ESC KEY HANDLER FOR MODALS
+                // ============================================
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        // List of all modal IDs and their cancel/close actions
+                        const modals = [
+                            { id: 'edit-bell-modal', close: () => editBellModal.classList.add('hidden') },
+                            { id: 'change-sound-modal', close: () => changeSoundModal.classList.add('hidden') },
+                            { id: 'upload-audio-modal', close: () => uploadAudioModal.classList.add('hidden') },
+                            { id: 'upload-visual-modal', close: () => uploadVisualModal.classList.add('hidden') },
+                            { id: 'create-personal-schedule-modal', close: () => { createPersonalScheduleModal.classList.add('hidden'); createPersonalScheduleForm.reset(); } },
+                            { id: 'create-standalone-schedule-modal', close: () => { createStandaloneScheduleModal.classList.add('hidden'); createStandaloneScheduleForm.reset(); } },
+                            { id: 'rename-personal-schedule-modal', close: () => { renamePersonalScheduleModal.classList.add('hidden'); renamePersonalScheduleForm.reset(); } },
+                            { id: 'rename-shared-schedule-modal', close: () => renameSharedScheduleModal.classList.add('hidden') },
+                            { id: 'confirm-restore-modal', close: () => confirmRestoreModal.classList.add('hidden') },
+                            { id: 'confirm-delete-modal', close: () => confirmDeleteModal.classList.add('hidden') },
+                            { id: 'rename-period-modal', close: () => renamePeriodModal.classList.add('hidden') },
+                            { id: 'add-period-modal', close: () => addPeriodModal?.classList.add('hidden') },
+                            { id: 'add-static-bell-modal', close: () => document.getElementById('add-static-bell-modal')?.classList.add('hidden') },
+                            { id: 'relative-bell-modal', close: () => document.getElementById('relative-bell-modal')?.classList.add('hidden') },
+                            { id: 'multi-add-relative-bell-modal', close: () => document.getElementById('multi-add-relative-bell-modal')?.classList.add('hidden') },
+                            { id: 'custom-text-visual-modal', close: () => customTextVisualModal?.classList.add('hidden') },
+                            { id: 'bg-color-picker-modal', close: () => document.getElementById('bg-color-picker-modal')?.classList.add('hidden') },
+                            { id: 'bulk-edit-modal', close: () => bulkEditModal.classList.add('hidden') },
+                            { id: 'custom-quick-bell-manager-modal', close: () => document.getElementById('custom-quick-bell-manager-modal')?.classList.add('hidden') },
+                            { id: 'passing-period-visual-modal', close: () => document.getElementById('passing-period-visual-modal')?.classList.add('hidden') },
+                        ];
+                        
+                        // Find the first visible modal and close it
+                        for (const modal of modals) {
+                            const el = document.getElementById(modal.id);
+                            if (el && !el.classList.contains('hidden')) {
+                                e.preventDefault();
+                                modal.close();
+                                console.log(`ESC closed: ${modal.id}`);
+                                break; // Only close one modal at a time
+                            }
+                        }
+                    }
+                });
+                // ============================================
+                // END V5.46.4: GLOBAL ESC KEY HANDLER
                 // ============================================
     
                 // Import/Export
