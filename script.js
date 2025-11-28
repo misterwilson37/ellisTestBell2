@@ -1,4 +1,7 @@
-        const APP_VERSION = "5.45.3"
+        const APP_VERSION = "5.45.4"
+        // V5.45.4: Remove inconsistent "Override:" prefix from sound display
+        // - The sound name alone is sufficient information
+        // - Removes confusing inconsistency where some overridden bells showed it and others didn't
         // V5.45.3: Fix background color picker preview for [DEFAULT] SVGs
         // - getVisualHtmlWithBg now properly handles [DEFAULT] SVGs and empty values
         // - "New" preview now updates in real-time when changing the color
@@ -2133,11 +2136,8 @@
                             soundDisplay = "No Sound";
                         }
                         
-                        // NEW V4.62.3: Reapply the override flag AFTER naming convention is resolved
-                        // MODIFIED V4.86: Only show "Override" for SHARED bells
-                        if (isOverridden && bell.type === 'shared') {
-                            soundDisplay = `Override: ${soundDisplay}`;
-                        }
+                        // V5.45.4: Removed "Override:" prefix for cleaner, more consistent display
+                        // The sound name alone is sufficient - users can see what's playing
     
                         return `
                             <div class="bell-item flex items-center justify-between p-4 border-t border-gray-100 hover:bg-gray-50 transition-colors"
