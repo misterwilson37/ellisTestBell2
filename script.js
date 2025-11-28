@@ -1,4 +1,9 @@
-        const APP_VERSION = "5.46.2"
+        const APP_VERSION = "5.46.3"
+        // V5.46.1: Fix Shared Bell Visual Overrides Persistence
+        // - Added personalBellOverrides variable to store shared bell customizations
+        // - Load bellOverrides from Firestore when personal schedule loads
+        // - Apply visual overrides, sound overrides, and nicknames to shared bells during rendering
+        // - Visual overrides for shared bells now persist across page refreshes
         // V5.46.0: Bulk Edit for Audio and Visual Cues
         // - Added "Bulk Edit" button to schedule list controls (visible when personal schedule is active)
         // - Click to enter selection mode, checkboxes appear next to each bell
@@ -608,6 +613,9 @@
         // NEW V5.46.0: Bulk Edit State
         let bulkEditMode = false;
         let bulkSelectedBells = new Set(); // Set of bell IDs
+        
+        // NEW V5.46.1: Personal Bell Overrides (for shared bell customizations)
+        let personalBellOverrides = {}; // { bellId: { sound, visualCue, visualMode, nickname } }
 
         let currentSoundSelectTarget = null; // NEW V4.76: Stores <select> for audio modal
 
@@ -2714,15 +2722,37 @@
                             // 'bell.sound' *is* the original sound at this point.
                             bell.originalSound = bell.sound; 
                             
-                            // 2. Check for an override.
+                            // 2. Check for a sound override (localStorage system).
                             const overrideKey = getBellOverrideKey(activeBaseScheduleId, bell);
                             const overrideSound = bellSoundOverrides[overrideKey];
                             
-                            // 3. Apply the override *if it exists*.
+                            // 3. Apply the sound override *if it exists*.
                             if (overrideSound) {
                                 bell.sound = overrideSound;
                             }
                             // If no override, 'bell.sound' remains the original sound.
+                            
+                            // V5.46.1: Apply personal bell overrides (visual, nickname, etc.)
+                            const bellId = bell.bellId || getBellId(bell);
+                            const personalOverride = personalBellOverrides[bellId];
+                            if (personalOverride) {
+                                // Apply visual override
+                                if (personalOverride.visualCue !== undefined) {
+                                    bell.visualCue = personalOverride.visualCue;
+                                }
+                                if (personalOverride.visualMode !== undefined) {
+                                    bell.visualMode = personalOverride.visualMode;
+                                }
+                                // Apply sound override from Firestore (if not already overridden by localStorage)
+                                if (personalOverride.sound && !overrideSound) {
+                                    bell.sound = personalOverride.sound;
+                                }
+                                // Apply nickname
+                                if (personalOverride.nickname) {
+                                    bell.originalName = bell.name;
+                                    bell.name = personalOverride.nickname;
+                                }
+                            }
                         }
                         // For custom bells, bell.sound is just bell.sound.
                         // We set originalSound to null (or it's undefined)
@@ -3813,6 +3843,9 @@
                 personalPassingPeriodVisual = null;
                 sharedPassingPeriodVisual = null;
                 
+                // NEW V5.46.1: Reset personal bell overrides
+                personalBellOverrides = {};
+                
                 // v3.05: Disable manager buttons
                 renamePersonalScheduleBtn.disabled = true;
                 backupPersonalScheduleBtn.disabled = true;
@@ -4034,12 +4067,15 @@
                                 
                                 personalBellsPeriods = periodsToUse;
                                 personalPassingPeriodVisual = personalData.passingPeriodVisual || null;
+                                // V5.46.1: Load bell overrides (standalone schedules typically don't use these)
+                                personalBellOverrides = personalData.bellOverrides || {};
                                 
                                 console.log("Standalone schedule updated:", periodsToUse.length, "periods");
                             } else {
                                 console.warn("Standalone schedule removed.");
                                 personalBellsPeriods = [];
                                 personalPassingPeriodVisual = null;
+                                personalBellOverrides = {};
                             }
                             recalculateAndRenderAll();
                         });
@@ -4189,6 +4225,9 @@
                                 // NEW V5.42.0: Load passing period visual from personal schedule
                                 personalPassingPeriodVisual = personalData.passingPeriodVisual || null;
                                 
+                                // NEW V5.46.1: Load bell overrides for shared bell customizations
+                                personalBellOverrides = personalData.bellOverrides || {};
+                                
                                 console.log("Personal schedule bells updated.");
                             } else {
                                 console.warn("Personal schedule removed.");
@@ -4196,6 +4235,8 @@
                                 personalBells = [];
                                 // NEW V5.42.0: Clear passing period visual when schedule is removed
                                 personalPassingPeriodVisual = null;
+                                // NEW V5.46.1: Clear bell overrides
+                                personalBellOverrides = {};
                             }
                             // NEW: v4.10.3 - Run the master calculation engine
                             recalculateAndRenderAll();
