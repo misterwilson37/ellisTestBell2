@@ -1,4 +1,8 @@
-        const APP_VERSION = "5.45.1"
+        const APP_VERSION = "5.45.2"
+        // V5.45.2: Custom background colors for default SVGs (pedestrian, lunch, numbers)
+        // - [BG:#hexcolor] prefix now works with [DEFAULT] SVGs, not just images
+        // - Uses raw SVG content to avoid nested backgrounds
+        // - Both full-size and icon previews support custom backgrounds
         // V5.45.1: Fix period visual override backup/restore
         // - Fixed key format: uses hyphen (-) not colon (:)
         // - Fixed ID: uses activePersonalScheduleId, not baseScheduleId
@@ -7370,6 +7374,7 @@
             /**
              * NEW: v4.44 - Gets the HTML for a given visual cue value.
              * MODIFIED V5.29.0: Support [BG:#hexcolor] prefix for custom backgrounds
+             * MODIFIED V5.45.2: Proper support for [BG:] with [DEFAULT] SVGs
              */
             function getVisualHtml(value, periodName) {
                 // V5.29.0: Check for background color prefix
@@ -7393,6 +7398,11 @@
                         return getVisualHtml(periodOverride, periodName);
                     }
                     // No override - use generated default
+                    // V5.45.2: If custom bg, use raw SVG to avoid nested backgrounds
+                    if (customBgColor) {
+                        const rawSvg = getRawDefaultVisualCueSvg(periodName);
+                        return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor} flex items-center justify-center" style="background-color:${customBgColor};">${rawSvg}</div>`;
+                    }
                     baseHtml = getDefaultVisualCue(periodName);
                 } else if (value.startsWith('[CUSTOM_TEXT]')) {
                     // MODIFIED V5.41: Use centralized config
@@ -7413,6 +7423,11 @@
                     </div>`;
                 } else if (value.startsWith('[DEFAULT]')) {
                     // Case 2: It's a default SVG key
+                    // V5.45.2: If custom bg, use raw SVG to avoid nested backgrounds
+                    if (customBgColor) {
+                        const rawSvg = getRawDefaultVisualCueSvg(value.replace('[DEFAULT] ', ''));
+                        return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor} flex items-center justify-center" style="background-color:${customBgColor};">${rawSvg}</div>`;
+                    }
                     baseHtml = getDefaultVisualCue(value.replace('[DEFAULT] ', ''));
                 } else if (value.startsWith('http')) {
                     // Case 3: It's an uploaded image URL
@@ -7428,13 +7443,21 @@
                     // NEW V4.89: Add default visual for standard Quick Bell
                     // FIX V5.43.0: Use matching background color
                     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM11 15h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg>`;
+                    if (customBgColor) {
+                        return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor} flex items-center justify-center" style="background-color:${customBgColor};">${svgContent}</div>`;
+                    }
                     baseHtml = `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.bgColor} ${VISUAL_CONFIG.full.textColor}">${svgContent}</div>`;
                 } else {
                     // Fallback
+                    // V5.45.2: If custom bg, use raw SVG
+                    if (customBgColor) {
+                        const rawSvg = getRawDefaultVisualCueSvg(periodName);
+                        return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} ${VISUAL_CONFIG.full.textColor} flex items-center justify-center" style="background-color:${customBgColor};">${rawSvg}</div>`;
+                    }
                     baseHtml = getDefaultVisualCue(periodName);
                 }
                 
-                // V5.29.0: Apply custom background color if specified
+                // V5.29.0: Apply custom background color if specified (shouldn't reach here now with V5.45.2 changes)
                 if (customBgColor && baseHtml) {
                     // Wrap the content with a background div
                     return `<div class="w-full h-full flex items-center justify-center" style="background-color:${customBgColor};">${baseHtml}</div>`;
@@ -7477,14 +7500,26 @@
             /**
              * NEW: v4.45 - Gets the HTML for a *small icon* visual cue.
              * MODIFIED V5.41: Uses centralized config for consistency
+             * MODIFIED V5.45.2: Support [BG:] prefix for custom backgrounds on all icon types
              */
             function getVisualIconHtml(value, periodName) {
+                // V5.45.2: Check for background color prefix
+                let customBgColor = null;
+                if (value && value.startsWith('[BG:')) {
+                    const parsed = parseVisualBgColor(value);
+                    customBgColor = parsed.bgColor;
+                    value = parsed.baseValue;
+                }
+                
                 // Use centralized config for all icon classes
                 const sharedClasses = `${VISUAL_CONFIG.icon.size} ${VISUAL_CONFIG.icon.shape} ${VISUAL_CONFIG.icon.shadow} flex items-center justify-center overflow-hidden`; 
                 
                 if (!value) {
                     // If no image, return the default SVG, styled for the icon size/shape
                     const defaultSvgHtml = getRawDefaultVisualCueSvg(periodName);
+                    if (customBgColor) {
+                        return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}" style="background-color:${customBgColor};">${defaultSvgHtml}</div>`;
+                    }
                     return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.bgColor} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}">${defaultSvgHtml}</div>`;
                 }
                 if (value.startsWith('[CUSTOM_TEXT]')) {
@@ -7506,14 +7541,23 @@
                 if (value.startsWith('[DEFAULT]')) {
                     // Case 2: It's a default SVG key
                     const defaultSvgHtml = getRawDefaultVisualCueSvg(value.replace('[DEFAULT] ', ''));
+                    if (customBgColor) {
+                        return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}" style="background-color:${customBgColor};">${defaultSvgHtml}</div>`;
+                    }
                     return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.bgColor} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}">${defaultSvgHtml}</div>`;
                 }
                 if (value.startsWith('http')) {
                     // If uploaded image, use the URL and the shared classes (using object-cover for full circle fill)
+                    if (customBgColor) {
+                        return `<div class="${sharedClasses}" style="background-color:${customBgColor};"><img src="${value}" alt="Icon" class="max-w-full max-h-full object-contain"></div>`;
+                    }
                     return `<img src="${value}" alt="Icon" class="w-full h-full object-cover ${VISUAL_CONFIG.icon.shape} ${VISUAL_CONFIG.icon.bgColor}">`;
                 }
                 // Fallback
                 const defaultSvgHtml = getRawDefaultVisualCueSvg(periodName);
+                if (customBgColor) {
+                    return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}" style="background-color:${customBgColor};">${defaultSvgHtml}</div>`;
+                }
                 return `<div class="${sharedClasses} ${VISUAL_CONFIG.icon.bgColor} ${VISUAL_CONFIG.icon.textColor} ${VISUAL_CONFIG.icon.padding}">${defaultSvgHtml}</div>`;
             }
 
