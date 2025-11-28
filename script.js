@@ -1,9 +1,11 @@
-        const APP_VERSION = "5.46.0"
+        const APP_VERSION = "5.46.1"
         // V5.46.0: Bulk Edit for Audio and Visual Cues
         // - Added "Bulk Edit" button to schedule list controls (visible when personal schedule is active)
         // - Click to enter selection mode, checkboxes appear next to each bell
         // - Select bells, click button again to open bulk edit modal
         // - Change audio and/or visual cue for all selected bells at once
+        // - Custom bells: Updated directly in Firestore periods
+        // - Shared bells: Sound overrides use localStorage (existing system), visuals require individual edit
         // - Purple themed UI to distinguish from other edit modes
         // V5.45.4: Remove inconsistent "Override:" prefix from sound display
         // - The sound name alone is sufficient information
@@ -11151,40 +11153,83 @@
                         bulkEditStatus.textContent = 'Applying changes...';
                         bulkEditStatus.classList.remove('hidden');
                         
-                        // Get current periods
-                        const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
-                        const existingPeriods = [...personalBellsPeriods];
+                        let updatedCustomCount = 0;
+                        let updatedSharedSoundCount = 0;
                         
-                        let updatedCount = 0;
+                        // --- Identify which bells are custom vs shared ---
+                        const allCalculatedBells = [...localSchedule, ...personalBells];
+                        const customBellIds = new Set();
+                        const sharedBellIds = new Set();
                         
-                        // Update matching bells in periods
-                        const updatedPeriods = existingPeriods.map(period => {
-                            const updatedBells = period.bells.map(bell => {
-                                const bellId = bell.bellId || getBellId(bell);
-                                if (bulkSelectedBells.has(bellId)) {
-                                    const updatedBell = { ...bell };
-                                    
-                                    if (newSound !== '[NO_CHANGE]') {
-                                        updatedBell.sound = newSound;
-                                    }
-                                    
-                                    if (newVisual !== '[NO_CHANGE]') {
-                                        updatedBell.visualCue = newVisual === '' ? '' : newVisual;
-                                        updatedBell.visualMode = newVisual === '' ? 'none' : newVisualMode;
-                                    }
-                                    
-                                    updatedCount++;
-                                    return updatedBell;
+                        allCalculatedBells.forEach(bell => {
+                            const bellId = bell.bellId || getBellId(bell);
+                            if (bulkSelectedBells.has(bellId)) {
+                                if (bell.type === 'custom') {
+                                    customBellIds.add(bellId);
+                                } else if (bell.type === 'shared') {
+                                    sharedBellIds.add(bellId);
                                 }
-                                return bell;
-                            });
-                            return { ...period, bells: updatedBells };
+                            }
                         });
                         
-                        // Save to Firestore
-                        await updateDoc(personalScheduleRef, { periods: updatedPeriods });
+                        // --- Handle CUSTOM bells (update periods in Firestore) ---
+                        if (customBellIds.size > 0) {
+                            const personalScheduleRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
+                            const existingPeriods = [...personalBellsPeriods];
+                            
+                            const updatedPeriods = existingPeriods.map(period => {
+                                const updatedBells = period.bells.map(bell => {
+                                    const bellId = bell.bellId || getBellId(bell);
+                                    if (customBellIds.has(bellId)) {
+                                        const updatedBell = { ...bell };
+                                        
+                                        if (newSound !== '[NO_CHANGE]') {
+                                            updatedBell.sound = newSound;
+                                        }
+                                        
+                                        if (newVisual !== '[NO_CHANGE]') {
+                                            updatedBell.visualCue = newVisual === '' ? '' : newVisual;
+                                            updatedBell.visualMode = newVisual === '' ? 'none' : newVisualMode;
+                                        }
+                                        
+                                        updatedCustomCount++;
+                                        return updatedBell;
+                                    }
+                                    return bell;
+                                });
+                                return { ...period, bells: updatedBells };
+                            });
+                            
+                            await updateDoc(personalScheduleRef, { periods: updatedPeriods });
+                        }
                         
-                        bulkEditStatus.textContent = `Updated ${updatedCount} bell${updatedCount > 1 ? 's' : ''}!`;
+                        // --- Handle SHARED bells (use localStorage override system) ---
+                        if (sharedBellIds.size > 0 && newSound !== '[NO_CHANGE]') {
+                            // Find the actual bell objects to get proper override keys
+                            allCalculatedBells.forEach(bell => {
+                                const bellId = bell.bellId || getBellId(bell);
+                                if (sharedBellIds.has(bellId) && bell.type === 'shared') {
+                                    const overrideKey = getBellOverrideKey(activeBaseScheduleId, bell);
+                                    if (overrideKey) {
+                                        bellSoundOverrides[overrideKey] = newSound;
+                                        updatedSharedSoundCount++;
+                                    }
+                                }
+                            });
+                            saveSoundOverrides();
+                        }
+                        
+                        // Note about shared bell visuals
+                        if (sharedBellIds.size > 0 && newVisual !== '[NO_CHANGE]') {
+                            console.log('Note: Visual changes for shared bells require individual editing.');
+                        }
+                        
+                        const totalUpdated = updatedCustomCount + updatedSharedSoundCount;
+                        let statusMsg = `Updated ${totalUpdated} bell${totalUpdated !== 1 ? 's' : ''}!`;
+                        if (sharedBellIds.size > 0 && newVisual !== '[NO_CHANGE]') {
+                            statusMsg += ' (Visual changes apply to custom bells only)';
+                        }
+                        bulkEditStatus.textContent = statusMsg;
                         
                         // Exit bulk edit mode
                         setTimeout(() => {
@@ -11195,7 +11240,7 @@
                             bulkEditToggleBtn.classList.remove('bg-purple-600', 'text-white');
                             bulkEditToggleBtn.classList.add('bg-purple-100', 'text-purple-700');
                             recalculateAndRenderAll();
-                        }, 1000);
+                        }, 1500);
                         
                     } catch (error) {
                         console.error('Bulk edit error:', error);
