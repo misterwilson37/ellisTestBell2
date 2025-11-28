@@ -1,4 +1,9 @@
-        const APP_VERSION = "5.45.0"
+        const APP_VERSION = "5.45.1"
+        // V5.45.1: Fix period visual override backup/restore
+        // - Fixed key format: uses hyphen (-) not colon (:)
+        // - Fixed ID: uses activePersonalScheduleId, not baseScheduleId
+        // - Restore now remaps keys to current schedule ID (so backups work across schedules)
+        // - Also checks baseScheduleId for linked schedule compatibility
         // V5.45.0: Comprehensive personal schedule backup/restore
         // - Backup now saves: periods (v4 structure), period visual overrides, custom quick bells
         // - Backup includes references to custom audio/visual files (URLs)
@@ -5452,13 +5457,23 @@
     
                 // V5.45.0: Comprehensive backup including all user customizations
                 
-                // 1. Collect period visual overrides for this schedule's base
+                // 1. Collect period visual overrides for this schedule
+                // V5.45.1 FIX: Keys use format "{personalScheduleId}-{periodName}" with hyphen
                 const relevantVisualOverrides = {};
-                const baseId = schedule.baseScheduleId || 'standalone';
+                const scheduleIdPrefix = `${activePersonalScheduleId}-`;
                 for (const key in periodVisualOverrides) {
-                    // Keys are formatted as "{scheduleId}:{periodName}"
-                    if (key.startsWith(`${baseId}:`)) {
+                    if (key.startsWith(scheduleIdPrefix)) {
                         relevantVisualOverrides[key] = periodVisualOverrides[key];
+                    }
+                }
+                
+                // Also check with baseScheduleId for linked schedules (older format compatibility)
+                if (schedule.baseScheduleId) {
+                    const baseIdPrefix = `${schedule.baseScheduleId}-`;
+                    for (const key in periodVisualOverrides) {
+                        if (key.startsWith(baseIdPrefix) && !relevantVisualOverrides[key]) {
+                            relevantVisualOverrides[key] = periodVisualOverrides[key];
+                        }
                     }
                 }
                 
@@ -5666,13 +5681,22 @@
                         await setDoc(docRef, scheduleData);
                         
                         // 2. Restore period visual overrides to localStorage
+                        // V5.45.1 FIX: Remap keys to use current schedule ID
                         if (backupOverrides && Object.keys(backupOverrides).length > 0) {
-                            // Merge with existing overrides (don't lose unrelated overrides)
-                            for (const key in backupOverrides) {
-                                periodVisualOverrides[key] = backupOverrides[key];
+                            let restoredCount = 0;
+                            for (const oldKey in backupOverrides) {
+                                // Extract period name from key (format: "scheduleId-periodName")
+                                const hyphenIndex = oldKey.indexOf('-');
+                                if (hyphenIndex > -1) {
+                                    const periodName = oldKey.substring(hyphenIndex + 1);
+                                    // Create new key with current schedule ID
+                                    const newKey = `${activePersonalScheduleId}-${periodName}`;
+                                    periodVisualOverrides[newKey] = backupOverrides[oldKey];
+                                    restoredCount++;
+                                }
                             }
-                            savePeriodVisualOverrides();
-                            console.log(`Restored ${Object.keys(backupOverrides).length} period visual overrides.`);
+                            saveVisualOverrides();
+                            console.log(`Restored ${restoredCount} period visual overrides.`);
                         }
                         
                         // 3. Restore custom quick bells (if any)
