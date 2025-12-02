@@ -1,5 +1,11 @@
-        const APP_VERSION = "5.46.7"
-        // V5.46.7: Fix Individual Edit Bell + Backup/Restore for bellOverrides
+        const APP_VERSION = "5.47.0"
+        // V5.47.0: Picture-in-Picture Pop-Out Mode
+        // - Added Document PiP support for always-on-top floating timer window
+        // - Pop-out button appears on hover over the visual cue (top-right corner)
+        // - PiP window shows: visual cue, countdown, bell name, next bell info, quick bell buttons
+        // - Quick bells can be set directly from the PiP window
+        // - Supported in Chrome 116+, Edge 116+, and other Chromium browsers
+        // V5.46.5: Fix Individual Edit Bell + Backup/Restore for bellOverrides
         // - BUG FIX: Non-admin Edit Bell was checking hidden checkbox for sound save - now checks if sound changed
         // - BUG FIX: Edit Bell modal now shows the CURRENT sound (including overrides) not originalSound
         // - BUG FIX: Added recalculateAndRenderAll() after non-admin shared bell save for immediate UI update
@@ -634,6 +640,9 @@
         // NEW V5.46.1: Personal Bell Overrides (for shared bell customizations)
         let personalBellOverrides = {}; // { bellId: { sound, visualCue, visualMode, nickname } }
 
+        // NEW V5.47.0: Picture-in-Picture state
+        let pipWindow = null; // Reference to the PiP window
+
         let currentSoundSelectTarget = null; // NEW V4.76: Stores <select> for audio modal
 
         const MAX_FILE_SIZE = 1024 * 1024; // 1MB
@@ -1205,6 +1214,275 @@
                 return bellDate;
             }
 
+            // ============================================
+            // V5.47.0: PICTURE-IN-PICTURE FUNCTIONALITY
+            // ============================================
+            
+            /**
+             * Toggle Picture-in-Picture mode for the countdown display
+             */
+            async function togglePictureInPicture() {
+                // Check if Document PiP is supported
+                if (!('documentPictureInPicture' in window)) {
+                    showUserMessage("Picture-in-Picture is not supported in this browser. Try Chrome, Edge, or another Chromium-based browser.");
+                    return;
+                }
+                
+                // If PiP is already open, close it
+                if (pipWindow && !pipWindow.closed) {
+                    pipWindow.close();
+                    pipWindow = null;
+                    return;
+                }
+                
+                try {
+                    // Request PiP window with appropriate dimensions
+                    pipWindow = await documentPictureInPicture.requestWindow({
+                        width: 400,
+                        height: 500
+                    });
+                    
+                    // Build the PiP content
+                    const pipDoc = pipWindow.document;
+                    
+                    // Add styles
+                    const style = pipDoc.createElement('style');
+                    style.textContent = `
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body {
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            min-height: 100vh;
+                            display: flex;
+                            flex-direction: column;
+                            padding: 12px;
+                        }
+                        .pip-container {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                            height: 100%;
+                        }
+                        .pip-visual {
+                            background: #1f2937;
+                            border-radius: 12px;
+                            aspect-ratio: 1;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            overflow: hidden;
+                            max-height: 45%;
+                        }
+                        .pip-visual img, .pip-visual svg {
+                            max-width: 100%;
+                            max-height: 100%;
+                            object-fit: contain;
+                        }
+                        .pip-countdown-section {
+                            text-align: center;
+                            flex-grow: 1;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                        }
+                        .pip-time {
+                            font-size: 14px;
+                            opacity: 0.9;
+                            margin-bottom: 4px;
+                        }
+                        .pip-countdown {
+                            font-size: 48px;
+                            font-weight: bold;
+                            font-variant-numeric: tabular-nums;
+                            line-height: 1;
+                        }
+                        .pip-bell-name {
+                            font-size: 16px;
+                            margin-top: 8px;
+                            opacity: 0.95;
+                        }
+                        .pip-next-bell {
+                            font-size: 13px;
+                            opacity: 0.8;
+                            margin-top: 4px;
+                        }
+                        .pip-quick-bells {
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 6px;
+                            justify-content: center;
+                            padding-top: 8px;
+                            border-top: 1px solid rgba(255,255,255,0.2);
+                        }
+                        .pip-quick-btn {
+                            background: rgba(255,255,255,0.2);
+                            border: none;
+                            color: white;
+                            padding: 8px 14px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: 600;
+                            transition: background 0.15s;
+                        }
+                        .pip-quick-btn:hover {
+                            background: rgba(255,255,255,0.35);
+                        }
+                        .pip-quick-btn:active {
+                            transform: scale(0.95);
+                        }
+                        .pip-cancel-btn {
+                            background: rgba(220, 38, 38, 0.8);
+                            margin-top: 6px;
+                        }
+                        .pip-cancel-btn:hover {
+                            background: rgba(220, 38, 38, 1);
+                        }
+                        .pip-cancel-btn.hidden { display: none; }
+                    `;
+                    pipDoc.head.appendChild(style);
+                    
+                    // Create container
+                    const container = pipDoc.createElement('div');
+                    container.className = 'pip-container';
+                    container.innerHTML = `
+                        <div class="pip-visual" id="pip-visual"></div>
+                        <div class="pip-countdown-section">
+                            <div class="pip-time" id="pip-time">--:--</div>
+                            <div class="pip-countdown" id="pip-countdown">--:--</div>
+                            <div class="pip-bell-name" id="pip-bell-name">until the next bell.</div>
+                            <div class="pip-next-bell" id="pip-next-bell"></div>
+                        </div>
+                        <div class="pip-quick-bells" id="pip-quick-bells">
+                            <button class="pip-quick-btn" data-minutes="1">1 min</button>
+                            <button class="pip-quick-btn" data-minutes="2">2 min</button>
+                            <button class="pip-quick-btn" data-minutes="3">3 min</button>
+                            <button class="pip-quick-btn" data-minutes="5">5 min</button>
+                            <button class="pip-quick-btn" data-minutes="10">10 min</button>
+                            <button class="pip-quick-btn pip-cancel-btn hidden" id="pip-cancel-btn">Cancel Timer</button>
+                        </div>
+                    `;
+                    pipDoc.body.appendChild(container);
+                    
+                    // Set up quick bell button handlers
+                    const quickBellContainer = pipDoc.getElementById('pip-quick-bells');
+                    quickBellContainer.addEventListener('click', (e) => {
+                        const btn = e.target.closest('.pip-quick-btn');
+                        if (!btn) return;
+                        
+                        if (btn.id === 'pip-cancel-btn') {
+                            // Cancel quick bell
+                            quickBellEndTime = null;
+                            const cancelBtn = document.getElementById('cancel-quick-bell-btn');
+                            if (cancelBtn) cancelBtn.classList.add('hidden');
+                            showUserMessage("Quick bell cancelled.");
+                        } else {
+                            const minutes = parseInt(btn.dataset.minutes);
+                            if (minutes) {
+                                // Use the sound from the main page's dropdown
+                                const soundSelect = document.getElementById('quickBellSoundSelect');
+                                const sound = soundSelect?.value || 'ellisBell.mp3';
+                                
+                                quickBellEndTime = new Date();
+                                quickBellEndTime.setMinutes(quickBellEndTime.getMinutes() + minutes);
+                                quickBellEndTime.bellName = `${minutes} min Timer`;
+                                quickBellSound = sound;
+                                
+                                showUserMessage(`Quick bell set for ${minutes} minute${minutes > 1 ? 's' : ''}.`);
+                                
+                                // Show cancel button on main page
+                                const cancelBtn = document.getElementById('cancel-quick-bell-btn');
+                                if (cancelBtn) cancelBtn.classList.remove('hidden');
+                            }
+                        }
+                        // Force immediate update
+                        updatePipWindow();
+                    });
+                    
+                    // Initial sync
+                    updatePipWindow();
+                    
+                    // Handle PiP window close
+                    pipWindow.addEventListener('pagehide', () => {
+                        pipWindow = null;
+                    });
+                    
+                } catch (error) {
+                    console.error("Error opening Picture-in-Picture:", error);
+                    showUserMessage("Could not open Picture-in-Picture: " + error.message);
+                }
+            }
+            
+            /**
+             * Update the PiP window content (called from updateClock)
+             */
+            function updatePipWindow() {
+                if (!pipWindow || pipWindow.closed) return;
+                
+                const pipDoc = pipWindow.document;
+                
+                // Sync visual cue
+                const mainVisual = document.getElementById('visual-cue-container');
+                const pipVisual = pipDoc.getElementById('pip-visual');
+                if (mainVisual && pipVisual) {
+                    // Clone the visual content (excluding the PiP button)
+                    const visualContent = mainVisual.querySelector('img, svg:not(#default-visual-cue), #default-visual-cue');
+                    if (visualContent) {
+                        pipVisual.innerHTML = visualContent.outerHTML;
+                    } else {
+                        // Fallback: copy all innerHTML except the button
+                        const clone = mainVisual.cloneNode(true);
+                        const btn = clone.querySelector('#pip-toggle-btn');
+                        if (btn) btn.remove();
+                        pipVisual.innerHTML = clone.innerHTML;
+                    }
+                }
+                
+                // Sync time
+                const mainTime = document.getElementById('live-clock-sentence');
+                const pipTime = pipDoc.getElementById('pip-time');
+                if (mainTime && pipTime) {
+                    // Extract just the time portion
+                    const timeMatch = mainTime.textContent.match(/(\d{1,2}:\d{2}:\d{2}\s*[AP]M)/i);
+                    pipTime.textContent = timeMatch ? timeMatch[1] : mainTime.textContent;
+                }
+                
+                // Sync countdown
+                const mainCountdown = document.getElementById('countdown-display');
+                const pipCountdown = pipDoc.getElementById('pip-countdown');
+                if (mainCountdown && pipCountdown) {
+                    pipCountdown.textContent = mainCountdown.textContent;
+                }
+                
+                // Sync bell name
+                const mainBellName = document.getElementById('next-bell-sentence');
+                const pipBellName = pipDoc.getElementById('pip-bell-name');
+                if (mainBellName && pipBellName) {
+                    pipBellName.textContent = mainBellName.textContent;
+                }
+                
+                // Sync next bell info
+                const mainNextBell = document.getElementById('next-bell-info');
+                const pipNextBell = pipDoc.getElementById('pip-next-bell');
+                if (mainNextBell && pipNextBell) {
+                    pipNextBell.textContent = mainNextBell.textContent;
+                }
+                
+                // Show/hide cancel button based on quick bell state
+                const pipCancelBtn = pipDoc.getElementById('pip-cancel-btn');
+                if (pipCancelBtn) {
+                    if (quickBellEndTime) {
+                        pipCancelBtn.classList.remove('hidden');
+                    } else {
+                        pipCancelBtn.classList.add('hidden');
+                    }
+                }
+            }
+            // ============================================
+            // END V5.47.0: PICTURE-IN-PICTURE FUNCTIONALITY
+            // ============================================
+
             // MODIFIED: v3.22 -> v3.23 - Grammar changes
             function updateClock() {
                 const now = new Date();
@@ -1529,6 +1807,9 @@
                 } catch (e) {
                     console.error("Error updating visual cue:", e);
                 }
+                
+                // V5.47.0: Update Picture-in-Picture window if open
+                updatePipWindow();
             }
             
             // --- NEW: Quick Bell Function (MODIFIED V5.00) ---
@@ -4764,7 +5045,7 @@
                         }
                     }
                     
-                    // FIX V5.46.7: For shared bells, show the CURRENT sound (which may be overridden)
+                    // FIX V5.46.5: For shared bells, show the CURRENT sound (which may be overridden)
                     // not originalSound. The user wants to see what's actually playing.
                     const soundToShow = bell.sound || 'ellisBell.mp3';
                     editBellSoundInput.value = soundToShow;
@@ -5056,7 +5337,7 @@
 
                 // NEW in 4.21: Check if we should override the sound
                 // FIX V5.42: Add null check for checkbox
-                // FIX V5.46.7: For non-admin users, always take the sound (checkbox is hidden for them)
+                // FIX V5.46.5: For non-admin users, always take the sound (checkbox is hidden for them)
                 const isAdmin = document.body.classList.contains('admin-mode');
                 if (oldBell.type === 'shared') {
                     if (isAdmin && editBellOverrideCheckbox?.checked) {
@@ -5113,7 +5394,7 @@
                             const bellOverrides = currentData.bellOverrides || {};
                             
                             // Save the override for this bell
-                            // V5.46.7 FIX: For non-admins, always save the sound if it differs from original
+                            // V5.46.5 FIX: For non-admins, always save the sound if it differs from original
                             // (checkbox is hidden for non-admins, so we can't rely on it)
                             const soundChanged = editBellSoundInput.value !== oldBell.originalSound;
                             
@@ -5143,7 +5424,7 @@
                             
                             editBellStatus.textContent = "Personal customization saved.";
                             
-                            // V5.46.7: Trigger re-render to show updated bell
+                            // V5.46.5: Trigger re-render to show updated bell
                             recalculateAndRenderAll();
                             
                             closeEditBellModal();
@@ -5663,7 +5944,7 @@
                         isStandalone: schedule.isStandalone || false,
                         periods: periods  // The full v4 structure
                     },
-                    // V5.46.7: Include bell overrides (shared bell customizations)
+                    // V5.46.5: Include bell overrides (shared bell customizations)
                     bellOverrides: schedule.bellOverrides || {},
                     periodVisualOverrides: relevantVisualOverrides,
                     customQuickBells: quickBellsBackup,
@@ -5747,7 +6028,7 @@
                                 baseScheduleId: data.schedule.baseScheduleId,
                                 isStandalone: data.schedule.isStandalone || false,
                                 periods: data.schedule.periods,
-                                // V5.46.7: Include bell overrides (shared bell customizations)
+                                // V5.46.5: Include bell overrides (shared bell customizations)
                                 bellOverrides: data.bellOverrides || {},
                                 periodVisualOverrides: data.periodVisualOverrides || {},
                                 customQuickBells: data.customQuickBells || [],
@@ -5766,7 +6047,7 @@
                             const visualCount = pendingRestoreData.referencedMedia.visuals.length;
                             const quickBellCount = pendingRestoreData.customQuickBells.length;
                             const overrideCount = Object.keys(pendingRestoreData.periodVisualOverrides).length;
-                            // V5.46.7: Count bell overrides
+                            // V5.46.5: Count bell overrides
                             const bellOverrideCount = Object.keys(pendingRestoreData.bellOverrides || {}).length;
                             
                             confirmMsg += `\n\nThis backup includes:`;
@@ -5808,7 +6089,7 @@
             async function confirmRestorePersonalSchedule() {
                 if (!pendingRestoreData || !activePersonalScheduleId) return;
     
-                // V5.46.7: Extract bellOverrides from pending data
+                // V5.46.5: Extract bellOverrides from pending data
                 const { version, baseScheduleId, isStandalone, periods, bells, bellOverrides: backupBellOverrides, periodVisualOverrides: backupOverrides, customQuickBells: backupQuickBells } = pendingRestoreData;
                 
                 // V5.46.2: Use name from input field instead of backup
@@ -5826,7 +6107,7 @@
                             name, 
                             baseScheduleId: baseScheduleId || null,
                             periods,
-                            // V5.46.7: Include bell overrides
+                            // V5.46.5: Include bell overrides
                             bellOverrides: backupBellOverrides || {}
                         };
                         if (isStandalone) {
@@ -5834,7 +6115,7 @@
                         }
                         await setDoc(docRef, scheduleData);
                         
-                        // V5.46.7: Update local state immediately
+                        // V5.46.5: Update local state immediately
                         personalBellOverrides = backupBellOverrides || {};
                         
                         // 2. Restore period visual overrides to localStorage
@@ -10737,6 +11018,18 @@
                     document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
                     updateClock(); // Refresh display
                 });
+                
+                // V5.47.0: Picture-in-Picture toggle button
+                const pipToggleBtn = document.getElementById('pip-toggle-btn');
+                if (pipToggleBtn) {
+                    // Check if Document PiP is supported and show/hide button accordingly
+                    if ('documentPictureInPicture' in window) {
+                        pipToggleBtn.addEventListener('click', togglePictureInPicture);
+                    } else {
+                        // Hide button if not supported
+                        pipToggleBtn.style.display = 'none';
+                    }
+                }
                     
                 customTextVisualForm.addEventListener('submit', (e) => {
                     e.preventDefault();
