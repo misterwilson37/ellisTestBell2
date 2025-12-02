@@ -1,4 +1,10 @@
-        const APP_VERSION = "5.47.2"
+        const APP_VERSION = "5.47.3"
+        // V5.47.3: PiP Window Improvements
+        // - Larger visual (180x180px) and countdown text (72px) for visibility from back of room
+        // - Added sound dropdown to PiP window for quick bell audio selection
+        // - Fixed custom quick bell display (was showing truncated text)
+        // - Better window sizing (500x280px)
+        // - Changed pip-quick-bells to pip-controls for better semantics
         // V5.47.0: Picture-in-Picture Pop-Out Mode
         // - Added Document PiP support for always-on-top floating timer window
         // - Pop-out button appears on hover over the visual cue (top-right corner)
@@ -1237,10 +1243,10 @@
                 }
                 
                 try {
-                    // Request PiP window with appropriate dimensions for two-column layout
+                    // Request PiP window - will be resized by content
                     pipWindow = await documentPictureInPicture.requestWindow({
-                        width: 420,
-                        height: 220
+                        width: 500,
+                        height: 280
                     });
                     
                     // Build the PiP content
@@ -1254,26 +1260,26 @@
                             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                             background: #f3f4f6;
                             color: #1f2937;
-                            min-height: 100vh;
-                            padding: 12px;
+                            padding: 16px;
+                            overflow: hidden;
                         }
                         .pip-container {
                             display: flex;
                             flex-direction: column;
-                            gap: 10px;
+                            gap: 12px;
                             height: 100%;
                         }
                         .pip-main {
                             display: grid;
-                            grid-template-columns: 140px 1fr;
-                            gap: 12px;
+                            grid-template-columns: 180px 1fr;
+                            gap: 16px;
                             align-items: center;
                         }
                         .pip-visual {
                             background: #1f2937;
-                            border-radius: 10px;
-                            width: 140px;
-                            height: 140px;
+                            border-radius: 12px;
+                            width: 180px;
+                            height: 180px;
                             display: flex;
                             align-items: center;
                             justify-content: center;
@@ -1283,6 +1289,8 @@
                         .pip-visual img, .pip-visual svg {
                             max-width: 100%;
                             max-height: 100%;
+                            width: 100%;
+                            height: 100%;
                             object-fit: contain;
                         }
                         .pip-countdown-section {
@@ -1291,46 +1299,55 @@
                             justify-content: center;
                         }
                         .pip-time {
-                            font-size: 14px;
+                            font-size: 18px;
                             color: #4b5563;
-                            margin-bottom: 2px;
+                            margin-bottom: 4px;
                         }
                         .pip-countdown {
-                            font-size: 42px;
+                            font-size: 72px;
                             font-weight: bold;
                             font-variant-numeric: tabular-nums;
                             line-height: 1;
                             color: #1f2937;
                         }
                         .pip-bell-name {
-                            font-size: 14px;
+                            font-size: 18px;
                             color: #4b5563;
-                            margin-top: 4px;
+                            margin-top: 8px;
                         }
                         .pip-next-bell {
-                            font-size: 12px;
+                            font-size: 14px;
                             color: #6b7280;
-                            margin-top: 2px;
+                            margin-top: 4px;
                         }
-                        .pip-quick-bells {
+                        .pip-controls {
                             display: flex;
                             flex-wrap: wrap;
-                            gap: 6px;
-                            justify-content: center;
-                            padding-top: 10px;
+                            gap: 8px;
+                            align-items: center;
+                            padding-top: 12px;
                             border-top: 1px solid #e5e7eb;
+                        }
+                        .pip-sound-select {
+                            padding: 6px 10px;
+                            border: 1px solid #d1d5db;
+                            border-radius: 6px;
+                            font-size: 13px;
+                            background: white;
+                            max-width: 140px;
+                            cursor: pointer;
                         }
                         .pip-quick-btn {
                             background: #e5e7eb;
                             border: none;
                             color: #374151;
-                            padding: 6px 12px;
+                            padding: 8px 14px;
                             border-radius: 6px;
                             cursor: pointer;
-                            font-size: 13px;
+                            font-size: 14px;
                             font-weight: 600;
                             transition: background 0.15s;
-                            min-width: 36px;
+                            min-width: 40px;
                         }
                         .pip-quick-btn:hover {
                             background: #d1d5db;
@@ -1357,8 +1374,9 @@
                             width: 1px;
                             height: 28px;
                             background: #d1d5db;
-                            margin: 0 2px;
+                            margin: 0 4px;
                         }
+                        .pip-separator.hidden { display: none; }
                     `;
                     pipDoc.head.appendChild(style);
                     
@@ -1375,7 +1393,8 @@
                                 <div class="pip-next-bell" id="pip-next-bell"></div>
                             </div>
                         </div>
-                        <div class="pip-quick-bells" id="pip-quick-bells">
+                        <div class="pip-controls" id="pip-controls">
+                            <select class="pip-sound-select" id="pip-sound-select"></select>
                             <button class="pip-quick-btn" data-minutes="1">1</button>
                             <button class="pip-quick-btn" data-minutes="2">2</button>
                             <button class="pip-quick-btn" data-minutes="3">3</button>
@@ -1383,17 +1402,29 @@
                             <button class="pip-quick-btn" data-minutes="10">10</button>
                             <button class="pip-quick-btn" data-minutes="15">15</button>
                             <div class="pip-separator pip-custom-separator hidden"></div>
-                            <div id="pip-custom-quick-bells"></div>
+                            <span id="pip-custom-quick-bells"></span>
                             <button class="pip-quick-btn pip-cancel-btn hidden" id="pip-cancel-btn">Cancel</button>
                         </div>
                     `;
                     pipDoc.body.appendChild(container);
                     
+                    // Populate sound dropdown from main page
+                    const mainSoundSelect = document.getElementById('quickBellSoundSelect');
+                    const pipSoundSelect = pipDoc.getElementById('pip-sound-select');
+                    if (mainSoundSelect && pipSoundSelect) {
+                        pipSoundSelect.innerHTML = mainSoundSelect.innerHTML;
+                        pipSoundSelect.value = mainSoundSelect.value;
+                        // Sync changes back to main page
+                        pipSoundSelect.addEventListener('change', () => {
+                            mainSoundSelect.value = pipSoundSelect.value;
+                        });
+                    }
+                    
                     // Populate custom quick bells
                     updatePipCustomQuickBells(pipDoc);
                     
                     // Set up quick bell button handlers
-                    const quickBellContainer = pipDoc.getElementById('pip-quick-bells');
+                    const quickBellContainer = pipDoc.getElementById('pip-controls');
                     quickBellContainer.addEventListener('click', (e) => {
                         const btn = e.target.closest('.pip-quick-btn');
                         if (!btn) return;
@@ -1419,11 +1450,11 @@
                                 showUserMessage(`${bell.name} timer started.`);
                             }
                         } else if (btn.dataset.minutes) {
-                            // Standard quick bell
+                            // Standard quick bell - use sound from PiP dropdown
                             const minutes = parseInt(btn.dataset.minutes);
                             if (minutes) {
-                                const soundSelect = document.getElementById('quickBellSoundSelect');
-                                const sound = soundSelect?.value || 'ellisBell.mp3';
+                                const pipSoundSelect = pipDoc.getElementById('pip-sound-select');
+                                const sound = pipSoundSelect?.value || 'ellisBell.mp3';
                                 
                                 startQuickBell(0, minutes, 0, sound, `${minutes} min Timer`);
                                 showUserMessage(`Quick bell set for ${minutes} minute${minutes > 1 ? 's' : ''}.`);
@@ -1531,10 +1562,10 @@
                 // Show separator
                 if (separator) separator.classList.remove('hidden');
                 
-                // Build buttons for custom quick bells
+                // Build buttons for custom quick bells - use name if iconText is missing
                 container.innerHTML = activeCustomBells.map(bell => {
-                    const label = bell.iconText || bell.name?.substring(0, 3) || '?';
-                    return `<button class="pip-quick-btn custom" data-custom-bell-id="${bell.id}" title="${bell.name}">${label}</button>`;
+                    const label = bell.iconText || bell.name?.substring(0, 2) || '?';
+                    return `<button class="pip-quick-btn custom" data-custom-bell-id="${bell.id}" title="${bell.name || 'Custom Bell'}">${label}</button>`;
                 }).join('');
             }
             // ============================================
