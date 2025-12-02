@@ -1,17 +1,13 @@
-        const APP_VERSION = "5.47.3"
-        // V5.47.3: PiP Window Improvements
-        // - Larger visual (180x180px) and countdown text (72px) for visibility from back of room
-        // - Added sound dropdown to PiP window for quick bell audio selection
-        // - Fixed custom quick bell display (was showing truncated text)
-        // - Better window sizing (500x280px)
-        // - Changed pip-quick-bells to pip-controls for better semantics
+        const APP_VERSION = "5.47.6"
+        // V5.47.6: PiP Clone Approach
+        // - Now clones entire quickBellControls from main page instead of recreating
+        // - Copies main page stylesheets (Tailwind) for consistent styling
+        // - Custom quick bells work by cloning already-rendered buttons
+        // - Click handlers delegate to main page buttons for reliable behavior
         // V5.47.0: Picture-in-Picture Pop-Out Mode
         // - Added Document PiP support for always-on-top floating timer window
         // - Pop-out button appears on hover over the visual cue (top-right corner)
         // - Button is in a wrapper div so it doesn't get wiped when visual updates
-        // - PiP window shows: visual cue, countdown, bell name, next bell info, quick bell buttons
-        // - Quick bells can be set directly from the PiP window
-        // - Supported in Chrome 116+, Edge 116+, and other Chromium browsers
         // V5.46.5: Fix Individual Edit Bell + Backup/Restore for bellOverrides
         // - BUG FIX: Non-admin Edit Bell was checking hidden checkbox for sound save - now checks if sound changed
         // - BUG FIX: Edit Bell modal now shows the CURRENT sound (including overrides) not originalSound
@@ -1226,7 +1222,7 @@
             // ============================================
             
             /**
-             * Toggle Picture-in-Picture mode for the countdown display
+             * Toggle Picture-in-Picture mode - clones elements from main page
              */
             async function togglePictureInPicture() {
                 // Check if Document PiP is supported
@@ -1243,231 +1239,133 @@
                 }
                 
                 try {
-                    // Request PiP window - will be resized by content
+                    // Request PiP window
                     pipWindow = await documentPictureInPicture.requestWindow({
-                        width: 500,
-                        height: 280
+                        width: 700,
+                        height: 320
                     });
                     
-                    // Build the PiP content
                     const pipDoc = pipWindow.document;
                     
-                    // Add styles
-                    const style = pipDoc.createElement('style');
-                    style.textContent = `
-                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                    // Copy stylesheets from main page (for Tailwind)
+                    [...document.styleSheets].forEach((styleSheet) => {
+                        try {
+                            const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
+                            const style = document.createElement('style');
+                            style.textContent = cssRules;
+                            pipDoc.head.appendChild(style);
+                        } catch (e) {
+                            if (styleSheet.href) {
+                                const link = document.createElement('link');
+                                link.rel = 'stylesheet';
+                                link.href = styleSheet.href;
+                                pipDoc.head.appendChild(link);
+                            }
+                        }
+                    });
+                    
+                    // Add PiP-specific styles
+                    const pipStyle = pipDoc.createElement('style');
+                    pipStyle.textContent = `
                         body {
-                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                             background: #f3f4f6;
-                            color: #1f2937;
                             padding: 16px;
+                            margin: 0;
                             overflow: hidden;
                         }
-                        .pip-container {
-                            display: flex;
-                            flex-direction: column;
-                            gap: 12px;
-                            height: 100%;
-                        }
-                        .pip-main {
+                        .pip-layout {
                             display: grid;
-                            grid-template-columns: 180px 1fr;
+                            grid-template-columns: 150px 1fr;
                             gap: 16px;
                             align-items: center;
                         }
-                        .pip-visual {
-                            background: #1f2937;
-                            border-radius: 12px;
-                            width: 180px;
-                            height: 180px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            overflow: hidden;
-                            flex-shrink: 0;
+                        #pip-visual {
+                            width: 150px !important;
+                            height: 150px !important;
+                            min-height: 150px !important;
+                            aspect-ratio: 1 !important;
                         }
-                        .pip-visual img, .pip-visual svg {
-                            max-width: 100%;
-                            max-height: 100%;
-                            width: 100%;
-                            height: 100%;
-                            object-fit: contain;
-                        }
-                        .pip-countdown-section {
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: center;
-                        }
-                        .pip-time {
-                            font-size: 18px;
-                            color: #4b5563;
-                            margin-bottom: 4px;
-                        }
-                        .pip-countdown {
-                            font-size: 72px;
-                            font-weight: bold;
-                            font-variant-numeric: tabular-nums;
-                            line-height: 1;
-                            color: #1f2937;
-                        }
-                        .pip-bell-name {
-                            font-size: 18px;
-                            color: #4b5563;
-                            margin-top: 8px;
-                        }
-                        .pip-next-bell {
-                            font-size: 14px;
-                            color: #6b7280;
-                            margin-top: 4px;
-                        }
-                        .pip-controls {
-                            display: flex;
-                            flex-wrap: wrap;
-                            gap: 8px;
-                            align-items: center;
+                        #pip-quick-bells {
+                            margin-top: 12px;
                             padding-top: 12px;
                             border-top: 1px solid #e5e7eb;
                         }
-                        .pip-sound-select {
-                            padding: 6px 10px;
-                            border: 1px solid #d1d5db;
-                            border-radius: 6px;
-                            font-size: 13px;
-                            background: white;
-                            max-width: 140px;
-                            cursor: pointer;
-                        }
-                        .pip-quick-btn {
-                            background: #e5e7eb;
-                            border: none;
-                            color: #374151;
-                            padding: 8px 14px;
-                            border-radius: 6px;
-                            cursor: pointer;
-                            font-size: 14px;
-                            font-weight: 600;
-                            transition: background 0.15s;
-                            min-width: 40px;
-                        }
-                        .pip-quick-btn:hover {
-                            background: #d1d5db;
-                        }
-                        .pip-quick-btn:active {
-                            transform: scale(0.95);
-                        }
-                        .pip-quick-btn.custom {
-                            background: #ddd6fe;
-                            color: #5b21b6;
-                        }
-                        .pip-quick-btn.custom:hover {
-                            background: #c4b5fd;
-                        }
-                        .pip-cancel-btn {
-                            background: #fecaca;
-                            color: #991b1b;
-                        }
-                        .pip-cancel-btn:hover {
-                            background: #fca5a5;
-                        }
-                        .pip-cancel-btn.hidden { display: none; }
-                        .pip-separator {
-                            width: 1px;
-                            height: 28px;
-                            background: #d1d5db;
-                            margin: 0 4px;
-                        }
-                        .pip-separator.hidden { display: none; }
                     `;
-                    pipDoc.head.appendChild(style);
+                    pipDoc.head.appendChild(pipStyle);
                     
-                    // Create container
+                    // Build the layout
                     const container = pipDoc.createElement('div');
-                    container.className = 'pip-container';
-                    container.innerHTML = `
-                        <div class="pip-main">
-                            <div class="pip-visual" id="pip-visual"></div>
-                            <div class="pip-countdown-section">
-                                <div class="pip-time" id="pip-time">--:--</div>
-                                <div class="pip-countdown" id="pip-countdown">--:--</div>
-                                <div class="pip-bell-name" id="pip-bell-name">until the next bell.</div>
-                                <div class="pip-next-bell" id="pip-next-bell"></div>
-                            </div>
-                        </div>
-                        <div class="pip-controls" id="pip-controls">
-                            <select class="pip-sound-select" id="pip-sound-select"></select>
-                            <button class="pip-quick-btn" data-minutes="1">1</button>
-                            <button class="pip-quick-btn" data-minutes="2">2</button>
-                            <button class="pip-quick-btn" data-minutes="3">3</button>
-                            <button class="pip-quick-btn" data-minutes="5">5</button>
-                            <button class="pip-quick-btn" data-minutes="10">10</button>
-                            <button class="pip-quick-btn" data-minutes="15">15</button>
-                            <div class="pip-separator pip-custom-separator hidden"></div>
-                            <span id="pip-custom-quick-bells"></span>
-                            <button class="pip-quick-btn pip-cancel-btn hidden" id="pip-cancel-btn">Cancel</button>
-                        </div>
-                    `;
+                    
+                    // Main section - two column layout
+                    const mainSection = pipDoc.createElement('div');
+                    mainSection.className = 'pip-layout';
+                    
+                    // Clone visual cue container
+                    const visualClone = document.getElementById('visual-cue-container').cloneNode(true);
+                    visualClone.id = 'pip-visual';
+                    mainSection.appendChild(visualClone);
+                    
+                    // Clone the countdown column
+                    const countdownCol = pipDoc.createElement('div');
+                    countdownCol.className = 'p-2 flex flex-col justify-center';
+                    
+                    const clockClone = document.getElementById('live-clock-sentence').cloneNode(true);
+                    clockClone.id = 'pip-clock';
+                    countdownCol.appendChild(clockClone);
+                    
+                    const countdownClone = document.getElementById('countdown-display').cloneNode(true);
+                    countdownClone.id = 'pip-countdown';
+                    countdownCol.appendChild(countdownClone);
+                    
+                    const bellNameClone = document.getElementById('next-bell-sentence').cloneNode(true);
+                    bellNameClone.id = 'pip-bell-name';
+                    countdownCol.appendChild(bellNameClone);
+                    
+                    const nextBellClone = document.getElementById('next-bell-info').cloneNode(true);
+                    nextBellClone.id = 'pip-next-bell';
+                    countdownCol.appendChild(nextBellClone);
+                    
+                    mainSection.appendChild(countdownCol);
+                    container.appendChild(mainSection);
+                    
+                    // Clone quick bells section
+                    const quickBellsClone = document.getElementById('quickBellControls').cloneNode(true);
+                    quickBellsClone.id = 'pip-quick-bells';
+                    container.appendChild(quickBellsClone);
+                    
                     pipDoc.body.appendChild(container);
                     
-                    // Populate sound dropdown from main page
-                    const mainSoundSelect = document.getElementById('quickBellSoundSelect');
-                    const pipSoundSelect = pipDoc.getElementById('pip-sound-select');
-                    if (mainSoundSelect && pipSoundSelect) {
-                        pipSoundSelect.innerHTML = mainSoundSelect.innerHTML;
-                        pipSoundSelect.value = mainSoundSelect.value;
-                        // Sync changes back to main page
-                        pipSoundSelect.addEventListener('change', () => {
-                            mainSoundSelect.value = pipSoundSelect.value;
-                        });
-                    }
-                    
-                    // Populate custom quick bells
-                    updatePipCustomQuickBells(pipDoc);
-                    
-                    // Set up quick bell button handlers
-                    const quickBellContainer = pipDoc.getElementById('pip-controls');
-                    quickBellContainer.addEventListener('click', (e) => {
-                        const btn = e.target.closest('.pip-quick-btn');
+                    // Set up click handlers - delegate to main page buttons
+                    quickBellsClone.addEventListener('click', (e) => {
+                        const btn = e.target.closest('button');
                         if (!btn) return;
                         
-                        if (btn.id === 'pip-cancel-btn') {
-                            // Cancel quick bell
-                            quickBellEndTime = null;
-                            const cancelBtn = document.getElementById('cancel-quick-bell-btn');
-                            if (cancelBtn) cancelBtn.classList.add('hidden');
-                            showUserMessage("Quick bell cancelled.");
-                        } else if (btn.dataset.customBellId) {
-                            // Custom quick bell - find the bell data
-                            const bellId = btn.dataset.customBellId;
-                            const bell = customQuickBells.find(b => b && b.id === bellId);
-                            if (bell) {
-                                startQuickBell(
-                                    bell.hours || 0,
-                                    bell.minutes || 0,
-                                    bell.seconds || 0,
-                                    bell.sound || 'ellisBell.mp3',
-                                    bell.name || 'Custom Bell'
-                                );
-                                showUserMessage(`${bell.name} timer started.`);
-                            }
-                        } else if (btn.dataset.minutes) {
-                            // Standard quick bell - use sound from PiP dropdown
-                            const minutes = parseInt(btn.dataset.minutes);
-                            if (minutes) {
-                                const pipSoundSelect = pipDoc.getElementById('pip-sound-select');
-                                const sound = pipSoundSelect?.value || 'ellisBell.mp3';
-                                
-                                startQuickBell(0, minutes, 0, sound, `${minutes} min Timer`);
-                                showUserMessage(`Quick bell set for ${minutes} minute${minutes > 1 ? 's' : ''}.`);
-                            }
+                        // Find the equivalent button on main page and click it
+                        if (btn.classList.contains('quick-bell-btn')) {
+                            const minutes = btn.dataset.minutes;
+                            const mainBtn = document.querySelector(`#quickBellControls .quick-bell-btn[data-minutes="${minutes}"]`);
+                            if (mainBtn) mainBtn.click();
+                        } else if (btn.classList.contains('custom-quick-launch-btn')) {
+                            const customId = btn.dataset.customId;
+                            const mainBtn = document.querySelector(`#custom-quick-bells-container [data-custom-id="${customId}"]`);
+                            if (mainBtn) mainBtn.click();
+                        } else if (btn.id === 'pip-quick-bells-cancel' || btn.textContent.includes('Cancel')) {
+                            document.getElementById('cancel-quick-bell-btn')?.click();
                         }
-                        // Force immediate update
-                        updatePipWindow();
                     });
+                    
+                    // Sync sound select changes back to main page
+                    const pipSoundSelect = quickBellsClone.querySelector('#quickBellSoundSelect');
+                    if (pipSoundSelect) {
+                        pipSoundSelect.addEventListener('change', () => {
+                            document.getElementById('quickBellSoundSelect').value = pipSoundSelect.value;
+                        });
+                    }
                     
                     // Initial sync
                     updatePipWindow();
                     
-                    // Handle PiP window close
+                    // Handle close
                     pipWindow.addEventListener('pagehide', () => {
                         pipWindow = null;
                     });
@@ -1479,94 +1377,72 @@
             }
             
             /**
-             * Update the PiP window content (called from updateClock)
+             * Update the PiP window (called from updateClock)
              */
             function updatePipWindow() {
                 if (!pipWindow || pipWindow.closed) return;
                 
                 const pipDoc = pipWindow.document;
                 
-                // Sync visual cue - button is now outside container, so we can just copy innerHTML
+                // Sync visual cue
                 const mainVisual = document.getElementById('visual-cue-container');
                 const pipVisual = pipDoc.getElementById('pip-visual');
                 if (mainVisual && pipVisual) {
                     pipVisual.innerHTML = mainVisual.innerHTML;
                 }
                 
-                // Sync time
-                const mainTime = document.getElementById('live-clock-sentence');
-                const pipTime = pipDoc.getElementById('pip-time');
-                if (mainTime && pipTime) {
-                    // Extract just the time portion
-                    const timeMatch = mainTime.textContent.match(/(\d{1,2}:\d{2}:\d{2}\s*[AP]M)/i);
-                    pipTime.textContent = timeMatch ? timeMatch[1] : mainTime.textContent;
+                // Sync text elements
+                const syncElement = (mainId, pipId) => {
+                    const main = document.getElementById(mainId);
+                    const pip = pipDoc.getElementById(pipId);
+                    if (main && pip) {
+                        pip.textContent = main.textContent;
+                    }
+                };
+                
+                syncElement('live-clock-sentence', 'pip-clock');
+                syncElement('countdown-display', 'pip-countdown');
+                syncElement('next-bell-sentence', 'pip-bell-name');
+                syncElement('next-bell-info', 'pip-next-bell');
+                
+                // Sync cancel button visibility
+                const mainCancel = document.getElementById('cancel-quick-bell-btn');
+                const pipQuickBells = pipDoc.getElementById('pip-quick-bells');
+                if (mainCancel && pipQuickBells) {
+                    const pipCancel = pipQuickBells.querySelector('#cancel-quick-bell-btn');
+                    if (pipCancel) {
+                        if (mainCancel.classList.contains('hidden')) {
+                            pipCancel.classList.add('hidden');
+                        } else {
+                            pipCancel.classList.remove('hidden');
+                        }
+                    }
                 }
                 
-                // Sync countdown
-                const mainCountdown = document.getElementById('countdown-display');
-                const pipCountdown = pipDoc.getElementById('pip-countdown');
-                if (mainCountdown && pipCountdown) {
-                    pipCountdown.textContent = mainCountdown.textContent;
+                // Sync custom quick bells container
+                const mainCustom = document.getElementById('custom-quick-bells-container');
+                const pipCustom = pipDoc.querySelector('#pip-quick-bells #custom-quick-bells-container');
+                if (mainCustom && pipCustom && mainCustom.innerHTML !== pipCustom.innerHTML) {
+                    pipCustom.innerHTML = mainCustom.innerHTML;
                 }
                 
-                // Sync bell name
-                const mainBellName = document.getElementById('next-bell-sentence');
-                const pipBellName = pipDoc.getElementById('pip-bell-name');
-                if (mainBellName && pipBellName) {
-                    pipBellName.textContent = mainBellName.textContent;
-                }
-                
-                // Sync next bell info
-                const mainNextBell = document.getElementById('next-bell-info');
-                const pipNextBell = pipDoc.getElementById('pip-next-bell');
-                if (mainNextBell && pipNextBell) {
-                    pipNextBell.textContent = mainNextBell.textContent;
-                }
-                
-                // Show/hide cancel button based on quick bell state
-                const pipCancelBtn = pipDoc.getElementById('pip-cancel-btn');
-                if (pipCancelBtn) {
-                    if (quickBellEndTime) {
-                        pipCancelBtn.classList.remove('hidden');
+                // Sync separator visibility  
+                const mainSep = document.getElementById('custom-quick-bell-separator');
+                const pipSep = pipDoc.querySelector('#pip-quick-bells #custom-quick-bell-separator');
+                if (mainSep && pipSep) {
+                    if (mainSep.classList.contains('hidden')) {
+                        pipSep.classList.add('hidden');
                     } else {
-                        pipCancelBtn.classList.add('hidden');
+                        pipSep.classList.remove('hidden');
                     }
                 }
             }
             
             /**
-             * Populate custom quick bells in the PiP window
+             * Stub for compatibility - actual sync handled in updatePipWindow
              */
-            function updatePipCustomQuickBells(pipDoc) {
-                if (!pipDoc) {
-                    if (pipWindow && !pipWindow.closed) {
-                        pipDoc = pipWindow.document;
-                    } else {
-                        return;
-                    }
-                }
-                
-                const container = pipDoc.getElementById('pip-custom-quick-bells');
-                const separator = pipDoc.querySelector('.pip-custom-separator');
-                if (!container) return;
-                
-                // Get active custom quick bells
-                const activeCustomBells = customQuickBells.filter(bell => bell && bell.isActive !== false);
-                
-                if (activeCustomBells.length === 0) {
-                    container.innerHTML = '';
-                    if (separator) separator.classList.add('hidden');
-                    return;
-                }
-                
-                // Show separator
-                if (separator) separator.classList.remove('hidden');
-                
-                // Build buttons for custom quick bells - use name if iconText is missing
-                container.innerHTML = activeCustomBells.map(bell => {
-                    const label = bell.iconText || bell.name?.substring(0, 2) || '?';
-                    return `<button class="pip-quick-btn custom" data-custom-bell-id="${bell.id}" title="${bell.name || 'Custom Bell'}">${label}</button>`;
-                }).join('');
+            function updatePipCustomQuickBells() {
+                updatePipWindow();
             }
             // ============================================
             // END V5.47.0: PICTURE-IN-PICTURE FUNCTIONALITY
