@@ -1278,14 +1278,14 @@
                         }
                         .pip-layout {
                             display: grid;
-                            grid-template-columns: 200px 1fr;
+                            grid-template-columns: 250px 1fr;
                             gap: 16px;
                             align-items: center;
                         }
                         #pip-visual {
-                            width: 200px !important;
-                            height: 200px !important;
-                            min-height: 200px !important;
+                            width: 250px !important;
+                            height: 250px !important;
+                            min-height: 250px !important;
                             aspect-ratio: 1 !important;
                         }
                         #pip-quick-bells {
