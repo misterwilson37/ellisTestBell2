@@ -1,7 +1,8 @@
-        const APP_VERSION = "5.47.0"
+        const APP_VERSION = "5.47.1"
         // V5.47.0: Picture-in-Picture Pop-Out Mode
         // - Added Document PiP support for always-on-top floating timer window
         // - Pop-out button appears on hover over the visual cue (top-right corner)
+        // - Button is in a wrapper div so it doesn't get wiped when visual updates
         // - PiP window shows: visual cue, countdown, bell name, next bell info, quick bell buttons
         // - Quick bells can be set directly from the PiP window
         // - Supported in Chrome 116+, Edge 116+, and other Chromium browsers
@@ -1422,21 +1423,11 @@
                 
                 const pipDoc = pipWindow.document;
                 
-                // Sync visual cue
+                // Sync visual cue - button is now outside container, so we can just copy innerHTML
                 const mainVisual = document.getElementById('visual-cue-container');
                 const pipVisual = pipDoc.getElementById('pip-visual');
                 if (mainVisual && pipVisual) {
-                    // Clone the visual content (excluding the PiP button)
-                    const visualContent = mainVisual.querySelector('img, svg:not(#default-visual-cue), #default-visual-cue');
-                    if (visualContent) {
-                        pipVisual.innerHTML = visualContent.outerHTML;
-                    } else {
-                        // Fallback: copy all innerHTML except the button
-                        const clone = mainVisual.cloneNode(true);
-                        const btn = clone.querySelector('#pip-toggle-btn');
-                        if (btn) btn.remove();
-                        pipVisual.innerHTML = clone.innerHTML;
-                    }
+                    pipVisual.innerHTML = mainVisual.innerHTML;
                 }
                 
                 // Sync time
