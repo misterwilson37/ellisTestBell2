@@ -1,4 +1,7 @@
-        const APP_VERSION = "5.47.6"
+        const APP_VERSION = "5.47.7"
+        // V5.47.7: Larger PiP Visual
+        // - Visual increased from 150px to 200px to better match main page
+        // - Window size increased to 750x380 to fit larger content
         // V5.47.6: PiP Clone Approach
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
@@ -1241,8 +1244,8 @@
                 try {
                     // Request PiP window
                     pipWindow = await documentPictureInPicture.requestWindow({
-                        width: 700,
-                        height: 320
+                        width: 750,
+                        height: 380
                     });
                     
                     const pipDoc = pipWindow.document;
@@ -1275,14 +1278,14 @@
                         }
                         .pip-layout {
                             display: grid;
-                            grid-template-columns: 150px 1fr;
+                            grid-template-columns: 200px 1fr;
                             gap: 16px;
                             align-items: center;
                         }
                         #pip-visual {
-                            width: 150px !important;
-                            height: 150px !important;
-                            min-height: 150px !important;
+                            width: 200px !important;
+                            height: 200px !important;
+                            min-height: 200px !important;
                             aspect-ratio: 1 !important;
                         }
                         #pip-quick-bells {
