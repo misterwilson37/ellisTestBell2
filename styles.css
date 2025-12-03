@@ -212,36 +212,69 @@ body.kiosk-mode .container {
     padding: 1rem;
 }
 
-/* Make the countdown card full-width and centered in kiosk mode */
+/* Make the countdown card centered in kiosk mode */
 body.kiosk-mode .bg-white.rounded-xl.shadow-md.mb-8 {
     margin-bottom: 0;
     max-width: 100%;
     width: auto;
 }
 
-/* Larger visual and text in kiosk mode */
+/* V5.49.1: Stack layout vertically in kiosk mode */
+body.kiosk-mode .grid.grid-cols-1.md\\:grid-cols-5 {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 1rem !important;
+}
+
+/* Center visual cue in kiosk mode */
+body.kiosk-mode #visual-cue-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
 body.kiosk-mode #visual-cue-container {
-    min-height: 300px !important;
+    min-height: 250px !important;
+    width: 250px !important;
+}
+
+/* Center and style countdown column in kiosk mode */
+body.kiosk-mode .md\\:col-span-3 {
+    text-align: center !important;
+    width: 100% !important;
 }
 
 body.kiosk-mode #countdown-display {
-    font-size: 6rem;
+    font-size: 5rem;
+    text-align: center !important;
 }
 
 body.kiosk-mode #next-bell-sentence {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
+    text-align: center !important;
+}
+
+/* Hide clock line in kiosk mode */
+body.kiosk-mode #live-clock-sentence {
+    display: none !important;
+}
+
+/* Hide "next bell after" line in kiosk mode - only show immediate next */
+body.kiosk-mode #next-bell-info {
+    display: none !important;
 }
 
 @media (min-width: 768px) {
     body.kiosk-mode #countdown-display {
-        font-size: 10rem;
+        font-size: 8rem;
     }
     
     body.kiosk-mode #next-bell-sentence {
-        font-size: 2.5rem;
+        font-size: 2rem;
     }
     
     body.kiosk-mode #visual-cue-container {
-        min-height: 400px !important;
+        min-height: 300px !important;
+        width: 300px !important;
     }
 }
