@@ -1,12 +1,11 @@
-        const APP_VERSION = "5.47.9"
+        const APP_VERSION = "5.47.10"
+        // V5.47.10: Skip/Unskip Button Logic
+        // - Skip Bell hidden when quick timer is active (Cancel Timer takes over)
+        // - New Unskip button (green) appears when a bell has been skipped
+        // - Unskip shows the time of the skipped bell
+        // - Added getNextSkippedBell() and unskipBell() helpers
+        // - updatePipActionButtons() manages visibility of all three buttons
         // V5.47.9: Skip Bell Feature
-        // - New "Skip Bell" button skips the next scheduled bell (just for today)
-        // - Skipped bells don't ring and countdown jumps to the next bell
-        // - Skips are temporary - they reset the next day
-        // - Added skippedBellOccurrences Set for tracking
-        // - Modified findNextBell() to skip over skipped bells
-        // - Added skipNextBell(), isBellSkipped(), clearOldSkippedBells() helpers
-        // V5.47.8: PiP Cancel Timer Button in Countdown Column
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -757,6 +756,36 @@
                 console.log(`Cleared ${toRemove.length} old skipped bell(s)`);
             }
         }
+        
+        function getNextSkippedBell() {
+            // Find the earliest skipped bell that's still upcoming
+            const now = new Date();
+            const currentTimeHHMMSS = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const today = now.toISOString().split('T')[0];
+            
+            const allBells = [...localSchedule, ...personalBells];
+            const skippedBells = allBells
+                .filter(bell => {
+                    const skipKey = getSkipKey(bell);
+                    return skippedBellOccurrences.has(skipKey) && bell.time > currentTimeHHMMSS;
+                })
+                .sort((a, b) => a.time.localeCompare(b.time));
+            
+            return skippedBells.length > 0 ? skippedBells[0] : null;
+        }
+        
+        function unskipBell(bell) {
+            if (!bell) return;
+            
+            const skipKey = getSkipKey(bell);
+            skippedBellOccurrences.delete(skipKey);
+            
+            console.log(`Unskipped bell: ${bell.name} at ${bell.time}`);
+            showUserMessage(`Restored: ${bell.name} at ${formatTime12Hour(bell.time, true)}`);
+            
+            // Force immediate UI update
+            updateClock();
+        }
 
         // --- NEW: Sound Override Functions ---
         function getBellOverrideKey(scheduleId, bell) {
@@ -1408,11 +1437,11 @@
                     nextBellClone.id = 'pip-next-bell';
                     countdownCol.appendChild(nextBellClone);
                     
-                    // Add action buttons row (Cancel Timer + Skip Bell)
+                    // Add action buttons row (Skip Bell, Unskip, Cancel Timer)
                     const actionButtonsRow = pipDoc.createElement('div');
                     actionButtonsRow.className = 'pip-action-buttons';
                     
-                    // Skip Bell button - always visible
+                    // Skip Bell button - hidden when quick timer is active
                     const skipBtn = pipDoc.createElement('button');
                     skipBtn.id = 'pip-skip-bell';
                     skipBtn.className = 'px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600';
@@ -1420,8 +1449,23 @@
                     skipBtn.title = 'Skip the next scheduled bell (just this once)';
                     skipBtn.addEventListener('click', () => {
                         skipNextBell();
+                        updatePipActionButtons(pipDoc);
                     });
                     actionButtonsRow.appendChild(skipBtn);
+                    
+                    // Unskip button - shows when a bell has been skipped
+                    const unskipBtn = pipDoc.createElement('button');
+                    unskipBtn.id = 'pip-unskip-bell';
+                    unskipBtn.className = 'px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 hidden';
+                    unskipBtn.textContent = 'Unskip';
+                    unskipBtn.addEventListener('click', () => {
+                        const skippedBell = getNextSkippedBell();
+                        if (skippedBell) {
+                            unskipBell(skippedBell);
+                            updatePipActionButtons(pipDoc);
+                        }
+                    });
+                    actionButtonsRow.appendChild(unskipBtn);
                     
                     // Cancel Timer button - hidden until timer active
                     const cancelBtn = pipDoc.createElement('button');
@@ -1516,16 +1560,8 @@
                 syncElement('next-bell-sentence', 'pip-bell-name');
                 syncElement('next-bell-info', 'pip-next-bell');
                 
-                // Sync cancel button visibility (now in countdown column)
-                const mainCancel = document.getElementById('cancel-quick-bell-btn');
-                const pipCancel = pipDoc.getElementById('pip-cancel-timer');
-                if (mainCancel && pipCancel) {
-                    if (mainCancel.classList.contains('hidden')) {
-                        pipCancel.classList.add('hidden');
-                    } else {
-                        pipCancel.classList.remove('hidden');
-                    }
-                }
+                // Update action buttons (Skip, Unskip, Cancel)
+                updatePipActionButtons(pipDoc);
                 
                 // Sync custom quick bells container
                 const mainCustom = document.getElementById('custom-quick-bells-container');
@@ -1551,6 +1587,47 @@
              */
             function updatePipCustomQuickBells() {
                 updatePipWindow();
+            }
+            
+            /**
+             * Update PiP action buttons visibility based on state
+             * - Quick timer active: Show Cancel Timer only
+             * - No quick timer, no skipped bells: Show Skip Bell only
+             * - No quick timer, has skipped bell: Show Skip Bell + Unskip
+             */
+            function updatePipActionButtons(pipDoc) {
+                if (!pipDoc) return;
+                
+                const skipBtn = pipDoc.getElementById('pip-skip-bell');
+                const unskipBtn = pipDoc.getElementById('pip-unskip-bell');
+                const cancelBtn = pipDoc.getElementById('pip-cancel-timer');
+                
+                if (!skipBtn || !unskipBtn || !cancelBtn) return;
+                
+                const hasQuickTimer = quickBellEndTime !== null;
+                const skippedBell = getNextSkippedBell();
+                const hasSkippedBell = skippedBell !== null;
+                
+                if (hasQuickTimer) {
+                    // Quick timer active: Show only Cancel Timer
+                    skipBtn.classList.add('hidden');
+                    unskipBtn.classList.add('hidden');
+                    cancelBtn.classList.remove('hidden');
+                } else {
+                    // No quick timer: Show Skip Bell, hide Cancel
+                    skipBtn.classList.remove('hidden');
+                    cancelBtn.classList.add('hidden');
+                    
+                    if (hasSkippedBell) {
+                        // Show Unskip button with bell time
+                        unskipBtn.classList.remove('hidden');
+                        const timeStr = formatTime12Hour(skippedBell.time, true);
+                        unskipBtn.textContent = `Unskip (${timeStr})`;
+                        unskipBtn.title = `Restore: ${skippedBell.name} at ${timeStr}`;
+                    } else {
+                        unskipBtn.classList.add('hidden');
+                    }
+                }
             }
             // ============================================
             // END V5.47.0: PICTURE-IN-PICTURE FUNCTIONALITY
