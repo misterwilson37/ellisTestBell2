@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.35.2</title>
+    <title>Ellis Web Bell 5.35.3</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -723,7 +723,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.35.2</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.35.3</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -823,9 +823,9 @@
             <!-- 2. Sound Dropdown with Preview -->
             <!-- 5.14: Dynamically change size to factor in quick bells -->
             <!-- V5.49: Added preview button -->
-			<div class="flex items-center gap-2 w-full sm:flex-1">
+			<div class="flex items-center gap-2 w-full sm:w-auto sm:flex-1 sm:min-w-0">
                 <!-- This select will be populated by JS to match the others -->
-                <select id="quickBellSoundSelect" class="flex-1 truncate px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-11">
+                <select id="quickBellSoundSelect" class="flex-1 min-w-0 truncate px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-11">
                     <optgroup label="Default Sounds">
                         <option value="Bell">Bell</option>
                         <option value="Chime">Chime</option>
@@ -839,7 +839,7 @@
             </div>
 
             <!-- 3. Button Container -->
-            <div class="flex flex-wrap gap-2 items-center">
+            <div class="flex flex-wrap gap-2 items-center flex-shrink-0">
                 <!-- ADDED: The 'quick-bell-btn' class as a JS hook -->
                 <button data-minutes="1" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">1</button>
                 <button data-minutes="2" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">2</button>
@@ -2123,4 +2123,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.35.2 -->
+<!-- Version 5.35.3 -->
