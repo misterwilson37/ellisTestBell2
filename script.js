@@ -1,10 +1,14 @@
-        const APP_VERSION = "5.52.1"
+        const APP_VERSION = "5.53.0"
+        // V5.53.0: Cloud Sync for User Preferences
+        // - Period visual overrides now sync to Firestore
+        // - Sound overrides now sync to Firestore
+        // - Period nicknames now sync to Firestore
+        // - Muted bells now sync to Firestore
+        // - Warning settings now sync to Firestore
+        // - Kiosk mode preference now syncs to Firestore
+        // - Real-time listener for cross-device sync
+        // - localStorage serves as offline cache
         // V5.52.1: Warning Color Customization + Settings Button Move
-        // - Added custom color pickers for subtle/medium/urgent warnings
-        // - Colors saved to localStorage and applied via CSS variables
-        // - Reset to defaults button
-        // - Moved settings button to bottom-left of visual cue (hover only)
-        // V5.52.0: Countdown Warning System
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -536,6 +540,7 @@
         let activePersonalScheduleListenerUnsubscribe = null; // NEW: For personal schedule
         let personalSchedulesListenerUnsubscribe = null; // NEW: v3.09 - For the collection
         let customQuickBellsListenerUnsubscribe = null; // NEW V5.00: For custom quick bells
+        let userPreferencesListenerUnsubscribe = null; // NEW V5.53: For cloud-synced preferences
         let synths = {};
         let lastBellRingTime = null; 
         let lastRingTimestamp = 0; // NEW: For ring cooldown
@@ -710,6 +715,8 @@
         function saveMutedBells() {
             try {
                 localStorage.setItem('mutedBellIds', JSON.stringify([...mutedBellIds]));
+                // V5.53: Also save to cloud
+                saveUserPreferencesToCloud();
             } catch (e) {
                 console.error("Failed to save muted bells", e);
             }
@@ -885,6 +892,8 @@
         function saveSoundOverrides() {
             try {
                 localStorage.setItem('bellSoundOverrides', JSON.stringify(bellSoundOverrides));
+                // V5.53: Also save to cloud
+                saveUserPreferencesToCloud();
             } catch (e) {
                 console.error("Failed to save sound overrides", e);
             }
@@ -912,6 +921,8 @@
         function savePeriodNameOverrides() {
             try {
                 localStorage.setItem('periodNameOverrides', JSON.stringify(periodNameOverrides));
+                // V5.53: Also save to cloud
+                saveUserPreferencesToCloud();
             } catch (e) {
                 console.error("Failed to save period nicknames", e);
             }
@@ -944,9 +955,180 @@
                 console.log('Saving to localStorage:', periodVisualOverrides);
                 localStorage.setItem('periodVisualOverrides', JSON.stringify(periodVisualOverrides));
                 console.log('Successfully saved to localStorage');
+                // V5.53: Also save to cloud
+                saveUserPreferencesToCloud();
             } catch (e) {
                 console.error("Failed to save visual overrides", e);
             }
+        }
+
+        // ============================================
+        // V5.53: CLOUD SYNC FOR USER PREFERENCES
+        // Syncs all user preferences to Firestore
+        // ============================================
+        
+        /**
+         * V5.53: Save all user preferences to Firestore
+         * Only saves for non-anonymous users
+         */
+        async function saveUserPreferencesToCloud() {
+            if (isUserAnonymous || !userId || !db) {
+                console.log('[CloudSync] Skipping cloud save (anonymous or no user)');
+                return;
+            }
+            
+            try {
+                const prefsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'preferences');
+                
+                // Convert mutedBellIds Set to Array for storage
+                const mutedBellIdsArray = Array.from(mutedBellIds);
+                
+                const prefsData = {
+                    periodVisualOverrides: periodVisualOverrides || {},
+                    bellSoundOverrides: bellSoundOverrides || {},
+                    periodNameOverrides: periodNameOverrides || {},
+                    mutedBellIds: mutedBellIdsArray,
+                    warningSettings: warningSettings || {},
+                    kioskModeEnabled: kioskModeEnabled || false,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                await setDoc(prefsDocRef, prefsData, { merge: true });
+                console.log('[CloudSync] User preferences saved to cloud');
+                
+            } catch (error) {
+                console.error('[CloudSync] Error saving preferences to cloud:', error);
+            }
+        }
+        
+        /**
+         * V5.53: Load user preferences from Firestore
+         * Falls back to localStorage if cloud data doesn't exist
+         */
+        async function loadUserPreferencesFromCloud() {
+            if (isUserAnonymous || !userId || !db) {
+                console.log('[CloudSync] Skipping cloud load (anonymous or no user)');
+                return false;
+            }
+            
+            try {
+                const prefsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'preferences');
+                const docSnap = await getDoc(prefsDocRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    console.log('[CloudSync] Loaded preferences from cloud:', data);
+                    
+                    // Apply cloud data to local state
+                    if (data.periodVisualOverrides) {
+                        periodVisualOverrides = data.periodVisualOverrides;
+                        localStorage.setItem('periodVisualOverrides', JSON.stringify(periodVisualOverrides));
+                    }
+                    
+                    if (data.bellSoundOverrides) {
+                        bellSoundOverrides = data.bellSoundOverrides;
+                        localStorage.setItem('bellSoundOverrides', JSON.stringify(bellSoundOverrides));
+                    }
+                    
+                    if (data.periodNameOverrides) {
+                        periodNameOverrides = data.periodNameOverrides;
+                        localStorage.setItem('periodNameOverrides', JSON.stringify(periodNameOverrides));
+                    }
+                    
+                    if (data.mutedBellIds && Array.isArray(data.mutedBellIds)) {
+                        mutedBellIds = new Set(data.mutedBellIds);
+                        localStorage.setItem('mutedBellIds', JSON.stringify(data.mutedBellIds));
+                    }
+                    
+                    if (data.warningSettings) {
+                        warningSettings = { ...warningSettings, ...data.warningSettings };
+                        localStorage.setItem('countdownWarningSettings', JSON.stringify(warningSettings));
+                        applyWarningColors();
+                    }
+                    
+                    if (typeof data.kioskModeEnabled === 'boolean') {
+                        kioskModeEnabled = data.kioskModeEnabled;
+                        localStorage.setItem('kioskModeEnabled', kioskModeEnabled ? 'true' : 'false');
+                        applyKioskMode(kioskModeEnabled);
+                    }
+                    
+                    return true; // Cloud data was loaded
+                } else {
+                    console.log('[CloudSync] No cloud preferences found, using localStorage');
+                    // First time user - save current localStorage data to cloud
+                    await saveUserPreferencesToCloud();
+                    return false;
+                }
+                
+            } catch (error) {
+                console.error('[CloudSync] Error loading preferences from cloud:', error);
+                return false;
+            }
+        }
+        
+        /**
+         * V5.53: Set up real-time listener for user preferences
+         * Syncs changes from other devices
+         */
+        function setupUserPreferencesListener() {
+            if (isUserAnonymous || !userId || !db) {
+                return;
+            }
+            
+            // Unsubscribe from previous listener if exists
+            if (userPreferencesListenerUnsubscribe) {
+                userPreferencesListenerUnsubscribe();
+            }
+            
+            const prefsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'preferences');
+            
+            console.log('[CloudSync] Setting up preferences listener...');
+            
+            userPreferencesListenerUnsubscribe = onSnapshot(prefsDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    console.log('[CloudSync] Preferences updated from cloud');
+                    
+                    // Apply cloud data to local state (same as loadUserPreferencesFromCloud)
+                    if (data.periodVisualOverrides) {
+                        periodVisualOverrides = data.periodVisualOverrides;
+                        localStorage.setItem('periodVisualOverrides', JSON.stringify(periodVisualOverrides));
+                    }
+                    
+                    if (data.bellSoundOverrides) {
+                        bellSoundOverrides = data.bellSoundOverrides;
+                        localStorage.setItem('bellSoundOverrides', JSON.stringify(bellSoundOverrides));
+                    }
+                    
+                    if (data.periodNameOverrides) {
+                        periodNameOverrides = data.periodNameOverrides;
+                        localStorage.setItem('periodNameOverrides', JSON.stringify(periodNameOverrides));
+                    }
+                    
+                    if (data.mutedBellIds && Array.isArray(data.mutedBellIds)) {
+                        mutedBellIds = new Set(data.mutedBellIds);
+                        localStorage.setItem('mutedBellIds', JSON.stringify(data.mutedBellIds));
+                        updateMuteButtonStates();
+                    }
+                    
+                    if (data.warningSettings) {
+                        warningSettings = { ...warningSettings, ...data.warningSettings };
+                        localStorage.setItem('countdownWarningSettings', JSON.stringify(warningSettings));
+                        applyWarningColors();
+                    }
+                    
+                    if (typeof data.kioskModeEnabled === 'boolean') {
+                        kioskModeEnabled = data.kioskModeEnabled;
+                        localStorage.setItem('kioskModeEnabled', kioskModeEnabled ? 'true' : 'false');
+                        applyKioskMode(kioskModeEnabled);
+                    }
+                    
+                    // Re-render the bell list to reflect any visual/sound changes
+                    renderCombinedBellList();
+                }
+            }, (error) => {
+                console.error('[CloudSync] Error listening to preferences:', error);
+            });
         }
 
         // NEW: Helper to format 24h time to 12h AM/PM
@@ -1417,6 +1599,8 @@
                     console.log('[Warning] Settings saved:', warningSettings);
                     // V5.52.1: Apply custom colors after saving
                     applyWarningColors();
+                    // V5.53: Also save to cloud
+                    saveUserPreferencesToCloud();
                 } catch (e) {
                     console.error('[Warning] Error saving settings:', e);
                 }
@@ -1677,6 +1861,8 @@
             function saveKioskModePreference() {
                 try {
                     localStorage.setItem('kioskModeEnabled', kioskModeEnabled ? 'true' : 'false');
+                    // V5.53: Also save to cloud
+                    saveUserPreferencesToCloud();
                 } catch (e) {
                     console.error('Error saving kiosk mode preference:', e);
                 }
@@ -4491,6 +4677,9 @@
                                 listenForPersonalSchedules(user.uid);
                                 // NEW V5.00: Start Custom Quick Bell listener
                                 listenForCustomQuickBells(user.uid);
+                                // V5.53: Load cloud preferences and set up listener
+                                await loadUserPreferencesFromCloud();
+                                setupUserPreferencesListener();
                                 // NEW V5.00: Enable custom quick bell button
                                 showCustomQuickBellManagerBtn.disabled = false;
                                 showCustomQuickBellManagerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -4572,6 +4761,11 @@
                             if (customQuickBellsListenerUnsubscribe) {
                                 customQuickBellsListenerUnsubscribe();
                                 customQuickBellsListenerUnsubscribe = null;
+                            }
+                            // V5.53: Unsubscribe from user preferences
+                            if (userPreferencesListenerUnsubscribe) {
+                                userPreferencesListenerUnsubscribe();
+                                userPreferencesListenerUnsubscribe = null;
                             }
                             
                             document.body.classList.remove('authenticated', 'not-anonymous', 'admin-mode');
