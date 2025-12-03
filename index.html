@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.33.3</title>
+    <title>Ellis Web Bell 5.33.4</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -698,7 +698,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.33.3</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.33.4</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -764,14 +764,23 @@
 
                     <!-- MOVED V4.98: Status Footer -->
                     <!-- MODIFIED V5.42: Added Cancel Timer button to status row -->
+                    <!-- MODIFIED V5.47.13: Added Skip Bell and Unskip buttons -->
                     <div class="flex justify-between items-center text-gray-500 text-lg mt-4 pt-4 border-t border-gray-100">
                         <div class="text-center md:text-left">
                             Status: <span id="status-message" class="font-medium text-gray-700">Initializing...</span>
                         </div>
-                        <!-- Cancel Quick Bell Button - right aligned in status row -->
-                        <button id="cancel-quick-bell-btn" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 hidden">
-                            Cancel Timer
-                        </button>
+                        <!-- Action buttons - right aligned in status row -->
+                        <div class="flex gap-2">
+                            <button id="skip-bell-btn" class="px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600" title="Skip the next scheduled bell (just this once)">
+                                Skip Bell
+                            </button>
+                            <button id="unskip-bell-btn" class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 hidden">
+                                Unskip
+                            </button>
+                            <button id="cancel-quick-bell-btn" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 hidden">
+                                Cancel Timer
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -2040,4 +2049,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.33.3 - V5.44.8: Icon fixes, UI reorganization, hours for quick bells -->
+<!-- Version 5.33.4 - V5.44.8: Icon fixes, UI reorganization, hours for quick bells -->
