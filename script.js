@@ -1,11 +1,12 @@
-        const APP_VERSION = "5.51.0"
+        const APP_VERSION = "5.52.0"
+        // V5.52.0: Countdown Warning System
+        // - Visual alerts as bells approach (configurable)
+        // - Warning styles: pulse, color shift, breathe, shake, all combined
+        // - Intensity levels: subtle, medium, urgent (progressive)
+        // - Settings modal with preview function
+        // - Separate toggles for scheduled bells vs quick bells
+        // - Settings saved to localStorage
         // V5.51.0: PWA Support (Progressive Web App)
-        // - Added manifest.json for installability
-        // - Added service-worker.js for offline caching
-        // - Added PWA icons (192x192 and 512x512)
-        // - Added iOS PWA meta tags
-        // - Users can now install the app from browser address bar
-        // V5.49.2: Kiosk Mode Tweaks + CSS Version Display
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -655,6 +656,17 @@
         
         // NEW V5.49.0: Kiosk Mode state
         let kioskModeEnabled = false;
+        
+        // NEW V5.52.0: Countdown Warning state
+        let warningSettings = {
+            enabled: false,
+            time: 60,           // seconds before bell to start warning
+            style: 'pulse',     // pulse, color, breathe, shake, all
+            intensity: 'medium', // subtle, medium, urgent
+            scheduledBells: true,
+            quickBells: true
+        };
+        let currentWarningClass = null; // Track currently applied warning class
 
         let currentSoundSelectTarget = null; // NEW V4.76: Stores <select> for audio modal
 
@@ -1373,6 +1385,222 @@
             }
 
             // ============================================
+            // V5.52.0: COUNTDOWN WARNING FUNCTIONALITY
+            // ============================================
+            
+            /**
+             * Load warning settings from localStorage
+             */
+            function loadWarningSettings() {
+                try {
+                    const stored = localStorage.getItem('countdownWarningSettings');
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        warningSettings = { ...warningSettings, ...parsed };
+                        console.log('[Warning] Settings loaded:', warningSettings);
+                    }
+                } catch (e) {
+                    console.error('[Warning] Error loading settings:', e);
+                }
+            }
+            
+            /**
+             * Save warning settings to localStorage
+             */
+            function saveWarningSettings() {
+                try {
+                    localStorage.setItem('countdownWarningSettings', JSON.stringify(warningSettings));
+                    console.log('[Warning] Settings saved:', warningSettings);
+                } catch (e) {
+                    console.error('[Warning] Error saving settings:', e);
+                }
+            }
+            
+            /**
+             * Get the appropriate warning class based on settings and time remaining
+             * @param {number} secondsRemaining - Seconds until bell
+             * @param {boolean} isQuickBell - Whether this is a quick bell timer
+             * @returns {string|null} CSS class to apply, or null if no warning
+             */
+            function getWarningClass(secondsRemaining, isQuickBell = false) {
+                if (!warningSettings.enabled) return null;
+                if (isQuickBell && !warningSettings.quickBells) return null;
+                if (!isQuickBell && !warningSettings.scheduledBells) return null;
+                if (secondsRemaining > warningSettings.time || secondsRemaining <= 0) return null;
+                
+                // Calculate intensity based on time remaining
+                const timeRatio = secondsRemaining / warningSettings.time;
+                let intensity;
+                
+                if (timeRatio > 0.5) {
+                    intensity = 'subtle';
+                } else if (timeRatio > 0.2) {
+                    intensity = 'medium';
+                } else {
+                    intensity = 'urgent';
+                }
+                
+                // If user set a fixed intensity, use that instead
+                if (warningSettings.intensity !== 'auto') {
+                    // Progressive: start at subtle, escalate based on user's max
+                    if (warningSettings.intensity === 'subtle') {
+                        intensity = 'subtle';
+                    } else if (warningSettings.intensity === 'medium') {
+                        intensity = timeRatio > 0.5 ? 'subtle' : 'medium';
+                    } else if (warningSettings.intensity === 'urgent') {
+                        intensity = timeRatio > 0.5 ? 'subtle' : (timeRatio > 0.2 ? 'medium' : 'urgent');
+                    }
+                }
+                
+                return `warning-${warningSettings.style}-${intensity}`;
+            }
+            
+            /**
+             * Apply warning effect to visual cue container
+             * @param {number} secondsRemaining - Seconds until bell
+             * @param {boolean} isQuickBell - Whether this is a quick bell timer
+             */
+            function applyWarningEffect(secondsRemaining, isQuickBell = false) {
+                const container = document.getElementById('visual-cue-container');
+                if (!container) return;
+                
+                const newClass = getWarningClass(secondsRemaining, isQuickBell);
+                
+                // Remove old warning class if different
+                if (currentWarningClass && currentWarningClass !== newClass) {
+                    container.classList.remove(currentWarningClass);
+                }
+                
+                // Apply new warning class
+                if (newClass && newClass !== currentWarningClass) {
+                    container.classList.add(newClass);
+                    currentWarningClass = newClass;
+                } else if (!newClass && currentWarningClass) {
+                    container.classList.remove(currentWarningClass);
+                    currentWarningClass = null;
+                }
+                
+                // Also apply to PiP window if open
+                if (pipWindow && !pipWindow.closed) {
+                    const pipContainer = pipWindow.document.getElementById('pip-visual');
+                    if (pipContainer) {
+                        // Remove all warning classes first
+                        pipContainer.className = pipContainer.className.replace(/warning-\S+/g, '').trim();
+                        if (newClass) {
+                            pipContainer.classList.add(newClass);
+                        }
+                    }
+                }
+            }
+            
+            /**
+             * Clear all warning effects
+             */
+            function clearWarningEffects() {
+                const container = document.getElementById('visual-cue-container');
+                if (container && currentWarningClass) {
+                    container.classList.remove(currentWarningClass);
+                }
+                currentWarningClass = null;
+                
+                // Also clear from PiP
+                if (pipWindow && !pipWindow.closed) {
+                    const pipContainer = pipWindow.document.getElementById('pip-visual');
+                    if (pipContainer) {
+                        pipContainer.className = pipContainer.className.replace(/warning-\S+/g, '').trim();
+                    }
+                }
+            }
+            
+            /**
+             * Open warning settings modal
+             */
+            function openWarningSettingsModal() {
+                const modal = document.getElementById('warning-settings-modal');
+                if (!modal) return;
+                
+                // Populate form with current settings
+                document.getElementById('warning-enabled').checked = warningSettings.enabled;
+                document.getElementById('warning-time').value = warningSettings.time;
+                document.getElementById('warning-style').value = warningSettings.style;
+                document.getElementById('warning-intensity').value = warningSettings.intensity;
+                document.getElementById('warning-scheduled-bells').checked = warningSettings.scheduledBells;
+                document.getElementById('warning-quick-bells').checked = warningSettings.quickBells;
+                
+                modal.classList.remove('hidden');
+            }
+            
+            /**
+             * Close warning settings modal
+             */
+            function closeWarningSettingsModal() {
+                const modal = document.getElementById('warning-settings-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+                // Stop any preview animation
+                stopWarningPreview();
+            }
+            
+            /**
+             * Save warning settings from modal
+             */
+            function saveWarningSettingsFromModal() {
+                warningSettings.enabled = document.getElementById('warning-enabled').checked;
+                warningSettings.time = parseInt(document.getElementById('warning-time').value) || 60;
+                warningSettings.style = document.getElementById('warning-style').value;
+                warningSettings.intensity = document.getElementById('warning-intensity').value;
+                warningSettings.scheduledBells = document.getElementById('warning-scheduled-bells').checked;
+                warningSettings.quickBells = document.getElementById('warning-quick-bells').checked;
+                
+                saveWarningSettings();
+                closeWarningSettingsModal();
+                
+                // Clear any existing warnings so they recalculate
+                clearWarningEffects();
+            }
+            
+            /**
+             * Preview warning effect in modal
+             */
+            let warningPreviewTimeout = null;
+            function previewWarningEffect() {
+                const preview = document.getElementById('warning-preview');
+                if (!preview) return;
+                
+                // Get current form values
+                const style = document.getElementById('warning-style').value;
+                const intensity = document.getElementById('warning-intensity').value;
+                
+                // Clear previous preview
+                preview.className = 'mx-auto w-24 h-24 bg-gray-800 rounded-lg flex items-center justify-center';
+                
+                // Apply preview class
+                const previewClass = `warning-${style}-${intensity}`;
+                preview.classList.add(previewClass);
+                
+                // Stop after 3 seconds
+                if (warningPreviewTimeout) clearTimeout(warningPreviewTimeout);
+                warningPreviewTimeout = setTimeout(() => {
+                    stopWarningPreview();
+                }, 3000);
+            }
+            
+            /**
+             * Stop warning preview
+             */
+            function stopWarningPreview() {
+                const preview = document.getElementById('warning-preview');
+                if (preview) {
+                    preview.className = 'mx-auto w-24 h-24 bg-gray-800 rounded-lg flex items-center justify-center';
+                }
+                if (warningPreviewTimeout) {
+                    clearTimeout(warningPreviewTimeout);
+                    warningPreviewTimeout = null;
+                }
+            }
+
+            // ============================================
             // V5.49.0: KIOSK MODE FUNCTIONALITY
             // ============================================
             
@@ -1942,6 +2170,11 @@
                     }
                     countdownElement.textContent = countdownString;
                     
+                    // V5.52.0: Apply countdown warning effect
+                    const totalSecondsRemaining = Math.max(0, Math.floor(activeTimerMillis / 1000));
+                    const isQuickBellActive = millisToQuickBell < millisToScheduleBell;
+                    applyWarningEffect(totalSecondsRemaining, isQuickBellActive);
+                    
                     // Updated 5.26.1 - Add Period context to the label
                     let bellLabel = activeTimerLabel;
 
@@ -1967,6 +2200,10 @@
                     countdownElement.textContent = "--:--";
                     // MODIFICATION: Added period
                     nextBellElement.textContent = "until the next bell.";
+                    
+                    // V5.52.0: Clear warning effects when no active countdown
+                    clearWarningEffects();
+                    
                     // "Next Bell" info is already set to "No more bells today."
                     // Or, if school is out, scheduleBellObject is the first bell tomorrow.
                     if (scheduleBellObject) {
@@ -11518,6 +11755,37 @@
                 
                 // V5.49.0: Load kiosk mode preference on startup
                 loadKioskModePreference();
+                
+                // V5.52.0: Warning Settings
+                const settingsToggleBtn = document.getElementById('settings-toggle-btn');
+                const warningSettingsModal = document.getElementById('warning-settings-modal');
+                const warningSettingsCancel = document.getElementById('warning-settings-cancel');
+                const warningSettingsSave = document.getElementById('warning-settings-save');
+                const warningPreviewBtn = document.getElementById('warning-preview-btn');
+                
+                if (settingsToggleBtn) {
+                    settingsToggleBtn.addEventListener('click', openWarningSettingsModal);
+                }
+                if (warningSettingsCancel) {
+                    warningSettingsCancel.addEventListener('click', closeWarningSettingsModal);
+                }
+                if (warningSettingsSave) {
+                    warningSettingsSave.addEventListener('click', saveWarningSettingsFromModal);
+                }
+                if (warningPreviewBtn) {
+                    warningPreviewBtn.addEventListener('click', previewWarningEffect);
+                }
+                // Close modal on background click
+                if (warningSettingsModal) {
+                    warningSettingsModal.addEventListener('click', (e) => {
+                        if (e.target === warningSettingsModal) {
+                            closeWarningSettingsModal();
+                        }
+                    });
+                }
+                
+                // V5.52.0: Load warning settings on startup
+                loadWarningSettings();
                     
                 customTextVisualForm.addEventListener('submit', (e) => {
                     e.preventDefault();
