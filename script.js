@@ -1,11 +1,12 @@
-        const APP_VERSION = "5.47.8"
+        const APP_VERSION = "5.47.9"
+        // V5.47.9: Skip Bell Feature
+        // - New "Skip Bell" button skips the next scheduled bell (just for today)
+        // - Skipped bells don't ring and countdown jumps to the next bell
+        // - Skips are temporary - they reset the next day
+        // - Added skippedBellOccurrences Set for tracking
+        // - Modified findNextBell() to skip over skipped bells
+        // - Added skipNextBell(), isBellSkipped(), clearOldSkippedBells() helpers
         // V5.47.8: PiP Cancel Timer Button in Countdown Column
-        // - Visual increased to 250px for better visibility
-        // - Cancel Timer button moved to countdown column (below next bell info)
-        // - Removed duplicate cancel button from quick bells row
-        // - Added pip-action-buttons row for future second button
-        // - Window size increased to 800x420
-        // V5.47.7: Larger PiP Visual
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -574,6 +575,7 @@
         window.customQuickBells = customQuickBells; // 5.30: Make it accessible from console
 
         let mutedBellIds = new Set(); 
+        let skippedBellOccurrences = new Set(); // V5.47.9: Temporarily skipped bells (format: "bellId:YYYY-MM-DD")
         let bellSoundOverrides = {}; // NEW: Store local sound overrides
         let periodNameOverrides = {}; // NEW in 4.22: Store local period nicknames
         
@@ -694,6 +696,65 @@
                 localStorage.setItem('mutedBellIds', JSON.stringify([...mutedBellIds]));
             } catch (e) {
                 console.error("Failed to save muted bells", e);
+            }
+        }
+
+        // --- V5.47.9: Skip Bell Helper Functions ---
+        // Skipped bells are temporary (for today only) and not persisted
+        
+        function getSkipKey(bell) {
+            const bellId = bell.bellId || getBellId(bell);
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            return `${bellId}:${today}`;
+        }
+        
+        function isBellSkipped(bell) {
+            if (!bell) return false;
+            return skippedBellOccurrences.has(getSkipKey(bell));
+        }
+        
+        function skipNextBell() {
+            // Find the next scheduled bell (not quick bell)
+            const now = new Date();
+            const currentTimeHHMMSS = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            
+            const allBells = [...localSchedule, ...personalBells];
+            const upcomingBells = allBells
+                .filter(bell => bell.time > currentTimeHHMMSS && !isBellSkipped(bell))
+                .sort((a, b) => a.time.localeCompare(b.time));
+            
+            if (upcomingBells.length === 0) {
+                showUserMessage("No upcoming bells to skip.");
+                return;
+            }
+            
+            const bellToSkip = upcomingBells[0];
+            const skipKey = getSkipKey(bellToSkip);
+            skippedBellOccurrences.add(skipKey);
+            
+            console.log(`Skipped bell: ${bellToSkip.name} at ${bellToSkip.time} (key: ${skipKey})`);
+            showUserMessage(`Skipped: ${bellToSkip.name} at ${formatTime12Hour(bellToSkip.time, true)}`);
+            
+            // Force immediate UI update
+            updateClock();
+        }
+        
+        function clearOldSkippedBells() {
+            // Clear any skipped bells from previous days
+            const today = new Date().toISOString().split('T')[0];
+            const toRemove = [];
+            
+            skippedBellOccurrences.forEach(key => {
+                const datePart = key.split(':').pop();
+                if (datePart !== today) {
+                    toRemove.push(key);
+                }
+            });
+            
+            toRemove.forEach(key => skippedBellOccurrences.delete(key));
+            
+            if (toRemove.length > 0) {
+                console.log(`Cleared ${toRemove.length} old skipped bell(s)`);
             }
         }
 
@@ -1171,16 +1232,22 @@
     
             function findNextBell(currentTimeHHMMSS) {
                 // MODIFIED: v3.03 - Merges base schedule and personal schedule bells
+                // MODIFIED: v5.47.9 - Skip over temporarily skipped bells
                 const allBells = [...localSchedule, ...personalBells];
                 if (allBells.length === 0) return null;
                 
-                let upcomingBells = allBells.filter(bell => bell.time > currentTimeHHMMSS);
+                // Filter to upcoming bells that aren't skipped
+                let upcomingBells = allBells.filter(bell => 
+                    bell.time > currentTimeHHMMSS && !isBellSkipped(bell)
+                );
                 
                 let nextBell;
                 if (upcomingBells.length > 0) {
                     upcomingBells.sort((a, b) => a.time.localeCompare(b.time));
                     nextBell = upcomingBells[0];
                 } else {
+                    // No upcoming bells today - find first bell (for tomorrow display)
+                    // Don't filter by skipped here since skips are day-specific
                     allBells.sort((a, b) => a.time.localeCompare(b.time));
                     nextBell = allBells[0];
                 }
@@ -1203,11 +1270,13 @@
                 
                 if (currentIndex === -1) return null; // Bell not found
                 
-                if (currentIndex + 1 < sortedBells.length) {
-                    return sortedBells[currentIndex + 1]; // Return the next bell
-                } else {
-                    return null; // This was the last bell of the day
+                // V5.47.9: Find next bell that isn't skipped
+                for (let i = currentIndex + 1; i < sortedBells.length; i++) {
+                    if (!isBellSkipped(sortedBells[i])) {
+                        return sortedBells[i];
+                    }
                 }
+                return null; // No unskipped bells after this one
             }
     
             /**
@@ -1301,7 +1370,7 @@
                             gap: 8px;
                             margin-top: 12px;
                         }
-                        .pip-action-buttons button {
+                        .pip-action-buttons button:not(.hidden) {
                             flex: 1;
                         }
                     `;
@@ -1339,10 +1408,22 @@
                     nextBellClone.id = 'pip-next-bell';
                     countdownCol.appendChild(nextBellClone);
                     
-                    // Add action buttons row (Cancel Timer + future button)
+                    // Add action buttons row (Cancel Timer + Skip Bell)
                     const actionButtonsRow = pipDoc.createElement('div');
                     actionButtonsRow.className = 'pip-action-buttons';
                     
+                    // Skip Bell button - always visible
+                    const skipBtn = pipDoc.createElement('button');
+                    skipBtn.id = 'pip-skip-bell';
+                    skipBtn.className = 'px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600';
+                    skipBtn.textContent = 'Skip Bell';
+                    skipBtn.title = 'Skip the next scheduled bell (just this once)';
+                    skipBtn.addEventListener('click', () => {
+                        skipNextBell();
+                    });
+                    actionButtonsRow.appendChild(skipBtn);
+                    
+                    // Cancel Timer button - hidden until timer active
                     const cancelBtn = pipDoc.createElement('button');
                     cancelBtn.id = 'pip-cancel-timer';
                     cancelBtn.className = 'px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 hidden';
@@ -1651,6 +1732,7 @@
                     console.log("Day has changed. Resetting missed bell check.");
                     lastClockCheckTimestamp = 0; // Force reset
                     currentDay = newDay;
+                    clearOldSkippedBells(); // V5.47.9: Clear skipped bells from previous day
                 }
 
                 // B. On first run, just set the timestamp and wait for the next second.
@@ -1681,6 +1763,12 @@
                                 if (mutedBellIds.has(String(bellId))) {
                                     console.log(`Skipping bell (Muted): ${bell.name}`);
                                     statusElement.textContent = `Skipped (Muted): ${bell.name}`;
+                                } else if (isBellSkipped(bell)) {
+                                    // V5.47.9: Skip temporarily skipped bells
+                                    console.log(`Skipping bell (Skipped): ${bell.name}`);
+                                    statusElement.textContent = `Skipped: ${bell.name}`;
+                                    // Remove from skipped set since it's now passed
+                                    skippedBellOccurrences.delete(getSkipKey(bell));
                                 } else {
                                     ringBell(bell); // fire-and-forget
                                     lastBellRingTime = currentTimeHHMMSS; // FIX V5.42: Track ring time for status reset
