@@ -1,11 +1,9 @@
-        const APP_VERSION = "5.47.10"
+        const APP_VERSION = "5.47.11"
+        // V5.47.11: Fix Skip Bell Key Generation
+        // - Changed getSkipKey() to use time|name|date format (always reliable)
+        // - Previous version used bellId which could be null for some bell types
+        // - Added updatePipWindow() call after skip for immediate PiP update
         // V5.47.10: Skip/Unskip Button Logic
-        // - Skip Bell hidden when quick timer is active (Cancel Timer takes over)
-        // - New Unskip button (green) appears when a bell has been skipped
-        // - Unskip shows the time of the skipped bell
-        // - Added getNextSkippedBell() and unskipBell() helpers
-        // - updatePipActionButtons() manages visibility of all three buttons
-        // V5.47.9: Skip Bell Feature
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -702,9 +700,12 @@
         // Skipped bells are temporary (for today only) and not persisted
         
         function getSkipKey(bell) {
-            const bellId = bell.bellId || getBellId(bell);
+            // Use time + name as a reliable identifier (works for all bell types)
+            // Format: "HH:MM:SS|BellName|YYYY-MM-DD"
             const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-            return `${bellId}:${today}`;
+            const bellTime = bell.time || '00:00:00';
+            const bellName = (bell.name || 'Unknown').replace(/\|/g, '-'); // Escape pipe chars
+            return `${bellTime}|${bellName}|${today}`;
         }
         
         function isBellSkipped(bell) {
@@ -718,6 +719,12 @@
             const currentTimeHHMMSS = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
             
             const allBells = [...localSchedule, ...personalBells];
+            
+            if (allBells.length === 0) {
+                showUserMessage("No bells in schedule to skip.");
+                return;
+            }
+            
             const upcomingBells = allBells
                 .filter(bell => bell.time > currentTimeHHMMSS && !isBellSkipped(bell))
                 .sort((a, b) => a.time.localeCompare(b.time));
@@ -736,15 +743,17 @@
             
             // Force immediate UI update
             updateClock();
+            updatePipWindow();
         }
         
         function clearOldSkippedBells() {
             // Clear any skipped bells from previous days
+            // Key format: "HH:MM:SS|BellName|YYYY-MM-DD"
             const today = new Date().toISOString().split('T')[0];
             const toRemove = [];
             
             skippedBellOccurrences.forEach(key => {
-                const datePart = key.split(':').pop();
+                const datePart = key.split('|').pop(); // Get date from end of key
                 if (datePart !== today) {
                     toRemove.push(key);
                 }
@@ -785,6 +794,7 @@
             
             // Force immediate UI update
             updateClock();
+            updatePipWindow();
         }
 
         // --- NEW: Sound Override Functions ---
