@@ -1,9 +1,8 @@
-        const APP_VERSION = "5.47.11"
+        const APP_VERSION = "5.47.12"
+        // V5.47.12: DEBUG VERSION - Alert-based debugging for skip bell
+        // - Added alert() calls to track what's happening without console
+        // - Will show: button click, bell counts, skip key, set size
         // V5.47.11: Fix Skip Bell Key Generation
-        // - Changed getSkipKey() to use time|name|date format (always reliable)
-        // - Previous version used bellId which could be null for some bell types
-        // - Added updatePipWindow() call after skip for immediate PiP update
-        // V5.47.10: Skip/Unskip Button Logic
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -720,6 +719,9 @@
             
             const allBells = [...localSchedule, ...personalBells];
             
+            // DEBUG: Show what we're working with
+            alert(`DEBUG skipNextBell:\nCurrent time: ${currentTimeHHMMSS}\nTotal bells: ${allBells.length}\nlocalSchedule: ${localSchedule.length}\npersonalBells: ${personalBells.length}`);
+            
             if (allBells.length === 0) {
                 showUserMessage("No bells in schedule to skip.");
                 return;
@@ -729,6 +731,9 @@
                 .filter(bell => bell.time > currentTimeHHMMSS && !isBellSkipped(bell))
                 .sort((a, b) => a.time.localeCompare(b.time));
             
+            // DEBUG: Show upcoming bells
+            alert(`DEBUG: Upcoming bells: ${upcomingBells.length}\nFirst 3: ${upcomingBells.slice(0,3).map(b => b.name + '@' + b.time).join(', ')}`);
+            
             if (upcomingBells.length === 0) {
                 showUserMessage("No upcoming bells to skip.");
                 return;
@@ -737,6 +742,9 @@
             const bellToSkip = upcomingBells[0];
             const skipKey = getSkipKey(bellToSkip);
             skippedBellOccurrences.add(skipKey);
+            
+            // DEBUG: Confirm skip
+            alert(`DEBUG: Skipped!\nKey: ${skipKey}\nSet size: ${skippedBellOccurrences.size}`);
             
             console.log(`Skipped bell: ${bellToSkip.name} at ${bellToSkip.time} (key: ${skipKey})`);
             showUserMessage(`Skipped: ${bellToSkip.name} at ${formatTime12Hour(bellToSkip.time, true)}`);
@@ -1458,6 +1466,7 @@
                     skipBtn.textContent = 'Skip Bell';
                     skipBtn.title = 'Skip the next scheduled bell (just this once)';
                     skipBtn.addEventListener('click', () => {
+                        alert('DEBUG: Skip button clicked!');
                         skipNextBell();
                         updatePipActionButtons(pipDoc);
                     });
