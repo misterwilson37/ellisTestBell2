@@ -1,10 +1,11 @@
-        const APP_VERSION = "5.47.13"
+        const APP_VERSION = "5.48.0"
+        // V5.48.0: Tab Sleep Recovery & Skip Button Visibility
+        // - Fixed cacophony bug: Tab waking from sleep no longer plays all missed bells
+        // - If tab was asleep 2+ minutes and missed multiple bells, shows message instead
+        // - Only rings most recent bell if 3 or fewer were missed
+        // - Skip Bell button now hidden when no bells remain today
+        // - Both main page and PiP window skip buttons update visibility
         // V5.47.13: Skip Bell on Main Page
-        // - Removed debug alerts
-        // - Added Skip Bell and Unskip buttons to main page status row
-        // - Added updateMainPageSkipButtons() to manage button visibility
-        // - Unskip button shows time of skipped bell
-        // V5.47.12: DEBUG VERSION - Alert-based debugging for skip bell
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -802,15 +803,29 @@
         
         /**
          * V5.47.13: Update Skip/Unskip buttons on main page
+         * V5.48: Also hide Skip Bell when no upcoming bells today
          */
         function updateMainPageSkipButtons() {
+            const skipBtn = document.getElementById('skip-bell-btn');
             const unskipBtn = document.getElementById('unskip-bell-btn');
-            if (!unskipBtn) return;
+            if (!skipBtn || !unskipBtn) return;
             
+            // Check for upcoming bells
+            const now = new Date();
+            const currentTimeHHMMSS = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const allBells = [...localSchedule, ...personalBells];
+            const upcomingBells = allBells.filter(bell => bell.time > currentTimeHHMMSS && !isBellSkipped(bell));
+            
+            // Show/hide Skip Bell based on whether there are upcoming bells
+            if (upcomingBells.length === 0) {
+                skipBtn.classList.add('hidden');
+            } else {
+                skipBtn.classList.remove('hidden');
+            }
+            
+            // Show/hide Unskip based on whether there's a skipped bell
             const skippedBell = getNextSkippedBell();
-            
             if (skippedBell) {
-                // Show Unskip button with bell time
                 unskipBtn.classList.remove('hidden');
                 const timeStr = formatTime12Hour(skippedBell.time, true);
                 unskipBtn.textContent = `Unskip (${timeStr})`;
@@ -1474,10 +1489,10 @@
                     const actionButtonsRow = pipDoc.createElement('div');
                     actionButtonsRow.className = 'pip-action-buttons';
                     
-                    // Skip Bell button - hidden when quick timer is active
+                    // Skip Bell button - starts hidden, shown if bells exist
                     const skipBtn = pipDoc.createElement('button');
                     skipBtn.id = 'pip-skip-bell';
-                    skipBtn.className = 'px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600';
+                    skipBtn.className = 'px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 hidden';
                     skipBtn.textContent = 'Skip Bell';
                     skipBtn.title = 'Skip the next scheduled bell (just this once)';
                     skipBtn.addEventListener('click', () => {
@@ -1625,7 +1640,7 @@
             /**
              * Update PiP action buttons visibility based on state
              * - Quick timer active: Show Cancel Timer only
-             * - No quick timer, no skipped bells: Show Skip Bell only
+             * - No upcoming bells: Hide Skip Bell
              * - No quick timer, has skipped bell: Show Skip Bell + Unskip
              */
             function updatePipActionButtons(pipDoc) {
@@ -1641,18 +1656,31 @@
                 const skippedBell = getNextSkippedBell();
                 const hasSkippedBell = skippedBell !== null;
                 
+                // V5.48: Check for upcoming bells
+                const now = new Date();
+                const currentTimeHHMMSS = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                const allBells = [...localSchedule, ...personalBells];
+                const upcomingBells = allBells.filter(bell => bell.time > currentTimeHHMMSS && !isBellSkipped(bell));
+                const hasUpcomingBells = upcomingBells.length > 0;
+                
                 if (hasQuickTimer) {
                     // Quick timer active: Show only Cancel Timer
                     skipBtn.classList.add('hidden');
                     unskipBtn.classList.add('hidden');
                     cancelBtn.classList.remove('hidden');
                 } else {
-                    // No quick timer: Show Skip Bell, hide Cancel
-                    skipBtn.classList.remove('hidden');
+                    // No quick timer: Hide Cancel
                     cancelBtn.classList.add('hidden');
                     
+                    // Show/hide Skip Bell based on upcoming bells
+                    if (hasUpcomingBells) {
+                        skipBtn.classList.remove('hidden');
+                    } else {
+                        skipBtn.classList.add('hidden');
+                    }
+                    
+                    // Show/hide Unskip based on skipped bell
                     if (hasSkippedBell) {
-                        // Show Unskip button with bell time
                         unskipBtn.classList.remove('hidden');
                         const timeStr = formatTime12Hour(skippedBell.time, true);
                         unskipBtn.textContent = `Unskip (${timeStr})`;
@@ -1849,6 +1877,10 @@
                 if (lastClockCheckTimestamp === 0) {
                     lastClockCheckTimestamp = nowTimestamp;
                 } else if (nowTimestamp > lastClockCheckTimestamp) {
+                    // V5.48: Check if tab was asleep for a long time (more than 2 minutes)
+                    const timeSinceLastCheck = nowTimestamp - lastClockCheckTimestamp;
+                    const wasTabAsleep = timeSinceLastCheck > 120000; // 2 minutes
+                    
                     // C. Find all bells that *should have* rung between the last check and now
                     const bellsToRing = allBells.filter(bell => {
                         const bellDate = getDateForBellTime(bell.time, now);
@@ -1860,29 +1892,52 @@
                     
                     if (bellsToRing.length > 0) {
                         console.log(`Found ${bellsToRing.length} missed bell(s) to ring.`);
-                        // Sort them just in case
+                        // Sort them by time
                         bellsToRing.sort((a, b) => a.time.localeCompare(b.time));
+                        
+                        // V5.48: If tab was asleep and multiple bells missed, show notification
+                        if (wasTabAsleep && bellsToRing.length > 1) {
+                            const missedCount = bellsToRing.length;
+                            const missedNames = bellsToRing.map(b => `${b.name} (${formatTime12Hour(b.time, true)})`);
+                            
+                            // Show user message about missed bells
+                            showUserMessage(`Tab was asleep - ${missedCount} bell${missedCount > 1 ? 's' : ''} missed`);
+                            
+                            // Log details to console
+                            console.log('Missed bells while tab was asleep:', missedNames);
+                            
+                            // Update status to show missed count
+                            statusElement.textContent = `${missedCount} bells missed while tab was asleep`;
+                        }
 
-                        // Ring them all, but only if cooldown has passed
+                        // Ring only the MOST RECENT bell (last in sorted array), and only if cooldown passed
                         if (nowTimestamp - lastRingTimestamp > RING_COOLDOWN) {
-                            // For now, just ring the *last* one if multiple were missed
-                                const bell = bellsToRing[bellsToRing.length - 1];
-                                // FIX 5.17: Use the actual bell.bellId if it exists, otherwise fall back to getBellId()
-                                const bellId = bell.bellId || getBellId(bell);
-                                
-                                if (mutedBellIds.has(String(bellId))) {
-                                    console.log(`Skipping bell (Muted): ${bell.name}`);
+                            const bell = bellsToRing[bellsToRing.length - 1];
+                            const bellId = bell.bellId || getBellId(bell);
+                            
+                            if (mutedBellIds.has(String(bellId))) {
+                                console.log(`Skipping bell (Muted): ${bell.name}`);
+                                if (!wasTabAsleep || bellsToRing.length === 1) {
                                     statusElement.textContent = `Skipped (Muted): ${bell.name}`;
-                                } else if (isBellSkipped(bell)) {
-                                    // V5.47.9: Skip temporarily skipped bells
-                                    console.log(`Skipping bell (Skipped): ${bell.name}`);
-                                    statusElement.textContent = `Skipped: ${bell.name}`;
-                                    // Remove from skipped set since it's now passed
-                                    skippedBellOccurrences.delete(getSkipKey(bell));
-                                } else {
-                                    ringBell(bell); // fire-and-forget
-                                    lastBellRingTime = currentTimeHHMMSS; // FIX V5.42: Track ring time for status reset
                                 }
+                            } else if (isBellSkipped(bell)) {
+                                // V5.47.9: Skip temporarily skipped bells
+                                console.log(`Skipping bell (Skipped): ${bell.name}`);
+                                if (!wasTabAsleep || bellsToRing.length === 1) {
+                                    statusElement.textContent = `Skipped: ${bell.name}`;
+                                }
+                                // Remove from skipped set since it's now passed
+                                skippedBellOccurrences.delete(getSkipKey(bell));
+                            } else {
+                                // Only ring if tab wasn't asleep for ages, OR if it's a reasonable catch-up
+                                if (!wasTabAsleep || bellsToRing.length <= 3) {
+                                    ringBell(bell);
+                                    lastBellRingTime = currentTimeHHMMSS;
+                                } else {
+                                    // Too many missed - don't ring, just notify
+                                    console.log(`Not ringing ${bell.name} - too many bells missed (${bellsToRing.length})`);
+                                }
+                            }
                             lastRingTimestamp = nowTimestamp; // Set cooldown
                         }
                     }
@@ -1997,6 +2052,9 @@
                 } catch (e) {
                     console.error("Error updating visual cue:", e);
                 }
+                
+                // V5.48: Update Skip/Unskip button visibility
+                updateMainPageSkipButtons();
                 
                 // V5.47.0: Update Picture-in-Picture window if open
                 updatePipWindow();
