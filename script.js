@@ -1,12 +1,10 @@
-        const APP_VERSION = "5.52.0"
+        const APP_VERSION = "5.52.1"
+        // V5.52.1: Warning Color Customization + Settings Button Move
+        // - Added custom color pickers for subtle/medium/urgent warnings
+        // - Colors saved to localStorage and applied via CSS variables
+        // - Reset to defaults button
+        // - Moved settings button to bottom-left of visual cue (hover only)
         // V5.52.0: Countdown Warning System
-        // - Visual alerts as bells approach (configurable)
-        // - Warning styles: pulse, color shift, breathe, shake, all combined
-        // - Intensity levels: subtle, medium, urgent (progressive)
-        // - Settings modal with preview function
-        // - Separate toggles for scheduled bells vs quick bells
-        // - Settings saved to localStorage
-        // V5.51.0: PWA Support (Progressive Web App)
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -664,7 +662,11 @@
             style: 'pulse',     // pulse, color, breathe, shake, all
             intensity: 'medium', // subtle, medium, urgent
             scheduledBells: true,
-            quickBells: true
+            quickBells: true,
+            // V5.52.1: Custom colors
+            colorSubtle: '#fbbf24',
+            colorMedium: '#f97316',
+            colorUrgent: '#ef4444'
         };
         let currentWarningClass = null; // Track currently applied warning class
 
@@ -1399,6 +1401,8 @@
                         warningSettings = { ...warningSettings, ...parsed };
                         console.log('[Warning] Settings loaded:', warningSettings);
                     }
+                    // V5.52.1: Apply custom colors on load
+                    applyWarningColors();
                 } catch (e) {
                     console.error('[Warning] Error loading settings:', e);
                 }
@@ -1411,9 +1415,41 @@
                 try {
                     localStorage.setItem('countdownWarningSettings', JSON.stringify(warningSettings));
                     console.log('[Warning] Settings saved:', warningSettings);
+                    // V5.52.1: Apply custom colors after saving
+                    applyWarningColors();
                 } catch (e) {
                     console.error('[Warning] Error saving settings:', e);
                 }
+            }
+            
+            /**
+             * V5.52.1: Apply custom warning colors to CSS variables
+             */
+            function applyWarningColors() {
+                const root = document.documentElement;
+                root.style.setProperty('--warning-color-subtle', warningSettings.colorSubtle);
+                root.style.setProperty('--warning-color-medium', warningSettings.colorMedium);
+                root.style.setProperty('--warning-color-urgent', warningSettings.colorUrgent);
+            }
+            
+            /**
+             * V5.52.1: Reset warning colors to defaults
+             */
+            function resetWarningColors() {
+                warningSettings.colorSubtle = '#fbbf24';
+                warningSettings.colorMedium = '#f97316';
+                warningSettings.colorUrgent = '#ef4444';
+                
+                // Update color inputs in modal
+                const subtleInput = document.getElementById('warning-color-subtle');
+                const mediumInput = document.getElementById('warning-color-medium');
+                const urgentInput = document.getElementById('warning-color-urgent');
+                
+                if (subtleInput) subtleInput.value = warningSettings.colorSubtle;
+                if (mediumInput) mediumInput.value = warningSettings.colorMedium;
+                if (urgentInput) urgentInput.value = warningSettings.colorUrgent;
+                
+                applyWarningColors();
             }
             
             /**
@@ -1527,6 +1563,11 @@
                 document.getElementById('warning-scheduled-bells').checked = warningSettings.scheduledBells;
                 document.getElementById('warning-quick-bells').checked = warningSettings.quickBells;
                 
+                // V5.52.1: Populate color inputs
+                document.getElementById('warning-color-subtle').value = warningSettings.colorSubtle;
+                document.getElementById('warning-color-medium').value = warningSettings.colorMedium;
+                document.getElementById('warning-color-urgent').value = warningSettings.colorUrgent;
+                
                 modal.classList.remove('hidden');
             }
             
@@ -1553,6 +1594,11 @@
                 warningSettings.scheduledBells = document.getElementById('warning-scheduled-bells').checked;
                 warningSettings.quickBells = document.getElementById('warning-quick-bells').checked;
                 
+                // V5.52.1: Save custom colors
+                warningSettings.colorSubtle = document.getElementById('warning-color-subtle').value;
+                warningSettings.colorMedium = document.getElementById('warning-color-medium').value;
+                warningSettings.colorUrgent = document.getElementById('warning-color-urgent').value;
+                
                 saveWarningSettings();
                 closeWarningSettingsModal();
                 
@@ -1571,6 +1617,12 @@
                 // Get current form values
                 const style = document.getElementById('warning-style').value;
                 const intensity = document.getElementById('warning-intensity').value;
+                
+                // V5.52.1: Apply current color settings from form for preview
+                const root = document.documentElement;
+                root.style.setProperty('--warning-color-subtle', document.getElementById('warning-color-subtle').value);
+                root.style.setProperty('--warning-color-medium', document.getElementById('warning-color-medium').value);
+                root.style.setProperty('--warning-color-urgent', document.getElementById('warning-color-urgent').value);
                 
                 // Clear previous preview
                 preview.className = 'mx-auto w-24 h-24 bg-gray-800 rounded-lg flex items-center justify-center';
@@ -11774,6 +11826,11 @@
                 }
                 if (warningPreviewBtn) {
                     warningPreviewBtn.addEventListener('click', previewWarningEffect);
+                }
+                // V5.52.1: Reset colors button
+                const warningResetColorsBtn = document.getElementById('warning-reset-colors');
+                if (warningResetColorsBtn) {
+                    warningResetColorsBtn.addEventListener('click', resetWarningColors);
                 }
                 // Close modal on background click
                 if (warningSettingsModal) {
