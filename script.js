@@ -1,8 +1,11 @@
-        const APP_VERSION = "5.47.7"
+        const APP_VERSION = "5.47.8"
+        // V5.47.8: PiP Cancel Timer Button in Countdown Column
+        // - Visual increased to 250px for better visibility
+        // - Cancel Timer button moved to countdown column (below next bell info)
+        // - Removed duplicate cancel button from quick bells row
+        // - Added pip-action-buttons row for future second button
+        // - Window size increased to 800x420
         // V5.47.7: Larger PiP Visual
-        // - Visual increased from 150px to 200px to better match main page
-        // - Window size increased to 750x380 to fit larger content
-        // V5.47.6: PiP Clone Approach
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -1244,8 +1247,8 @@
                 try {
                     // Request PiP window
                     pipWindow = await documentPictureInPicture.requestWindow({
-                        width: 750,
-                        height: 380
+                        width: 800,
+                        height: 420
                     });
                     
                     const pipDoc = pipWindow.document;
@@ -1293,6 +1296,14 @@
                             padding-top: 12px;
                             border-top: 1px solid #e5e7eb;
                         }
+                        .pip-action-buttons {
+                            display: flex;
+                            gap: 8px;
+                            margin-top: 12px;
+                        }
+                        .pip-action-buttons button {
+                            flex: 1;
+                        }
                     `;
                     pipDoc.head.appendChild(pipStyle);
                     
@@ -1328,12 +1339,30 @@
                     nextBellClone.id = 'pip-next-bell';
                     countdownCol.appendChild(nextBellClone);
                     
+                    // Add action buttons row (Cancel Timer + future button)
+                    const actionButtonsRow = pipDoc.createElement('div');
+                    actionButtonsRow.className = 'pip-action-buttons';
+                    
+                    const cancelBtn = pipDoc.createElement('button');
+                    cancelBtn.id = 'pip-cancel-timer';
+                    cancelBtn.className = 'px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 hidden';
+                    cancelBtn.textContent = 'Cancel Timer';
+                    cancelBtn.addEventListener('click', () => {
+                        document.getElementById('cancel-quick-bell-btn')?.click();
+                    });
+                    actionButtonsRow.appendChild(cancelBtn);
+                    
+                    countdownCol.appendChild(actionButtonsRow);
+                    
                     mainSection.appendChild(countdownCol);
                     container.appendChild(mainSection);
                     
                     // Clone quick bells section
                     const quickBellsClone = document.getElementById('quickBellControls').cloneNode(true);
                     quickBellsClone.id = 'pip-quick-bells';
+                    // Remove the cancel button from quick bells (we have it in the countdown column now)
+                    const oldCancelBtn = quickBellsClone.querySelector('#cancel-quick-bell-btn');
+                    if (oldCancelBtn) oldCancelBtn.remove();
                     container.appendChild(quickBellsClone);
                     
                     pipDoc.body.appendChild(container);
@@ -1352,8 +1381,6 @@
                             const customId = btn.dataset.customId;
                             const mainBtn = document.querySelector(`#custom-quick-bells-container [data-custom-id="${customId}"]`);
                             if (mainBtn) mainBtn.click();
-                        } else if (btn.id === 'pip-quick-bells-cancel' || btn.textContent.includes('Cancel')) {
-                            document.getElementById('cancel-quick-bell-btn')?.click();
                         }
                     });
                     
@@ -1408,17 +1435,14 @@
                 syncElement('next-bell-sentence', 'pip-bell-name');
                 syncElement('next-bell-info', 'pip-next-bell');
                 
-                // Sync cancel button visibility
+                // Sync cancel button visibility (now in countdown column)
                 const mainCancel = document.getElementById('cancel-quick-bell-btn');
-                const pipQuickBells = pipDoc.getElementById('pip-quick-bells');
-                if (mainCancel && pipQuickBells) {
-                    const pipCancel = pipQuickBells.querySelector('#cancel-quick-bell-btn');
-                    if (pipCancel) {
-                        if (mainCancel.classList.contains('hidden')) {
-                            pipCancel.classList.add('hidden');
-                        } else {
-                            pipCancel.classList.remove('hidden');
-                        }
+                const pipCancel = pipDoc.getElementById('pip-cancel-timer');
+                if (mainCancel && pipCancel) {
+                    if (mainCancel.classList.contains('hidden')) {
+                        pipCancel.classList.add('hidden');
+                    } else {
+                        pipCancel.classList.remove('hidden');
                     }
                 }
                 
