@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.35.3</title>
+    <title>Ellis Web Bell 5.35.4</title>
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <!-- Using Tailwind CSS for styling -->
@@ -15,15 +15,15 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        // Use Century Gothic, with Questrial as a web-safe fallback
-                        sans: ['Century Gothic', 'Questrial', 'sans-serif'],
+                        // Use Century Gothic, with Urbanist and Questrial as web-safe fallbacks
+                        sans: ['Century Gothic', 'Urbanist', 'Questrial', 'sans-serif'],
                     },
                 },
             },
         }
     </script>
-    <!-- Updated Google Font to include Questrial as a Century Gothic fallback -->
-    <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
+    <!-- V5.49.3: Added Urbanist as Century Gothic fallback (before Questrial) -->
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
 
 	<!-- Moving to stylesheet 5.06-->
     <link rel="stylesheet" href="styles.css">
@@ -723,7 +723,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.35.3</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.35.4</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -752,8 +752,10 @@
                     <button id="pip-toggle-btn" 
                         class="absolute top-2 right-2 p-2 bg-black bg-opacity-50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-opacity-70"
                         title="Pop out timer (Picture-in-Picture)">
+                        <!-- V5.49.3: Changed to PiP-style icon (small window over large) -->
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1"/>
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <rect x="12" y="10" width="8" height="6" rx="1" ry="1" fill="currentColor"></rect>
                         </svg>
                     </button>
                     <!-- Inner container - this is what gets updated by JS -->
@@ -2123,4 +2125,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.35.3 -->
+<!-- Version 5.35.4 -->
