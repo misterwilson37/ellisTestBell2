@@ -1,15 +1,16 @@
 /* ============================================
    Ellis Web Bell Stylesheet
-   Version: 2.2.2
+   Version: 2.2.3
    ============================================ */
 
 :root {
-    --css-version: "2.2.2";
+    --css-version: "2.2.3";
 }
 
 /* Font Configuration */
+/* V2.2.3: Added Urbanist as fallback before Questrial */
 body {
-    font-family: 'Century Gothic', 'Questrial', 'sans-serif';
+    font-family: 'Century Gothic', 'Urbanist', 'Questrial', 'sans-serif';
 }
 
 /* ============================================
