@@ -1,8 +1,10 @@
-        const APP_VERSION = "5.47.12"
+        const APP_VERSION = "5.47.13"
+        // V5.47.13: Skip Bell on Main Page
+        // - Removed debug alerts
+        // - Added Skip Bell and Unskip buttons to main page status row
+        // - Added updateMainPageSkipButtons() to manage button visibility
+        // - Unskip button shows time of skipped bell
         // V5.47.12: DEBUG VERSION - Alert-based debugging for skip bell
-        // - Added alert() calls to track what's happening without console
-        // - Will show: button click, bell counts, skip key, set size
-        // V5.47.11: Fix Skip Bell Key Generation
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -719,9 +721,6 @@
             
             const allBells = [...localSchedule, ...personalBells];
             
-            // DEBUG: Show what we're working with
-            alert(`DEBUG skipNextBell:\nCurrent time: ${currentTimeHHMMSS}\nTotal bells: ${allBells.length}\nlocalSchedule: ${localSchedule.length}\npersonalBells: ${personalBells.length}`);
-            
             if (allBells.length === 0) {
                 showUserMessage("No bells in schedule to skip.");
                 return;
@@ -731,11 +730,8 @@
                 .filter(bell => bell.time > currentTimeHHMMSS && !isBellSkipped(bell))
                 .sort((a, b) => a.time.localeCompare(b.time));
             
-            // DEBUG: Show upcoming bells
-            alert(`DEBUG: Upcoming bells: ${upcomingBells.length}\nFirst 3: ${upcomingBells.slice(0,3).map(b => b.name + '@' + b.time).join(', ')}`);
-            
             if (upcomingBells.length === 0) {
-                showUserMessage("No upcoming bells to skip.");
+                showUserMessage("No upcoming bells to skip today.");
                 return;
             }
             
@@ -743,15 +739,13 @@
             const skipKey = getSkipKey(bellToSkip);
             skippedBellOccurrences.add(skipKey);
             
-            // DEBUG: Confirm skip
-            alert(`DEBUG: Skipped!\nKey: ${skipKey}\nSet size: ${skippedBellOccurrences.size}`);
-            
             console.log(`Skipped bell: ${bellToSkip.name} at ${bellToSkip.time} (key: ${skipKey})`);
             showUserMessage(`Skipped: ${bellToSkip.name} at ${formatTime12Hour(bellToSkip.time, true)}`);
             
             // Force immediate UI update
             updateClock();
             updatePipWindow();
+            updateMainPageSkipButtons();
         }
         
         function clearOldSkippedBells() {
@@ -803,6 +797,27 @@
             // Force immediate UI update
             updateClock();
             updatePipWindow();
+            updateMainPageSkipButtons();
+        }
+        
+        /**
+         * V5.47.13: Update Skip/Unskip buttons on main page
+         */
+        function updateMainPageSkipButtons() {
+            const unskipBtn = document.getElementById('unskip-bell-btn');
+            if (!unskipBtn) return;
+            
+            const skippedBell = getNextSkippedBell();
+            
+            if (skippedBell) {
+                // Show Unskip button with bell time
+                unskipBtn.classList.remove('hidden');
+                const timeStr = formatTime12Hour(skippedBell.time, true);
+                unskipBtn.textContent = `Unskip (${timeStr})`;
+                unskipBtn.title = `Restore: ${skippedBell.name} at ${timeStr}`;
+            } else {
+                unskipBtn.classList.add('hidden');
+            }
         }
 
         // --- NEW: Sound Override Functions ---
@@ -1466,7 +1481,6 @@
                     skipBtn.textContent = 'Skip Bell';
                     skipBtn.title = 'Skip the next scheduled bell (just this once)';
                     skipBtn.addEventListener('click', () => {
-                        alert('DEBUG: Skip button clicked!');
                         skipNextBell();
                         updatePipActionButtons(pipDoc);
                     });
@@ -11196,6 +11210,21 @@
                     quickBellSound = 'ellisBell.mp3';
                     document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
                     updateClock(); // Refresh display
+                });
+                
+                // V5.47.13: Skip Bell button handler
+                document.getElementById('skip-bell-btn').addEventListener('click', () => {
+                    skipNextBell();
+                    updateMainPageSkipButtons();
+                });
+                
+                // V5.47.13: Unskip Bell button handler
+                document.getElementById('unskip-bell-btn').addEventListener('click', () => {
+                    const skippedBell = getNextSkippedBell();
+                    if (skippedBell) {
+                        unskipBell(skippedBell);
+                        updateMainPageSkipButtons();
+                    }
                 });
                 
                 // V5.47.0: Picture-in-Picture toggle button
