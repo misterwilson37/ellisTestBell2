@@ -191,3 +191,57 @@ body.authenticated.not-anonymous .auth-required {
 body.admin-mode .admin-only {
     display: inline-flex;
 }
+
+/* ============================================
+   KIOSK MODE (V5.49)
+   Clean, minimal display for projection/display
+   ============================================ */
+
+/* Elements hidden in kiosk mode */
+body.kiosk-mode .kiosk-hide {
+    display: none !important;
+}
+
+/* Center the main card in kiosk mode */
+body.kiosk-mode .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+/* Make the countdown card full-width and centered in kiosk mode */
+body.kiosk-mode .bg-white.rounded-xl.shadow-md.mb-8 {
+    margin-bottom: 0;
+    max-width: 100%;
+    width: auto;
+}
+
+/* Larger visual and text in kiosk mode */
+body.kiosk-mode #visual-cue-container {
+    min-height: 300px !important;
+}
+
+body.kiosk-mode #countdown-display {
+    font-size: 6rem;
+}
+
+body.kiosk-mode #next-bell-sentence {
+    font-size: 1.75rem;
+}
+
+@media (min-width: 768px) {
+    body.kiosk-mode #countdown-display {
+        font-size: 10rem;
+    }
+    
+    body.kiosk-mode #next-bell-sentence {
+        font-size: 2.5rem;
+    }
+    
+    body.kiosk-mode #visual-cue-container {
+        min-height: 400px !important;
+    }
+}
