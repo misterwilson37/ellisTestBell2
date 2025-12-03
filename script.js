@@ -1,10 +1,10 @@
-        const APP_VERSION = "5.49.1"
+        const APP_VERSION = "5.49.2"
+        // V5.49.2: Kiosk Mode Tweaks + CSS Version Display
+        // - PiP kiosk: Keeps horizontal layout (just hides clock/next bell lines)
+        // - Main page kiosk: Stacked with ALL text centered
+        // - Added CSS version display in footer (reads from --css-version)
+        // - Updated HTML comment version format
         // V5.49.1: Kiosk Mode Layout Fixes
-        // - Fixed main page kiosk: now stacks vertically (visual above countdown)
-        // - Fixed main page kiosk: hides clock and "next bell after" lines
-        // - Fixed PiP kiosk: hides clock and "next bell after" lines
-        // - Keeps only: visual, countdown, bell name in kiosk mode
-        // V5.49.0: Kiosk Mode
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -1569,20 +1569,7 @@
                         #pip-kiosk-toggle-btn:hover {
                             background: #374151;
                         }
-                        /* V5.49.0: PiP kiosk mode - stacked layout, minimal info */
-                        body.pip-kiosk-mode .pip-layout {
-                            grid-template-columns: 1fr;
-                            justify-items: center;
-                        }
-                        body.pip-kiosk-mode #pip-visual {
-                            width: 200px !important;
-                            height: 200px !important;
-                            min-height: 200px !important;
-                        }
-                        body.pip-kiosk-mode .countdown-column {
-                            text-align: center;
-                        }
-                        /* V5.49.1: Hide clock and following bell in PiP kiosk mode */
+                        /* V5.49.2: PiP kiosk mode - keep horizontal, just hide extras */
                         body.pip-kiosk-mode #pip-clock {
                             display: none !important;
                         }
@@ -10208,6 +10195,13 @@
                 const versionElement = document.getElementById('app-version-display');
                 if (versionElement) {
                     versionElement.textContent = `v${APP_VERSION}`;
+                }
+                
+                // V5.49.2: CSS version display - read from CSS custom property
+                const cssVersionElement = document.getElementById('css-version-display');
+                if (cssVersionElement) {
+                    const cssVersion = getComputedStyle(document.documentElement).getPropertyValue('--css-version').trim().replace(/"/g, '');
+                    cssVersionElement.textContent = `v${cssVersion || '?.?.?'}`;
                 }
                 
                 // Optional: Also update the Browser Tab Title automatically
