@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.55.2"
+        const APP_VERSION = "5.55.3"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -2890,7 +2890,7 @@
                     sharedAudioFiles.forEach(file => {
                         const opt = document.createElement('option');
                         opt.value = file.url;
-                        opt.textContent = file.nickname || file.name;
+                        opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                         sharedGroup.appendChild(opt);
                     });
                     selectElement.appendChild(sharedGroup);
@@ -2903,7 +2903,7 @@
                     userAudioFiles.forEach(file => {
                         const opt = document.createElement('option');
                         opt.value = file.url;
-                        opt.textContent = file.nickname || file.name;
+                        opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                         userGroup.appendChild(opt);
                     });
                     selectElement.appendChild(userGroup);
@@ -2926,7 +2926,7 @@
                     sharedVisualFiles.forEach(file => {
                         const opt = document.createElement('option');
                         opt.value = file.url;
-                        opt.textContent = file.nickname || file.name;
+                        opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                         sharedGroup.appendChild(opt);
                     });
                     queueVisualSelect.appendChild(sharedGroup);
@@ -2939,7 +2939,7 @@
                     userVisualFiles.forEach(file => {
                         const opt = document.createElement('option');
                         opt.value = file.url;
-                        opt.textContent = file.nickname || file.name;
+                        opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                         userGroup.appendChild(opt);
                     });
                     queueVisualSelect.appendChild(userGroup);
@@ -3745,33 +3745,30 @@
                         }
                         
                         if (soundDisplay && soundDisplay.startsWith('http')) {
-                            // V5.55.2: Look up nickname from userAudioFiles or sharedAudioFiles
-                            // Match by extracting filename from URL and comparing to file paths/names
-                            let extractedFilename = '';
-                            try {
-                                const url = new URL(soundDisplay);
-                                // Firebase URLs have the path encoded in the pathname
-                                // e.g., /v0/b/bucket/o/sounds%2Fusers%2Fuid%2Ffilename.mp3
-                                const pathMatch = url.pathname.match(/\/o\/(.+?)(\?|$)/);
-                                if (pathMatch) {
-                                    extractedFilename = decodeURIComponent(pathMatch[1]);
-                                } else {
-                                    extractedFilename = decodeURIComponent(url.pathname.split('/').pop());
-                                }
-                            } catch (e) {
-                                extractedFilename = '';
-                            }
+                            // V5.55.3: Look up nickname from userAudioFiles or sharedAudioFiles
+                            // Helper to extract Firebase Storage path from URL
+                            const getFirebasePath = (urlString) => {
+                                try {
+                                    const url = new URL(urlString);
+                                    // Firebase URLs: /v0/b/bucket/o/sounds%2Fusers%2Fuid%2Ffile.mp3?...
+                                    const match = url.pathname.match(/\/o\/([^?]+)/);
+                                    if (match) {
+                                        return decodeURIComponent(match[1]);
+                                    }
+                                } catch (e) {}
+                                return null;
+                            };
                             
-                            // Try to find matching file by path or name
-                            const matchingFile = userAudioFiles.find(f => 
-                                f.path === extractedFilename || 
-                                extractedFilename.endsWith(f.name) ||
-                                extractedFilename.endsWith('/' + f.name)
-                            ) || sharedAudioFiles.find(f => 
-                                f.path === extractedFilename || 
-                                extractedFilename.endsWith(f.name) ||
-                                extractedFilename.endsWith('/' + f.name)
-                            );
+                            const soundPath = getFirebasePath(soundDisplay);
+                            
+                            // Find matching file by comparing paths
+                            const matchingFile = userAudioFiles.find(f => {
+                                const filePath = f.path || getFirebasePath(f.url);
+                                return filePath && soundPath && filePath === soundPath;
+                            }) || sharedAudioFiles.find(f => {
+                                const filePath = f.path || getFirebasePath(f.url);
+                                return filePath && soundPath && filePath === soundPath;
+                            });
                             
                             if (matchingFile && matchingFile.nickname) {
                                 soundDisplay = matchingFile.nickname;
@@ -3779,12 +3776,11 @@
                                 // V5.55.0: Strip extension from filename
                                 soundDisplay = matchingFile.name.replace(/\.[^/.]+$/, '');
                             } else {
-                                // Fallback: extract filename from URL and strip extension
-                                try {
-                                    const filename = extractedFilename.split('/').pop();
-                                    // V5.55.0: Strip extension
+                                // Fallback: extract filename from path and strip extension
+                                const filename = soundPath ? soundPath.split('/').pop() : '';
+                                if (filename) {
                                     soundDisplay = filename.replace(/\.[^/.]+$/, '');
-                                } catch (e) {
+                                } else {
                                     soundDisplay = "Custom Sound";
                                 }
                             }
@@ -9121,15 +9117,17 @@
             
                 // 3. Create options for user files
                 // MODIFIED V5.34: Use nickname if available
+                // MODIFIED V5.55.3: Strip extension when no nickname
                 const userHtml = userVisualFiles.map(file => {
-                    const displayName = file.nickname || file.name;
+                    const displayName = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                     return `<option value="${file.url}">${displayName} (My File)</option>`;
                 }).join('');
                 
                 // NEW V4.61.5: Create options for shared files (Fixes missing 'sharedHtml' variable error)
                 // MODIFIED V5.34: Use nickname if available
+                // MODIFIED V5.55.3: Strip extension when no nickname
                 const sharedHtml = sharedVisualFiles.map(file => {
-                    const displayName = file.nickname || file.name;
+                    const displayName = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                     return `<option value="${file.url}">${displayName} (Shared)</option>`;
                 }).join('');
 
@@ -10853,8 +10851,9 @@
                 // --- THIS IS THE FIX from v2.24 ---
                 // The value *must* be the full file.url, not the file.path.
                 // MODIFIED V4.97: Use nickname if available
-                const mySoundsHtml = userAudioFiles.map(file => `<option value="${file.url}">${file.nickname || file.name}</option>`).join('');
-                const sharedSoundsHtml = sharedAudioFiles.map(file => `<option value="${file.url}">${file.nickname || file.name}</option>`).join('');
+                // MODIFIED V5.55.3: Strip extension from filenames when no nickname
+                const mySoundsHtml = userAudioFiles.map(file => `<option value="${file.url}">${file.nickname || file.name.replace(/\.[^/.]+$/, '')}</option>`).join('');
+                const sharedSoundsHtml = sharedAudioFiles.map(file => `<option value="${file.url}">${file.nickname || file.name.replace(/\.[^/.]+$/, '')}</option>`).join('');
             
                 // Update all dropdowns
                 selects.forEach(item => {
@@ -13055,7 +13054,7 @@
                         userAudioFiles.forEach(file => {
                             const opt = document.createElement('option');
                             opt.value = file.url;
-                            opt.textContent = file.nickname || file.name;
+                            opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                             bulkMySounds.appendChild(opt);
                         });
                     }
@@ -13065,7 +13064,7 @@
                         sharedAudioFiles.forEach(file => {
                             const opt = document.createElement('option');
                             opt.value = file.url;
-                            opt.textContent = file.nickname || file.name;
+                            opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                             bulkSharedSounds.appendChild(opt);
                         });
                     }
@@ -13079,7 +13078,7 @@
                         userVisualFiles.forEach(file => {
                             const opt = document.createElement('option');
                             opt.value = file.url;
-                            opt.textContent = file.nickname || file.name;
+                            opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                             bulkMyVisuals.appendChild(opt);
                         });
                     }
@@ -13089,7 +13088,7 @@
                         sharedVisualFiles.forEach(file => {
                             const opt = document.createElement('option');
                             opt.value = file.url;
-                            opt.textContent = file.nickname || file.name;
+                            opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
                             bulkSharedVisuals.appendChild(opt);
                         });
                     }
