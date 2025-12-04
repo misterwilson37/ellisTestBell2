@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.54.6"
+        const APP_VERSION = "5.55.0"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -333,6 +333,22 @@
         const customQuickBellStatus = document.getElementById('custom-quick-bell-status');
         const customQuickBellsContainer = document.getElementById('custom-quick-bells-container');
         const customQuickBellSeparator = document.getElementById('custom-quick-bell-separator');
+        
+        // NEW V5.55.0: Quick Bell Queue Modal elements
+        const quickBellQueueBtn = document.getElementById('quick-bell-queue-btn');
+        const quickBellQueueModal = document.getElementById('quick-bell-queue-modal');
+        const queueTimersContainer = document.getElementById('queue-timers-container');
+        const queueAddTimerBtn = document.getElementById('queue-add-timer-btn');
+        const queueRepeatTimesInput = document.getElementById('queue-repeat-times');
+        const queueUntilBellSelect = document.getElementById('queue-until-bell');
+        const queueIgnorePersonalCheckbox = document.getElementById('queue-ignore-personal');
+        const queueIgnoreSharedCheckbox = document.getElementById('queue-ignore-shared');
+        const queueIgnoreSharedWarning = document.getElementById('queue-ignore-shared-warning');
+        const queueVisualSelect = document.getElementById('queue-visual-select');
+        const queueCancelBtn = document.getElementById('queue-cancel-btn');
+        const queueStartBtn = document.getElementById('queue-start-btn');
+        const queueModalCloseBtn = document.getElementById('queue-modal-close-btn');
+        
         const multiAddRelativeMinutes = document.getElementById('multi-add-relative-minutes');
         const multiAddRelativeSeconds = document.getElementById('multi-add-relative-seconds');
         const multiAddRelativeBellName = document.getElementById('multi-add-relative-bell-name');
@@ -570,6 +586,19 @@
         // NEW V5.00: Custom Quick Bell State
         let customQuickBells = []; // Array of { id, name, hours, minutes, seconds, iconText, sound, isActive }
         window.customQuickBells = customQuickBells; // 5.30: Make it accessible from console
+
+        // NEW V5.55.0: Quick Bell Queue State
+        let quickBellQueue = []; // Array of { durationSeconds, sound }
+        let queueIndex = 0; // Current position in queue
+        let queueRepeatMode = 'times'; // 'times' or 'until'
+        let queueRepeatTimes = 1; // How many times to play the queue
+        let queueCurrentRepeat = 0; // Current repeat iteration
+        let queueUntilBellId = null; // Bell ID to stop at
+        let queueIgnorePersonal = false;
+        let queueIgnoreShared = false;
+        let queueVisual = '[DEFAULT_Q]';
+        let queueActive = false;
+        let queueTimerEndTime = null; // When current queue timer expires
 
         let mutedBellIds = new Set(); 
         let skippedBellOccurrences = new Set(); // V5.47.9: Temporarily skipped bells (format: "bellId:YYYY-MM-DD")
@@ -2267,7 +2296,7 @@
                 
                 if (!skipBtn || !unskipBtn || !cancelBtn) return;
                 
-                const hasQuickTimer = quickBellEndTime !== null;
+                const hasQuickTimer = quickBellEndTime !== null || queueActive;
                 const skippedBell = getNextSkippedBell();
                 const hasSkippedBell = skippedBell !== null;
                 
@@ -2340,7 +2369,9 @@
                     }
                 }
     
-                const millisToQuickBell = quickBellEndTime ? quickBellEndTime.getTime() - nowTimestamp : Infinity;
+                // V5.55.0: Handle queue timer end time
+                const effectiveQuickBellEndTime = queueActive ? queueTimerEndTime : quickBellEndTime;
+                const millisToQuickBell = effectiveQuickBellEndTime ? effectiveQuickBellEndTime.getTime() - nowTimestamp : Infinity;
                 
                 // --- 3. Determine Active Countdown & "Next Bell" Info ---
                 let activeTimerLabel = null;
@@ -2366,20 +2397,30 @@
                     }
     
                 } else if (millisToQuickBell < millisToScheduleBell) {
-                    // --- B. Counting down to a QUICK BELL ---
-                    activeTimerLabel = quickBellEndTime.bellName || "Quick Bell"; // NEW V5.00
+                    // --- B. Counting down to a QUICK BELL or QUEUE TIMER ---
+                    if (queueActive && queueTimerEndTime) {
+                        // V5.55.0: Queue timer active - show queue position
+                        const pos = queueTimerEndTime.queuePosition || (queueIndex + 1);
+                        const total = queueTimerEndTime.queueTotal || quickBellQueue.length;
+                        activeTimerLabel = `Queue (${pos}/${total})`;
+                        nextBellInfoString = `Timer ${pos} of ${total} in queue.`;
+                        if (queueRepeatMode === 'times' && queueRepeatTimes > 1) {
+                            nextBellInfoString += ` Repeat ${queueCurrentRepeat + 1}/${queueRepeatTimes}.`;
+                        }
+                    } else {
+                        activeTimerLabel = effectiveQuickBellEndTime.bellName || "Quick Bell"; // NEW V5.00
+                        // The "next bell" info should be the next *schedule* bell
+                        if (scheduleBellObject) {
+                            // Use (true) to omit seconds if they are 00
+                            // MODIFICATION in 5.29: Added period at the end
+                            const namePunctuation = /[.!?]$/.test(scheduleBellObject.name) ? '' : '.';
+                            nextBellInfoString = `Next bell is ${scheduleBellObject.name} at ${formatTime12Hour(scheduleBellObject.time, true)}${namePunctuation}`;
+                        } else {
+                            nextBellInfoString = "No more bells today."; // Already has period
+                        }
+                    }
                     activeTimerMillis = millisToQuickBell;
                     isMuting = false;
-                    
-                    // The "next bell" info should be the next *schedule* bell
-                    if (scheduleBellObject) {
-                        // Use (true) to omit seconds if they are 00
-                        // MODIFICATION in 5.29: Added period at the end
-                        const namePunctuation = /[.!?]$/.test(scheduleBellObject.name) ? '' : '.';
-                        nextBellInfoString = `Next bell is ${scheduleBellObject.name} at ${formatTime12Hour(scheduleBellObject.time, true)}${namePunctuation}`;
-                    } else {
-                        nextBellInfoString = "No more bells today."; // Already has period
-                    }
                 }
                 
                 // --- 4. Populate Countdown and "Next Bell" Elements ---
@@ -2539,7 +2580,27 @@
                             const bell = bellsToRing[bellsToRing.length - 1];
                             const bellId = bell.bellId || getBellId(bell);
                             
-                            if (mutedBellIds.has(String(bellId))) {
+                            // V5.55.0: Check if queue should stop at this bell
+                            if (queueActive && queueRepeatMode === 'until' && queueUntilBellId === String(bellId)) {
+                                console.log('Queue "until" bell reached, stopping queue');
+                                cancelQueue();
+                            }
+                            
+                            // V5.55.0: Check if queue is ignoring this bell type
+                            const isPersonalBell = personalBells.some(pb => getBellId(pb) === bellId || pb.bellId === bellId);
+                            const isSharedBell = !isPersonalBell;
+                            
+                            if (queueActive && queueIgnorePersonal && isPersonalBell) {
+                                console.log(`Skipping bell (Queue ignoring personal): ${bell.name}`);
+                                if (!wasTabAsleep || bellsToRing.length === 1) {
+                                    statusElement.textContent = `Queue ignoring: ${bell.name}`;
+                                }
+                            } else if (queueActive && queueIgnoreShared && isSharedBell) {
+                                console.log(`Skipping bell (Queue ignoring shared): ${bell.name}`);
+                                if (!wasTabAsleep || bellsToRing.length === 1) {
+                                    statusElement.textContent = `Queue ignoring: ${bell.name}`;
+                                }
+                            } else if (mutedBellIds.has(String(bellId))) {
                                 console.log(`Skipping bell (Muted): ${bell.name}`);
                                 if (!wasTabAsleep || bellsToRing.length === 1) {
                                     statusElement.textContent = `Skipped (Muted): ${bell.name}`;
@@ -2570,15 +2631,27 @@
                 // D. Always update the timestamp for the next check
                 lastClockCheckTimestamp = nowTimestamp;
 
-                // --- Ring Logic (Quick Bell) ---
-                if (quickBellEndTime && nowTimestamp >= quickBellEndTime.getTime() && (nowTimestamp - lastRingTimestamp > RING_COOLDOWN)) {
-                    console.log("Ringing Quick Bell");
-                    ringBell({ name: "Quick Bell", sound: quickBellSound });
-                    lastBellRingTime = currentTimeHHMMSS; // FIX V5.42: Track ring time for status reset
-                    // MODIFIED in 4.39: DO NOT set the lastRingTimestamp.
-                    // This prevents a quick bell from "eating" a nearby schedule bell.
-                    // lastRingTimestamp = nowTimestamp;
-                    quickBellEndTime = null; // Clear the quick bell
+                // --- Ring Logic (Quick Bell / Queue Timer) ---
+                // V5.55.0: Handle both regular quick bells and queue timers
+                const activeTimerEndTime = queueActive ? queueTimerEndTime : quickBellEndTime;
+                const activeTimerSound = queueActive ? (queueTimerEndTime?.sound || 'ellisBell.mp3') : quickBellSound;
+                
+                if (activeTimerEndTime && nowTimestamp >= activeTimerEndTime.getTime() && (nowTimestamp - lastRingTimestamp > RING_COOLDOWN)) {
+                    if (queueActive) {
+                        console.log(`Ringing Queue Timer ${queueIndex + 1}/${quickBellQueue.length}`);
+                        ringBell({ name: `Queue Timer ${queueIndex + 1}`, sound: activeTimerSound });
+                        lastBellRingTime = currentTimeHHMMSS;
+                        // Advance to next timer in queue
+                        advanceQueue();
+                    } else {
+                        console.log("Ringing Quick Bell");
+                        ringBell({ name: "Quick Bell", sound: quickBellSound });
+                        lastBellRingTime = currentTimeHHMMSS; // FIX V5.42: Track ring time for status reset
+                        // MODIFIED in 4.39: DO NOT set the lastRingTimestamp.
+                        // This prevents a quick bell from "eating" a nearby schedule bell.
+                        // lastRingTimestamp = nowTimestamp;
+                        quickBellEndTime = null; // Clear the quick bell
+                    }
                 }
     
                 // MODIFIED: Reset status text logic
@@ -2627,19 +2700,26 @@
                         newVisualKey = `before:${nextBell.bellId}`;
                     }
                     
-                    // Priority 3: Quick Bell (if active)
+                    // Priority 3: Queue Timer or Quick Bell (if active)
                     if (!visualHtml && millisToQuickBell < Infinity) {
-                        const activeCustomBell = customQuickBells.find(b => b && b.isActive !== false && b.name === activeTimerLabel);
-                        
-                        if (activeCustomBell) {
-                            const visualCue = activeCustomBell.visualCue || `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${activeCustomBell.iconBgColor}|${activeCustomBell.iconFgColor}`;
-                            visualHtml = getVisualHtml(visualCue, activeCustomBell.name);
-                            visualSource = `Quick Bell: ${activeCustomBell.name}`;
-                            newVisualKey = `quickbell:${activeCustomBell.id}`;
+                        // V5.55.0: Check for queue first
+                        if (queueActive) {
+                            visualHtml = getQueueVisualHtml();
+                            visualSource = `Queue Timer (${queueIndex + 1}/${quickBellQueue.length})`;
+                            newVisualKey = `queue:${queueIndex}:${queueCurrentRepeat}`;
                         } else {
-                            visualHtml = `<div class="w-full h-full p-8 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>`;
-                            visualSource = 'Quick Bell (generic)';
-                            newVisualKey = 'quickbell:generic';
+                            const activeCustomBell = customQuickBells.find(b => b && b.isActive !== false && b.name === activeTimerLabel);
+                            
+                            if (activeCustomBell) {
+                                const visualCue = activeCustomBell.visualCue || `[CUSTOM_TEXT] ${activeCustomBell.iconText}|${activeCustomBell.iconBgColor}|${activeCustomBell.iconFgColor}`;
+                                visualHtml = getVisualHtml(visualCue, activeCustomBell.name);
+                                visualSource = `Quick Bell: ${activeCustomBell.name}`;
+                                newVisualKey = `quickbell:${activeCustomBell.id}`;
+                            } else {
+                                visualHtml = `<div class="w-full h-full p-8 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>`;
+                                visualSource = 'Quick Bell (generic)';
+                                newVisualKey = 'quickbell:generic';
+                            }
                         }
                     }
                     
@@ -2701,6 +2781,346 @@
                 console.log(`Quick bell set for ${hours}h ${minutes}m ${seconds}s from now. Sound: ${quickBellSound}`);
                 updateClock(); // Update display immediately
             }
+            
+            // ============================================================
+            // NEW V5.55.0: Quick Bell Queue Functions
+            // ============================================================
+            
+            let queueTimerRowId = 0; // Unique ID for timer rows
+            
+            function openQuickBellQueueModal() {
+                // Reset state
+                queueTimerRowId = 0;
+                queueTimersContainer.innerHTML = '';
+                
+                // Add one initial timer row
+                addQueueTimerRow();
+                
+                // Populate dropdowns
+                populateQueueVisualDropdown();
+                populateQueueUntilBellDropdown();
+                
+                // Reset form to defaults
+                queueRepeatTimesInput.value = 1;
+                document.querySelector('input[name="queue-repeat-mode"][value="times"]').checked = true;
+                queueIgnorePersonalCheckbox.checked = false;
+                queueIgnoreSharedCheckbox.checked = false;
+                queueIgnoreSharedWarning.classList.add('hidden');
+                queueVisualSelect.value = '[DEFAULT_Q]';
+                
+                // Show modal
+                quickBellQueueModal.classList.remove('hidden');
+            }
+            
+            function closeQuickBellQueueModal() {
+                quickBellQueueModal.classList.add('hidden');
+            }
+            
+            function addQueueTimerRow() {
+                const rowId = queueTimerRowId++;
+                const row = document.createElement('div');
+                row.className = 'queue-timer-row flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-lg';
+                row.dataset.rowId = rowId;
+                
+                row.innerHTML = `
+                    <span class="text-sm font-medium text-gray-600 w-16">Timer ${rowId + 1}:</span>
+                    <div class="flex items-center gap-1">
+                        <input type="number" class="queue-hours w-14 px-2 py-1 border border-gray-300 rounded text-center text-sm" value="0" min="0" max="23">
+                        <span class="text-gray-500 text-sm">h</span>
+                        <input type="number" class="queue-minutes w-14 px-2 py-1 border border-gray-300 rounded text-center text-sm" value="5" min="0" max="59">
+                        <span class="text-gray-500 text-sm">m</span>
+                        <input type="number" class="queue-seconds w-14 px-2 py-1 border border-gray-300 rounded text-center text-sm" value="0" min="0" max="59">
+                        <span class="text-gray-500 text-sm">s</span>
+                    </div>
+                    <div class="flex items-center gap-1 flex-1 min-w-0">
+                        <select class="queue-sound flex-1 min-w-0 px-2 py-1 border border-gray-300 rounded text-sm">
+                            <!-- Populated by JS -->
+                        </select>
+                        <button type="button" class="queue-preview-btn w-8 h-8 flex-shrink-0 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded text-sm" title="Preview sound">▶</button>
+                        <button type="button" class="queue-delete-btn w-8 h-8 flex-shrink-0 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded text-sm" title="Remove timer">🗑</button>
+                    </div>
+                `;
+                
+                // Populate sound dropdown
+                const soundSelect = row.querySelector('.queue-sound');
+                populateQueueSoundDropdown(soundSelect);
+                
+                // Add event listeners
+                row.querySelector('.queue-preview-btn').addEventListener('click', () => {
+                    const sound = soundSelect.value;
+                    if (sound) playBell(sound);
+                });
+                
+                row.querySelector('.queue-delete-btn').addEventListener('click', () => {
+                    if (queueTimersContainer.children.length > 1) {
+                        row.remove();
+                        renumberQueueTimerRows();
+                    } else {
+                        // Can't delete last row, just reset it
+                        row.querySelector('.queue-hours').value = 0;
+                        row.querySelector('.queue-minutes').value = 5;
+                        row.querySelector('.queue-seconds').value = 0;
+                    }
+                });
+                
+                queueTimersContainer.appendChild(row);
+            }
+            
+            function renumberQueueTimerRows() {
+                const rows = queueTimersContainer.querySelectorAll('.queue-timer-row');
+                rows.forEach((row, index) => {
+                    const label = row.querySelector('span');
+                    if (label) label.textContent = `Timer ${index + 1}:`;
+                });
+            }
+            
+            function populateQueueSoundDropdown(selectElement) {
+                selectElement.innerHTML = '';
+                
+                // Default sound
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = 'ellisBell.mp3';
+                defaultOpt.textContent = 'Default (Ellis Bell)';
+                selectElement.appendChild(defaultOpt);
+                
+                // Shared audio files
+                if (sharedAudioFiles && sharedAudioFiles.length > 0) {
+                    const sharedGroup = document.createElement('optgroup');
+                    sharedGroup.label = 'Shared Sounds';
+                    sharedAudioFiles.forEach(file => {
+                        const opt = document.createElement('option');
+                        opt.value = file.url;
+                        opt.textContent = file.nickname || file.name;
+                        sharedGroup.appendChild(opt);
+                    });
+                    selectElement.appendChild(sharedGroup);
+                }
+                
+                // User audio files
+                if (userAudioFiles && userAudioFiles.length > 0) {
+                    const userGroup = document.createElement('optgroup');
+                    userGroup.label = 'My Sounds';
+                    userAudioFiles.forEach(file => {
+                        const opt = document.createElement('option');
+                        opt.value = file.url;
+                        opt.textContent = file.nickname || file.name;
+                        userGroup.appendChild(opt);
+                    });
+                    selectElement.appendChild(userGroup);
+                }
+            }
+            
+            function populateQueueVisualDropdown() {
+                queueVisualSelect.innerHTML = '';
+                
+                // Default Q visual
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '[DEFAULT_Q]';
+                defaultOpt.textContent = 'Default "Q" (Queue)';
+                queueVisualSelect.appendChild(defaultOpt);
+                
+                // Shared visual files
+                if (sharedVisualFiles && sharedVisualFiles.length > 0) {
+                    const sharedGroup = document.createElement('optgroup');
+                    sharedGroup.label = 'Shared Visuals';
+                    sharedVisualFiles.forEach(file => {
+                        const opt = document.createElement('option');
+                        opt.value = file.url;
+                        opt.textContent = file.nickname || file.name;
+                        sharedGroup.appendChild(opt);
+                    });
+                    queueVisualSelect.appendChild(sharedGroup);
+                }
+                
+                // User visual files
+                if (userVisualFiles && userVisualFiles.length > 0) {
+                    const userGroup = document.createElement('optgroup');
+                    userGroup.label = 'My Visuals';
+                    userVisualFiles.forEach(file => {
+                        const opt = document.createElement('option');
+                        opt.value = file.url;
+                        opt.textContent = file.nickname || file.name;
+                        userGroup.appendChild(opt);
+                    });
+                    queueVisualSelect.appendChild(userGroup);
+                }
+            }
+            
+            function populateQueueUntilBellDropdown() {
+                queueUntilBellSelect.innerHTML = '<option value="">Select a bell...</option>';
+                
+                // Get all upcoming bells from calculatedPeriodsList
+                const now = new Date();
+                const upcomingBells = [];
+                
+                if (calculatedPeriodsList && calculatedPeriodsList.length > 0) {
+                    calculatedPeriodsList.forEach(period => {
+                        if (period.bells && period.bells.length > 0) {
+                            period.bells.forEach(bell => {
+                                if (bell.timeDate && bell.timeDate > now) {
+                                    upcomingBells.push({
+                                        id: bell.bellId,
+                                        name: `${period.name} - ${bell.name}`,
+                                        time: bell.time,
+                                        timeDate: bell.timeDate
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                // Sort by time
+                upcomingBells.sort((a, b) => a.timeDate - b.timeDate);
+                
+                // Add to dropdown (limit to reasonable number)
+                upcomingBells.slice(0, 20).forEach(bell => {
+                    const opt = document.createElement('option');
+                    opt.value = bell.id;
+                    opt.textContent = `${bell.name} (${bell.time})`;
+                    queueUntilBellSelect.appendChild(opt);
+                });
+            }
+            
+            function startQueue() {
+                // Collect timer data from rows
+                const rows = queueTimersContainer.querySelectorAll('.queue-timer-row');
+                quickBellQueue = [];
+                
+                rows.forEach(row => {
+                    const hours = parseInt(row.querySelector('.queue-hours').value) || 0;
+                    const minutes = parseInt(row.querySelector('.queue-minutes').value) || 0;
+                    const seconds = parseInt(row.querySelector('.queue-seconds').value) || 0;
+                    const sound = row.querySelector('.queue-sound').value;
+                    const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+                    
+                    if (totalSeconds > 0) {
+                        quickBellQueue.push({
+                            durationSeconds: totalSeconds,
+                            sound: sound
+                        });
+                    }
+                });
+                
+                if (quickBellQueue.length === 0) {
+                    alert('Please add at least one timer with a duration greater than 0.');
+                    return;
+                }
+                
+                // Collect repeat settings
+                const repeatModeRadio = document.querySelector('input[name="queue-repeat-mode"]:checked');
+                queueRepeatMode = repeatModeRadio ? repeatModeRadio.value : 'times';
+                queueRepeatTimes = parseInt(queueRepeatTimesInput.value) || 1;
+                queueUntilBellId = queueUntilBellSelect.value || null;
+                queueCurrentRepeat = 0;
+                
+                // Collect ignore settings
+                queueIgnorePersonal = queueIgnorePersonalCheckbox.checked;
+                queueIgnoreShared = queueIgnoreSharedCheckbox.checked;
+                
+                // Collect visual
+                queueVisual = queueVisualSelect.value;
+                
+                // Start queue
+                queueActive = true;
+                queueIndex = 0;
+                
+                // Start first timer
+                startNextQueueTimer();
+                
+                // Close modal
+                closeQuickBellQueueModal();
+                
+                // Show cancel button
+                document.getElementById('cancel-quick-bell-btn').classList.remove('hidden');
+                
+                console.log(`Queue started with ${quickBellQueue.length} timers, repeat mode: ${queueRepeatMode}, times: ${queueRepeatTimes}`);
+            }
+            
+            function startNextQueueTimer() {
+                if (!queueActive || queueIndex >= quickBellQueue.length) {
+                    return;
+                }
+                
+                const timer = quickBellQueue[queueIndex];
+                const now = new Date();
+                queueTimerEndTime = new Date(now.getTime() + (timer.durationSeconds * 1000));
+                queueTimerEndTime.sound = timer.sound;
+                queueTimerEndTime.queuePosition = queueIndex + 1;
+                queueTimerEndTime.queueTotal = quickBellQueue.length;
+                
+                console.log(`Queue timer ${queueIndex + 1}/${quickBellQueue.length} started: ${timer.durationSeconds}s`);
+                updateClock();
+            }
+            
+            function advanceQueue() {
+                if (!queueActive) return;
+                
+                queueIndex++;
+                
+                // Check if we've completed this iteration
+                if (queueIndex >= quickBellQueue.length) {
+                    queueCurrentRepeat++;
+                    
+                    // Check repeat conditions
+                    if (queueRepeatMode === 'times') {
+                        if (queueCurrentRepeat >= queueRepeatTimes) {
+                            // Done with all repeats
+                            cancelQueue();
+                            return;
+                        }
+                    }
+                    // 'until' mode continues until bell rings or is cancelled
+                    
+                    // Reset for next iteration
+                    queueIndex = 0;
+                }
+                
+                // Start next timer
+                startNextQueueTimer();
+            }
+            
+            function cancelQueue() {
+                queueActive = false;
+                queueTimerEndTime = null;
+                quickBellQueue = [];
+                queueIndex = 0;
+                queueCurrentRepeat = 0;
+                
+                // Also cancel any active quick bell
+                quickBellEndTime = null;
+                document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
+                
+                console.log('Queue cancelled');
+                updateClock();
+            }
+            
+            function checkQueueUntilBell(bellId) {
+                // Called when a bell rings - check if it matches our "until" bell
+                if (queueActive && queueRepeatMode === 'until' && queueUntilBellId === bellId) {
+                    console.log('Queue "until" bell reached, stopping queue');
+                    cancelQueue();
+                    return true;
+                }
+                return false;
+            }
+            
+            function getQueueVisualHtml() {
+                if (queueVisual === '[DEFAULT_Q]') {
+                    // Default Q visual - a simple styled Q
+                    return `<div class="w-full h-full flex items-center justify-center bg-purple-600 text-white text-6xl font-bold">Q</div>`;
+                }
+                // Custom visual URL
+                if (queueVisual && queueVisual.startsWith('http')) {
+                    return `<img src="${queueVisual}" alt="Queue Visual" class="w-full h-full object-contain">`;
+                }
+                // Fallback
+                return `<div class="w-full h-full flex items-center justify-center bg-purple-600 text-white text-6xl font-bold">Q</div>`;
+            }
+            
+            // ============================================================
+            // END V5.55.0: Quick Bell Queue Functions
+            // ============================================================
             
             async function ringBell(bell) {
                 // 5.18.1 Log what bells are rung
@@ -11978,11 +12398,59 @@
                 });
 
                 document.getElementById('cancel-quick-bell-btn').addEventListener('click', () => {
-                    quickBellEndTime = null;
-                    quickBellSound = 'ellisBell.mp3';
-                    document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
-                    updateClock(); // Refresh display
+                    // V5.55.0: Cancel queue if active
+                    if (queueActive) {
+                        cancelQueue();
+                    } else {
+                        quickBellEndTime = null;
+                        quickBellSound = 'ellisBell.mp3';
+                        document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
+                        updateClock(); // Refresh display
+                    }
                 });
+                
+                // V5.55.0: Quick Bell Queue Modal event listeners
+                if (quickBellQueueBtn) {
+                    quickBellQueueBtn.addEventListener('click', () => {
+                        openQuickBellQueueModal();
+                    });
+                }
+                
+                if (queueModalCloseBtn) {
+                    queueModalCloseBtn.addEventListener('click', closeQuickBellQueueModal);
+                }
+                
+                if (queueCancelBtn) {
+                    queueCancelBtn.addEventListener('click', closeQuickBellQueueModal);
+                }
+                
+                if (queueAddTimerBtn) {
+                    queueAddTimerBtn.addEventListener('click', addQueueTimerRow);
+                }
+                
+                if (queueStartBtn) {
+                    queueStartBtn.addEventListener('click', startQueue);
+                }
+                
+                // Show/hide warning when "ignore shared" is checked
+                if (queueIgnoreSharedCheckbox) {
+                    queueIgnoreSharedCheckbox.addEventListener('change', () => {
+                        if (queueIgnoreSharedCheckbox.checked) {
+                            queueIgnoreSharedWarning.classList.remove('hidden');
+                        } else {
+                            queueIgnoreSharedWarning.classList.add('hidden');
+                        }
+                    });
+                }
+                
+                // Close modal on backdrop click
+                if (quickBellQueueModal) {
+                    quickBellQueueModal.addEventListener('click', (e) => {
+                        if (e.target === quickBellQueueModal) {
+                            closeQuickBellQueueModal();
+                        }
+                    });
+                }
                 
                 // V5.47.13: Skip Bell button handler
                 document.getElementById('skip-bell-btn').addEventListener('click', () => {
