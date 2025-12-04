@@ -1,9 +1,8 @@
-        const APP_VERSION = "5.54.1"
+        const APP_VERSION = "5.54.2"
+        // V5.54.2: Bug fix - removed calls to non-existent functions
+        // - Removed updateMuteButtonStates() call (function doesn't exist)
+        // - Fixed renderCombinedBellList() → recalculateAndRenderAll()
         // V5.54.1: Bulk Time Shift - Improved feedback
-        // - Shared bells only count as "updated" if sound/visual actually changed
-        // - Clearer status messages showing exactly what happened
-        // - Warning icon for shared bells that couldn't be time-shifted
-        // V5.54.0: Bulk Time Shift
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -1103,7 +1102,7 @@
                     if (data.mutedBellIds && Array.isArray(data.mutedBellIds)) {
                         mutedBellIds = new Set(data.mutedBellIds);
                         localStorage.setItem('mutedBellIds', JSON.stringify(data.mutedBellIds));
-                        updateMuteButtonStates();
+                        // Mute states will be updated when recalculateAndRenderAll() is called below
                     }
                     
                     if (data.warningSettings) {
@@ -1119,7 +1118,7 @@
                     }
                     
                     // Re-render the bell list to reflect any visual/sound changes
-                    renderCombinedBellList();
+                    recalculateAndRenderAll();
                 }
             }, (error) => {
                 console.error('[CloudSync] Error listening to preferences:', error);
