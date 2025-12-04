@@ -1,5 +1,9 @@
-        const APP_VERSION = "5.54.4-debug2"
-        // DEBUG VERSION - Added extensive logging for orphan bell investigation
+        const APP_VERSION = "5.54.5"
+        // V5.54.5: Bug fix - relative bells anchored to relative "Period Start" bells orphan
+        // - When a custom period's "Period Start" is itself relative (anchored to a shared period),
+        //   the save logic was incorrectly converting to a stable anchor (parentPeriodName + parentAnchorType)
+        // - Resolution failed because the "Period Start" bell doesn't have anchorRole and is relative
+        // - Fix: Don't convert to stable anchor if the anchor bell is itself relative; keep parentBellId
         // V5.54.4: Bug fix - infinite recursion in getVisualHtml
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
@@ -3602,8 +3606,6 @@
 
                 // 2. If it's a relative bell (BY ID - the "old" way)
                 if (bell.relative && bell.relative.parentBellId) {
-                    console.log('[DEBUG] Resolving relative bell by parentBellId:', bell.name, '-> parent:', bell.relative.parentBellId);
-                    
                     // 2a. Check for circular dependencies
                     if (visited.has(bell.bellId)) {
                         // MODIFIED V4.67: Make error log more explicit about the DATA being the problem.
@@ -3616,10 +3618,8 @@
 
                     // 2b. Find the parent bell
                     const parentBell = bellMap.get(bell.relative.parentBellId);
-                    console.log('[DEBUG] bellMap has', bellMap.size, 'entries. Parent found:', !!parentBell);
                     if (!parentBell) {
                         console.warn(`Could not find parent bell (ID: ${bell.relative.parentBellId}) for bell "${bell.name}". It may be orphaned.`);
-                        console.warn('[DEBUG] All bellMap keys:', Array.from(bellMap.keys()));
                         
                         // NEW in 4.32: Find last known time to prevent defaulting to 00:00:00
                         const oldBellState = personalBells.find(b => b.bellId === bell.bellId);
@@ -3668,8 +3668,6 @@
 
                     // 2b. Find the parent *period*
                     const parentPeriod = allPeriods.find(p => p.name === parentPeriodName);
-                    console.log('[DEBUG] Looking for parent period:', parentPeriodName);
-                    console.log('[DEBUG] Found parentPeriod:', parentPeriod?.name, 'bells:', parentPeriod?.bells?.length);
                     
                     if (!parentPeriod || !parentPeriod.bells || parentPeriod.bells.length === 0) {
                         console.warn(`Could not find parent period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
@@ -3685,7 +3683,6 @@
                     const sharedStaticBells = parentPeriod.bells.filter(b => 
                         !b.relative && b._originType === 'shared'
                     );
-                    console.log('[DEBUG] sharedStaticBells count:', sharedStaticBells.length);
                     
                     if (sharedStaticBells.length > 0) {
                         // LINKED PERIOD: Use first/last shared static bell as anchor
@@ -3694,25 +3691,15 @@
                         } else {
                             anchorBell = sharedStaticBells[sharedStaticBells.length - 1];
                         }
-                        console.log('[DEBUG] Using shared static bell as anchor:', anchorBell?.name);
                     } else {
                         // FLUKE/STANDALONE PERIOD: Find bells with explicit anchorRole
-                        console.log('[DEBUG] No shared bells, looking for anchorRole or name match');
-                        console.log('[DEBUG] parentAnchorType:', parentAnchorType);
                         const targetRole = parentAnchorType === 'period_start' ? 'start' : 'end';
                         anchorBell = parentPeriod.bells.find(b => b.anchorRole === targetRole);
-                        console.log('[DEBUG] Found by anchorRole:', anchorBell?.name);
                         
                         // Legacy fallback: look for "Period Start" / "Period End" names
                         if (!anchorBell) {
                             const targetName = parentAnchorType === 'period_start' ? 'Period Start' : 'Period End';
-                            console.log('[DEBUG] Fallback: looking for bell named:', targetName);
-                            console.log('[DEBUG] Available bells:');
-                            parentPeriod.bells.forEach(b => {
-                                console.log('[DEBUG]   -', b.name, 'relative:', !!b.relative, 'time:', b.time);
-                            });
                             anchorBell = parentPeriod.bells.find(b => b.name === targetName && !b.relative);
-                            console.log('[DEBUG] Found by name:', anchorBell?.name);
                         }
                     }
                     
@@ -3800,23 +3787,14 @@
 
                 // 1. Create a master map of all bells by bellId
                 const bellMap = new Map();
-                console.log('[DEBUG] Building bellMap from', allPeriods.length, 'periods');
                 allPeriods.forEach(period => {
-                    console.log('[DEBUG] Processing period:', period.name, 'origin:', period.origin, 'bells:', period.bells?.length);
                     period.bells.forEach(bell => {
                         // MODIFIED: v4.13 - Fix for legacy bells
                         if (!bell.bellId) {
                             bell.bellId = generateBellId(); // Assign one on the fly
                             console.warn(`Assigned new bellId to legacy bell: ${bell.name}`);
                         }
-                        console.log('[DEBUG]   Adding bell to map:', bell.name, 'ID:', bell.bellId, 'originType:', bell._originType);
                         bellMap.set(bell.bellId, bell);
-                        // DELETED: Old logic
-                        // if (bell.bellId) {
-                        //     bellMap.set(bell.bellId, bell);
-                        // } else {
-                        //     console.warn("Found a bell with no bellId:", bell.name);
-                        // }
                     });
                 });
 
@@ -7336,11 +7314,6 @@
              * @param {string} periodName - The period that was clicked.
              */
             function handleShowAddBellForm(periodName) {
-                console.log('[TRACE] handleShowAddBellForm called with periodName:', periodName);
-                console.log('[TRACE] periodName type:', typeof periodName);
-                console.log('[TRACE] periodName length:', periodName?.length);
-                console.log('[TRACE] periodName charCodes:', periodName ? [...periodName].map(c => c.charCodeAt(0)) : 'null');
-                
                 if (!activePersonalScheduleId) {
                     showUserMessage("You must select a personal schedule to add custom bells.");
                     return;
@@ -7352,74 +7325,43 @@
                     name: periodName
                     // We'll populate the bells property if/when the relative modal is chosen
                 };
-                console.log('[TRACE] currentRelativePeriod set to:', currentRelativePeriod);
                 
                 // 2. Populate and show the choice modal
-                console.log('[TRACE] Setting addBellTypePeriodName.textContent');
                 addBellTypePeriodName.textContent = periodName;
-                console.log('[TRACE] Showing addBellTypeModal');
                 addBellTypeModal.classList.remove('hidden');
-                console.log('[TRACE] handleShowAddBellForm END');
             }
 
             /**
              * NEW: v4.28 - Opens the Static Bell Modal.
              */
             function openStaticBellModal() {
-                console.log('[TRACE] openStaticBellModal START');
-                console.log('[TRACE] currentRelativePeriod:', currentRelativePeriod);
-                
                 if (!currentRelativePeriod || !currentRelativePeriod.name) {
                     console.error("openStaticBellModal: No period context found.");
                     return;
                 }
                 const periodName = currentRelativePeriod.name;
-                console.log('[TRACE] periodName:', periodName);
 
                 // 1. Populate modal UI
-                console.log('[TRACE] Setting addStaticPeriodName.textContent');
                 addStaticPeriodName.textContent = periodName;
-                
-                console.log('[TRACE] Calling addStaticBellForm.reset()');
                 addStaticBellForm.reset(); // Clear any previous inputs
-                
-                console.log('[TRACE] Hiding addStaticBellStatus');
                 addStaticBellStatus.classList.add('hidden');
     
                 // 6. Populate sound dropdowns
-                console.log('[TRACE] Getting shared-bell-sound element');
                 const sharedSoundSelect = document.getElementById('shared-bell-sound');
-                console.log('[TRACE] sharedSoundSelect:', sharedSoundSelect);
-                console.log('[TRACE] addStaticBellSound:', addStaticBellSound);
                 
                 if (addStaticBellSound && sharedSoundSelect) {
-                    console.log('[TRACE] Calling updateSoundDropdowns()');
                     updateSoundDropdowns();
-                    console.log('[TRACE] updateSoundDropdowns completed');
-                    
-                    console.log('[TRACE] Copying innerHTML from sharedSoundSelect');
                     addStaticBellSound.innerHTML = sharedSoundSelect.innerHTML;
-                    
-                    console.log('[TRACE] Setting default sound value');
                     addStaticBellSound.value = 'ellisBell.mp3'; // Reset to default
                 }
     
                 // NEW V5.42: Populate visual dropdowns and update preview
-                console.log('[TRACE] Calling updateVisualDropdowns()');
                 updateVisualDropdowns();
-                console.log('[TRACE] updateVisualDropdowns completed');
-                
-                console.log('[TRACE] Calling updateAddStaticBellVisualPreview()');
                 updateAddStaticBellVisualPreview();
-                console.log('[TRACE] updateAddStaticBellVisualPreview completed');
     
                 // 3. Show Modal
-                console.log('[TRACE] Setting sound value again');
                 addStaticBellSound.value = 'ellisBell.mp3'; // Set default sound
-                
-                console.log('[TRACE] Showing modal');
                 addStaticBellModal.classList.remove('hidden');
-                console.log('[TRACE] openStaticBellModal END');
             }
 
             /**
@@ -7628,26 +7570,26 @@
                 // --- NEW in 4.48: Check if we can use a stable anchor ---
                 // MODIFIED V5.44.1: For cross-period anchoring, check if the anchor bell is 
                 // the first or last bell of ITS period (not the period we're adding to)
+                // MODIFIED V5.54.5: Don't convert to stable anchor if the anchor bell is itself relative
                 
                 // Find which period the anchor bell belongs to
-                console.log('[DEBUG] Looking for anchor period. parentBellId:', parentBellId);
-                console.log('[DEBUG] calculatedPeriodsList length:', calculatedPeriodsList.length);
-                
                 let anchorPeriod = null;
+                let anchorBellObj = null;
                 for (const p of calculatedPeriodsList) {
-                    console.log('[DEBUG] Checking period:', p.name, 'origin:', p.origin, 'bells:', p.bells?.length);
-                    if (p.bells && p.bells.some(b => b.bellId === parentBellId)) {
+                    const foundBell = p.bells?.find(b => b.bellId === parentBellId);
+                    if (foundBell) {
                         anchorPeriod = p;
-                        console.log('[DEBUG] Found anchor period:', p.name);
+                        anchorBellObj = foundBell;
                         break;
                     }
                 }
                 
-                if (anchorPeriod && anchorPeriod.bells.length > 0) {
+                // V5.54.5: Check if anchor bell is relative - if so, keep the parentBellId reference
+                const anchorBellIsRelative = anchorBellObj && anchorBellObj.relative;
+                
+                if (anchorPeriod && anchorPeriod.bells.length > 0 && !anchorBellIsRelative) {
                     const firstBell = anchorPeriod.bells[0];
                     const lastBell = anchorPeriod.bells[anchorPeriod.bells.length - 1];
-                    console.log('[DEBUG] First bell ID:', firstBell.bellId, 'Last bell ID:', lastBell.bellId);
-                    console.log('[DEBUG] Parent bell ID we are looking for:', parentBellId);
 
                     if (parentBellId === firstBell.bellId) {
                         // It's anchored to Period Start!
@@ -7669,12 +7611,11 @@
                         // It's anchored to a middle bell - keep the parentBellId
                         console.log(`Keeping parentBellId ${parentBellId} - anchor is not a period start/end.`);
                     }
+                } else if (anchorBellIsRelative) {
+                    // V5.54.5: Anchor is a relative bell, keep the direct reference
+                    console.log(`Keeping parentBellId ${parentBellId} - anchor bell is itself relative.`);
                 } else {
-                    console.warn(`[DEBUG] Could not find anchor period for parentBellId ${parentBellId}`);
-                    console.warn('[DEBUG] All available bells:');
-                    calculatedPeriodsList.forEach(p => {
-                        p.bells?.forEach(b => console.warn(`  - ${p.name}: ${b.name} (${b.bellId})`));
-                    });
+                    console.warn(`Could not find anchor period for parentBellId ${parentBellId}`);
                 }
                 
                 // NEW in 4.57: If a stable anchor was assigned above, remove the parentBellId to prevent conflicting logic.
@@ -8689,7 +8630,6 @@
             }
 
             function updateVisualDropdowns() {
-                console.log('[TRACE] updateVisualDropdowns START');
                 // Added 5.31.1: Dropdowns to add images to individual bells
                 // MODIFIED V5.42.0: Added passing period visual select
                 const selects = [ 
@@ -8703,7 +8643,6 @@
                     document.getElementById('multi-relative-bell-visual'),
                     document.getElementById('passing-period-visual-select') // NEW V5.42.0
                 ];
-                console.log('[TRACE] selects array created, length:', selects.length);
                 
                 // 1. Create options for default SVGs (dynamically)
                 // MODIFIED V4.61: Removed static number options ('1st Period', '2nd Period')
@@ -8712,7 +8651,6 @@
                     const key = `[DEFAULT] ${name}`;
                     return `<option value="${key}">${name} (Default)</option>`;
                 }).join('');
-                console.log('[TRACE] defaultHtml created');
 
                 // NEW V4.76: Add [UPLOAD] option
                 // FIX V5.42.8: Changed from "Audio" to "Image" - this is visual dropdown
@@ -8723,7 +8661,6 @@
             
                 // 3. Create options for user files
                 // MODIFIED V5.34: Use nickname if available
-                console.log('[TRACE] userVisualFiles:', userVisualFiles?.length || 0);
                 const userHtml = userVisualFiles.map(file => {
                     const displayName = file.nickname || file.name;
                     return `<option value="${file.url}">${displayName} (My File)</option>`;
@@ -8731,20 +8668,16 @@
                 
                 // NEW V4.61.5: Create options for shared files (Fixes missing 'sharedHtml' variable error)
                 // MODIFIED V5.34: Use nickname if available
-                console.log('[TRACE] sharedVisualFiles:', sharedVisualFiles?.length || 0);
                 const sharedHtml = sharedVisualFiles.map(file => {
                     const displayName = file.nickname || file.name;
                     return `<option value="${file.url}">${displayName} (Shared)</option>`;
                 }).join('');
 
                 // 4. Populate all select elements
-                console.log('[TRACE] Populating selects...');
                 selects.forEach((select, index) => {
                     if (!select) {
-                        console.log(`[TRACE] select[${index}] is null, skipping`);
                         return;
                     }
-                    console.log(`[TRACE] Populating select[${index}]:`, select.id);
                     
                     const currentValue = select.value; // Preserve current selection if possible
                     select.innerHTML = `
@@ -8762,9 +8695,7 @@
                         </optgroup>
                     `;
                     select.value = currentValue; // Re-apply selection
-                    console.log(`[TRACE] select[${index}] populated`);
                 });
-                console.log('[TRACE] updateVisualDropdowns END');
             }
 
             /**
@@ -11664,11 +11595,8 @@
                     currentRelativePeriod = null;
                 });
                 addBellTypeStaticBtn.addEventListener('click', () => {
-                    console.log('[TRACE] Static bell button clicked');
                     addBellTypeModal.classList.add('hidden');
-                    console.log('[TRACE] Bell type modal hidden, calling openStaticBellModal...');
                     openStaticBellModal();
-                    console.log('[TRACE] openStaticBellModal completed');
                 });
                 addBellTypeRelativeBtn.addEventListener('click', () => {
                     addBellTypeModal.classList.add('hidden');
