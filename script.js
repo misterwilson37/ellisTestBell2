@@ -1,10 +1,8 @@
-        const APP_VERSION = "5.54.5"
+        const APP_VERSION = "5.54.6"
+        // V5.54.6: UX improvements
+        // - Sound overrides now display nickname if available, instead of raw filename
+        // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
         // V5.54.5: Bug fix - relative bells anchored to relative "Period Start" bells orphan
-        // - When a custom period's "Period Start" is itself relative (anchored to a shared period),
-        //   the save logic was incorrectly converting to a stable anchor (parentPeriodName + parentAnchorType)
-        // - Resolution failed because the "Period Start" bell doesn't have anchorRole and is relative
-        // - Fix: Don't convert to stable anchor if the anchor bell is itself relative; keep parentBellId
-        // V5.54.4: Bug fix - infinite recursion in getVisualHtml
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -3324,12 +3322,22 @@
                         }
                         
                         if (soundDisplay && soundDisplay.startsWith('http')) {
-                            try {
-                                const url = new URL(soundDisplay);
-                                let path = decodeURIComponent(url.pathname.split('/').pop());
-                                soundDisplay = path.split('/').pop();
-                            } catch (e) {
-                                soundDisplay = "Custom Sound";
+                            // V5.54.6: Look up nickname from userAudioFiles or sharedAudioFiles
+                            const matchingFile = userAudioFiles.find(f => f.url === soundDisplay) ||
+                                                 sharedAudioFiles.find(f => f.url === soundDisplay);
+                            if (matchingFile && matchingFile.nickname) {
+                                soundDisplay = matchingFile.nickname;
+                            } else if (matchingFile && matchingFile.name) {
+                                soundDisplay = matchingFile.name;
+                            } else {
+                                // Fallback: extract filename from URL
+                                try {
+                                    const url = new URL(soundDisplay);
+                                    let path = decodeURIComponent(url.pathname.split('/').pop());
+                                    soundDisplay = path.split('/').pop();
+                                } catch (e) {
+                                    soundDisplay = "Custom Sound";
+                                }
                             }
                         } else if (soundDisplay === 'ellisBell.mp3') {
                             soundDisplay = "Ellis Bell";
