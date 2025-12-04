@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.54.4-debug"
+        const APP_VERSION = "5.54.4-debug2"
         // DEBUG VERSION - Added extensive logging for orphan bell investigation
         // V5.54.4: Bug fix - infinite recursion in getVisualHtml
         // - Now clones entire quickBellControls from main page instead of recreating
@@ -3668,6 +3668,9 @@
 
                     // 2b. Find the parent *period*
                     const parentPeriod = allPeriods.find(p => p.name === parentPeriodName);
+                    console.log('[DEBUG] Looking for parent period:', parentPeriodName);
+                    console.log('[DEBUG] Found parentPeriod:', parentPeriod?.name, 'bells:', parentPeriod?.bells?.length);
+                    
                     if (!parentPeriod || !parentPeriod.bells || parentPeriod.bells.length === 0) {
                         console.warn(`Could not find parent period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
                         return { ...bell, isOrphan: true, fallbackTime: "00:00:00" };
@@ -3682,6 +3685,7 @@
                     const sharedStaticBells = parentPeriod.bells.filter(b => 
                         !b.relative && b._originType === 'shared'
                     );
+                    console.log('[DEBUG] sharedStaticBells count:', sharedStaticBells.length);
                     
                     if (sharedStaticBells.length > 0) {
                         // LINKED PERIOD: Use first/last shared static bell as anchor
@@ -3690,15 +3694,25 @@
                         } else {
                             anchorBell = sharedStaticBells[sharedStaticBells.length - 1];
                         }
+                        console.log('[DEBUG] Using shared static bell as anchor:', anchorBell?.name);
                     } else {
                         // FLUKE/STANDALONE PERIOD: Find bells with explicit anchorRole
+                        console.log('[DEBUG] No shared bells, looking for anchorRole or name match');
+                        console.log('[DEBUG] parentAnchorType:', parentAnchorType);
                         const targetRole = parentAnchorType === 'period_start' ? 'start' : 'end';
                         anchorBell = parentPeriod.bells.find(b => b.anchorRole === targetRole);
+                        console.log('[DEBUG] Found by anchorRole:', anchorBell?.name);
                         
                         // Legacy fallback: look for "Period Start" / "Period End" names
                         if (!anchorBell) {
                             const targetName = parentAnchorType === 'period_start' ? 'Period Start' : 'Period End';
+                            console.log('[DEBUG] Fallback: looking for bell named:', targetName);
+                            console.log('[DEBUG] Available bells:');
+                            parentPeriod.bells.forEach(b => {
+                                console.log('[DEBUG]   -', b.name, 'relative:', !!b.relative, 'time:', b.time);
+                            });
                             anchorBell = parentPeriod.bells.find(b => b.name === targetName && !b.relative);
+                            console.log('[DEBUG] Found by name:', anchorBell?.name);
                         }
                     }
                     
