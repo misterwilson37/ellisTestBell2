@@ -1,9 +1,6 @@
-        const APP_VERSION = "5.54.4"
+        const APP_VERSION = "5.54.4-debug"
+        // DEBUG VERSION - Added extensive logging for orphan bell investigation
         // V5.54.4: Bug fix - infinite recursion in getVisualHtml
-        // - When a period has ONLY a background color override (e.g., "[BG:#283e5c]"),
-        //   getVisualHtml would recursively call itself infinitely, causing a crash
-        // - Fixed by tracking when we've parsed a BG-only value and skipping override lookup
-        // V5.54.3: Bug fix - scope mismatch in cloud sync
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -3605,6 +3602,8 @@
 
                 // 2. If it's a relative bell (BY ID - the "old" way)
                 if (bell.relative && bell.relative.parentBellId) {
+                    console.log('[DEBUG] Resolving relative bell by parentBellId:', bell.name, '-> parent:', bell.relative.parentBellId);
+                    
                     // 2a. Check for circular dependencies
                     if (visited.has(bell.bellId)) {
                         // MODIFIED V4.67: Make error log more explicit about the DATA being the problem.
@@ -3617,8 +3616,10 @@
 
                     // 2b. Find the parent bell
                     const parentBell = bellMap.get(bell.relative.parentBellId);
+                    console.log('[DEBUG] bellMap has', bellMap.size, 'entries. Parent found:', !!parentBell);
                     if (!parentBell) {
                         console.warn(`Could not find parent bell (ID: ${bell.relative.parentBellId}) for bell "${bell.name}". It may be orphaned.`);
+                        console.warn('[DEBUG] All bellMap keys:', Array.from(bellMap.keys()));
                         
                         // NEW in 4.32: Find last known time to prevent defaulting to 00:00:00
                         const oldBellState = personalBells.find(b => b.bellId === bell.bellId);
@@ -3785,13 +3786,16 @@
 
                 // 1. Create a master map of all bells by bellId
                 const bellMap = new Map();
+                console.log('[DEBUG] Building bellMap from', allPeriods.length, 'periods');
                 allPeriods.forEach(period => {
+                    console.log('[DEBUG] Processing period:', period.name, 'origin:', period.origin, 'bells:', period.bells?.length);
                     period.bells.forEach(bell => {
                         // MODIFIED: v4.13 - Fix for legacy bells
                         if (!bell.bellId) {
                             bell.bellId = generateBellId(); // Assign one on the fly
                             console.warn(`Assigned new bellId to legacy bell: ${bell.name}`);
                         }
+                        console.log('[DEBUG]   Adding bell to map:', bell.name, 'ID:', bell.bellId, 'originType:', bell._originType);
                         bellMap.set(bell.bellId, bell);
                         // DELETED: Old logic
                         // if (bell.bellId) {
@@ -7612,10 +7616,15 @@
                 // the first or last bell of ITS period (not the period we're adding to)
                 
                 // Find which period the anchor bell belongs to
+                console.log('[DEBUG] Looking for anchor period. parentBellId:', parentBellId);
+                console.log('[DEBUG] calculatedPeriodsList length:', calculatedPeriodsList.length);
+                
                 let anchorPeriod = null;
                 for (const p of calculatedPeriodsList) {
+                    console.log('[DEBUG] Checking period:', p.name, 'origin:', p.origin, 'bells:', p.bells?.length);
                     if (p.bells && p.bells.some(b => b.bellId === parentBellId)) {
                         anchorPeriod = p;
+                        console.log('[DEBUG] Found anchor period:', p.name);
                         break;
                     }
                 }
@@ -7623,6 +7632,8 @@
                 if (anchorPeriod && anchorPeriod.bells.length > 0) {
                     const firstBell = anchorPeriod.bells[0];
                     const lastBell = anchorPeriod.bells[anchorPeriod.bells.length - 1];
+                    console.log('[DEBUG] First bell ID:', firstBell.bellId, 'Last bell ID:', lastBell.bellId);
+                    console.log('[DEBUG] Parent bell ID we are looking for:', parentBellId);
 
                     if (parentBellId === firstBell.bellId) {
                         // It's anchored to Period Start!
@@ -7645,7 +7656,11 @@
                         console.log(`Keeping parentBellId ${parentBellId} - anchor is not a period start/end.`);
                     }
                 } else {
-                    console.warn(`Could not find anchor period for parentBellId ${parentBellId}`);
+                    console.warn(`[DEBUG] Could not find anchor period for parentBellId ${parentBellId}`);
+                    console.warn('[DEBUG] All available bells:');
+                    calculatedPeriodsList.forEach(p => {
+                        p.bells?.forEach(b => console.warn(`  - ${p.name}: ${b.name} (${b.bellId})`));
+                    });
                 }
                 
                 // NEW in 4.57: If a stable anchor was assigned above, remove the parentBellId to prevent conflicting logic.
