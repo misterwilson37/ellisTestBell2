@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.55.5"
+        const APP_VERSION = "5.55.6"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -1004,17 +1004,14 @@
             try {
                 const prefsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'preferences');
                 
-                // Convert mutedBellIds Set to Array for storage
-                const mutedBellIdsArray = Array.from(mutedBellIds);
-                
+                // V5.55.6: Removed mutedBellIds from cloud sync - mute status is device-specific
                 const prefsData = {
                     periodVisualOverrides: periodVisualOverrides || {},
                     bellSoundOverrides: bellSoundOverrides || {},
                     periodNameOverrides: periodNameOverrides || {},
-                    mutedBellIds: mutedBellIdsArray,
                     warningSettings: warningSettings || {},
                     kioskModeEnabled: kioskModeEnabled || false,
-                    quickBellDefaultSound: quickBellDefaultSound || 'ellisBell.mp3', // V5.55.5
+                    quickBellDefaultSound: quickBellDefaultSound || 'ellisBell.mp3',
                     lastUpdated: new Date().toISOString()
                 };
                 
@@ -1060,10 +1057,8 @@
                         localStorage.setItem('periodNameOverrides', JSON.stringify(periodNameOverrides));
                     }
                     
-                    if (data.mutedBellIds && Array.isArray(data.mutedBellIds)) {
-                        mutedBellIds = new Set(data.mutedBellIds);
-                        localStorage.setItem('mutedBellIds', JSON.stringify(data.mutedBellIds));
-                    }
+                    // V5.55.6: Removed mutedBellIds from cloud sync - mute status is device-specific
+                    // mutedBellIds stays in localStorage only
                     
                     if (data.warningSettings) {
                         warningSettings = { ...warningSettings, ...data.warningSettings };
@@ -1141,10 +1136,7 @@
                         localStorage.setItem('periodNameOverrides', JSON.stringify(periodNameOverrides));
                     }
                     
-                    if (data.mutedBellIds && Array.isArray(data.mutedBellIds)) {
-                        mutedBellIds = new Set(data.mutedBellIds);
-                        localStorage.setItem('mutedBellIds', JSON.stringify(data.mutedBellIds));
-                    }
+                    // V5.55.6: Removed mutedBellIds from cloud sync - mute status is device-specific
                     
                     if (data.warningSettings) {
                         warningSettings = { ...warningSettings, ...data.warningSettings };
