@@ -7339,33 +7339,60 @@
              * NEW: v4.28 - Opens the Static Bell Modal.
              */
             function openStaticBellModal() {
+                console.log('[TRACE] openStaticBellModal START');
+                console.log('[TRACE] currentRelativePeriod:', currentRelativePeriod);
+                
                 if (!currentRelativePeriod || !currentRelativePeriod.name) {
                     console.error("openStaticBellModal: No period context found.");
                     return;
                 }
                 const periodName = currentRelativePeriod.name;
+                console.log('[TRACE] periodName:', periodName);
 
                 // 1. Populate modal UI
+                console.log('[TRACE] Setting addStaticPeriodName.textContent');
                 addStaticPeriodName.textContent = periodName;
+                
+                console.log('[TRACE] Calling addStaticBellForm.reset()');
                 addStaticBellForm.reset(); // Clear any previous inputs
+                
+                console.log('[TRACE] Hiding addStaticBellStatus');
                 addStaticBellStatus.classList.add('hidden');
     
                 // 6. Populate sound dropdowns
-                // MODIFIED in 4.40: Use sharedSoundInput as the template, not the deleted personalSoundInput
+                console.log('[TRACE] Getting shared-bell-sound element');
                 const sharedSoundSelect = document.getElementById('shared-bell-sound');
+                console.log('[TRACE] sharedSoundSelect:', sharedSoundSelect);
+                console.log('[TRACE] addStaticBellSound:', addStaticBellSound);
+                
                 if (addStaticBellSound && sharedSoundSelect) {
+                    console.log('[TRACE] Calling updateSoundDropdowns()');
                     updateSoundDropdowns();
+                    console.log('[TRACE] updateSoundDropdowns completed');
+                    
+                    console.log('[TRACE] Copying innerHTML from sharedSoundSelect');
                     addStaticBellSound.innerHTML = sharedSoundSelect.innerHTML;
+                    
+                    console.log('[TRACE] Setting default sound value');
                     addStaticBellSound.value = 'ellisBell.mp3'; // Reset to default
                 }
     
                 // NEW V5.42: Populate visual dropdowns and update preview
+                console.log('[TRACE] Calling updateVisualDropdowns()');
                 updateVisualDropdowns();
+                console.log('[TRACE] updateVisualDropdowns completed');
+                
+                console.log('[TRACE] Calling updateAddStaticBellVisualPreview()');
                 updateAddStaticBellVisualPreview();
+                console.log('[TRACE] updateAddStaticBellVisualPreview completed');
     
                 // 3. Show Modal
+                console.log('[TRACE] Setting sound value again');
                 addStaticBellSound.value = 'ellisBell.mp3'; // Set default sound
+                
+                console.log('[TRACE] Showing modal');
                 addStaticBellModal.classList.remove('hidden');
+                console.log('[TRACE] openStaticBellModal END');
             }
 
             /**
@@ -8624,6 +8651,7 @@
             }
 
             function updateVisualDropdowns() {
+                console.log('[TRACE] updateVisualDropdowns START');
                 // Added 5.31.1: Dropdowns to add images to individual bells
                 // MODIFIED V5.42.0: Added passing period visual select
                 const selects = [ 
@@ -8637,6 +8665,8 @@
                     document.getElementById('multi-relative-bell-visual'),
                     document.getElementById('passing-period-visual-select') // NEW V5.42.0
                 ];
+                console.log('[TRACE] selects array created, length:', selects.length);
+                
                 // 1. Create options for default SVGs (dynamically)
                 // MODIFIED V4.61: Removed static number options ('1st Period', '2nd Period')
                 const defaultVisuals = ['Lunch', 'Passing Period'];
@@ -8644,6 +8674,7 @@
                     const key = `[DEFAULT] ${name}`;
                     return `<option value="${key}">${name} (Default)</option>`;
                 }).join('');
+                console.log('[TRACE] defaultHtml created');
 
                 // NEW V4.76: Add [UPLOAD] option
                 // FIX V5.42.8: Changed from "Audio" to "Image" - this is visual dropdown
@@ -8654,6 +8685,7 @@
             
                 // 3. Create options for user files
                 // MODIFIED V5.34: Use nickname if available
+                console.log('[TRACE] userVisualFiles:', userVisualFiles?.length || 0);
                 const userHtml = userVisualFiles.map(file => {
                     const displayName = file.nickname || file.name;
                     return `<option value="${file.url}">${displayName} (My File)</option>`;
@@ -8661,14 +8693,20 @@
                 
                 // NEW V4.61.5: Create options for shared files (Fixes missing 'sharedHtml' variable error)
                 // MODIFIED V5.34: Use nickname if available
+                console.log('[TRACE] sharedVisualFiles:', sharedVisualFiles?.length || 0);
                 const sharedHtml = sharedVisualFiles.map(file => {
                     const displayName = file.nickname || file.name;
                     return `<option value="${file.url}">${displayName} (Shared)</option>`;
                 }).join('');
 
                 // 4. Populate all select elements
-                selects.forEach(select => {
-                    if (!select) return;
+                console.log('[TRACE] Populating selects...');
+                selects.forEach((select, index) => {
+                    if (!select) {
+                        console.log(`[TRACE] select[${index}] is null, skipping`);
+                        return;
+                    }
+                    console.log(`[TRACE] Populating select[${index}]:`, select.id);
                     
                     const currentValue = select.value; // Preserve current selection if possible
                     select.innerHTML = `
@@ -8686,7 +8724,9 @@
                         </optgroup>
                     `;
                     select.value = currentValue; // Re-apply selection
+                    console.log(`[TRACE] select[${index}] populated`);
                 });
+                console.log('[TRACE] updateVisualDropdowns END');
             }
 
             /**
@@ -11580,8 +11620,11 @@
                     currentRelativePeriod = null;
                 });
                 addBellTypeStaticBtn.addEventListener('click', () => {
+                    console.log('[TRACE] Static bell button clicked');
                     addBellTypeModal.classList.add('hidden');
+                    console.log('[TRACE] Bell type modal hidden, calling openStaticBellModal...');
                     openStaticBellModal();
+                    console.log('[TRACE] openStaticBellModal completed');
                 });
                 addBellTypeRelativeBtn.addEventListener('click', () => {
                     addBellTypeModal.classList.add('hidden');
