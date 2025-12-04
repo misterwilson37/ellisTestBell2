@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.55.4"
+        const APP_VERSION = "5.55.5"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -582,6 +582,7 @@
         // NEW: Quick Bell State
         let quickBellEndTime = null;
         let quickBellSound = 'ellisBell.mp3'; // Default sound
+        let quickBellDefaultSound = 'ellisBell.mp3'; // V5.55.5: User's preferred quick bell sound (synced)
         
         // NEW V5.00: Custom Quick Bell State
         let customQuickBells = []; // Array of { id, name, hours, minutes, seconds, iconText, sound, isActive }
@@ -1013,6 +1014,7 @@
                     mutedBellIds: mutedBellIdsArray,
                     warningSettings: warningSettings || {},
                     kioskModeEnabled: kioskModeEnabled || false,
+                    quickBellDefaultSound: quickBellDefaultSound || 'ellisBell.mp3', // V5.55.5
                     lastUpdated: new Date().toISOString()
                 };
                 
@@ -1073,6 +1075,17 @@
                         kioskModeEnabled = data.kioskModeEnabled;
                         localStorage.setItem('kioskModeEnabled', kioskModeEnabled ? 'true' : 'false');
                         // Note: applyKioskMode() called in init() after this completes
+                    }
+                    
+                    // V5.55.5: Load quick bell default sound preference
+                    if (data.quickBellDefaultSound) {
+                        quickBellDefaultSound = data.quickBellDefaultSound;
+                        quickBellSound = quickBellDefaultSound;
+                        localStorage.setItem('quickBellDefaultSound', quickBellDefaultSound);
+                        // Apply to dropdown if it exists
+                        if (quickBellSoundSelect) {
+                            quickBellSoundSelect.value = quickBellDefaultSound;
+                        }
                     }
                     
                     return true; // Cloud data was loaded
@@ -1143,6 +1156,16 @@
                         kioskModeEnabled = data.kioskModeEnabled;
                         localStorage.setItem('kioskModeEnabled', kioskModeEnabled ? 'true' : 'false');
                         // Kiosk mode state updated, will apply on next toggle or refresh
+                    }
+                    
+                    // V5.55.5: Quick bell default sound
+                    if (data.quickBellDefaultSound) {
+                        quickBellDefaultSound = data.quickBellDefaultSound;
+                        quickBellSound = quickBellDefaultSound;
+                        localStorage.setItem('quickBellDefaultSound', quickBellDefaultSound);
+                        if (quickBellSoundSelect) {
+                            quickBellSoundSelect.value = quickBellDefaultSound;
+                        }
                     }
                     
                     // Note: Visual changes will apply on next page interaction or refresh
@@ -1892,6 +1915,24 @@
             }
             
             /**
+             * V5.55.5: Load quick bell sound preference from localStorage
+             */
+            function loadQuickBellSoundPreference() {
+                try {
+                    const stored = localStorage.getItem('quickBellDefaultSound');
+                    if (stored) {
+                        quickBellDefaultSound = stored;
+                        quickBellSound = stored;
+                        if (quickBellSoundSelect) {
+                            quickBellSoundSelect.value = stored;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error loading quick bell sound preference:', e);
+                }
+            }
+            
+            /**
              * Apply or remove kiosk mode styling
              * @param {boolean} enabled - Whether to enable kiosk mode
              */
@@ -2204,8 +2245,29 @@
                     // Sync sound select changes back to main page
                     const pipSoundSelect = quickBellsClone.querySelector('#quickBellSoundSelect');
                     if (pipSoundSelect) {
+                        // V5.55.5: Sync initial value from main page
+                        const mainSoundSelect = document.getElementById('quickBellSoundSelect');
+                        if (mainSoundSelect) {
+                            pipSoundSelect.value = mainSoundSelect.value;
+                        }
+                        
                         pipSoundSelect.addEventListener('change', () => {
-                            document.getElementById('quickBellSoundSelect').value = pipSoundSelect.value;
+                            const selectedValue = pipSoundSelect.value;
+                            
+                            // V5.55.5: Handle [UPLOAD] - can't upload from PiP
+                            if (selectedValue === '[UPLOAD]') {
+                                pipSoundSelect.value = quickBellDefaultSound;
+                                return;
+                            }
+                            
+                            // Sync back to main page
+                            document.getElementById('quickBellSoundSelect').value = selectedValue;
+                            quickBellSound = selectedValue;
+                            
+                            // Save preference
+                            quickBellDefaultSound = selectedValue;
+                            localStorage.setItem('quickBellDefaultSound', quickBellDefaultSound);
+                            saveUserPreferencesToCloud();
                         });
                     }
                     
@@ -2877,26 +2939,41 @@
             function populateQueueSoundDropdown(selectElement) {
                 selectElement.innerHTML = '';
                 
-                // Default sound
-                const defaultOpt = document.createElement('option');
-                defaultOpt.value = 'ellisBell.mp3';
-                defaultOpt.textContent = 'Default (Ellis Bell)';
-                selectElement.appendChild(defaultOpt);
+                // V5.55.5: Match standard audio dropdown structure
+                // Add [UPLOAD] option
+                const uploadOpt = document.createElement('option');
+                uploadOpt.value = '[UPLOAD]';
+                uploadOpt.textContent = 'Upload Audio...';
+                selectElement.appendChild(uploadOpt);
                 
-                // Shared audio files
-                if (sharedAudioFiles && sharedAudioFiles.length > 0) {
-                    const sharedGroup = document.createElement('optgroup');
-                    sharedGroup.label = 'Shared Sounds';
-                    sharedAudioFiles.forEach(file => {
-                        const opt = document.createElement('option');
-                        opt.value = file.url;
-                        opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
-                        sharedGroup.appendChild(opt);
-                    });
-                    selectElement.appendChild(sharedGroup);
-                }
+                // Default Sounds optgroup
+                const defaultGroup = document.createElement('optgroup');
+                defaultGroup.label = 'Default Sounds';
                 
-                // User audio files
+                // Silent option
+                const silentOpt = document.createElement('option');
+                silentOpt.value = '[SILENT]';
+                silentOpt.textContent = 'Silent / None';
+                defaultGroup.appendChild(silentOpt);
+                
+                // Standard sounds
+                const defaultSounds = [
+                    { value: 'Bell', text: 'Bell' },
+                    { value: 'Chime', text: 'Chime' },
+                    { value: 'Beep', text: 'Beep' },
+                    { value: 'Alarm', text: 'Alarm' },
+                    { value: 'ellisBell.mp3', text: 'Ellis Bell' }
+                ];
+                defaultSounds.forEach(sound => {
+                    const opt = document.createElement('option');
+                    opt.value = sound.value;
+                    opt.textContent = sound.text;
+                    if (sound.value === 'ellisBell.mp3') opt.selected = true;
+                    defaultGroup.appendChild(opt);
+                });
+                selectElement.appendChild(defaultGroup);
+                
+                // My Sounds optgroup
                 if (userAudioFiles && userAudioFiles.length > 0) {
                     const userGroup = document.createElement('optgroup');
                     userGroup.label = 'My Sounds';
@@ -2907,6 +2984,19 @@
                         userGroup.appendChild(opt);
                     });
                     selectElement.appendChild(userGroup);
+                }
+                
+                // Shared Sounds optgroup
+                if (sharedAudioFiles && sharedAudioFiles.length > 0) {
+                    const sharedGroup = document.createElement('optgroup');
+                    sharedGroup.label = 'Shared Sounds';
+                    sharedAudioFiles.forEach(file => {
+                        const opt = document.createElement('option');
+                        opt.value = file.url;
+                        opt.textContent = file.nickname || file.name.replace(/\.[^/.]+$/, '');
+                        sharedGroup.appendChild(opt);
+                    });
+                    selectElement.appendChild(sharedGroup);
                 }
             }
             
@@ -11982,7 +12072,22 @@
                     }
                 });
                 quickBellSoundSelect.addEventListener('change', () => {
-                    quickBellSound = quickBellSoundSelect.value;
+                    const selectedValue = quickBellSoundSelect.value;
+                    
+                    // V5.55.5: Handle [UPLOAD] selection
+                    if (selectedValue === '[UPLOAD]') {
+                        uploadAudioModal.classList.remove('hidden');
+                        // Reset to previous value
+                        quickBellSoundSelect.value = quickBellDefaultSound;
+                        return;
+                    }
+                    
+                    quickBellSound = selectedValue;
+                    
+                    // V5.55.5: Save as user's preferred quick bell sound
+                    quickBellDefaultSound = selectedValue;
+                    localStorage.setItem('quickBellDefaultSound', quickBellDefaultSound);
+                    saveUserPreferencesToCloud();
                 });
     
                 // NEW: Modals (Change Sound)
@@ -12542,6 +12647,9 @@
                 
                 // V5.49.0: Load kiosk mode preference on startup
                 loadKioskModePreference();
+                
+                // V5.55.5: Load quick bell sound preference on startup
+                loadQuickBellSoundPreference();
                 
                 // V5.52.0: Warning Settings
                 const settingsToggleBtn = document.getElementById('settings-toggle-btn');
