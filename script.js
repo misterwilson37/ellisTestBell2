@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.54.3"
+        const APP_VERSION = "5.54.3.1"
         // V5.54.3: Bug fix - scope mismatch in cloud sync
         // - Cloud sync functions are at module level, can't call init() inner functions
         // - Removed calls to applyWarningColors(), applyKioskMode(), recalculateAndRenderAll()
@@ -7318,6 +7318,11 @@
              * @param {string} periodName - The period that was clicked.
              */
             function handleShowAddBellForm(periodName) {
+                console.log('[TRACE] handleShowAddBellForm called with periodName:', periodName);
+                console.log('[TRACE] periodName type:', typeof periodName);
+                console.log('[TRACE] periodName length:', periodName?.length);
+                console.log('[TRACE] periodName charCodes:', periodName ? [...periodName].map(c => c.charCodeAt(0)) : 'null');
+                
                 if (!activePersonalScheduleId) {
                     showUserMessage("You must select a personal schedule to add custom bells.");
                     return;
@@ -7329,10 +7334,14 @@
                     name: periodName
                     // We'll populate the bells property if/when the relative modal is chosen
                 };
+                console.log('[TRACE] currentRelativePeriod set to:', currentRelativePeriod);
                 
                 // 2. Populate and show the choice modal
+                console.log('[TRACE] Setting addBellTypePeriodName.textContent');
                 addBellTypePeriodName.textContent = periodName;
+                console.log('[TRACE] Showing addBellTypeModal');
                 addBellTypeModal.classList.remove('hidden');
+                console.log('[TRACE] handleShowAddBellForm END');
             }
 
             /**
