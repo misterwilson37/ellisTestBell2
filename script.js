@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.55.6"
+        const APP_VERSION = "5.55.7"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -40,7 +40,7 @@
         // - Change audio and/or visual cue for all selected bells at once
         // - Custom bells: Updated directly in Firestore periods
         // - Shared bells: Sound overrides saved to localStorage, visual overrides saved to bellOverrides
-        // - Purple themed UI to distinguish from other edit modes
+        // - Sky blue themed UI to distinguish from other edit modes
         // V5.45.4: Remove inconsistent "Override:" prefix from sound display
         // - The sound name alone is sufficient information
         // - Removes confusing inconsistency where some overridden bells showed it and others didn't
@@ -3193,14 +3193,14 @@
             function getQueueVisualHtml() {
                 if (queueVisual === '[DEFAULT_Q]') {
                     // Default Q visual - a simple styled Q
-                    return `<div class="w-full h-full flex items-center justify-center bg-purple-600 text-white text-6xl font-bold">Q</div>`;
+                    return `<div class="w-full h-full flex items-center justify-center bg-sky-600 text-white text-6xl font-bold">Q</div>`;
                 }
                 // Custom visual URL
                 if (queueVisual && queueVisual.startsWith('http')) {
                     return `<img src="${queueVisual}" alt="Queue Visual" class="w-full h-full object-contain">`;
                 }
                 // Fallback
-                return `<div class="w-full h-full flex items-center justify-center bg-purple-600 text-white text-6xl font-bold">Q</div>`;
+                return `<div class="w-full h-full flex items-center justify-center bg-sky-600 text-white text-6xl font-bold">Q</div>`;
             }
             
             // ============================================================
@@ -3743,11 +3743,11 @@
                                         // Shared/merged period - show blue link icon
                                         return '<span class="text-blue-500 ml-1" title="Linked to shared schedule"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>';
                                     } else if (hasRelativeAnchors) {
-                                        // Personal period with relative anchors - show purple link icon
-                                        return '<span class="text-purple-500 ml-1" title="Period anchors are linked to another period"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>';
+                                        // Personal period with relative anchors - show sky blue link icon
+                                        return '<span class="text-sky-600 ml-1" title="Period anchors are linked to another period"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>';
                                     } else if (period.origin === 'personal' && !isStandalone) {
                                         // Custom period on a LINKED schedule - show CUSTOM badge
-                                        return '<span class="text-xs font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full" title="This is a custom period you created.">CUSTOM</span>';
+                                        return '<span class="text-xs font-semibold bg-sky-200 text-sky-800 px-2 py-0.5 rounded-full" title="This is a custom period you created.">CUSTOM</span>';
                                     }
                                     // Standalone schedule with no relative anchors - show nothing
                                     return '';
@@ -3908,7 +3908,7 @@
                                 
                                 <!-- V5.46.0: Bulk Edit Checkbox (hidden by default) -->
                                 <input type="checkbox" 
-                                    class="bulk-edit-checkbox h-5 w-5 text-purple-600 rounded focus:ring-purple-500 mr-3 flex-shrink-0 ${bulkEditMode ? '' : 'hidden'}"
+                                    class="bulk-edit-checkbox h-5 w-5 text-sky-600 rounded focus:ring-sky-500 mr-3 flex-shrink-0 ${bulkEditMode ? '' : 'hidden'}"
                                     data-bell-id="${bell.bellId || getBellId(bell)}"
                                     ${bulkSelectedBells.has(bell.bellId || getBellId(bell)) ? 'checked' : ''}>
                                 
@@ -3935,7 +3935,7 @@
                                             
                                             <!-- V5.44.8: Relative Bell Icon - only for non-anchor relative bells -->
                                             ${bell.relative && !bell.anchorRole && bell.name !== 'Period Start' && bell.name !== 'Period End' ? 
-                                                `<span class="ml-2 text-purple-600" title="Relative Bell (Time is calculated)">
+                                                `<span class="ml-2 text-sky-600" title="Relative Bell (Time is calculated)">
                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v2H8v-2z"/></svg>
                                                 </span>` : ''}
                                             
@@ -8339,7 +8339,7 @@
                         const safePeriodName = period.name.replace(/"/g, '&quot;');
                         return `
                         <div class="flex items-center">
-                            <input type="checkbox" id="multi-add-check-${period.name}" value="${safePeriodName}" class="multi-add-period-check h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                            <input type="checkbox" id="multi-add-check-${period.name}" value="${safePeriodName}" class="multi-add-period-check h-4 w-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500">
                             <label for="multi-add-check-${period.name}" class="ml-2 block text-sm text-gray-900">${period.name}</label>
                         </div>
                         `;
@@ -13089,8 +13089,8 @@
                         bulkEditMode = true;
                         bulkSelectedBells.clear();
                         bulkEditToggleBtn.textContent = 'Done Selecting';
-                        bulkEditToggleBtn.classList.remove('bg-purple-100', 'text-purple-700');
-                        bulkEditToggleBtn.classList.add('bg-purple-600', 'text-white');
+                        bulkEditToggleBtn.classList.remove('bg-sky-100', 'text-sky-700');
+                        bulkEditToggleBtn.classList.add('bg-sky-600', 'text-white');
                         recalculateAndRenderAll();
                     } else if (bulkSelectedBells.size > 0) {
                         // In bulk edit mode with selections - open modal
@@ -13099,8 +13099,8 @@
                         // In bulk edit mode with no selections - exit
                         bulkEditMode = false;
                         bulkEditToggleBtn.textContent = 'Bulk Edit';
-                        bulkEditToggleBtn.classList.remove('bg-purple-600', 'text-white');
-                        bulkEditToggleBtn.classList.add('bg-purple-100', 'text-purple-700');
+                        bulkEditToggleBtn.classList.remove('bg-sky-600', 'text-white');
+                        bulkEditToggleBtn.classList.add('bg-sky-100', 'text-sky-700');
                         recalculateAndRenderAll();
                     }
                 });
@@ -13462,8 +13462,8 @@
                             bulkEditMode = false;
                             bulkSelectedBells.clear();
                             bulkEditToggleBtn.textContent = 'Bulk Edit';
-                            bulkEditToggleBtn.classList.remove('bg-purple-600', 'text-white');
-                            bulkEditToggleBtn.classList.add('bg-purple-100', 'text-purple-700');
+                            bulkEditToggleBtn.classList.remove('bg-sky-600', 'text-white');
+                            bulkEditToggleBtn.classList.add('bg-sky-100', 'text-sky-700');
                             recalculateAndRenderAll();
                         }, 1000);
                         
