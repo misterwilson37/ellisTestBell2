@@ -1,9 +1,9 @@
-        const APP_VERSION = "5.54.3.1"
+        const APP_VERSION = "5.54.4"
+        // V5.54.4: Bug fix - infinite recursion in getVisualHtml
+        // - When a period has ONLY a background color override (e.g., "[BG:#283e5c]"),
+        //   getVisualHtml would recursively call itself infinitely, causing a crash
+        // - Fixed by tracking when we've parsed a BG-only value and skipping override lookup
         // V5.54.3: Bug fix - scope mismatch in cloud sync
-        // - Cloud sync functions are at module level, can't call init() inner functions
-        // - Removed calls to applyWarningColors(), applyKioskMode(), recalculateAndRenderAll()
-        // - Data still syncs correctly, visual updates happen on next render cycle
-        // V5.54.2: Bug fix - removed calls to non-existent functions
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -8743,13 +8743,15 @@
              * MODIFIED V5.29.0: Support [BG:#hexcolor] prefix for custom backgrounds
              * MODIFIED V5.45.2: Proper support for [BG:] with [DEFAULT] SVGs
              */
-            function getVisualHtml(value, periodName) {
+            function getVisualHtml(value, periodName, _skipOverrideLookup = false) {
                 // V5.29.0: Check for background color prefix
                 let customBgColor = null;
+                let hadBgPrefix = false;
                 if (value && value.startsWith('[BG:')) {
                     const parsed = parseVisualBgColor(value);
                     customBgColor = parsed.bgColor;
                     value = parsed.baseValue;
+                    hadBgPrefix = true; // V5.54.4: Track that we parsed a BG prefix
                 }
 
                 let baseHtml = '';
@@ -8757,12 +8759,16 @@
                 if (!value) {
                     // Case 1: Value is "" (None/Default)
                     // FIX V5.42.9: Check for user's custom period visual override
-                    const visualKey = getVisualOverrideKey(activeBaseScheduleId, periodName);
-                    const periodOverride = periodVisualOverrides[visualKey];
-                    if (periodOverride && periodOverride !== '') {
-                        // User has a custom visual for this period - use it
-                        // Recursive call to handle the override value (could be URL, custom text, etc.)
-                        return getVisualHtml(periodOverride, periodName);
+                    // FIX V5.54.4: Don't look up override if we just parsed a BG-only value (prevents infinite recursion)
+                    if (!_skipOverrideLookup && !hadBgPrefix) {
+                        const visualKey = getVisualOverrideKey(activeBaseScheduleId, periodName);
+                        const periodOverride = periodVisualOverrides[visualKey];
+                        if (periodOverride && periodOverride !== '') {
+                            // User has a custom visual for this period - use it
+                            // Recursive call to handle the override value (could be URL, custom text, etc.)
+                            // Pass true to skip override lookup in the recursive call
+                            return getVisualHtml(periodOverride, periodName, true);
+                        }
                     }
                     // No override - use generated default
                     // V5.45.2: If custom bg, use raw SVG to avoid nested backgrounds
