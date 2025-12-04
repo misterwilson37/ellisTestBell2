@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.55.1"
+        const APP_VERSION = "5.55.2"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -3745,9 +3745,34 @@
                         }
                         
                         if (soundDisplay && soundDisplay.startsWith('http')) {
-                            // V5.54.6: Look up nickname from userAudioFiles or sharedAudioFiles
-                            const matchingFile = userAudioFiles.find(f => f.url === soundDisplay) ||
-                                                 sharedAudioFiles.find(f => f.url === soundDisplay);
+                            // V5.55.2: Look up nickname from userAudioFiles or sharedAudioFiles
+                            // Match by extracting filename from URL and comparing to file paths/names
+                            let extractedFilename = '';
+                            try {
+                                const url = new URL(soundDisplay);
+                                // Firebase URLs have the path encoded in the pathname
+                                // e.g., /v0/b/bucket/o/sounds%2Fusers%2Fuid%2Ffilename.mp3
+                                const pathMatch = url.pathname.match(/\/o\/(.+?)(\?|$)/);
+                                if (pathMatch) {
+                                    extractedFilename = decodeURIComponent(pathMatch[1]);
+                                } else {
+                                    extractedFilename = decodeURIComponent(url.pathname.split('/').pop());
+                                }
+                            } catch (e) {
+                                extractedFilename = '';
+                            }
+                            
+                            // Try to find matching file by path or name
+                            const matchingFile = userAudioFiles.find(f => 
+                                f.path === extractedFilename || 
+                                extractedFilename.endsWith(f.name) ||
+                                extractedFilename.endsWith('/' + f.name)
+                            ) || sharedAudioFiles.find(f => 
+                                f.path === extractedFilename || 
+                                extractedFilename.endsWith(f.name) ||
+                                extractedFilename.endsWith('/' + f.name)
+                            );
+                            
                             if (matchingFile && matchingFile.nickname) {
                                 soundDisplay = matchingFile.nickname;
                             } else if (matchingFile && matchingFile.name) {
@@ -3756,10 +3781,9 @@
                             } else {
                                 // Fallback: extract filename from URL and strip extension
                                 try {
-                                    const url = new URL(soundDisplay);
-                                    let path = decodeURIComponent(url.pathname.split('/').pop());
+                                    const filename = extractedFilename.split('/').pop();
                                     // V5.55.0: Strip extension
-                                    soundDisplay = path.split('/').pop().replace(/\.[^/.]+$/, '');
+                                    soundDisplay = filename.replace(/\.[^/.]+$/, '');
                                 } catch (e) {
                                     soundDisplay = "Custom Sound";
                                 }
