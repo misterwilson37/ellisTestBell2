@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.55.3"
+        const APP_VERSION = "5.55.4"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -3745,42 +3745,60 @@
                         }
                         
                         if (soundDisplay && soundDisplay.startsWith('http')) {
-                            // V5.55.3: Look up nickname from userAudioFiles or sharedAudioFiles
-                            // Helper to extract Firebase Storage path from URL
-                            const getFirebasePath = (urlString) => {
+                            // V5.55.4: Look up nickname from userAudioFiles or sharedAudioFiles
+                            // First try exact URL match, then try URL without query params, then filename
+                            let matchingFile = userAudioFiles.find(f => f.url === soundDisplay) ||
+                                               sharedAudioFiles.find(f => f.url === soundDisplay);
+                            
+                            // If no exact match, try comparing base URLs (without token query params)
+                            if (!matchingFile) {
+                                const getBaseUrl = (urlString) => {
+                                    try {
+                                        const url = new URL(urlString);
+                                        return url.origin + url.pathname;
+                                    } catch (e) { return ''; }
+                                };
+                                const soundBaseUrl = getBaseUrl(soundDisplay);
+                                if (soundBaseUrl) {
+                                    matchingFile = userAudioFiles.find(f => getBaseUrl(f.url) === soundBaseUrl) ||
+                                                   sharedAudioFiles.find(f => getBaseUrl(f.url) === soundBaseUrl);
+                                }
+                            }
+                            
+                            // If still no match, try by filename
+                            if (!matchingFile) {
+                                let soundFilename = '';
                                 try {
-                                    const url = new URL(urlString);
-                                    // Firebase URLs: /v0/b/bucket/o/sounds%2Fusers%2Fuid%2Ffile.mp3?...
+                                    const url = new URL(soundDisplay);
                                     const match = url.pathname.match(/\/o\/([^?]+)/);
                                     if (match) {
-                                        return decodeURIComponent(match[1]);
+                                        const fullPath = decodeURIComponent(match[1]);
+                                        soundFilename = fullPath.split('/').pop();
                                     }
                                 } catch (e) {}
-                                return null;
-                            };
-                            
-                            const soundPath = getFirebasePath(soundDisplay);
-                            
-                            // Find matching file by comparing paths
-                            const matchingFile = userAudioFiles.find(f => {
-                                const filePath = f.path || getFirebasePath(f.url);
-                                return filePath && soundPath && filePath === soundPath;
-                            }) || sharedAudioFiles.find(f => {
-                                const filePath = f.path || getFirebasePath(f.url);
-                                return filePath && soundPath && filePath === soundPath;
-                            });
+                                
+                                if (soundFilename) {
+                                    matchingFile = userAudioFiles.find(f => f.name === soundFilename) ||
+                                                   sharedAudioFiles.find(f => f.name === soundFilename);
+                                }
+                            }
                             
                             if (matchingFile && matchingFile.nickname) {
                                 soundDisplay = matchingFile.nickname;
                             } else if (matchingFile && matchingFile.name) {
-                                // V5.55.0: Strip extension from filename
                                 soundDisplay = matchingFile.name.replace(/\.[^/.]+$/, '');
                             } else {
-                                // Fallback: extract filename from path and strip extension
-                                const filename = soundPath ? soundPath.split('/').pop() : '';
-                                if (filename) {
-                                    soundDisplay = filename.replace(/\.[^/.]+$/, '');
-                                } else {
+                                // Fallback: extract filename from URL and strip extension
+                                try {
+                                    const url = new URL(soundDisplay);
+                                    const match = url.pathname.match(/\/o\/([^?]+)/);
+                                    if (match) {
+                                        const fullPath = decodeURIComponent(match[1]);
+                                        soundDisplay = fullPath.split('/').pop().replace(/\.[^/.]+$/, '');
+                                    } else {
+                                        soundDisplay = "Custom Sound";
+                                    }
+                                } catch (e) {
                                     soundDisplay = "Custom Sound";
                                 }
                             }
@@ -10737,6 +10755,12 @@
                 // 3. Render the lists
                 renderAudioFileManager();
                 updateSoundDropdowns();
+                
+                // V5.55.4: Re-render periods list so sound nicknames display correctly
+                // (The periods list may have rendered before audio files loaded)
+                if (calculatedPeriodsList && calculatedPeriodsList.length > 0) {
+                    recalculateAndRenderAll();
+                }
             }
             
             function renderAudioFileManager() {
