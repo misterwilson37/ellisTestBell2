@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.55.0"
+        const APP_VERSION = "5.55.1"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -2949,20 +2949,23 @@
             function populateQueueUntilBellDropdown() {
                 queueUntilBellSelect.innerHTML = '<option value="">Select a bell...</option>';
                 
-                // Get all upcoming bells from calculatedPeriodsList
+                // Get current time as HH:MM:SS string
                 const now = new Date();
+                const currentTimeHHMMSS = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                
+                // Get all upcoming bells from calculatedPeriodsList
                 const upcomingBells = [];
                 
                 if (calculatedPeriodsList && calculatedPeriodsList.length > 0) {
                     calculatedPeriodsList.forEach(period => {
                         if (period.bells && period.bells.length > 0) {
                             period.bells.forEach(bell => {
-                                if (bell.timeDate && bell.timeDate > now) {
+                                // Compare time strings (HH:MM:SS format)
+                                if (bell.time && bell.time > currentTimeHHMMSS) {
                                     upcomingBells.push({
                                         id: bell.bellId,
                                         name: `${period.name} - ${bell.name}`,
-                                        time: bell.time,
-                                        timeDate: bell.timeDate
+                                        time: bell.time
                                     });
                                 }
                             });
@@ -2970,14 +2973,14 @@
                     });
                 }
                 
-                // Sort by time
-                upcomingBells.sort((a, b) => a.timeDate - b.timeDate);
+                // Sort by time string (works for HH:MM:SS format)
+                upcomingBells.sort((a, b) => a.time.localeCompare(b.time));
                 
                 // Add to dropdown (limit to reasonable number)
                 upcomingBells.slice(0, 20).forEach(bell => {
                     const opt = document.createElement('option');
                     opt.value = bell.id;
-                    opt.textContent = `${bell.name} (${bell.time})`;
+                    opt.textContent = `${bell.name} (${formatTime12Hour(bell.time, true)})`;
                     queueUntilBellSelect.appendChild(opt);
                 });
             }
@@ -3748,19 +3751,24 @@
                             if (matchingFile && matchingFile.nickname) {
                                 soundDisplay = matchingFile.nickname;
                             } else if (matchingFile && matchingFile.name) {
-                                soundDisplay = matchingFile.name;
+                                // V5.55.0: Strip extension from filename
+                                soundDisplay = matchingFile.name.replace(/\.[^/.]+$/, '');
                             } else {
-                                // Fallback: extract filename from URL
+                                // Fallback: extract filename from URL and strip extension
                                 try {
                                     const url = new URL(soundDisplay);
                                     let path = decodeURIComponent(url.pathname.split('/').pop());
-                                    soundDisplay = path.split('/').pop();
+                                    // V5.55.0: Strip extension
+                                    soundDisplay = path.split('/').pop().replace(/\.[^/.]+$/, '');
                                 } catch (e) {
                                     soundDisplay = "Custom Sound";
                                 }
                             }
                         } else if (soundDisplay === 'ellisBell.mp3') {
                             soundDisplay = "Ellis Bell";
+                        } else if (soundDisplay && soundDisplay.endsWith('.mp3')) {
+                            // V5.55.0: Strip extension from other local sound files
+                            soundDisplay = soundDisplay.replace(/\.[^/.]+$/, '');
                         } else if (!soundDisplay) {
                             soundDisplay = "No Sound";
                         }
