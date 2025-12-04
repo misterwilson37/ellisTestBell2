@@ -1,14 +1,11 @@
-        const APP_VERSION = "5.53.0"
+        const APP_VERSION = "5.54.0"
+        // V5.54.0: Bulk Time Shift
+        // - Added time shift option to bulk edit modal
+        // - Shift custom bells forward or backward by hours/minutes/seconds
+        // - Static bells: shifts actual time
+        // - Relative bells: adjusts offset
+        // - Shared bells: cannot be time-shifted (shows warning)
         // V5.53.0: Cloud Sync for User Preferences
-        // - Period visual overrides now sync to Firestore
-        // - Sound overrides now sync to Firestore
-        // - Period nicknames now sync to Firestore
-        // - Muted bells now sync to Firestore
-        // - Warning settings now sync to Firestore
-        // - Kiosk mode preference now syncs to Firestore
-        // - Real-time listener for cross-device sync
-        // - localStorage serves as offline cache
-        // V5.52.1: Warning Color Customization + Settings Button Move
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -12423,6 +12420,16 @@
                 const bulkEditCancel = document.getElementById('bulk-edit-cancel');
                 const bulkPreviewSound = document.getElementById('bulk-preview-sound');
                 const bulkEditStatus = document.getElementById('bulk-edit-status');
+                
+                // V5.54.0: Time Shift elements
+                const bulkTimeShiftEnabled = document.getElementById('bulk-time-shift-enabled');
+                const bulkTimeShiftControls = document.getElementById('bulk-time-shift-controls');
+                const bulkTimeShiftDirection = document.getElementById('bulk-time-shift-direction');
+                const bulkTimeShiftHours = document.getElementById('bulk-time-shift-hours');
+                const bulkTimeShiftMinutes = document.getElementById('bulk-time-shift-minutes');
+                const bulkTimeShiftSeconds = document.getElementById('bulk-time-shift-seconds');
+                const bulkTimeShiftWarning = document.getElementById('bulk-time-shift-warning');
+                const bulkTimeShiftWarningText = document.getElementById('bulk-time-shift-warning-text');
 
                 // Show bulk edit button when user has a personal schedule
                 function updateBulkEditButtonVisibility() {
@@ -12494,8 +12501,28 @@
                     bulkVisualModeContainer.classList.add('hidden');
                     bulkEditStatus.classList.add('hidden');
                     
+                    // V5.54.0: Reset time shift controls
+                    if (bulkTimeShiftEnabled) {
+                        bulkTimeShiftEnabled.checked = false;
+                        bulkTimeShiftControls.classList.add('hidden');
+                        bulkTimeShiftDirection.value = 'later';
+                        bulkTimeShiftHours.value = '0';
+                        bulkTimeShiftMinutes.value = '5';
+                        bulkTimeShiftSeconds.value = '0';
+                        bulkTimeShiftWarning.classList.add('hidden');
+                    }
+                    
                     bulkEditModal.classList.remove('hidden');
                 }
+                
+                // V5.54.0: Time shift checkbox toggle
+                bulkTimeShiftEnabled?.addEventListener('change', () => {
+                    if (bulkTimeShiftEnabled.checked) {
+                        bulkTimeShiftControls.classList.remove('hidden');
+                    } else {
+                        bulkTimeShiftControls.classList.add('hidden');
+                    }
+                });
 
                 function populateBulkEditDropdowns() {
                     // Populate sound dropdown
@@ -12581,9 +12608,27 @@
                     const newVisual = bulkEditVisual.value;
                     const newVisualMode = document.querySelector('input[name="bulk-visual-mode"]:checked')?.value || 'before';
                     
+                    // V5.54.0: Get time shift values
+                    const isTimeShiftEnabled = bulkTimeShiftEnabled?.checked || false;
+                    const timeShiftDirection = bulkTimeShiftDirection?.value || 'later';
+                    const timeShiftHours = parseInt(bulkTimeShiftHours?.value) || 0;
+                    const timeShiftMinutes = parseInt(bulkTimeShiftMinutes?.value) || 0;
+                    const timeShiftSeconds = parseInt(bulkTimeShiftSeconds?.value) || 0;
+                    let totalShiftSeconds = (timeShiftHours * 3600) + (timeShiftMinutes * 60) + timeShiftSeconds;
+                    if (timeShiftDirection === 'earlier') {
+                        totalShiftSeconds = -totalShiftSeconds;
+                    }
+                    
                     // Nothing to change
-                    if (newSound === '[NO_CHANGE]' && newVisual === '[NO_CHANGE]') {
+                    if (newSound === '[NO_CHANGE]' && newVisual === '[NO_CHANGE]' && !isTimeShiftEnabled) {
                         bulkEditStatus.textContent = 'Please select at least one change.';
+                        bulkEditStatus.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    // V5.54.0: Validate time shift
+                    if (isTimeShiftEnabled && totalShiftSeconds === 0) {
+                        bulkEditStatus.textContent = 'Time shift amount cannot be zero.';
                         bulkEditStatus.classList.remove('hidden');
                         return;
                     }
@@ -12594,6 +12639,8 @@
                         
                         let updatedCustomCount = 0;
                         let updatedSharedCount = 0;
+                        let timeShiftedCount = 0;
+                        let skippedSharedTimeShift = 0;
                         
                         // --- Identify which bells are custom vs shared ---
                         const allCalculatedBells = [...localSchedule, ...personalBells];
@@ -12629,6 +12676,35 @@
                                         if (newVisual !== '[NO_CHANGE]') {
                                             updatedBell.visualCue = newVisual === '' ? '' : newVisual;
                                             updatedBell.visualMode = newVisual === '' ? 'none' : newVisualMode;
+                                        }
+                                        
+                                        // V5.54.0: Handle time shift for custom bells
+                                        if (isTimeShiftEnabled && totalShiftSeconds !== 0) {
+                                            if (bell.relative) {
+                                                // Relative bell - adjust the offset
+                                                const currentOffset = bell.relative.offsetSeconds || 0;
+                                                updatedBell.relative = {
+                                                    ...bell.relative,
+                                                    offsetSeconds: currentOffset + totalShiftSeconds
+                                                };
+                                                timeShiftedCount++;
+                                            } else if (bell.time) {
+                                                // Static bell - adjust the actual time
+                                                const [h, m, s] = bell.time.split(':').map(Number);
+                                                let totalSeconds = (h * 3600) + (m * 60) + (s || 0);
+                                                totalSeconds += totalShiftSeconds;
+                                                
+                                                // Handle day wraparound
+                                                while (totalSeconds < 0) totalSeconds += 86400;
+                                                while (totalSeconds >= 86400) totalSeconds -= 86400;
+                                                
+                                                const newH = Math.floor(totalSeconds / 3600);
+                                                const newM = Math.floor((totalSeconds % 3600) / 60);
+                                                const newS = totalSeconds % 60;
+                                                
+                                                updatedBell.time = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}:${String(newS).padStart(2, '0')}`;
+                                                timeShiftedCount++;
+                                            }
                                         }
                                         
                                         updatedCustomCount++;
@@ -12671,6 +12747,11 @@
                                 }
                             }
                             
+                            // V5.54.0: Time shift cannot apply to shared bells
+                            if (isTimeShiftEnabled) {
+                                skippedSharedTimeShift++;
+                            }
+                            
                             // Clean up empty override objects
                             if (Object.keys(bellOverrides[bellId]).length === 0) {
                                 delete bellOverrides[bellId];
@@ -12688,8 +12769,29 @@
                         // V5.46.4: Update local state immediately
                         personalBellOverrides = bellOverrides;
                         
+                        // V5.54.0: Build status message
                         const totalUpdated = updatedCustomCount + updatedSharedCount;
-                        bulkEditStatus.textContent = `Updated ${totalUpdated} bell${totalUpdated !== 1 ? 's' : ''}!`;
+                        let statusMsg = `Updated ${totalUpdated} bell${totalUpdated !== 1 ? 's' : ''}`;
+                        
+                        if (isTimeShiftEnabled) {
+                            if (timeShiftedCount > 0) {
+                                const direction = totalShiftSeconds > 0 ? 'later' : 'earlier';
+                                const absSeconds = Math.abs(totalShiftSeconds);
+                                const shiftH = Math.floor(absSeconds / 3600);
+                                const shiftM = Math.floor((absSeconds % 3600) / 60);
+                                const shiftS = absSeconds % 60;
+                                let shiftStr = '';
+                                if (shiftH > 0) shiftStr += `${shiftH}h `;
+                                if (shiftM > 0) shiftStr += `${shiftM}m `;
+                                if (shiftS > 0) shiftStr += `${shiftS}s`;
+                                statusMsg += ` (${timeShiftedCount} shifted ${shiftStr.trim()} ${direction})`;
+                            }
+                            if (skippedSharedTimeShift > 0) {
+                                statusMsg += `. ${skippedSharedTimeShift} shared bell${skippedSharedTimeShift !== 1 ? 's' : ''} can't be time-shifted.`;
+                            }
+                        }
+                        
+                        bulkEditStatus.textContent = statusMsg + '!';
                         
                         // Exit bulk edit mode
                         setTimeout(() => {
