@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.38.0</title>
+    <title>Ellis Web Bell 5.39.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -358,6 +358,46 @@
                             <span class="text-sm">Both</span>
                         </label>
                     </div>
+                </div>
+            </div>
+            
+            <!-- V5.54.0: Time Shift Section -->
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <label class="flex items-center gap-3 cursor-pointer mb-3">
+                    <input type="checkbox" id="bulk-time-shift-enabled" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="font-medium text-gray-700">Shift Time</span>
+                </label>
+                
+                <div id="bulk-time-shift-controls" class="hidden">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <select id="bulk-time-shift-direction" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="later">Later (+)</option>
+                            <option value="earlier">Earlier (−)</option>
+                        </select>
+                        
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="bulk-time-shift-hours" min="0" max="23" value="0" class="w-16 px-2 py-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-gray-600">h</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="bulk-time-shift-minutes" min="0" max="59" value="5" class="w-16 px-2 py-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-gray-600">m</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="bulk-time-shift-seconds" min="0" max="59" value="0" class="w-16 px-2 py-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-gray-600">s</span>
+                        </div>
+                    </div>
+                    
+                    <p id="bulk-time-shift-warning" class="mt-3 text-sm text-amber-600 hidden">
+                        ⚠️ <span id="bulk-time-shift-warning-text"></span>
+                    </p>
+                    
+                    <p class="mt-2 text-xs text-gray-500">
+                        Relative bells will adjust their offset. Static bells will shift their actual time.
+                    </p>
                 </div>
             </div>
 
@@ -838,7 +878,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.38.0</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.39.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -2249,4 +2289,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.38.0 -->
+<!-- Version 5.39.0 -->
