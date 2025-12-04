@@ -1,11 +1,9 @@
-        const APP_VERSION = "5.54.0"
+        const APP_VERSION = "5.54.1"
+        // V5.54.1: Bulk Time Shift - Improved feedback
+        // - Shared bells only count as "updated" if sound/visual actually changed
+        // - Clearer status messages showing exactly what happened
+        // - Warning icon for shared bells that couldn't be time-shifted
         // V5.54.0: Bulk Time Shift
-        // - Added time shift option to bulk edit modal
-        // - Shift custom bells forward or backward by hours/minutes/seconds
-        // - Static bells: shifts actual time
-        // - Relative bells: adjusts offset
-        // - Shared bells: cannot be time-shifted (shows warning)
-        // V5.53.0: Cloud Sync for User Preferences
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -12725,6 +12723,9 @@
                         sharedBellsToUpdate.forEach(bell => {
                             const bellId = bell.bellId || getBellId(bell);
                             
+                            // V5.54.1: Track if we actually change anything on this shared bell
+                            let sharedBellChanged = false;
+                            
                             // Initialize override object if needed
                             if (!bellOverrides[bellId]) {
                                 bellOverrides[bellId] = {};
@@ -12733,6 +12734,7 @@
                             // V5.46.4: Handle sound override (Firestore only for cross-device sync)
                             if (newSound !== '[NO_CHANGE]') {
                                 bellOverrides[bellId].sound = newSound;
+                                sharedBellChanged = true;
                             }
                             
                             // Handle visual override (uses Firestore bellOverrides)
@@ -12745,9 +12747,10 @@
                                     bellOverrides[bellId].visualCue = newVisual;
                                     bellOverrides[bellId].visualMode = newVisualMode;
                                 }
+                                sharedBellChanged = true;
                             }
                             
-                            // V5.54.0: Time shift cannot apply to shared bells
+                            // V5.54.0: Time shift cannot apply to shared bells (unless admin)
                             if (isTimeShiftEnabled) {
                                 skippedSharedTimeShift++;
                             }
@@ -12757,7 +12760,10 @@
                                 delete bellOverrides[bellId];
                             }
                             
-                            updatedSharedCount++;
+                            // V5.54.1: Only count as updated if something actually changed
+                            if (sharedBellChanged) {
+                                updatedSharedCount++;
+                            }
                         });
                         
                         // Save everything to Firestore
@@ -12769,9 +12775,13 @@
                         // V5.46.4: Update local state immediately
                         personalBellOverrides = bellOverrides;
                         
-                        // V5.54.0: Build status message
+                        // V5.54.1: Build accurate status message
                         const totalUpdated = updatedCustomCount + updatedSharedCount;
-                        let statusMsg = `Updated ${totalUpdated} bell${totalUpdated !== 1 ? 's' : ''}`;
+                        let statusMsg = '';
+                        
+                        if (totalUpdated > 0) {
+                            statusMsg = `Updated ${totalUpdated} bell${totalUpdated !== 1 ? 's' : ''}`;
+                        }
                         
                         if (isTimeShiftEnabled) {
                             if (timeShiftedCount > 0) {
@@ -12784,14 +12794,21 @@
                                 if (shiftH > 0) shiftStr += `${shiftH}h `;
                                 if (shiftM > 0) shiftStr += `${shiftM}m `;
                                 if (shiftS > 0) shiftStr += `${shiftS}s`;
-                                statusMsg += ` (${timeShiftedCount} shifted ${shiftStr.trim()} ${direction})`;
+                                if (statusMsg) statusMsg += ' — ';
+                                statusMsg += `${timeShiftedCount} bell${timeShiftedCount !== 1 ? 's' : ''} shifted ${shiftStr.trim()} ${direction}`;
                             }
                             if (skippedSharedTimeShift > 0) {
-                                statusMsg += `. ${skippedSharedTimeShift} shared bell${skippedSharedTimeShift !== 1 ? 's' : ''} can't be time-shifted.`;
+                                if (statusMsg) statusMsg += '. ';
+                                statusMsg += `⚠️ ${skippedSharedTimeShift} shared bell${skippedSharedTimeShift !== 1 ? 's' : ''} can't be time-shifted`;
                             }
                         }
                         
-                        bulkEditStatus.textContent = statusMsg + '!';
+                        // Handle case where nothing was actually changed
+                        if (!statusMsg) {
+                            statusMsg = 'No changes applied';
+                        }
+                        
+                        bulkEditStatus.textContent = statusMsg + (statusMsg.includes('⚠️') ? '' : '!');
                         
                         // Exit bulk edit mode
                         setTimeout(() => {
