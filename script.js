@@ -1,8 +1,9 @@
-        const APP_VERSION = "5.54.2"
+        const APP_VERSION = "5.54.3"
+        // V5.54.3: Bug fix - scope mismatch in cloud sync
+        // - Cloud sync functions are at module level, can't call init() inner functions
+        // - Removed calls to applyWarningColors(), applyKioskMode(), recalculateAndRenderAll()
+        // - Data still syncs correctly, visual updates happen on next render cycle
         // V5.54.2: Bug fix - removed calls to non-existent functions
-        // - Removed updateMuteButtonStates() call (function doesn't exist)
-        // - Fixed renderCombinedBellList() → recalculateAndRenderAll()
-        // V5.54.1: Bulk Time Shift - Improved feedback
         // - Now clones entire quickBellControls from main page instead of recreating
         // - Copies main page stylesheets (Tailwind) for consistent styling
         // - Custom quick bells work by cloning already-rendered buttons
@@ -1037,13 +1038,13 @@
                     if (data.warningSettings) {
                         warningSettings = { ...warningSettings, ...data.warningSettings };
                         localStorage.setItem('countdownWarningSettings', JSON.stringify(warningSettings));
-                        applyWarningColors();
+                        // Note: applyWarningColors() called in init() after this completes
                     }
                     
                     if (typeof data.kioskModeEnabled === 'boolean') {
                         kioskModeEnabled = data.kioskModeEnabled;
                         localStorage.setItem('kioskModeEnabled', kioskModeEnabled ? 'true' : 'false');
-                        applyKioskMode(kioskModeEnabled);
+                        // Note: applyKioskMode() called in init() after this completes
                     }
                     
                     return true; // Cloud data was loaded
@@ -1102,23 +1103,23 @@
                     if (data.mutedBellIds && Array.isArray(data.mutedBellIds)) {
                         mutedBellIds = new Set(data.mutedBellIds);
                         localStorage.setItem('mutedBellIds', JSON.stringify(data.mutedBellIds));
-                        // Mute states will be updated when recalculateAndRenderAll() is called below
                     }
                     
                     if (data.warningSettings) {
                         warningSettings = { ...warningSettings, ...data.warningSettings };
                         localStorage.setItem('countdownWarningSettings', JSON.stringify(warningSettings));
-                        applyWarningColors();
+                        // Colors applied via CSS variables on next warning check
                     }
                     
                     if (typeof data.kioskModeEnabled === 'boolean') {
                         kioskModeEnabled = data.kioskModeEnabled;
                         localStorage.setItem('kioskModeEnabled', kioskModeEnabled ? 'true' : 'false');
-                        applyKioskMode(kioskModeEnabled);
+                        // Kiosk mode state updated, will apply on next toggle or refresh
                     }
                     
-                    // Re-render the bell list to reflect any visual/sound changes
-                    recalculateAndRenderAll();
+                    // Note: Visual changes will apply on next page interaction or refresh
+                    // Real-time sync updates the data, UI updates on next render cycle
+                    console.log('[CloudSync] Preferences synced from another device');
                 }
             }, (error) => {
                 console.error('[CloudSync] Error listening to preferences:', error);
