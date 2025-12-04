@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.39.2</title>
+    <title>Ellis Web Bell 5.40</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -878,7 +878,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.39.2</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.40</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
 
 
@@ -1014,6 +1014,8 @@
                 <button data-minutes="5" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">5</button>
                 <button data-minutes="10" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">10</button>
                 <button data-minutes="15" class="quick-bell-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11">15</button>
+                <!-- NEW V5.55.0: Quick Bell Queue button -->
+                <button id="quick-bell-queue-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11" title="Quick Bell Queue">Q</button>
             	<!-- MOVED 5.12 -->
 
                 <div id="custom-quick-bell-separator" class="hidden h-11 border-l-2 border-gray-300 mx-1"></div>
@@ -2097,6 +2099,83 @@
             </form>
         </div>
 
+        <!-- NEW V5.55.0: Quick Bell Queue Modal -->
+        <div id="quick-bell-queue-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-2xl font-medium">Quick Bell Queue</h3>
+                    <button type="button" id="queue-modal-close-btn" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+                <p class="text-gray-600 mb-4 text-sm">Create a sequence of timed bells that play one after another.</p>
+
+                <!-- Timer Rows Container -->
+                <div id="queue-timers-container" class="space-y-3 mb-4">
+                    <!-- Timer rows will be added here dynamically -->
+                </div>
+
+                <!-- Add Timer Button -->
+                <button type="button" id="queue-add-timer-btn" class="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border-2 border-dashed border-gray-300 transition-colors mb-4">
+                    + Add Timer
+                </button>
+
+                <hr class="my-4 border-gray-200">
+
+                <!-- Repeat Options -->
+                <div class="mb-4 space-y-3">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="queue-repeat-mode" value="times" checked class="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500">
+                        <span class="text-sm text-gray-700">Play queue</span>
+                        <input type="number" id="queue-repeat-times" value="1" min="1" max="99" class="mx-2 w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <span class="text-sm text-gray-700">time(s)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="queue-repeat-mode" value="until" class="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500">
+                        <span class="text-sm text-gray-700 mr-2">Repeat until</span>
+                        <select id="queue-until-bell" class="flex-1 min-w-0 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="">Select a bell...</option>
+                            <!-- Options populated by JS -->
+                        </select>
+                    </label>
+                </div>
+
+                <hr class="my-4 border-gray-200">
+
+                <!-- Bell Ignore Options -->
+                <div class="mb-4 space-y-2">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="queue-ignore-personal" class="mr-2 h-4 w-4 text-purple-600 rounded focus:ring-purple-500">
+                        <span class="text-sm text-gray-700">Ignore personal bells while queue active</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="queue-ignore-shared" class="mr-2 h-4 w-4 text-purple-600 rounded focus:ring-purple-500">
+                        <span class="text-sm text-gray-700">Ignore shared bells while queue active</span>
+                    </label>
+                    <p id="queue-ignore-shared-warning" class="hidden text-xs text-amber-600 ml-6">⚠️ This may affect other classes using the same schedule</p>
+                </div>
+
+                <hr class="my-4 border-gray-200">
+
+                <!-- Visual Cue Selection -->
+                <div class="mb-6">
+                    <label for="queue-visual-select" class="block text-sm font-medium text-gray-700 mb-1">Visual Cue</label>
+                    <select id="queue-visual-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="[DEFAULT_Q]">Default "Q" (Queue)</option>
+                        <!-- More options populated by JS -->
+                    </select>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-3">
+                    <button type="button" id="queue-cancel-btn" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="button" id="queue-start-btn" class="flex-1 py-2 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium">
+                        Start Queue
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- NEW V5.29.0 / V5.42.0: Passing Period Visual Modal -->
         <div id="passing-period-visual-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
             <form id="passing-period-visual-form" class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -2292,4 +2371,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.39.2 -->
+<!-- Version 5.40.0 -->
