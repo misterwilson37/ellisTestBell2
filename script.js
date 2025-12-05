@@ -1,4 +1,4 @@
-        const APP_VERSION = "5.56.1"
+        const APP_VERSION = "5.56.2"
         // V5.54.6: UX improvements
         // - Sound overrides now display nickname if available, instead of raw filename
         // - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
@@ -13442,10 +13442,14 @@
                         bulkEditStatus.textContent = 'Applying changes...';
                         bulkEditStatus.classList.remove('hidden');
                         
+                        // V5.56.2: Check if user is admin for shared bell time shifts
+                        const isAdmin = document.body.classList.contains('admin-mode');
+                        
                         let updatedCustomCount = 0;
                         let updatedSharedCount = 0;
                         let timeShiftedCount = 0;
                         let skippedSharedTimeShift = 0;
+                        let adminSharedTimeShiftCount = 0; // V5.56.2: Track admin-shifted shared bells
                         let skippedCustomNoPersched = 0;
                         
                         // --- Identify which bells are custom vs shared ---
@@ -13529,6 +13533,52 @@
                             const currentData = docSnap.exists() ? docSnap.data() : {};
                             const bellOverrides = currentData.bellOverrides || {};
                             
+                            // V5.56.2: Admin can time-shift shared bells by modifying the actual schedule
+                            if (isAdmin && isTimeShiftEnabled && sharedBellsToUpdate.length > 0) {
+                                // Get the current shared schedule
+                                const currentSchedule = allSchedules.find(s => s.id === activeBaseScheduleId);
+                                if (currentSchedule) {
+                                    // Create a set of bell IDs to update
+                                    const sharedBellIdsToShift = new Set(sharedBellsToUpdate.map(b => b.bellId || getBellId(b)));
+                                    
+                                    // Update the periods with time-shifted bells
+                                    const updatedSharedPeriods = currentSchedule.periods.map(period => {
+                                        const updatedBells = period.bells.map(bell => {
+                                            const bellId = bell.bellId || getBellId(bell);
+                                            if (sharedBellIdsToShift.has(bellId) && bell.time) {
+                                                const updatedBell = { ...bell };
+                                                
+                                                // Shift the time
+                                                const [h, m, s] = bell.time.split(':').map(Number);
+                                                let totalSeconds = (h * 3600) + (m * 60) + (s || 0);
+                                                totalSeconds += totalShiftSeconds;
+                                                
+                                                // Handle day wraparound
+                                                while (totalSeconds < 0) totalSeconds += 86400;
+                                                while (totalSeconds >= 86400) totalSeconds -= 86400;
+                                                
+                                                const newH = Math.floor(totalSeconds / 3600);
+                                                const newM = Math.floor((totalSeconds % 3600) / 60);
+                                                const newS = totalSeconds % 60;
+                                                
+                                                updatedBell.time = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}:${String(newS).padStart(2, '0')}`;
+                                                adminSharedTimeShiftCount++;
+                                                return updatedBell;
+                                            }
+                                            return bell;
+                                        });
+                                        return { ...period, bells: updatedBells };
+                                    });
+                                    
+                                    // Save to Firestore
+                                    const legacyBells = flattenPeriodsToLegacyBells(updatedSharedPeriods);
+                                    await updateDoc(scheduleRef, { periods: updatedSharedPeriods, bells: legacyBells });
+                                    
+                                    // Update local state
+                                    localSchedulePeriods = updatedSharedPeriods;
+                                }
+                            }
+                            
                             sharedBellsToUpdate.forEach(bell => {
                                 const bellId = bell.bellId || getBellId(bell);
                                 let sharedBellChanged = false;
@@ -13553,7 +13603,8 @@
                                     sharedBellChanged = true;
                                 }
                                 
-                                if (isTimeShiftEnabled) {
+                                // V5.56.2: Only skip for non-admins
+                                if (isTimeShiftEnabled && !isAdmin) {
                                     skippedSharedTimeShift++;
                                 }
                                 
@@ -13578,6 +13629,44 @@
                             // V5.56.1: No personal schedule - save to user preferences
                             // Custom bells cannot be updated without personal schedule
                             skippedCustomNoPersched = customBellIds.size;
+                            
+                            // V5.56.2: Admin can time-shift shared bells even without personal schedule
+                            if (isAdmin && isTimeShiftEnabled && sharedBellsToUpdate.length > 0) {
+                                const currentSchedule = allSchedules.find(s => s.id === activeBaseScheduleId);
+                                if (currentSchedule) {
+                                    const sharedBellIdsToShift = new Set(sharedBellsToUpdate.map(b => b.bellId || getBellId(b)));
+                                    
+                                    const updatedSharedPeriods = currentSchedule.periods.map(period => {
+                                        const updatedBells = period.bells.map(bell => {
+                                            const bellId = bell.bellId || getBellId(bell);
+                                            if (sharedBellIdsToShift.has(bellId) && bell.time) {
+                                                const updatedBell = { ...bell };
+                                                
+                                                const [h, m, s] = bell.time.split(':').map(Number);
+                                                let totalSeconds = (h * 3600) + (m * 60) + (s || 0);
+                                                totalSeconds += totalShiftSeconds;
+                                                
+                                                while (totalSeconds < 0) totalSeconds += 86400;
+                                                while (totalSeconds >= 86400) totalSeconds -= 86400;
+                                                
+                                                const newH = Math.floor(totalSeconds / 3600);
+                                                const newM = Math.floor((totalSeconds % 3600) / 60);
+                                                const newS = totalSeconds % 60;
+                                                
+                                                updatedBell.time = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}:${String(newS).padStart(2, '0')}`;
+                                                adminSharedTimeShiftCount++;
+                                                return updatedBell;
+                                            }
+                                            return bell;
+                                        });
+                                        return { ...period, bells: updatedBells };
+                                    });
+                                    
+                                    const legacyBells = flattenPeriodsToLegacyBells(updatedSharedPeriods);
+                                    await updateDoc(scheduleRef, { periods: updatedSharedPeriods, bells: legacyBells });
+                                    localSchedulePeriods = updatedSharedPeriods;
+                                }
+                            }
                             
                             // Handle SHARED bells (save to user preferences)
                             sharedBellsToUpdate.forEach(bell => {
@@ -13620,7 +13709,9 @@
                         }
                         
                         if (isTimeShiftEnabled) {
-                            if (timeShiftedCount > 0) {
+                            // V5.56.2: Combine custom and admin-shifted shared bells
+                            const totalTimeShifted = timeShiftedCount + adminSharedTimeShiftCount;
+                            if (totalTimeShifted > 0) {
                                 const direction = totalShiftSeconds > 0 ? 'later' : 'earlier';
                                 const absSeconds = Math.abs(totalShiftSeconds);
                                 const shiftH = Math.floor(absSeconds / 3600);
@@ -13631,7 +13722,7 @@
                                 if (shiftM > 0) shiftStr += `${shiftM}m `;
                                 if (shiftS > 0) shiftStr += `${shiftS}s`;
                                 if (statusMsg) statusMsg += ' — ';
-                                statusMsg += `${timeShiftedCount} bell${timeShiftedCount !== 1 ? 's' : ''} shifted ${shiftStr.trim()} ${direction}`;
+                                statusMsg += `${totalTimeShifted} bell${totalTimeShifted !== 1 ? 's' : ''} shifted ${shiftStr.trim()} ${direction}`;
                             }
                             if (skippedSharedTimeShift > 0) {
                                 if (statusMsg) statusMsg += '. ';
