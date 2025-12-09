@@ -1,4 +1,8 @@
-const APP_VERSION = "5.57.1"
+const APP_VERSION = "5.57.2"
+// V5.57.2: Bell proximity threshold and error messages
+// - Changed bell proximity threshold from 60 to 59 seconds (was blocking bells 60s apart)
+// - Enhanced error messages to include the period name of the blocking bell
+// - Error now shows: bell name, period name, and time (e.g., "Period Start" in "1st Period" at 8:00 AM)
 // V5.57.1: Fix personal period bells not editable
 // - BUG FIX: Personal period anchor bells (fluke bells) were showing "Only admin can change" message
 // - Root cause: handleEditBellClick had no else clause for custom bells, so time input stayed locked
@@ -4925,11 +4929,11 @@ function sortPeriodsByFirstBell(periods) {
     });
 }
 /**
-    * Finds a bell within 60 seconds of the given time.
+    * V5.57.2: Finds a bell within 59 seconds of the given time.
     * @param {string} time - The time to check (HH:MM:SS)
     * @param {Array} bellList - The list of bells to check against
     * @param {object} [excludeBell=null] - A bell object {time, name} to exclude from the check
-    * @returns {object|null} The nearby bell object or null
+    * @returns {object|null} The nearby bell object or null (includes periodName if available)
     */
 function findNearbyBell(time, bellList, excludeBell = null) {
     const newTimeInSeconds = timeToSeconds(time);
@@ -4944,8 +4948,9 @@ function findNearbyBell(time, bellList, excludeBell = null) {
         const existingTimeInSeconds = timeToSeconds(bell.time);
         if (isNaN(existingTimeInSeconds)) continue;
 
-        if (Math.abs(newTimeInSeconds - existingTimeInSeconds) <= 60) {
-            return bell; // Found a bell within 60 seconds
+        // V5.57.2: Changed from 60 to 59 seconds threshold
+        if (Math.abs(newTimeInSeconds - existingTimeInSeconds) <= 59) {
+            return bell; // Found a bell within 59 seconds
         }
     }
     return null;
@@ -6936,7 +6941,9 @@ async function handleEditBellSubmit(e) {
     const nearbyBell = findNearbyBell(newBell.time, allBells, oldBell);
     
     if (nearbyBell) {
-        editBellStatus.textContent = `Warning: Bell is too close to ${nearbyBell.name} at ${formatTime12Hour(nearbyBell.time, true)}. Please adjust time.`;
+        // V5.57.2: Enhanced error message with period name
+        const periodInfo = nearbyBell.periodName ? ` in "${nearbyBell.periodName}"` : '';
+        editBellStatus.textContent = `Warning: Bell is too close to "${nearbyBell.name}"${periodInfo} at ${formatTime12Hour(nearbyBell.time, true)}. Please adjust time.`;
         editBellStatus.classList.remove('hidden');
         return;
     }
@@ -7339,7 +7346,7 @@ function showMultiAddModal() {
 }
     
 /**
-    * NEW: v3.02 - Finds all shared bells within 60s of the new time.
+    * V5.57.2: Finds all shared bells within 59s of the new time.
     * @param {string} time - The time to check (HH:MM:SS)
     * @param {string} name - The name of the bell to check
     * @returns {object} { internal: bell|null, external: [{schedule, bell}] }
@@ -7361,13 +7368,13 @@ function findAllNearbySharedBells(time) {
         
         // Use findNearbyBell helper, but *only* check bells with the same name
         // This is a modification from the spec, which said *any* bell.
-        // Re-reading: "within 60s of an existing bell" - doesn't specify name.
+        // Re-reading: "within 59s of an existing bell" - doesn't specify name.
         // Re-reading v3.02 "Conflict in Other Shared Schedules" - "Similar Bell Found"
         // Let's assume the user *meant* to find bells with the *same name* for v3.02,
         // as that's what makes the "Match" and "Create/Match" options logical.
         // If we find bells with different names, matching them makes no sense.
         //
-        // **Decision: I will check for bells with the *same name* within 60 seconds.**
+        // **Decision: I will check for bells with the *same name* within 59 seconds.**
         // This aligns with the logic of "linked" bells.
         //
         // UPDATE: The original v3.02 code was checking *any* bell. Let's revert to that
@@ -7383,10 +7390,11 @@ function findAllNearbySharedBells(time) {
         if (bellList.length === 0) continue;
 
         // Find the *first* bell in this schedule that conflicts
+        // V5.57.2: Changed from 60 to 59 seconds threshold
         const conflictingBell = bellList.find(bell => {
             const existingTimeInSeconds = timeToSeconds(bell.time);
             if (isNaN(existingTimeInSeconds)) return false;
-            return Math.abs(newTimeInSeconds - existingTimeInSeconds) <= 60;
+            return Math.abs(newTimeInSeconds - existingTimeInSeconds) <= 59;
         });
 
         if (!conflictingBell) continue; // No conflict in this schedule
@@ -8440,8 +8448,9 @@ async function handleAddStaticBellSubmit(e) {
     const nearbyBell = findNearbyBell(time, allBells);
     
     if (nearbyBell) {
-        // Show an error in the modal.
-        addStaticBellStatus.textContent = `Error: This time is within 60s of "${nearbyBell.name}" (${formatTime12Hour(nearbyBell.time, true)}).`;
+        // V5.57.2: Enhanced error message with period name
+        const periodInfo = nearbyBell.periodName ? ` in "${nearbyBell.periodName}"` : '';
+        addStaticBellStatus.textContent = `Error: This time is within 59s of "${nearbyBell.name}"${periodInfo} (${formatTime12Hour(nearbyBell.time, true)}).`;
         addStaticBellStatus.classList.remove('hidden');
         return;
     } 
@@ -10267,7 +10276,9 @@ async function handleNewPeriodSubmit(e) {
             const nearbyBell = findNearbyBell(time, allBells);
             
             if (nearbyBell) {
-                throw new Error(`Time conflict: Period start/end is too close to "${nearbyBell.name}" (${formatTime12Hour(nearbyBell.time, true)}).`);
+                // V5.57.2: Enhanced error message with period name
+                const periodInfo = nearbyBell.periodName ? ` in "${nearbyBell.periodName}"` : '';
+                throw new Error(`Time conflict: Period start/end is too close to "${nearbyBell.name}"${periodInfo} (${formatTime12Hour(nearbyBell.time, true)}).`);
             }
             // MODIFIED V4.81: Return sound
             return { time, sound };
