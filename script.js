@@ -1,4 +1,11 @@
-const APP_VERSION = "5.58.2"
+const APP_VERSION = "5.58.3"
+// V5.58.3: Admin period creation improvements
+// - Pre-check the currently active schedule when opening period modal
+// - Added visual cue picker to period creation (applies to both Period Start and Period End bells)
+// - Improved error messages: now shows specific schedule names for conflicts
+// - "Period already exists" now lists which schedules were skipped
+// - Time conflicts now show the specific bell name, period name, and time
+// - Button text changed to "Add Period to Schedule(s)..."
 // V5.58.2: Period modal UX fixes
 // - Fixed sound dropdown overflow (added min-w-0 to prevent horizontal scrolling)
 // - Modal now closes on successful period creation
@@ -474,6 +481,7 @@ const multiPeriodStartTimeInput = document.getElementById('multi-period-start-ti
 const multiPeriodStartSoundInput = document.getElementById('multi-period-start-sound');
 const multiPeriodEndTimeInput = document.getElementById('multi-period-end-time');
 const multiPeriodEndSoundInput = document.getElementById('multi-period-end-sound');
+const multiPeriodVisualSelect = document.getElementById('multi-period-visual'); // V5.58.3
 const periodScheduleListContainer = document.getElementById('period-schedule-list-container');
 const multiPeriodCancelBtn = document.getElementById('multi-period-cancel');
 const multiPeriodSubmitBtn = document.getElementById('multi-period-submit');
@@ -7379,6 +7387,7 @@ function showMultiAddModal() {
 
 /**
  * V5.58.0: Renders schedule checkboxes for the Add Period modal
+ * V5.58.3: Pre-checks the currently active schedule
  */
 function renderPeriodScheduleCheckboxes() {
     if (!periodScheduleListContainer) return; // Guard clause
@@ -7391,16 +7400,22 @@ function renderPeriodScheduleCheckboxes() {
     
     if (multiPeriodSubmitBtn) multiPeriodSubmitBtn.disabled = false;
 
-    periodScheduleListContainer.innerHTML = allSchedules.map(schedule => `
+    // V5.58.3: Pre-check the currently active schedule
+    periodScheduleListContainer.innerHTML = allSchedules.map(schedule => {
+        const isCurrentSchedule = schedule.id === activeBaseScheduleId;
+        return `
         <div class="flex items-center">
-            <input type="checkbox" id="period-schedule-${schedule.id}" name="period-schedule" value="${schedule.id}" class="period-schedule-check h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+            <input type="checkbox" id="period-schedule-${schedule.id}" name="period-schedule" value="${schedule.id}" 
+                   class="period-schedule-check h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                   ${isCurrentSchedule ? 'checked' : ''}>
             <label for="period-schedule-${schedule.id}" class="ml-2 block text-sm text-gray-900">${schedule.name}</label>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 /**
  * V5.58.0: Opens the Add Period to Schedules modal
+ * V5.58.3: Added visual cue support
  */
 function showAddPeriodModal() {
     if (!addPeriodModal) return; // Guard clause
@@ -7411,11 +7426,30 @@ function showAddPeriodModal() {
     // Populate sound dropdowns for both start and end bells
     updateSoundDropdowns();
     
+    // V5.58.3: Populate visual dropdown and initialize preview
+    updateVisualDropdowns();
+    updatePeriodVisualPreview();
+    
     addPeriodModal.classList.remove('hidden');
 }
 
 /**
+ * V5.58.3: Update visual preview in period modal
+ */
+function updatePeriodVisualPreview() {
+    const visualSelect = document.getElementById('multi-period-visual');
+    const previewFull = document.getElementById('multi-period-visual-preview');
+    if (!visualSelect || !previewFull) return;
+
+    const visualValue = visualSelect.value;
+    const periodName = multiPeriodNameInput?.value || 'Preview';
+    const htmlFull = getVisualHtml(visualValue, periodName);
+    previewFull.innerHTML = htmlFull || '<span class="visual-preview-placeholder">Select visual</span>';
+}
+
+/**
  * V5.58.0: Handles submission of the Add Period form
+ * V5.58.3: Added visual cue support
  * Creates a new period with Period Start and Period End bells in each selected schedule
  */
 async function handleMultiAddPeriodSubmit(e) {
@@ -7441,6 +7475,10 @@ async function handleMultiAddPeriodSubmit(e) {
     const startSound = multiPeriodStartSoundInput?.value || 'ellisBell.mp3';
     const endTime = multiPeriodEndTimeInput.value;
     const endSound = multiPeriodEndSoundInput?.value || 'ellisBell.mp3';
+    
+    // V5.58.3: Get visual cue data
+    const visualMode = document.querySelector('input[name="multi-period-visual-mode"]:checked')?.value || 'none';
+    const visualCue = document.getElementById('multi-period-visual')?.value || '';
     
     // Validation
     if (!periodName) {
@@ -7472,9 +7510,8 @@ async function handleMultiAddPeriodSubmit(e) {
     
     const batch = writeBatch(db);
     let added = 0;
-    let skippedConflict = 0;
-    let skippedExists = 0;
-    const conflictDetails = [];
+    const skippedExistsSchedules = []; // V5.58.3: Track which schedules already have the period
+    const conflictDetails = []; // Track time conflict details
     
     for (const scheduleId of checkedScheduleIds) {
         const schedule = allSchedules.find(s => s.id === scheduleId);
@@ -7483,7 +7520,7 @@ async function handleMultiAddPeriodSubmit(e) {
         // Check if period already exists
         const existingPeriods = schedule.periods || [];
         if (existingPeriods.some(p => p.name === periodName)) {
-            skippedExists++;
+            skippedExistsSchedules.push(schedule.name);
             continue;
         }
         
@@ -7495,39 +7532,46 @@ async function handleMultiAddPeriodSubmit(e) {
         // Check for nearby bell conflicts for start time
         const startConflict = findNearbyBell(startTime, allBellsInSchedule);
         if (startConflict) {
-            skippedConflict++;
             const periodInfo = startConflict.periodName ? ` in "${startConflict.periodName}"` : '';
-            conflictDetails.push(`${schedule.name}: Start conflicts with "${startConflict.name}"${periodInfo}`);
+            conflictDetails.push(`${schedule.name}: Start time conflicts with "${startConflict.name}"${periodInfo} at ${formatTime12Hour(startConflict.time, true)}`);
             continue;
         }
         
         // Check for nearby bell conflicts for end time
         const endConflict = findNearbyBell(endTime, allBellsInSchedule);
         if (endConflict) {
-            skippedConflict++;
             const periodInfo = endConflict.periodName ? ` in "${endConflict.periodName}"` : '';
-            conflictDetails.push(`${schedule.name}: End conflicts with "${endConflict.name}"${periodInfo}`);
+            conflictDetails.push(`${schedule.name}: End time conflicts with "${endConflict.name}"${periodInfo} at ${formatTime12Hour(endConflict.time, true)}`);
             continue;
         }
         
         // Create the new period with two anchor bells
+        // V5.58.3: Include visual cue data if specified
+        const startBell = {
+            bellId: generateBellId(),
+            name: 'Period Start',
+            time: startTime,
+            sound: startSound
+        };
+        const endBell = {
+            bellId: generateBellId(),
+            name: 'Period End',
+            time: endTime,
+            sound: endSound
+        };
+        
+        // Only add visual properties if a visual is selected
+        if (visualCue && visualMode !== 'none') {
+            startBell.visualMode = visualMode;
+            startBell.visualCue = visualCue;
+            endBell.visualMode = visualMode;
+            endBell.visualCue = visualCue;
+        }
+        
         const newPeriod = {
             name: periodName,
             isEnabled: true,
-            bells: [
-                {
-                    bellId: generateBellId(),
-                    name: 'Period Start',
-                    time: startTime,
-                    sound: startSound
-                },
-                {
-                    bellId: generateBellId(),
-                    name: 'Period End',
-                    time: endTime,
-                    sound: endSound
-                }
-            ]
+            bells: [startBell, endBell]
         };
         
         // Add to batch
@@ -7542,19 +7586,18 @@ async function handleMultiAddPeriodSubmit(e) {
             await batch.commit();
         }
         
-        // Build status message
+        // V5.58.3: Build detailed status message
         let statusMsg = '';
         if (added > 0) {
             statusMsg = `Successfully added "${periodName}" to ${added} schedule(s).`;
         }
-        if (skippedExists > 0) {
-            statusMsg += ` Skipped ${skippedExists} (period already exists).`;
+        if (skippedExistsSchedules.length > 0) {
+            statusMsg += ` Skipped (period already exists): ${skippedExistsSchedules.join(', ')}.`;
         }
-        if (skippedConflict > 0) {
-            statusMsg += ` Skipped ${skippedConflict} due to time conflicts.`;
-            if (conflictDetails.length > 0) {
-                console.warn("Period conflict details:", conflictDetails);
-            }
+        if (conflictDetails.length > 0) {
+            statusMsg += ` Skipped due to time conflicts: ${conflictDetails.length}.`;
+            // Log details to console for debugging
+            console.warn("Period creation skipped due to conflicts:", conflictDetails);
         }
         if (!statusMsg) {
             statusMsg = "No schedules were updated.";
@@ -7567,6 +7610,11 @@ async function handleMultiAddPeriodSubmit(e) {
             if (multiPeriodEndTimeInput) multiPeriodEndTimeInput.value = '';
             if (multiPeriodStartSoundInput) multiPeriodStartSoundInput.value = 'ellisBell.mp3';
             if (multiPeriodEndSoundInput) multiPeriodEndSoundInput.value = 'ellisBell.mp3';
+            // V5.58.3: Reset visual cue fields
+            const periodVisual = document.getElementById('multi-period-visual');
+            if (periodVisual) periodVisual.value = '';
+            const noneRadio = document.querySelector('input[name="multi-period-visual-mode"][value="none"]');
+            if (noneRadio) noneRadio.checked = true;
             document.querySelectorAll('.period-schedule-check:checked').forEach(cb => cb.checked = false);
             
             // Close modal and show success message
@@ -9607,6 +9655,7 @@ function addNewVisualOption(url, name) {
 function updateVisualDropdowns() {
     // Added 5.31.1: Dropdowns to add images to individual bells
     // MODIFIED V5.42.0: Added passing period visual select
+    // MODIFIED V5.58.3: Added period modal visual select
     const selects = [ 
         editPeriodImageSelect, 
         newPeriodImageSelect, 
@@ -9616,7 +9665,8 @@ function updateVisualDropdowns() {
         document.getElementById('edit-bell-visual'),
         document.getElementById('multi-bell-visual'),
         document.getElementById('multi-relative-bell-visual'),
-        document.getElementById('passing-period-visual-select') // NEW V5.42.0
+        document.getElementById('passing-period-visual-select'), // NEW V5.42.0
+        document.getElementById('multi-period-visual') // V5.58.3: Period modal visual
     ];
     
     // 1. Create options for default SVGs (dynamically)
@@ -12536,6 +12586,12 @@ function init() {
         multiAddPeriodForm?.reset();
         if (multiPeriodStartSoundInput) multiPeriodStartSoundInput.value = 'ellisBell.mp3';
         if (multiPeriodEndSoundInput) multiPeriodEndSoundInput.value = 'ellisBell.mp3';
+        // V5.58.3: Reset visual cue fields
+        const periodVisual = document.getElementById('multi-period-visual');
+        if (periodVisual) periodVisual.value = '';
+        const noneRadio = document.querySelector('input[name="multi-period-visual-mode"][value="none"]');
+        if (noneRadio) noneRadio.checked = true;
+        updatePeriodVisualPreview();
         multiPeriodStatus?.classList.add('hidden');
     });
     periodSelectAllBtn?.addEventListener('click', () => {
@@ -12551,6 +12607,14 @@ function init() {
     document.getElementById('preview-period-end-sound')?.addEventListener('click', () => {
         if (multiPeriodEndSoundInput) playBell(multiPeriodEndSoundInput.value);
     });
+    // V5.58.3: Visual preview update listeners for period modal
+    document.getElementById('multi-period-visual')?.addEventListener('change', (e) => {
+        handleVisualSelectChange(e.target, 'multi-period-visual-preview', multiPeriodNameInput?.value || 'Preview');
+    });
+    document.querySelectorAll('input[name="multi-period-visual-mode"]').forEach(radio => {
+        radio.addEventListener('change', updatePeriodVisualPreview);
+    });
+    document.getElementById('multi-period-name')?.addEventListener('input', updatePeriodVisualPreview);
     
     // Modals (Edit Bell)
     editBellForm.addEventListener('submit', handleEditBellSubmit);
