@@ -1,4 +1,9 @@
-const APP_VERSION = "5.58.4"
+const APP_VERSION = "5.58.5"
+// V5.58.5: Import and dropdown fixes
+// - Fixed import error with undefined field values (Firestore doesn't accept undefined)
+// - Now properly copies relative bell properties (relativeToAnchor, relativeDirection, relativeOffset, anchorRole)
+// - Handles bells without static time (relative bells)
+// - Fixed sound dropdown overflow in multiple modals (added min-w-0)
 // V5.58.4: Smart Import Preview for Admin
 // - Detects personal schedule backups when importing as admin
 // - Shows preview modal with analysis of what can/will be imported
@@ -11067,32 +11072,44 @@ function analyzeImportFile(data, filename) {
             analysis.available.bellNames.count++;
             analysis.available.bellTimes.count++;
             
+            // V5.58.5: Build sanitized bell more carefully to avoid undefined values
             const sanitizedBell = {
                 bellId: bell.bellId || generateBellId(),
-                name: bell.name,
-                time: bell.time,
-                sound: bell.sound
+                name: bell.name || 'Unnamed Bell'
             };
             
-            // Check if sound needs replacement
-            if (bell.sound && bell.sound.startsWith('http')) {
-                if (!sharedSoundUrls.has(bell.sound)) {
+            // Only add time if it exists (relative bells may not have static time)
+            if (bell.time !== undefined && bell.time !== null) {
+                sanitizedBell.time = bell.time;
+            }
+            
+            // Handle sound - default to ellisBell.mp3 if missing
+            let finalSound = bell.sound || 'ellisBell.mp3';
+            if (finalSound.startsWith('http')) {
+                if (!sharedSoundUrls.has(finalSound)) {
                     analysis.modified.sounds.items.push({
                         bellName: bell.name,
                         periodName: period.name,
-                        originalSound: bell.sound
+                        originalSound: finalSound
                     });
-                    sanitizedBell.sound = 'ellisBell.mp3'; // Replace with default
+                    finalSound = 'ellisBell.mp3';
                 }
-            } else if (bell.sound && !defaultSounds.has(bell.sound) && !sharedSoundUrls.has(bell.sound)) {
+            } else if (!defaultSounds.has(finalSound) && !sharedSoundUrls.has(finalSound)) {
                 // Unknown sound reference
                 analysis.modified.sounds.items.push({
                     bellName: bell.name,
                     periodName: period.name,
-                    originalSound: bell.sound
+                    originalSound: finalSound
                 });
-                sanitizedBell.sound = 'ellisBell.mp3';
+                finalSound = 'ellisBell.mp3';
             }
+            sanitizedBell.sound = finalSound;
+            
+            // Copy relative bell properties if they exist
+            if (bell.relativeToAnchor !== undefined) sanitizedBell.relativeToAnchor = bell.relativeToAnchor;
+            if (bell.relativeDirection !== undefined) sanitizedBell.relativeDirection = bell.relativeDirection;
+            if (bell.relativeOffset !== undefined) sanitizedBell.relativeOffset = bell.relativeOffset;
+            if (bell.anchorRole !== undefined) sanitizedBell.anchorRole = bell.anchorRole;
             
             // Check visual cue
             if (bell.visualCue) {
@@ -11102,16 +11119,18 @@ function analyzeImportFile(data, filename) {
                         periodName: period.name,
                         originalVisual: bell.visualCue
                     });
-                    // Remove visual cue from sanitized bell
-                } else if (bell.visualCue.startsWith('[DEFAULT]') || sharedVisualUrls.has(bell.visualCue)) {
+                    // Don't add visualCue to sanitized bell
+                } else if (bell.visualCue.startsWith('[DEFAULT]') || bell.visualCue.startsWith('[CUSTOM_TEXT]') || sharedVisualUrls.has(bell.visualCue)) {
                     // Keep valid visual cues
                     sanitizedBell.visualCue = bell.visualCue;
                     if (bell.visualMode) sanitizedBell.visualMode = bell.visualMode;
                 }
             }
             
-            // Copy other properties (but NOT personal-specific ones)
-            if (bell.visualMode && sanitizedBell.visualCue) sanitizedBell.visualMode = bell.visualMode;
+            // Copy visualMode only if visualCue exists
+            if (bell.visualMode && sanitizedBell.visualCue) {
+                sanitizedBell.visualMode = bell.visualMode;
+            }
             
             sanitizedPeriod.bells.push(sanitizedBell);
         }
