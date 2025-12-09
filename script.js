@@ -1,4 +1,12 @@
-const APP_VERSION = "5.58.3"
+const APP_VERSION = "5.58.4"
+// V5.58.4: Smart Import Preview for Admin
+// - Detects personal schedule backups when importing as admin
+// - Shows preview modal with analysis of what can/will be imported
+// - Identifies sounds not in shared storage (replaces with default)
+// - Identifies visual cues not in shared storage (removes them)
+// - Shows what personal-only data will NOT be imported (quick bells, overrides, etc.)
+// - Checkboxes let admin choose what to include
+// - Admin exports now include exportedAt and exportedAs metadata
 // V5.58.3: Admin period creation improvements
 // - Pre-check the currently active schedule when opening period modal
 // - Added visual cue picker to period creation (applies to both Period Start and Period End bells)
@@ -533,6 +541,22 @@ const exportCurrentScheduleBtn = document.getElementById('export-current-schedul
 const importCurrentScheduleBtn = document.getElementById('import-current-schedule-btn');
 const importCurrentFileInput = document.getElementById('import-current-file-input');
 // --- END: v4.14d RESTORE ---
+
+// V5.58.4: Import Preview Modal (Admin)
+const importPreviewModal = document.getElementById('import-preview-modal');
+const importPreviewWarning = document.getElementById('import-preview-warning');
+const importPreviewFilename = document.getElementById('import-preview-filename');
+const importPreviewScheduleName = document.getElementById('import-preview-schedule-name');
+const importPreviewDate = document.getElementById('import-preview-date');
+const importPreviewAvailable = document.getElementById('import-preview-available');
+const importPreviewModifiedSection = document.getElementById('import-preview-modified-section');
+const importPreviewModified = document.getElementById('import-preview-modified');
+const importPreviewExcludedSection = document.getElementById('import-preview-excluded-section');
+const importPreviewExcluded = document.getElementById('import-preview-excluded');
+const importPreviewStatus = document.getElementById('import-preview-status');
+const importPreviewCancelBtn = document.getElementById('import-preview-cancel');
+const importPreviewConfirmBtn = document.getElementById('import-preview-confirm');
+let pendingImportData = null; // Stores analyzed import data
 
 // --- END: v4.14 Global Scope Fix ---
 
@@ -10906,6 +10930,7 @@ async function handleFileInputChange(e) {
 }
 
 // --- NEW V4.90: Import/Export for CURRENT schedule ---
+// MODIFIED V5.58.4: Added export metadata
 function handleExportCurrentSchedule() {
     if (!activeBaseScheduleId || !document.body.classList.contains('admin-mode')) {
         showUserMessage("No active shared schedule selected or insufficient permissions.");
@@ -10919,8 +10944,11 @@ function handleExportCurrentSchedule() {
     }
 
     // Create a clean backup object for a *single* schedule
+    // V5.58.4: Added exportedAt and exportedAs metadata
     const backupData = {
         type: "EllisWebBell_SingleSchedule_v1",
+        exportedAt: new Date().toISOString(),
+        exportedAs: "admin", // Helps identify this as an admin export
         schedule: {
             name: schedule.name,
             periods: schedule.periods || [] // Export the raw periods array
@@ -10942,6 +10970,331 @@ function handleExportCurrentSchedule() {
     } catch (error) {
             console.error("Error backing up current schedule:", error);
             showUserMessage("Error exporting schedule: " + error.message);
+    }
+}
+
+/**
+ * V5.58.4: Analyze an import file and determine what can be imported
+ * @param {object} data - Parsed JSON from import file
+ * @param {string} filename - Name of the file being imported
+ * @returns {object} Analysis results with available, modified, and excluded items
+ */
+function analyzeImportFile(data, filename) {
+    const analysis = {
+        filename,
+        isPersonalBackup: false,
+        isAdminBackup: false,
+        isValid: false,
+        scheduleName: '',
+        exportDate: '',
+        periods: [],
+        totalBells: 0,
+        // Items that can be imported as-is
+        available: {
+            periods: { count: 0, checked: true },
+            bellNames: { count: 0, checked: true },
+            bellTimes: { count: 0, checked: true }
+        },
+        // Items that will be modified (sounds/visuals replaced with defaults)
+        modified: {
+            sounds: { items: [], defaultReplacement: 'ellisBell.mp3', checked: true },
+            visuals: { items: [], checked: true }
+        },
+        // Items that won't be imported at all
+        excluded: {
+            quickBells: false,
+            bellOverrides: false,
+            periodVisualOverrides: false,
+            baseScheduleId: false,
+            referencedMedia: { audio: 0, visuals: 0 }
+        },
+        // The sanitized data ready for import
+        sanitizedPeriods: []
+    };
+    
+    // Detect file type
+    if (data.type === "EllisWebBell_SingleSchedule_v1") {
+        analysis.isAdminBackup = true;
+        analysis.isValid = !!(data.schedule?.name && Array.isArray(data.schedule?.periods));
+        if (analysis.isValid) {
+            analysis.scheduleName = data.schedule.name;
+            analysis.periods = data.schedule.periods || [];
+        }
+    } else if (data.type === "EllisWebBell_PersonalSchedule_v2" || data.type === "EllisWebBell_PersonalSchedule_v1") {
+        analysis.isPersonalBackup = true;
+        analysis.isValid = !!(data.schedule?.name);
+        if (analysis.isValid) {
+            analysis.scheduleName = data.schedule.name;
+            analysis.periods = data.schedule?.periods || [];
+            analysis.exportDate = data.exportedAt || '';
+            
+            // Check for excluded items
+            if (data.customQuickBells?.length > 0) analysis.excluded.quickBells = true;
+            if (data.bellOverrides && Object.keys(data.bellOverrides).length > 0) analysis.excluded.bellOverrides = true;
+            if (data.periodVisualOverrides && Object.keys(data.periodVisualOverrides).length > 0) analysis.excluded.periodVisualOverrides = true;
+            if (data.schedule.baseScheduleId) analysis.excluded.baseScheduleId = true;
+            if (data.referencedMedia) {
+                analysis.excluded.referencedMedia.audio = data.referencedMedia.audio?.length || 0;
+                analysis.excluded.referencedMedia.visuals = data.referencedMedia.visuals?.length || 0;
+            }
+        }
+    }
+    
+    if (!analysis.isValid) return analysis;
+    
+    // Analyze periods and bells
+    analysis.available.periods.count = analysis.periods.length;
+    
+    // Build set of valid shared sounds and visuals for comparison
+    const sharedSoundUrls = new Set(sharedAudioFiles.map(f => f.url));
+    const sharedVisualUrls = new Set(sharedVisualFiles.map(f => f.url));
+    // Also include default sounds
+    const defaultSounds = new Set(['Bell', 'Chime', 'Beep', 'Alarm', 'ellisBell.mp3', '[SILENT]']);
+    
+    // Analyze each period and bell
+    const sanitizedPeriods = [];
+    
+    for (const period of analysis.periods) {
+        const sanitizedPeriod = {
+            name: period.name,
+            isEnabled: period.isEnabled !== false,
+            bells: []
+        };
+        
+        const bells = period.bells || [];
+        for (const bell of bells) {
+            analysis.totalBells++;
+            analysis.available.bellNames.count++;
+            analysis.available.bellTimes.count++;
+            
+            const sanitizedBell = {
+                bellId: bell.bellId || generateBellId(),
+                name: bell.name,
+                time: bell.time,
+                sound: bell.sound
+            };
+            
+            // Check if sound needs replacement
+            if (bell.sound && bell.sound.startsWith('http')) {
+                if (!sharedSoundUrls.has(bell.sound)) {
+                    analysis.modified.sounds.items.push({
+                        bellName: bell.name,
+                        periodName: period.name,
+                        originalSound: bell.sound
+                    });
+                    sanitizedBell.sound = 'ellisBell.mp3'; // Replace with default
+                }
+            } else if (bell.sound && !defaultSounds.has(bell.sound) && !sharedSoundUrls.has(bell.sound)) {
+                // Unknown sound reference
+                analysis.modified.sounds.items.push({
+                    bellName: bell.name,
+                    periodName: period.name,
+                    originalSound: bell.sound
+                });
+                sanitizedBell.sound = 'ellisBell.mp3';
+            }
+            
+            // Check visual cue
+            if (bell.visualCue) {
+                if (bell.visualCue.startsWith('http') && !sharedVisualUrls.has(bell.visualCue)) {
+                    analysis.modified.visuals.items.push({
+                        bellName: bell.name,
+                        periodName: period.name,
+                        originalVisual: bell.visualCue
+                    });
+                    // Remove visual cue from sanitized bell
+                } else if (bell.visualCue.startsWith('[DEFAULT]') || sharedVisualUrls.has(bell.visualCue)) {
+                    // Keep valid visual cues
+                    sanitizedBell.visualCue = bell.visualCue;
+                    if (bell.visualMode) sanitizedBell.visualMode = bell.visualMode;
+                }
+            }
+            
+            // Copy other properties (but NOT personal-specific ones)
+            if (bell.visualMode && sanitizedBell.visualCue) sanitizedBell.visualMode = bell.visualMode;
+            
+            sanitizedPeriod.bells.push(sanitizedBell);
+        }
+        
+        sanitizedPeriods.push(sanitizedPeriod);
+    }
+    
+    analysis.sanitizedPeriods = sanitizedPeriods;
+    return analysis;
+}
+
+/**
+ * V5.58.4: Show the import preview modal with analysis results
+ */
+function showImportPreviewModal(analysis) {
+    if (!importPreviewModal) return;
+    
+    pendingImportData = analysis;
+    
+    // Update file info
+    if (importPreviewFilename) importPreviewFilename.textContent = analysis.filename;
+    if (importPreviewScheduleName) importPreviewScheduleName.textContent = analysis.scheduleName;
+    if (importPreviewDate) {
+        importPreviewDate.textContent = analysis.exportDate 
+            ? new Date(analysis.exportDate).toLocaleString() 
+            : '(not recorded)';
+    }
+    
+    // Show/hide warning banner
+    if (importPreviewWarning) {
+        importPreviewWarning.classList.toggle('hidden', !analysis.isPersonalBackup);
+    }
+    
+    // Build "Available" section
+    if (importPreviewAvailable) {
+        importPreviewAvailable.innerHTML = `
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="import-opt-periods" checked class="h-4 w-4 text-green-600">
+                <span><strong>${analysis.available.periods.count} periods</strong> with structure</span>
+            </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="import-opt-times" checked class="h-4 w-4 text-green-600">
+                <span><strong>${analysis.totalBells} bells</strong> with times</span>
+            </label>
+        `;
+    }
+    
+    // Build "Modified" section
+    const hasModifications = analysis.modified.sounds.items.length > 0 || analysis.modified.visuals.items.length > 0;
+    if (importPreviewModifiedSection) {
+        importPreviewModifiedSection.classList.toggle('hidden', !hasModifications);
+    }
+    if (importPreviewModified && hasModifications) {
+        let modifiedHtml = '';
+        if (analysis.modified.sounds.items.length > 0) {
+            modifiedHtml += `
+                <label class="flex items-start gap-2">
+                    <input type="checkbox" id="import-opt-sounds" checked class="h-4 w-4 text-yellow-600 mt-1">
+                    <div>
+                        <span><strong>${analysis.modified.sounds.items.length} sound(s)</strong> will use default (Ellis Bell)</span>
+                        <ul class="text-xs text-gray-500 mt-1 ml-4 list-disc">
+                            ${analysis.modified.sounds.items.slice(0, 5).map(s => 
+                                `<li>"${s.bellName}" in "${s.periodName}"</li>`
+                            ).join('')}
+                            ${analysis.modified.sounds.items.length > 5 ? `<li>...and ${analysis.modified.sounds.items.length - 5} more</li>` : ''}
+                        </ul>
+                    </div>
+                </label>
+            `;
+        }
+        if (analysis.modified.visuals.items.length > 0) {
+            modifiedHtml += `
+                <label class="flex items-start gap-2">
+                    <input type="checkbox" id="import-opt-visuals" checked class="h-4 w-4 text-yellow-600 mt-1">
+                    <div>
+                        <span><strong>${analysis.modified.visuals.items.length} visual cue(s)</strong> will be removed</span>
+                        <ul class="text-xs text-gray-500 mt-1 ml-4 list-disc">
+                            ${analysis.modified.visuals.items.slice(0, 3).map(v => 
+                                `<li>"${v.bellName}" in "${v.periodName}"</li>`
+                            ).join('')}
+                            ${analysis.modified.visuals.items.length > 3 ? `<li>...and ${analysis.modified.visuals.items.length - 3} more</li>` : ''}
+                        </ul>
+                    </div>
+                </label>
+            `;
+        }
+        importPreviewModified.innerHTML = modifiedHtml;
+    }
+    
+    // Build "Excluded" section (only for personal backups)
+    const hasExclusions = analysis.isPersonalBackup && (
+        analysis.excluded.quickBells || 
+        analysis.excluded.bellOverrides || 
+        analysis.excluded.periodVisualOverrides ||
+        analysis.excluded.baseScheduleId
+    );
+    if (importPreviewExcludedSection) {
+        importPreviewExcludedSection.classList.toggle('hidden', !hasExclusions);
+    }
+    if (importPreviewExcluded && hasExclusions) {
+        let excludedHtml = '';
+        if (analysis.excluded.quickBells) excludedHtml += '<p>• Custom quick bells</p>';
+        if (analysis.excluded.bellOverrides) excludedHtml += '<p>• Shared bell overrides/customizations</p>';
+        if (analysis.excluded.periodVisualOverrides) excludedHtml += '<p>• Period visual overrides</p>';
+        if (analysis.excluded.baseScheduleId) excludedHtml += '<p>• Base schedule reference (this will be a standalone shared schedule)</p>';
+        if (analysis.excluded.referencedMedia.audio > 0 || analysis.excluded.referencedMedia.visuals > 0) {
+            excludedHtml += `<p>• Media references (${analysis.excluded.referencedMedia.audio} audio, ${analysis.excluded.referencedMedia.visuals} visual files)</p>`;
+        }
+        importPreviewExcluded.innerHTML = excludedHtml;
+    }
+    
+    // Reset status
+    if (importPreviewStatus) importPreviewStatus.classList.add('hidden');
+    
+    // Show modal
+    importPreviewModal.classList.remove('hidden');
+}
+
+/**
+ * V5.58.4: Execute the import with user-selected options
+ */
+async function executeImportWithOptions() {
+    if (!pendingImportData || !activeBaseScheduleId) return;
+    
+    const currentSchedule = allSchedules.find(s => s.id === activeBaseScheduleId);
+    if (!currentSchedule) {
+        showUserMessage("Error: No active schedule to overwrite.");
+        return;
+    }
+    
+    // Get user selections
+    const importPeriods = document.getElementById('import-opt-periods')?.checked ?? true;
+    const importTimes = document.getElementById('import-opt-times')?.checked ?? true;
+    
+    if (!importPeriods) {
+        if (importPreviewStatus) {
+            importPreviewStatus.textContent = "Please select at least 'periods' to import.";
+            importPreviewStatus.classList.remove('hidden');
+        }
+        return;
+    }
+    
+    // Build the final periods to import
+    let periodsToImport = pendingImportData.sanitizedPeriods;
+    
+    // If user unchecked times, we'd need to handle that differently
+    // For now, times are always included with periods
+    
+    if (importPreviewStatus) {
+        importPreviewStatus.textContent = "Importing...";
+        importPreviewStatus.classList.remove('hidden');
+    }
+    if (importPreviewConfirmBtn) importPreviewConfirmBtn.disabled = true;
+    
+    try {
+        const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
+        
+        // Save data for message before clearing
+        const importedName = pendingImportData.scheduleName;
+        const modifiedSoundsCount = pendingImportData.modified?.sounds?.items?.length || 0;
+        
+        await updateDoc(scheduleRef, { 
+            name: pendingImportData.scheduleName, 
+            periods: periodsToImport 
+        });
+        
+        // Success - close modal
+        importPreviewModal?.classList.add('hidden');
+        pendingImportData = null;
+        
+        let message = `Successfully imported "${importedName}"`;
+        if (modifiedSoundsCount > 0) {
+            message += ` (${modifiedSoundsCount} sounds replaced with defaults)`;
+        }
+        showUserMessage(message);
+        
+    } catch (error) {
+        console.error("Import failed:", error);
+        if (importPreviewStatus) {
+            importPreviewStatus.textContent = `Error: ${error.message}`;
+        }
+    } finally {
+        if (importPreviewConfirmBtn) importPreviewConfirmBtn.disabled = false;
     }
 }
 
@@ -10967,46 +11320,55 @@ async function handleImportCurrentFileChange(e) {
         try {
             const data = JSON.parse(event.target.result);
             
-            // 1. Validate file
-            if (data.type !== "EllisWebBell_SingleSchedule_v1" || !data.schedule || !data.schedule.name || !Array.isArray(data.schedule.periods)) {
-                throw new Error("Invalid or corrupt single schedule backup file.");
-            }
-
-            // 2. Show confirmation
-            const confirmed = await showConfirmationModal(
-                `This will OVERWRITE your current schedule "${currentSchedule.name}" with the data from "${data.schedule.name}" (from file: ${file.name}). This action cannot be undone.`,
-                "Confirm Overwrite Current Schedule",
-                "Overwrite Current"
-            );
-
-            if (!confirmed) {
-                importStatus.textContent = "Import cancelled by user.";
-                setTimeout(() => importStatus.classList.add('hidden'), 3000);
-                importCurrentFileInput.value = ''; // Clear input
-                return; // Stop execution
-            }
-
-            // 3. Proceed with overwrite
-            importStatus.textContent = `Importing and overwriting "${currentSchedule.name}"...`;
+            // V5.58.4: Analyze the file first
+            const analysis = analyzeImportFile(data, file.name);
             
-            const scheduleData = data.schedule;
-            const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
+            if (!analysis.isValid) {
+                throw new Error("Invalid or corrupt backup file. Expected EllisWebBell schedule backup.");
+            }
+            
+            // Hide the initial status
+            importStatus.classList.add('hidden');
+            
+            // If it's a personal backup OR has modifications, show preview modal
+            if (analysis.isPersonalBackup || analysis.modified.sounds.items.length > 0 || analysis.modified.visuals.items.length > 0) {
+                showImportPreviewModal(analysis);
+            } else {
+                // Admin backup with no modifications - show simple confirmation
+                const confirmed = await showConfirmationModal(
+                    `This will OVERWRITE your current schedule "${currentSchedule.name}" with the data from "${data.schedule.name}" (from file: ${file.name}). This action cannot be undone.`,
+                    "Confirm Overwrite Current Schedule",
+                    "Overwrite Current"
+                );
 
-            // We update the name AND the periods.
-            await updateDoc(scheduleRef, { 
-                name: scheduleData.name, 
-                periods: scheduleData.periods 
-            });
+                if (!confirmed) {
+                    importStatus.textContent = "Import cancelled by user.";
+                    setTimeout(() => importStatus.classList.add('hidden'), 3000);
+                    importCurrentFileInput.value = '';
+                    return;
+                }
 
-            importStatus.textContent = `Successfully overwrote "${currentSchedule.name}" with "${scheduleData.name}".`;
-            // The onSnapshot listener will handle the UI refresh.
+                // Proceed with direct import
+                importStatus.textContent = `Importing and overwriting "${currentSchedule.name}"...`;
+                importStatus.classList.remove('hidden');
+                
+                const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
+                await updateDoc(scheduleRef, { 
+                    name: data.schedule.name, 
+                    periods: data.schedule.periods 
+                });
+
+                importStatus.textContent = `Successfully overwrote "${currentSchedule.name}" with "${data.schedule.name}".`;
+                setTimeout(() => importStatus.classList.add('hidden'), 4000);
+            }
 
         } catch (error) {
             console.error("Current schedule import failed:", error);
             importStatus.textContent = `Error: ${error.message}`;
+            importStatus.classList.remove('hidden');
+            setTimeout(() => importStatus.classList.add('hidden'), 4000);
         } finally {
             importCurrentFileInput.value = ''; // Clear input
-            setTimeout(() => importStatus.classList.add('hidden'), 4000);
         }
     };
     reader.readAsText(file);
@@ -14184,6 +14546,13 @@ function init() {
     exportCurrentScheduleBtn.addEventListener('click', handleExportCurrentSchedule);
     importCurrentScheduleBtn.addEventListener('click', handleImportCurrentScheduleClick);
     importCurrentFileInput.addEventListener('change', handleImportCurrentFileChange);
+    
+    // V5.58.4: Import Preview Modal Listeners
+    importPreviewCancelBtn?.addEventListener('click', () => {
+        importPreviewModal?.classList.add('hidden');
+        pendingImportData = null;
+    });
+    importPreviewConfirmBtn?.addEventListener('click', executeImportWithOptions);
 
     // NEW: Audio Manager Listeners
     // MODIFIED V4.76: Listeners for the new reusable modal
