@@ -1,4 +1,8 @@
-const APP_VERSION = "5.58.1"
+const APP_VERSION = "5.58.2"
+// V5.58.2: Period modal UX fixes
+// - Fixed sound dropdown overflow (added min-w-0 to prevent horizontal scrolling)
+// - Modal now closes on successful period creation
+// - Success message shown via showUserMessage() toast instead of modal status
 // V5.58.1: Null safety fixes for period modal
 // - Added guard clauses to prevent errors if modal elements don't exist
 // - Used optional chaining throughout period modal functions
@@ -7556,9 +7560,7 @@ async function handleMultiAddPeriodSubmit(e) {
             statusMsg = "No schedules were updated.";
         }
         
-        setStatus(statusMsg);
-        
-        // Reset form on success
+        // Reset form and close modal on success
         if (added > 0) {
             if (multiPeriodNameInput) multiPeriodNameInput.value = '';
             if (multiPeriodStartTimeInput) multiPeriodStartTimeInput.value = '';
@@ -7566,11 +7568,18 @@ async function handleMultiAddPeriodSubmit(e) {
             if (multiPeriodStartSoundInput) multiPeriodStartSoundInput.value = 'ellisBell.mp3';
             if (multiPeriodEndSoundInput) multiPeriodEndSoundInput.value = 'ellisBell.mp3';
             document.querySelectorAll('.period-schedule-check:checked').forEach(cb => cb.checked = false);
-        }
-        
-        setTimeout(() => {
+            
+            // Close modal and show success message
+            addPeriodModal?.classList.add('hidden');
             setStatus('', false);
-        }, 5000); // Longer timeout for detailed messages
+            showUserMessage(statusMsg);
+        } else {
+            // No periods added - show status in modal
+            setStatus(statusMsg);
+            setTimeout(() => {
+                setStatus('', false);
+            }, 5000);
+        }
         
     } catch (error) {
         console.error("Error adding period:", error);
