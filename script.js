@@ -1,4 +1,11 @@
-const APP_VERSION = "5.58.5"
+const APP_VERSION = "5.58.6"
+// V5.58.6: Import improvements
+// - Added rename input to import preview modal (pre-filled with original name)
+// - Added warning banner for linked schedules (based on shared schedule)
+// - Better handling of empty periods (shows clear message instead of importing nothing)
+// - Added reconstructPeriodsFromLegacyBells to recover periods from older backup formats
+// - Added logging to debug import issues
+// - Shows warning when no periods/bells found in backup
 // V5.58.5: Import and dropdown fixes
 // - Fixed import error with undefined field values (Firestore doesn't accept undefined)
 // - Now properly copies relative bell properties (relativeToAnchor, relativeDirection, relativeOffset, anchorRole)
@@ -561,6 +568,8 @@ const importPreviewExcluded = document.getElementById('import-preview-excluded')
 const importPreviewStatus = document.getElementById('import-preview-status');
 const importPreviewCancelBtn = document.getElementById('import-preview-cancel');
 const importPreviewConfirmBtn = document.getElementById('import-preview-confirm');
+const importPreviewNewName = document.getElementById('import-preview-new-name'); // V5.58.6
+const importPreviewLinkedWarning = document.getElementById('import-preview-linked-warning'); // V5.58.6
 let pendingImportData = null; // Stores analyzed import data
 
 // --- END: v4.14 Global Scope Fix ---
@@ -10979,6 +10988,63 @@ function handleExportCurrentSchedule() {
 }
 
 /**
+ * V5.58.6: Reconstruct periods from legacy flat bell array
+ * This handles older backup formats that don't have period structure
+ */
+function reconstructPeriodsFromLegacyBells(legacyBells) {
+    if (!legacyBells || legacyBells.length === 0) return [];
+    
+    // Group bells by detecting period patterns in names
+    const periodMap = new Map();
+    const unmatchedBells = [];
+    
+    legacyBells.forEach(bell => {
+        // Try to extract period name from bell name patterns like "1st Period Start", "Lunch End", etc.
+        const periodMatch = bell.name?.match(/^(.+?)\s+(Start|End|Warning|Bell)$/i);
+        if (periodMatch) {
+            const periodName = periodMatch[1].trim();
+            if (!periodMap.has(periodName)) {
+                periodMap.set(periodName, []);
+            }
+            periodMap.get(periodName).push({
+                bellId: generateBellId(),
+                name: periodMatch[2], // Just "Start", "End", etc.
+                time: bell.time,
+                sound: bell.sound || 'ellisBell.mp3'
+            });
+        } else {
+            unmatchedBells.push(bell);
+        }
+    });
+    
+    // Convert map to periods array
+    const periods = [];
+    periodMap.forEach((bells, periodName) => {
+        periods.push({
+            name: periodName,
+            isEnabled: true,
+            bells: bells
+        });
+    });
+    
+    // If we have unmatched bells, put them in an "Other Bells" period
+    if (unmatchedBells.length > 0) {
+        periods.push({
+            name: 'Other Bells',
+            isEnabled: true,
+            bells: unmatchedBells.map(bell => ({
+                bellId: generateBellId(),
+                name: bell.name || 'Bell',
+                time: bell.time,
+                sound: bell.sound || 'ellisBell.mp3'
+            }))
+        });
+    }
+    
+    return periods;
+}
+
+/**
  * V5.58.4: Analyze an import file and determine what can be imported
  * @param {object} data - Parsed JSON from import file
  * @param {string} filename - Name of the file being imported
@@ -11030,8 +11096,24 @@ function analyzeImportFile(data, filename) {
         analysis.isValid = !!(data.schedule?.name);
         if (analysis.isValid) {
             analysis.scheduleName = data.schedule.name;
+            // V5.58.6: Personal schedules may store periods in different places
+            // - data.schedule.periods: Custom periods (for linked schedules, only contains user-added periods)
+            // - data._legacyBells: Flattened bell list (v2 backups have this for compatibility)
             analysis.periods = data.schedule?.periods || [];
             analysis.exportDate = data.exportedAt || '';
+            analysis.baseScheduleId = data.schedule?.baseScheduleId || null;
+            analysis.isStandalone = data.schedule?.isStandalone || false;
+            
+            // V5.58.6: Log the structure for debugging
+            console.log("Import analysis - Personal backup structure:", {
+                name: analysis.scheduleName,
+                periodsCount: analysis.periods.length,
+                hasBaseScheduleId: !!analysis.baseScheduleId,
+                isStandalone: analysis.isStandalone,
+                hasBellOverrides: !!(data.bellOverrides && Object.keys(data.bellOverrides).length > 0),
+                hasLegacyBells: !!(data._legacyBells && data._legacyBells.length > 0),
+                legacyBellsCount: data._legacyBells?.length || 0
+            });
             
             // Check for excluded items
             if (data.customQuickBells?.length > 0) analysis.excluded.quickBells = true;
@@ -11041,6 +11123,13 @@ function analyzeImportFile(data, filename) {
             if (data.referencedMedia) {
                 analysis.excluded.referencedMedia.audio = data.referencedMedia.audio?.length || 0;
                 analysis.excluded.referencedMedia.visuals = data.referencedMedia.visuals?.length || 0;
+            }
+            
+            // V5.58.6: If periods is empty but we have legacyBells, try to reconstruct
+            if (analysis.periods.length === 0 && data._legacyBells && data._legacyBells.length > 0) {
+                console.log("Import analysis - Attempting to reconstruct periods from legacy bells");
+                analysis.periods = reconstructPeriodsFromLegacyBells(data._legacyBells);
+                analysis.reconstructedFromLegacy = true;
             }
         }
     }
@@ -11144,6 +11233,7 @@ function analyzeImportFile(data, filename) {
 
 /**
  * V5.58.4: Show the import preview modal with analysis results
+ * V5.58.6: Added rename field and linked schedule warning
  */
 function showImportPreviewModal(analysis) {
     if (!importPreviewModal) return;
@@ -11159,23 +11249,61 @@ function showImportPreviewModal(analysis) {
             : '(not recorded)';
     }
     
-    // Show/hide warning banner
+    // V5.58.6: Pre-fill rename input with original name
+    if (importPreviewNewName) {
+        importPreviewNewName.value = analysis.scheduleName;
+    }
+    
+    // Show/hide warning banner for personal backups
     if (importPreviewWarning) {
         importPreviewWarning.classList.toggle('hidden', !analysis.isPersonalBackup);
     }
     
+    // V5.58.6: Show/hide warning for linked schedules (based on a shared schedule)
+    if (importPreviewLinkedWarning) {
+        const isLinked = analysis.isPersonalBackup && analysis.baseScheduleId && !analysis.isStandalone;
+        importPreviewLinkedWarning.classList.toggle('hidden', !isLinked);
+    }
+    
     // Build "Available" section
     if (importPreviewAvailable) {
-        importPreviewAvailable.innerHTML = `
-            <label class="flex items-center gap-2">
-                <input type="checkbox" id="import-opt-periods" checked class="h-4 w-4 text-green-600">
-                <span><strong>${analysis.available.periods.count} periods</strong> with structure</span>
-            </label>
-            <label class="flex items-center gap-2">
-                <input type="checkbox" id="import-opt-times" checked class="h-4 w-4 text-green-600">
-                <span><strong>${analysis.totalBells} bells</strong> with times</span>
-            </label>
-        `;
+        let availableHtml = '';
+        
+        if (analysis.available.periods.count > 0) {
+            availableHtml += `
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="import-opt-periods" checked class="h-4 w-4 text-green-600">
+                    <span><strong>${analysis.available.periods.count} periods</strong> with structure</span>
+                </label>
+            `;
+        }
+        
+        if (analysis.totalBells > 0) {
+            availableHtml += `
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="import-opt-times" checked class="h-4 w-4 text-green-600">
+                    <span><strong>${analysis.totalBells} bells</strong> with times</span>
+                </label>
+            `;
+        }
+        
+        // V5.58.6: Show warning if nothing to import
+        if (analysis.available.periods.count === 0 && analysis.totalBells === 0) {
+            availableHtml = `
+                <p class="text-red-600 font-medium">⚠️ No periods or bells found in this backup.</p>
+                <p class="text-sm text-gray-600 mt-1">This may be because the backup was from a personal schedule based on a shared schedule, and only contained customizations to shared bells (not standalone content).</p>
+            `;
+        }
+        
+        // V5.58.6: Show if reconstructed from legacy
+        if (analysis.reconstructedFromLegacy) {
+            availableHtml += `
+                <p class="text-sm text-blue-600 mt-2">ℹ️ Periods were reconstructed from legacy bell format.</p>
+            `;
+        }
+        
+        importPreviewAvailable.innerHTML = availableHtml;
+    }
     }
     
     // Build "Modified" section
@@ -11251,6 +11379,7 @@ function showImportPreviewModal(analysis) {
 
 /**
  * V5.58.4: Execute the import with user-selected options
+ * V5.58.6: Added rename support and better validation
  */
 async function executeImportWithOptions() {
     if (!pendingImportData || !activeBaseScheduleId) return;
@@ -11261,23 +11390,30 @@ async function executeImportWithOptions() {
         return;
     }
     
-    // Get user selections
-    const importPeriods = document.getElementById('import-opt-periods')?.checked ?? true;
-    const importTimes = document.getElementById('import-opt-times')?.checked ?? true;
-    
-    if (!importPeriods) {
+    // V5.58.6: Get the (possibly renamed) schedule name
+    const newName = importPreviewNewName?.value?.trim() || pendingImportData.scheduleName;
+    if (!newName) {
         if (importPreviewStatus) {
-            importPreviewStatus.textContent = "Please select at least 'periods' to import.";
+            importPreviewStatus.textContent = "Please enter a schedule name.";
             importPreviewStatus.classList.remove('hidden');
         }
         return;
     }
     
+    // Get user selections
+    const importPeriods = document.getElementById('import-opt-periods')?.checked ?? true;
+    
     // Build the final periods to import
     let periodsToImport = pendingImportData.sanitizedPeriods;
     
-    // If user unchecked times, we'd need to handle that differently
-    // For now, times are always included with periods
+    // V5.58.6: Validate we have something to import
+    if (!periodsToImport || periodsToImport.length === 0) {
+        if (importPreviewStatus) {
+            importPreviewStatus.textContent = "No periods to import. The backup may only contain customizations to a shared schedule.";
+            importPreviewStatus.classList.remove('hidden');
+        }
+        return;
+    }
     
     if (importPreviewStatus) {
         importPreviewStatus.textContent = "Importing...";
@@ -11289,11 +11425,17 @@ async function executeImportWithOptions() {
         const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
         
         // Save data for message before clearing
-        const importedName = pendingImportData.scheduleName;
         const modifiedSoundsCount = pendingImportData.modified?.sounds?.items?.length || 0;
         
+        // V5.58.6: Log what we're importing for debugging
+        console.log("Importing schedule:", {
+            name: newName,
+            periodsCount: periodsToImport.length,
+            periods: periodsToImport.map(p => ({ name: p.name, bellCount: p.bells?.length || 0 }))
+        });
+        
         await updateDoc(scheduleRef, { 
-            name: pendingImportData.scheduleName, 
+            name: newName, 
             periods: periodsToImport 
         });
         
@@ -11301,7 +11443,7 @@ async function executeImportWithOptions() {
         importPreviewModal?.classList.add('hidden');
         pendingImportData = null;
         
-        let message = `Successfully imported "${importedName}"`;
+        let message = `Successfully imported "${newName}"`;
         if (modifiedSoundsCount > 0) {
             message += ` (${modifiedSoundsCount} sounds replaced with defaults)`;
         }
