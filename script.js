@@ -1,4 +1,12 @@
-const APP_VERSION = "5.57.2"
+const APP_VERSION = "5.58.0"
+// V5.58.0: Admin Period Creation
+// - Added "Add Period to Schedules" button in admin zone (purple, next to Add Bell)
+// - New modal allows creating periods with Period Start and Period End bells
+// - Can add period to multiple schedules at once via checkboxes
+// - Validates that end time is after start time
+// - Checks for time conflicts (within 59s) before adding
+// - Skips schedules where period name already exists
+// - Each bell gets unique bellId (no shared IDs across schedules)
 // V5.57.2: Bell proximity threshold and error messages
 // - Changed bell proximity threshold from 60 to 59 seconds (was blocking bells 60s apart)
 // - Enhanced error messages to include the period name of the blocking bell
@@ -448,6 +456,22 @@ const multiAddSubmitBtn = document.getElementById('multi-add-submit');
 const multiAddStatus = document.getElementById('multi-add-status');
 const multiSelectAllBtn = document.getElementById('multi-select-all');
 const multiSelectNoneBtn = document.getElementById('multi-select-none');
+
+// V5.58.0: Multi-Add Period Modal (Admin)
+const addPeriodModal = document.getElementById('add-period-modal');
+const showAddPeriodModalBtn = document.getElementById('show-add-period-modal-btn');
+const multiAddPeriodForm = document.getElementById('multi-add-period-form');
+const multiPeriodNameInput = document.getElementById('multi-period-name');
+const multiPeriodStartTimeInput = document.getElementById('multi-period-start-time');
+const multiPeriodStartSoundInput = document.getElementById('multi-period-start-sound');
+const multiPeriodEndTimeInput = document.getElementById('multi-period-end-time');
+const multiPeriodEndSoundInput = document.getElementById('multi-period-end-sound');
+const periodScheduleListContainer = document.getElementById('period-schedule-list-container');
+const multiPeriodCancelBtn = document.getElementById('multi-period-cancel');
+const multiPeriodSubmitBtn = document.getElementById('multi-period-submit');
+const multiPeriodStatus = document.getElementById('multi-period-status');
+const periodSelectAllBtn = document.getElementById('period-select-all');
+const periodSelectNoneBtn = document.getElementById('period-select-none');
 
 // Conflict Modals (Admin)
 const internalConflictWarningModal = document.getElementById('internal-conflict-warning-modal');
@@ -7344,6 +7368,199 @@ function showMultiAddModal() {
 
     addBellModal.classList.remove('hidden');
 }
+
+/**
+ * V5.58.0: Renders schedule checkboxes for the Add Period modal
+ */
+function renderPeriodScheduleCheckboxes() {
+    if (allSchedules.length === 0) {
+        periodScheduleListContainer.innerHTML = '<p class="text-gray-500">No shared schedules available.</p>';
+        multiPeriodSubmitBtn.disabled = true;
+        return;
+    }
+    
+    multiPeriodSubmitBtn.disabled = false;
+
+    periodScheduleListContainer.innerHTML = allSchedules.map(schedule => `
+        <div class="flex items-center">
+            <input type="checkbox" id="period-schedule-${schedule.id}" name="period-schedule" value="${schedule.id}" class="period-schedule-check h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+            <label for="period-schedule-${schedule.id}" class="ml-2 block text-sm text-gray-900">${schedule.name}</label>
+        </div>
+    `).join('');
+}
+
+/**
+ * V5.58.0: Opens the Add Period to Schedules modal
+ */
+function showAddPeriodModal() {
+    // Re-render the schedule list every time
+    renderPeriodScheduleCheckboxes();
+    
+    // Populate sound dropdowns for both start and end bells
+    updateSoundDropdowns();
+    
+    addPeriodModal.classList.remove('hidden');
+}
+
+/**
+ * V5.58.0: Handles submission of the Add Period form
+ * Creates a new period with Period Start and Period End bells in each selected schedule
+ */
+async function handleMultiAddPeriodSubmit(e) {
+    e.preventDefault();
+    
+    const periodName = multiPeriodNameInput.value.trim();
+    const startTime = multiPeriodStartTimeInput.value;
+    const startSound = multiPeriodStartSoundInput.value;
+    const endTime = multiPeriodEndTimeInput.value;
+    const endSound = multiPeriodEndSoundInput.value;
+    
+    // Validation
+    if (!periodName) {
+        multiPeriodStatus.textContent = "Please enter a period name.";
+        multiPeriodStatus.classList.remove('hidden');
+        return;
+    }
+    
+    if (!startTime || !endTime) {
+        multiPeriodStatus.textContent = "Please enter both start and end times.";
+        multiPeriodStatus.classList.remove('hidden');
+        return;
+    }
+    
+    // Validate end time is after start time
+    if (startTime >= endTime) {
+        multiPeriodStatus.textContent = "End time must be after start time.";
+        multiPeriodStatus.classList.remove('hidden');
+        return;
+    }
+    
+    const checkedScheduleIds = Array.from(document.querySelectorAll('.period-schedule-check:checked'))
+                                    .map(cb => cb.value);
+    
+    if (checkedScheduleIds.length === 0) {
+        multiPeriodStatus.textContent = "Please select at least one schedule.";
+        multiPeriodStatus.classList.remove('hidden');
+        return;
+    }
+    
+    multiPeriodStatus.textContent = `Adding period to ${checkedScheduleIds.length} schedule(s)...`;
+    multiPeriodStatus.classList.remove('hidden');
+    multiPeriodSubmitBtn.disabled = true;
+    
+    const batch = writeBatch(db);
+    let added = 0;
+    let skippedConflict = 0;
+    let skippedExists = 0;
+    const conflictDetails = [];
+    
+    for (const scheduleId of checkedScheduleIds) {
+        const schedule = allSchedules.find(s => s.id === scheduleId);
+        if (!schedule) continue;
+        
+        // Check if period already exists
+        const existingPeriods = schedule.periods || [];
+        if (existingPeriods.some(p => p.name === periodName)) {
+            skippedExists++;
+            continue;
+        }
+        
+        // Get all bells in this schedule for conflict checking
+        const allBellsInSchedule = existingPeriods.flatMap(p => 
+            (p.bells || []).map(b => ({ ...b, periodName: p.name }))
+        );
+        
+        // Check for nearby bell conflicts for start time
+        const startConflict = findNearbyBell(startTime, allBellsInSchedule);
+        if (startConflict) {
+            skippedConflict++;
+            const periodInfo = startConflict.periodName ? ` in "${startConflict.periodName}"` : '';
+            conflictDetails.push(`${schedule.name}: Start conflicts with "${startConflict.name}"${periodInfo}`);
+            continue;
+        }
+        
+        // Check for nearby bell conflicts for end time
+        const endConflict = findNearbyBell(endTime, allBellsInSchedule);
+        if (endConflict) {
+            skippedConflict++;
+            const periodInfo = endConflict.periodName ? ` in "${endConflict.periodName}"` : '';
+            conflictDetails.push(`${schedule.name}: End conflicts with "${endConflict.name}"${periodInfo}`);
+            continue;
+        }
+        
+        // Create the new period with two anchor bells
+        const newPeriod = {
+            name: periodName,
+            isEnabled: true,
+            bells: [
+                {
+                    bellId: generateBellId(),
+                    name: 'Period Start',
+                    time: startTime,
+                    sound: startSound
+                },
+                {
+                    bellId: generateBellId(),
+                    name: 'Period End',
+                    time: endTime,
+                    sound: endSound
+                }
+            ]
+        };
+        
+        // Add to batch
+        const updatedPeriods = [...existingPeriods, newPeriod];
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', scheduleId);
+        batch.update(docRef, { periods: updatedPeriods });
+        added++;
+    }
+    
+    try {
+        if (added > 0) {
+            await batch.commit();
+        }
+        
+        // Build status message
+        let statusMsg = '';
+        if (added > 0) {
+            statusMsg = `Successfully added "${periodName}" to ${added} schedule(s).`;
+        }
+        if (skippedExists > 0) {
+            statusMsg += ` Skipped ${skippedExists} (period already exists).`;
+        }
+        if (skippedConflict > 0) {
+            statusMsg += ` Skipped ${skippedConflict} due to time conflicts.`;
+            if (conflictDetails.length > 0) {
+                console.warn("Period conflict details:", conflictDetails);
+            }
+        }
+        if (!statusMsg) {
+            statusMsg = "No schedules were updated.";
+        }
+        
+        multiPeriodStatus.textContent = statusMsg;
+        
+        // Reset form on success
+        if (added > 0) {
+            multiPeriodNameInput.value = '';
+            multiPeriodStartTimeInput.value = '';
+            multiPeriodEndTimeInput.value = '';
+            multiPeriodStartSoundInput.value = 'ellisBell.mp3';
+            multiPeriodEndSoundInput.value = 'ellisBell.mp3';
+            document.querySelectorAll('.period-schedule-check:checked').forEach(cb => cb.checked = false);
+        }
+        
+        setTimeout(() => {
+            multiPeriodStatus.classList.add('hidden');
+        }, 5000); // Longer timeout for detailed messages
+        
+    } catch (error) {
+        console.error("Error adding period:", error);
+        multiPeriodStatus.textContent = `Error: ${error.message}`;
+    } finally {
+        multiPeriodSubmitBtn.disabled = false;
+    }
+}
     
 /**
     * V5.57.2: Finds all shared bells within 59s of the new time.
@@ -11122,7 +11339,10 @@ function updateSoundDropdowns() {
         { el: quickBellSoundSelect, myGroup: 'quick-my-sounds-optgroup', sharedGroup: 'quick-shared-sounds-optgroup' },
         // NEW in 4.29: Add the missing modal dropdowns from v4.28
         { el: addStaticBellSound, myGroup: 'add-static-my-sounds-optgroup', sharedGroup: 'add-static-shared-sounds-optgroup' },
-        { el: relativeBellSoundSelect, myGroup: 'relative-my-sounds-optgroup', sharedGroup: 'relative-shared-sounds-optgroup' }
+        { el: relativeBellSoundSelect, myGroup: 'relative-my-sounds-optgroup', sharedGroup: 'relative-shared-sounds-optgroup' },
+        // V5.58.0: Add period modal sound selects
+        { el: multiPeriodStartSoundInput, myGroup: 'period-start-my-sounds-optgroup', sharedGroup: 'period-start-shared-sounds-optgroup' },
+        { el: multiPeriodEndSoundInput, myGroup: 'period-end-my-sounds-optgroup', sharedGroup: 'period-end-shared-sounds-optgroup' }
     ];
 
     // NEW V4.76: Add [UPLOAD] option
@@ -12279,6 +12499,30 @@ function init() {
     });
     multiSelectNoneBtn.addEventListener('click', () => {
         document.querySelectorAll('.multi-schedule-check').forEach(cb => cb.checked = false);
+    });
+    
+    // V5.58.0: Modals (Multi-Add Period)
+    showAddPeriodModalBtn?.addEventListener('click', showAddPeriodModal);
+    multiAddPeriodForm?.addEventListener('submit', handleMultiAddPeriodSubmit);
+    multiPeriodCancelBtn?.addEventListener('click', () => {
+        addPeriodModal.classList.add('hidden');
+        multiAddPeriodForm.reset();
+        multiPeriodStartSoundInput.value = 'ellisBell.mp3';
+        multiPeriodEndSoundInput.value = 'ellisBell.mp3';
+        multiPeriodStatus.classList.add('hidden');
+    });
+    periodSelectAllBtn?.addEventListener('click', () => {
+        document.querySelectorAll('.period-schedule-check').forEach(cb => cb.checked = true);
+    });
+    periodSelectNoneBtn?.addEventListener('click', () => {
+        document.querySelectorAll('.period-schedule-check').forEach(cb => cb.checked = false);
+    });
+    // V5.58.0: Sound preview buttons for period modal
+    document.getElementById('preview-period-start-sound')?.addEventListener('click', () => {
+        playBell(multiPeriodStartSoundInput.value);
+    });
+    document.getElementById('preview-period-end-sound')?.addEventListener('click', () => {
+        playBell(multiPeriodEndSoundInput.value);
     });
     
     // Modals (Edit Bell)
