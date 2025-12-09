@@ -1,4 +1,8 @@
-const APP_VERSION = "5.58.0"
+const APP_VERSION = "5.58.1"
+// V5.58.1: Null safety fixes for period modal
+// - Added guard clauses to prevent errors if modal elements don't exist
+// - Used optional chaining throughout period modal functions
+// - Prevents potential blocking issues from null element access
 // V5.58.0: Admin Period Creation
 // - Added "Add Period to Schedules" button in admin zone (purple, next to Add Bell)
 // - New modal allows creating periods with Period Start and Period End bells
@@ -7373,13 +7377,15 @@ function showMultiAddModal() {
  * V5.58.0: Renders schedule checkboxes for the Add Period modal
  */
 function renderPeriodScheduleCheckboxes() {
+    if (!periodScheduleListContainer) return; // Guard clause
+    
     if (allSchedules.length === 0) {
         periodScheduleListContainer.innerHTML = '<p class="text-gray-500">No shared schedules available.</p>';
-        multiPeriodSubmitBtn.disabled = true;
+        if (multiPeriodSubmitBtn) multiPeriodSubmitBtn.disabled = true;
         return;
     }
     
-    multiPeriodSubmitBtn.disabled = false;
+    if (multiPeriodSubmitBtn) multiPeriodSubmitBtn.disabled = false;
 
     periodScheduleListContainer.innerHTML = allSchedules.map(schedule => `
         <div class="flex items-center">
@@ -7393,6 +7399,8 @@ function renderPeriodScheduleCheckboxes() {
  * V5.58.0: Opens the Add Period to Schedules modal
  */
 function showAddPeriodModal() {
+    if (!addPeriodModal) return; // Guard clause
+    
     // Re-render the schedule list every time
     renderPeriodScheduleCheckboxes();
     
@@ -7409,29 +7417,41 @@ function showAddPeriodModal() {
 async function handleMultiAddPeriodSubmit(e) {
     e.preventDefault();
     
+    // Guard clause - ensure required elements exist
+    if (!multiPeriodNameInput || !multiPeriodStartTimeInput || !multiPeriodEndTimeInput) {
+        console.error("Period modal elements not found");
+        return;
+    }
+    
+    // Helper to set status safely
+    const setStatus = (msg, show = true) => {
+        if (multiPeriodStatus) {
+            multiPeriodStatus.textContent = msg;
+            if (show) multiPeriodStatus.classList.remove('hidden');
+            else multiPeriodStatus.classList.add('hidden');
+        }
+    };
+    
     const periodName = multiPeriodNameInput.value.trim();
     const startTime = multiPeriodStartTimeInput.value;
-    const startSound = multiPeriodStartSoundInput.value;
+    const startSound = multiPeriodStartSoundInput?.value || 'ellisBell.mp3';
     const endTime = multiPeriodEndTimeInput.value;
-    const endSound = multiPeriodEndSoundInput.value;
+    const endSound = multiPeriodEndSoundInput?.value || 'ellisBell.mp3';
     
     // Validation
     if (!periodName) {
-        multiPeriodStatus.textContent = "Please enter a period name.";
-        multiPeriodStatus.classList.remove('hidden');
+        setStatus("Please enter a period name.");
         return;
     }
     
     if (!startTime || !endTime) {
-        multiPeriodStatus.textContent = "Please enter both start and end times.";
-        multiPeriodStatus.classList.remove('hidden');
+        setStatus("Please enter both start and end times.");
         return;
     }
     
     // Validate end time is after start time
     if (startTime >= endTime) {
-        multiPeriodStatus.textContent = "End time must be after start time.";
-        multiPeriodStatus.classList.remove('hidden');
+        setStatus("End time must be after start time.");
         return;
     }
     
@@ -7439,14 +7459,12 @@ async function handleMultiAddPeriodSubmit(e) {
                                     .map(cb => cb.value);
     
     if (checkedScheduleIds.length === 0) {
-        multiPeriodStatus.textContent = "Please select at least one schedule.";
-        multiPeriodStatus.classList.remove('hidden');
+        setStatus("Please select at least one schedule.");
         return;
     }
     
-    multiPeriodStatus.textContent = `Adding period to ${checkedScheduleIds.length} schedule(s)...`;
-    multiPeriodStatus.classList.remove('hidden');
-    multiPeriodSubmitBtn.disabled = true;
+    setStatus(`Adding period to ${checkedScheduleIds.length} schedule(s)...`);
+    if (multiPeriodSubmitBtn) multiPeriodSubmitBtn.disabled = true;
     
     const batch = writeBatch(db);
     let added = 0;
@@ -7538,27 +7556,27 @@ async function handleMultiAddPeriodSubmit(e) {
             statusMsg = "No schedules were updated.";
         }
         
-        multiPeriodStatus.textContent = statusMsg;
+        setStatus(statusMsg);
         
         // Reset form on success
         if (added > 0) {
-            multiPeriodNameInput.value = '';
-            multiPeriodStartTimeInput.value = '';
-            multiPeriodEndTimeInput.value = '';
-            multiPeriodStartSoundInput.value = 'ellisBell.mp3';
-            multiPeriodEndSoundInput.value = 'ellisBell.mp3';
+            if (multiPeriodNameInput) multiPeriodNameInput.value = '';
+            if (multiPeriodStartTimeInput) multiPeriodStartTimeInput.value = '';
+            if (multiPeriodEndTimeInput) multiPeriodEndTimeInput.value = '';
+            if (multiPeriodStartSoundInput) multiPeriodStartSoundInput.value = 'ellisBell.mp3';
+            if (multiPeriodEndSoundInput) multiPeriodEndSoundInput.value = 'ellisBell.mp3';
             document.querySelectorAll('.period-schedule-check:checked').forEach(cb => cb.checked = false);
         }
         
         setTimeout(() => {
-            multiPeriodStatus.classList.add('hidden');
+            setStatus('', false);
         }, 5000); // Longer timeout for detailed messages
         
     } catch (error) {
         console.error("Error adding period:", error);
-        multiPeriodStatus.textContent = `Error: ${error.message}`;
+        setStatus(`Error: ${error.message}`);
     } finally {
-        multiPeriodSubmitBtn.disabled = false;
+        if (multiPeriodSubmitBtn) multiPeriodSubmitBtn.disabled = false;
     }
 }
     
@@ -12505,11 +12523,11 @@ function init() {
     showAddPeriodModalBtn?.addEventListener('click', showAddPeriodModal);
     multiAddPeriodForm?.addEventListener('submit', handleMultiAddPeriodSubmit);
     multiPeriodCancelBtn?.addEventListener('click', () => {
-        addPeriodModal.classList.add('hidden');
-        multiAddPeriodForm.reset();
-        multiPeriodStartSoundInput.value = 'ellisBell.mp3';
-        multiPeriodEndSoundInput.value = 'ellisBell.mp3';
-        multiPeriodStatus.classList.add('hidden');
+        addPeriodModal?.classList.add('hidden');
+        multiAddPeriodForm?.reset();
+        if (multiPeriodStartSoundInput) multiPeriodStartSoundInput.value = 'ellisBell.mp3';
+        if (multiPeriodEndSoundInput) multiPeriodEndSoundInput.value = 'ellisBell.mp3';
+        multiPeriodStatus?.classList.add('hidden');
     });
     periodSelectAllBtn?.addEventListener('click', () => {
         document.querySelectorAll('.period-schedule-check').forEach(cb => cb.checked = true);
@@ -12519,10 +12537,10 @@ function init() {
     });
     // V5.58.0: Sound preview buttons for period modal
     document.getElementById('preview-period-start-sound')?.addEventListener('click', () => {
-        playBell(multiPeriodStartSoundInput.value);
+        if (multiPeriodStartSoundInput) playBell(multiPeriodStartSoundInput.value);
     });
     document.getElementById('preview-period-end-sound')?.addEventListener('click', () => {
-        playBell(multiPeriodEndSoundInput.value);
+        if (multiPeriodEndSoundInput) playBell(multiPeriodEndSoundInput.value);
     });
     
     // Modals (Edit Bell)
