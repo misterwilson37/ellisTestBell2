@@ -1,4 +1,12 @@
-const APP_VERSION = "5.58.9"
+const APP_VERSION = "5.59.0"
+// V5.59.0: Simplified View Mode + Bulk Edit Select All
+// - Added Simplified View toggle button in Active Schedule section
+// - Simplified View hides all edit/add/delete buttons in schedule display
+// - Keeps Collapse/Expand/Mute/Unmute and Quick Bells visible
+// - Preference saved in localStorage (per-machine)
+// - Added master checkbox to select/deselect all bells in Bulk Edit mode
+// - Added period-level checkboxes to select/deselect all bells in a period
+// - Checkboxes show indeterminate state when partially selected
 // V5.58.9: Fixed relative bell detection to use correct property structure
 // - Relative bells use bell.relative object, not bell.relativeToAnchor
 // - Two anchor types: parentBellId (direct) or parentPeriodName+parentAnchorType (period anchor)
@@ -169,6 +177,7 @@ const userDisplayNameElement = document.getElementById('user-display-name');
 const scheduleSelector = document.getElementById('schedule-selector');
 const scheduleTitle = document.getElementById('schedule-title');
 const adminToggleBtn = document.getElementById('admin-toggle');
+const simplifiedViewToggle = document.getElementById('simplified-view-toggle'); // V5.59.0
 
 // MODIFIED: v3.21 -> v3.22 - Renamed from v3.21
 const nextBellInfoElement = document.getElementById('next-bell-info');
@@ -3895,6 +3904,12 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
     let periodHtml = `
         <details class="group border-b border-gray-200" ${isPeriodOpen ? 'open' : ''} data-period-name-raw="${safePeriodName}">
             <summary class="flex items-start justify-between p-4 cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                <!-- V5.59.0: Period-level bulk select checkbox -->
+                <input type="checkbox" 
+                    class="bulk-select-period h-5 w-5 text-sky-600 rounded focus:ring-sky-500 mr-3 flex-shrink-0 self-center ${bulkEditMode ? '' : 'hidden'}"
+                    data-period-name="${safePeriodName}"
+                    title="Select/deselect all bells in ${displayPeriodName}">
+                    
                 <!-- NEW in 4.44: Small Visual Cue Icon -->
                 <!-- MODIFIED in 4.47: Changed back to rounded-full -->
                 <div class="period-visual-cue-icon w-10 h-10 bg-gray-800 rounded-full flex-shrink-0 flex items-center justify-center mr-3 overflow-hidden">
@@ -10858,6 +10873,43 @@ function toggleAdminMode() {
     setActiveSchedule(scheduleSelector.value);
 }
 
+// V5.59.0: Simplified View Mode
+// Hides all editing UI in the schedule display for a cleaner view
+function toggleSimplifiedView() {
+    const isSimplified = document.body.classList.toggle('simplified-mode');
+    
+    // Update button text
+    if (simplifiedViewToggle) {
+        simplifiedViewToggle.textContent = isSimplified ? 'Edit Mode' : 'Simplified View';
+        // Visual feedback - different color when in simplified mode
+        if (isSimplified) {
+            simplifiedViewToggle.classList.remove('bg-gray-200', 'text-gray-800');
+            simplifiedViewToggle.classList.add('bg-blue-100', 'text-blue-700');
+        } else {
+            simplifiedViewToggle.classList.remove('bg-blue-100', 'text-blue-700');
+            simplifiedViewToggle.classList.add('bg-gray-200', 'text-gray-800');
+        }
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('simplifiedViewEnabled', isSimplified ? 'true' : 'false');
+    
+    // Re-render the schedule list to ensure proper visibility
+    renderCombinedList();
+}
+
+function initializeSimplifiedView() {
+    const savedPref = localStorage.getItem('simplifiedViewEnabled');
+    if (savedPref === 'true') {
+        document.body.classList.add('simplified-mode');
+        if (simplifiedViewToggle) {
+            simplifiedViewToggle.textContent = 'Edit Mode';
+            simplifiedViewToggle.classList.remove('bg-gray-200', 'text-gray-800');
+            simplifiedViewToggle.classList.add('bg-blue-100', 'text-blue-700');
+        }
+    }
+}
+
 // --- Import/Export Logic ---
 function handleExportSchedules() {
     if (allSchedules.length === 0) {
@@ -12427,6 +12479,10 @@ function init() {
 
     scheduleSelector.addEventListener('change', () => setActiveSchedule(scheduleSelector.value));
     adminToggleBtn.addEventListener('click', toggleAdminMode);
+    
+    // V5.59.0: Simplified View Toggle
+    simplifiedViewToggle?.addEventListener('click', toggleSimplifiedView);
+    initializeSimplifiedView(); // Load saved preference
 
     // Forms
     // DELETED in 4.40: addPersonalBellForm.addEventListener('submit', handleAddPersonalBell);
@@ -14181,8 +14237,10 @@ function init() {
 
     // ============================================
     // V5.46.0: BULK EDIT FUNCTIONALITY
+    // V5.59.0: Added master and period checkboxes
     // ============================================
     const bulkEditToggleBtn = document.getElementById('bulk-edit-toggle-btn');
+    const bulkSelectAllMaster = document.getElementById('bulk-select-all-master'); // V5.59.0
     const bulkEditModal = document.getElementById('bulk-edit-modal');
     const bulkEditCount = document.getElementById('bulk-edit-count');
     const bulkEditSound = document.getElementById('bulk-edit-sound');
@@ -14209,6 +14267,54 @@ function init() {
             bulkEditToggleBtn.classList.toggle('hidden', !activePersonalScheduleId);
         }
     }
+    
+    // V5.59.0: Update master and period checkbox states
+    function updateBulkSelectCheckboxes() {
+        if (!bulkEditMode) return;
+        
+        // Get all bell checkboxes
+        const allBellCheckboxes = document.querySelectorAll('.bulk-edit-checkbox');
+        const allBellIds = Array.from(allBellCheckboxes).map(cb => cb.dataset.bellId);
+        const selectedCount = bulkSelectedBells.size;
+        const totalCount = allBellIds.length;
+        
+        // Update master checkbox state
+        if (bulkSelectAllMaster) {
+            if (selectedCount === 0) {
+                bulkSelectAllMaster.checked = false;
+                bulkSelectAllMaster.indeterminate = false;
+            } else if (selectedCount === totalCount) {
+                bulkSelectAllMaster.checked = true;
+                bulkSelectAllMaster.indeterminate = false;
+            } else {
+                bulkSelectAllMaster.checked = false;
+                bulkSelectAllMaster.indeterminate = true;
+            }
+        }
+        
+        // Update each period checkbox
+        document.querySelectorAll('.bulk-select-period').forEach(periodCheckbox => {
+            const periodName = periodCheckbox.dataset.periodName;
+            const periodDetails = periodCheckbox.closest('details');
+            if (!periodDetails) return;
+            
+            const periodBellCheckboxes = periodDetails.querySelectorAll('.bulk-edit-checkbox');
+            const periodBellIds = Array.from(periodBellCheckboxes).map(cb => cb.dataset.bellId);
+            const periodSelectedCount = periodBellIds.filter(id => bulkSelectedBells.has(id)).length;
+            const periodTotalCount = periodBellIds.length;
+            
+            if (periodSelectedCount === 0) {
+                periodCheckbox.checked = false;
+                periodCheckbox.indeterminate = false;
+            } else if (periodSelectedCount === periodTotalCount) {
+                periodCheckbox.checked = true;
+                periodCheckbox.indeterminate = false;
+            } else {
+                periodCheckbox.checked = false;
+                periodCheckbox.indeterminate = true;
+            }
+        });
+    }
 
     // Toggle bulk edit mode
     bulkEditToggleBtn?.addEventListener('click', () => {
@@ -14219,6 +14325,12 @@ function init() {
             bulkEditToggleBtn.textContent = 'Done Selecting';
             bulkEditToggleBtn.classList.remove('bg-sky-100', 'text-sky-700');
             bulkEditToggleBtn.classList.add('bg-sky-600', 'text-white');
+            // V5.59.0: Show master checkbox
+            if (bulkSelectAllMaster) {
+                bulkSelectAllMaster.classList.remove('hidden');
+                bulkSelectAllMaster.checked = false;
+                bulkSelectAllMaster.indeterminate = false;
+            }
             recalculateAndRenderAll();
         } else if (bulkSelectedBells.size > 0) {
             // In bulk edit mode with selections - open modal
@@ -14229,6 +14341,10 @@ function init() {
             bulkEditToggleBtn.textContent = 'Bulk Edit';
             bulkEditToggleBtn.classList.remove('bg-sky-600', 'text-white');
             bulkEditToggleBtn.classList.add('bg-sky-100', 'text-sky-700');
+            // V5.59.0: Hide master checkbox
+            if (bulkSelectAllMaster) {
+                bulkSelectAllMaster.classList.add('hidden');
+            }
             recalculateAndRenderAll();
         }
     });
@@ -14243,7 +14359,52 @@ function init() {
                 bulkSelectedBells.delete(bellId);
             }
             updateBulkEditUI();
+            updateBulkSelectCheckboxes(); // V5.59.0
         }
+        
+        // V5.59.0: Handle period-level checkbox changes
+        if (e.target.classList.contains('bulk-select-period')) {
+            const periodName = e.target.dataset.periodName;
+            const periodDetails = e.target.closest('details');
+            if (!periodDetails) return;
+            
+            const periodBellCheckboxes = periodDetails.querySelectorAll('.bulk-edit-checkbox');
+            periodBellCheckboxes.forEach(cb => {
+                const bellId = cb.dataset.bellId;
+                if (e.target.checked) {
+                    bulkSelectedBells.add(bellId);
+                    cb.checked = true;
+                } else {
+                    bulkSelectedBells.delete(bellId);
+                    cb.checked = false;
+                }
+            });
+            updateBulkEditUI();
+            updateBulkSelectCheckboxes();
+        }
+    });
+    
+    // V5.59.0: Handle master checkbox changes
+    bulkSelectAllMaster?.addEventListener('change', (e) => {
+        const allBellCheckboxes = document.querySelectorAll('.bulk-edit-checkbox');
+        allBellCheckboxes.forEach(cb => {
+            const bellId = cb.dataset.bellId;
+            if (e.target.checked) {
+                bulkSelectedBells.add(bellId);
+                cb.checked = true;
+            } else {
+                bulkSelectedBells.delete(bellId);
+                cb.checked = false;
+            }
+        });
+        
+        // Also update period checkboxes
+        document.querySelectorAll('.bulk-select-period').forEach(periodCb => {
+            periodCb.checked = e.target.checked;
+            periodCb.indeterminate = false;
+        });
+        
+        updateBulkEditUI();
     });
 
     // Update UI based on selections
