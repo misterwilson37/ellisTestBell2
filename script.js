@@ -1,4 +1,10 @@
-const APP_VERSION = "5.59.1"
+const APP_VERSION = "5.60.0"
+// V5.60.0: Clock Display page (clock.html v1.0)
+// - Standalone multi-schedule display for signage/TVs
+// - Shows large clock with three schedule columns
+// - Each column shows current period or countdown to next
+// - URL-based configuration (no login required to view)
+// - Built-in setup wizard when accessed without parameters
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
 // - CSS handles all visibility changes, no re-render needed
