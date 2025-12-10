@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.0.6 -->
+    <!-- Clock Display v1.0.7 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.0.6 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.0.7 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -278,7 +278,7 @@
         
         <div class="setup-actions">
             <button class="btn-primary" id="generate-url-btn">Generate URL</button>
-            <button class="btn-secondary" id="preview-btn">Preview Display</button>
+            <button class="btn-secondary" id="preview-btn">Launch Display</button>
             <button class="btn-secondary" id="copy-url-btn" style="display:none;">Copy URL</button>
         </div>
         
@@ -290,7 +290,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.0.6 | Ellis Web Bell v5.60.6
+            Clock Display v1.0.7 | Ellis Web Bell v5.60.7
         </div>
     </div>
     
@@ -318,7 +318,7 @@
     </div>
     
     <script>
-        // Clock Display v1.0.6
+        // Clock Display v1.0.7
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -413,67 +413,54 @@
             const now = new Date();
             const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
             
-            // Flatten all bells with period info
-            const allBells = [];
+            // Build period ranges - use first and last bell of each period
+            const periodRanges = {};
+            
             for (const period of schedule.periods) {
                 if (period.isEnabled === false) continue;
                 
-                console.log(`  Period "${period.name}": ${(period.bells || []).length} bells`);
+                const bells = (period.bells || []).filter(b => b.time);
+                console.log(`  Period "${period.name}": ${bells.length} bells`);
                 
-                for (const bell of (period.bells || [])) {
-                    if (bell.time) {
-                        allBells.push({
-                            time: bell.time,
-                            seconds: timeToSeconds(bell.time),
-                            periodName: period.name,
-                            bellName: bell.name,
-                            anchorRole: bell.anchorRole
-                        });
-                    }
-                }
-            }
-            
-            console.log(`  Total bells with times: ${allBells.length}`);
-            
-            // Sort by time
-            allBells.sort((a, b) => a.seconds - b.seconds);
-            
-            if (allBells.length === 0) {
-                return { status: 'empty', message: 'No bells' };
-            }
-            
-            // Find current period (between start and end anchors)
-            // Group bells by period
-            const periodRanges = {};
-            for (const bell of allBells) {
-                if (!periodRanges[bell.periodName]) {
-                    periodRanges[bell.periodName] = { start: null, end: null, name: bell.periodName };
+                if (bells.length === 0) continue;
+                
+                // Log first bell to see structure
+                if (bells.length > 0) {
+                    console.log(`    First bell: name="${bells[0].name}", anchorRole="${bells[0].anchorRole}", time="${bells[0].time}"`);
                 }
                 
-                // Check for anchor bells
-                if (bell.anchorRole === 'start' || bell.bellName === 'Period Start') {
-                    periodRanges[bell.periodName].start = bell.seconds;
-                }
-                if (bell.anchorRole === 'end' || bell.bellName === 'Period End') {
-                    periodRanges[bell.periodName].end = bell.seconds;
-                }
+                // Sort bells by time
+                bells.sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
+                
+                // Use first bell as start, last bell as end
+                const startBell = bells[0];
+                const endBell = bells[bells.length - 1];
+                
+                periodRanges[period.name] = {
+                    name: period.name,
+                    start: timeToSeconds(startBell.time),
+                    end: timeToSeconds(endBell.time)
+                };
             }
+            
+            console.log(`  Period ranges:`, Object.keys(periodRanges).map(k => 
+                `${k}: ${Math.floor(periodRanges[k].start/3600)}:${Math.floor((periodRanges[k].start%3600)/60)} - ${Math.floor(periodRanges[k].end/3600)}:${Math.floor((periodRanges[k].end%3600)/60)}`
+            ));
+            console.log(`  Current time in seconds: ${currentSeconds} (${Math.floor(currentSeconds/3600)}:${Math.floor((currentSeconds%3600)/60)})`);
             
             // Check if we're currently in a period
             for (const [name, range] of Object.entries(periodRanges)) {
-                if (range.start !== null && range.end !== null) {
-                    if (currentSeconds >= range.start && currentSeconds < range.end) {
-                        return { 
-                            status: 'in-period', 
-                            periodName: name 
-                        };
-                    }
+                if (currentSeconds >= range.start && currentSeconds < range.end) {
+                    console.log(`  -> In period: ${name}`);
+                    return { 
+                        status: 'in-period', 
+                        periodName: name 
+                    };
                 }
             }
             
             // Not in a period - find next period start
             const periodStarts = Object.entries(periodRanges)
-                .filter(([_, r]) => r.start !== null)
                 .map(([name, r]) => ({ name, start: r.start }))
                 .sort((a, b) => a.start - b.start);
             
@@ -484,6 +471,7 @@
                 // After all periods - show first period of tomorrow
                 nextPeriod = periodStarts[0];
                 const secondsUntil = (24 * 3600 - currentSeconds) + nextPeriod.start;
+                console.log(`  -> After school, next is ${nextPeriod.name} tomorrow`);
                 return {
                     status: 'waiting',
                     nextPeriod: nextPeriod.name,
@@ -493,6 +481,7 @@
             
             if (nextPeriod) {
                 const secondsUntil = nextPeriod.start - currentSeconds;
+                console.log(`  -> Waiting for ${nextPeriod.name}, starts in ${secondsUntil}s`);
                 return {
                     status: 'waiting',
                     nextPeriod: nextPeriod.name,
