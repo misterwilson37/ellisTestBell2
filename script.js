@@ -1,4 +1,9 @@
-const APP_VERSION = "5.58.8"
+const APP_VERSION = "5.58.9"
+// V5.58.9: Fixed relative bell detection to use correct property structure
+// - Relative bells use bell.relative object, not bell.relativeToAnchor
+// - Two anchor types: parentBellId (direct) or parentPeriodName+parentAnchorType (period anchor)
+// - Period anchor references (parentPeriodName) check if target period has matching anchor bell
+// - Properly copies bell.relative object instead of wrong properties
 // V5.58.8: Properly detect and exclude orphaned relative bells
 // - Relative bells whose anchors aren't in the import are now detected and excluded
 // - First pass collects all bellIds present in the import
@@ -11176,18 +11181,45 @@ function analyzeImportFile(data, filename) {
         
         const bells = period.bells || [];
         for (const bell of bells) {
-            // V5.58.8: Check if this is a relative bell with a missing anchor
-            const isRelativeBell = bell.relativeToAnchor !== undefined && bell.relativeToAnchor !== null;
-            const anchorExists = isRelativeBell ? presentBellIds.has(bell.relativeToAnchor) : true;
+            // V5.58.9: Check if this is a relative bell - uses bell.relative object
+            const isRelativeBell = bell.relative !== undefined && bell.relative !== null;
+            let anchorExists = true; // Assume true for non-relative bells
+            
+            if (isRelativeBell) {
+                // Two types of relative references:
+                // 1. parentBellId - direct reference to another bell
+                // 2. parentPeriodName + parentAnchorType - reference to period's anchor bell
+                
+                if (bell.relative.parentBellId) {
+                    // Check if this specific bell exists in our import
+                    anchorExists = presentBellIds.has(bell.relative.parentBellId);
+                } else if (bell.relative.parentPeriodName) {
+                    // References a period's anchor (period_start or period_end)
+                    // These anchors live in the SHARED schedule, not in personal backup
+                    // Check if we have a bell with matching anchorRole in the named period
+                    const targetPeriod = analysis.periods.find(p => p.name === bell.relative.parentPeriodName);
+                    if (targetPeriod) {
+                        const anchorBell = (targetPeriod.bells || []).find(b => 
+                            b.anchorRole === bell.relative.parentAnchorType ||
+                            b.anchorRole === bell.relative.parentAnchorType?.replace('period_', '') // "period_start" -> "start"
+                        );
+                        anchorExists = !!anchorBell;
+                    } else {
+                        // Period not found in this import - anchor doesn't exist
+                        anchorExists = false;
+                    }
+                }
+            }
             
             if (isRelativeBell && !anchorExists) {
                 // This relative bell's anchor is not in the import - it's orphaned
                 analysis.excluded.orphanedRelativeBells.push({
                     bellName: bell.name,
                     periodName: period.name,
-                    anchorId: bell.relativeToAnchor
+                    anchorInfo: bell.relative.parentBellId || 
+                        `${bell.relative.parentPeriodName} (${bell.relative.parentAnchorType})`
                 });
-                console.log(`Import: Skipping orphaned relative bell "${bell.name}" in "${period.name}" - anchor ${bell.relativeToAnchor} not present`);
+                console.log(`Import: Skipping orphaned relative bell "${bell.name}" in "${period.name}" - anchor not present`);
                 continue; // Skip this bell entirely
             }
             
@@ -11229,10 +11261,12 @@ function analyzeImportFile(data, filename) {
             }
             sanitizedBell.sound = finalSound;
             
-            // Copy relative bell properties if they exist (and anchor is present)
-            if (bell.relativeToAnchor !== undefined) sanitizedBell.relativeToAnchor = bell.relativeToAnchor;
-            if (bell.relativeDirection !== undefined) sanitizedBell.relativeDirection = bell.relativeDirection;
-            if (bell.relativeOffset !== undefined) sanitizedBell.relativeOffset = bell.relativeOffset;
+            // V5.58.9: Copy relative bell properties using correct structure
+            // The relative object contains: parentBellId OR (parentPeriodName + parentAnchorType), plus offsetSeconds
+            if (bell.relative) {
+                sanitizedBell.relative = { ...bell.relative };
+            }
+            // Also copy anchorRole if present (for anchor bells like "period_start", "period_end")
             if (bell.anchorRole !== undefined) sanitizedBell.anchorRole = bell.anchorRole;
             
             // Check visual cue
