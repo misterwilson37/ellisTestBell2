@@ -1,4 +1,12 @@
-const APP_VERSION = "5.58.7"
+const APP_VERSION = "5.58.8"
+// V5.58.8: Properly detect and exclude orphaned relative bells
+// - Relative bells whose anchors aren't in the import are now detected and excluded
+// - First pass collects all bellIds present in the import
+// - Bells with relativeToAnchor pointing to missing anchors are skipped
+// - Empty periods (all bells orphaned) are excluded from import
+// - Period and bell counts now reflect actual importable content
+// - Orphaned relative bells shown prominently in "Will Not Be Imported" section
+// - Console logs which bells/periods are being skipped for debugging
 // V5.58.7: Fixed syntax error (extra closing brace in showImportPreviewModal)
 // V5.58.6: Import improvements
 // - Added rename input to import preview modal (pre-filled with original name)
@@ -11078,7 +11086,8 @@ function analyzeImportFile(data, filename) {
             bellOverrides: false,
             periodVisualOverrides: false,
             baseScheduleId: false,
-            referencedMedia: { audio: 0, visuals: 0 }
+            referencedMedia: { audio: 0, visuals: 0 },
+            orphanedRelativeBells: [] // V5.58.8: Relative bells whose anchors aren't in the import
         },
         // The sanitized data ready for import
         sanitizedPeriods: []
@@ -11146,6 +11155,15 @@ function analyzeImportFile(data, filename) {
     // Also include default sounds
     const defaultSounds = new Set(['Bell', 'Chime', 'Beep', 'Alarm', 'ellisBell.mp3', '[SILENT]']);
     
+    // V5.58.8: First pass - collect all bellIds present in this import
+    const presentBellIds = new Set();
+    for (const period of analysis.periods) {
+        const bells = period.bells || [];
+        for (const bell of bells) {
+            if (bell.bellId) presentBellIds.add(bell.bellId);
+        }
+    }
+    
     // Analyze each period and bell
     const sanitizedPeriods = [];
     
@@ -11158,6 +11176,22 @@ function analyzeImportFile(data, filename) {
         
         const bells = period.bells || [];
         for (const bell of bells) {
+            // V5.58.8: Check if this is a relative bell with a missing anchor
+            const isRelativeBell = bell.relativeToAnchor !== undefined && bell.relativeToAnchor !== null;
+            const anchorExists = isRelativeBell ? presentBellIds.has(bell.relativeToAnchor) : true;
+            
+            if (isRelativeBell && !anchorExists) {
+                // This relative bell's anchor is not in the import - it's orphaned
+                analysis.excluded.orphanedRelativeBells.push({
+                    bellName: bell.name,
+                    periodName: period.name,
+                    anchorId: bell.relativeToAnchor
+                });
+                console.log(`Import: Skipping orphaned relative bell "${bell.name}" in "${period.name}" - anchor ${bell.relativeToAnchor} not present`);
+                continue; // Skip this bell entirely
+            }
+            
+            // Count this bell as importable
             analysis.totalBells++;
             analysis.available.bellNames.count++;
             analysis.available.bellTimes.count++;
@@ -11195,7 +11229,7 @@ function analyzeImportFile(data, filename) {
             }
             sanitizedBell.sound = finalSound;
             
-            // Copy relative bell properties if they exist
+            // Copy relative bell properties if they exist (and anchor is present)
             if (bell.relativeToAnchor !== undefined) sanitizedBell.relativeToAnchor = bell.relativeToAnchor;
             if (bell.relativeDirection !== undefined) sanitizedBell.relativeDirection = bell.relativeDirection;
             if (bell.relativeOffset !== undefined) sanitizedBell.relativeOffset = bell.relativeOffset;
@@ -11225,8 +11259,16 @@ function analyzeImportFile(data, filename) {
             sanitizedPeriod.bells.push(sanitizedBell);
         }
         
-        sanitizedPeriods.push(sanitizedPeriod);
+        // V5.58.8: Only include periods that have at least one importable bell
+        if (sanitizedPeriod.bells.length > 0) {
+            sanitizedPeriods.push(sanitizedPeriod);
+        } else {
+            console.log(`Import: Skipping empty period "${period.name}" - all bells were orphaned relatives`);
+        }
     }
+    
+    // V5.58.8: Update period count to reflect actual importable periods
+    analysis.available.periods.count = sanitizedPeriods.length;
     
     analysis.sanitizedPeriods = sanitizedPeriods;
     return analysis;
@@ -11348,18 +11390,35 @@ function showImportPreviewModal(analysis) {
         importPreviewModified.innerHTML = modifiedHtml;
     }
     
-    // Build "Excluded" section (only for personal backups)
-    const hasExclusions = analysis.isPersonalBackup && (
+    // Build "Excluded" section (for personal backups OR orphaned relative bells)
+    // V5.58.8: Added orphaned relative bells to exclusions
+    const orphanedCount = analysis.excluded.orphanedRelativeBells?.length || 0;
+    const hasExclusions = orphanedCount > 0 || (analysis.isPersonalBackup && (
         analysis.excluded.quickBells || 
         analysis.excluded.bellOverrides || 
         analysis.excluded.periodVisualOverrides ||
         analysis.excluded.baseScheduleId
-    );
+    ));
     if (importPreviewExcludedSection) {
         importPreviewExcludedSection.classList.toggle('hidden', !hasExclusions);
     }
     if (importPreviewExcluded && hasExclusions) {
         let excludedHtml = '';
+        
+        // V5.58.8: Show orphaned relative bells prominently
+        if (orphanedCount > 0) {
+            excludedHtml += `<div class="mb-2 p-2 bg-red-50 rounded">`;
+            excludedHtml += `<p class="font-medium text-red-700">• ${orphanedCount} relative bell(s) - anchors not in backup</p>`;
+            excludedHtml += `<ul class="text-xs text-red-600 mt-1 ml-4 list-disc">`;
+            analysis.excluded.orphanedRelativeBells.slice(0, 5).forEach(b => {
+                excludedHtml += `<li>"${b.bellName}" in "${b.periodName}"</li>`;
+            });
+            if (orphanedCount > 5) {
+                excludedHtml += `<li>...and ${orphanedCount - 5} more</li>`;
+            }
+            excludedHtml += `</ul></div>`;
+        }
+        
         if (analysis.excluded.quickBells) excludedHtml += '<p>• Custom quick bells</p>';
         if (analysis.excluded.bellOverrides) excludedHtml += '<p>• Shared bell overrides/customizations</p>';
         if (analysis.excluded.periodVisualOverrides) excludedHtml += '<p>• Period visual overrides</p>';
