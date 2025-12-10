@@ -1,7 +1,7 @@
-const APP_VERSION = "5.60.3"
-// V5.60.3: Clock Display page (clock.html v1.0.3)
-// - Fixed Firebase config to match main app (was using wrong API key)
-// V5.60.2: Added version display, improved auth debugging
+const APP_VERSION = "5.60.4"
+// V5.60.4: Clock Display page (clock.html v1.0.4)
+// - Fixed Firestore path: /artifacts/{appId}/public/data/schedules/
+// V5.60.3: Fixed Firebase config to match main app
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
