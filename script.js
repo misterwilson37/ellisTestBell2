@@ -1,8 +1,8 @@
-const APP_VERSION = "5.60.7"
-// V5.60.7: Clock Display page (clock.html v1.0.7)
-// - Fixed period detection: use first/last bell of each period instead of looking for anchorRole
-// - Renamed "Preview Display" to "Launch Display"
-// V5.60.6: Added debugging
+const APP_VERSION = "5.60.8"
+// V5.60.8: Clock Display page (clock.html v1.0.8)
+// - Show "ends at X:XX" when in a period
+// - Made period name larger than column label
+// V5.60.7: Fixed period detection using first/last bell
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
