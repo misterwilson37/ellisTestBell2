@@ -1,8 +1,7 @@
-const APP_VERSION = "5.60.2"
-// V5.60.2: Clock Display page (clock.html v1.0.2)
-// - Added version display to configuration page
-// - Improved auth flow with onAuthStateChanged
-// - Added detailed console logging for debugging
+const APP_VERSION = "5.60.3"
+// V5.60.3: Clock Display page (clock.html v1.0.3)
+// - Fixed Firebase config to match main app (was using wrong API key)
+// V5.60.2: Added version display, improved auth debugging
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
