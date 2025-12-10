@@ -1,4 +1,7 @@
-const APP_VERSION = "5.59.0"
+const APP_VERSION = "5.59.1"
+// V5.59.1: Fixed Simplified View wiping schedule
+// - Removed renderCombinedList() call from toggleSimplifiedView()
+// - CSS handles all visibility changes, no re-render needed
 // V5.59.0: Simplified View Mode + Bulk Edit Select All
 // - Added Simplified View toggle button in Active Schedule section
 // - Simplified View hides all edit/add/delete buttons in schedule display
@@ -10894,8 +10897,7 @@ function toggleSimplifiedView() {
     // Save preference to localStorage
     localStorage.setItem('simplifiedViewEnabled', isSimplified ? 'true' : 'false');
     
-    // Re-render the schedule list to ensure proper visibility
-    renderCombinedList();
+    // CSS handles all visibility changes - no re-render needed
 }
 
 function initializeSimplifiedView() {
