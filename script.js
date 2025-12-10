@@ -1,7 +1,8 @@
-const APP_VERSION = "5.60.6"
-// V5.60.6: Clock Display page (clock.html v1.0.6)
-// - Added more debugging before updateColumns call
-// V5.60.5: Added debugging to updateColumns and getPeriodStatus
+const APP_VERSION = "5.60.7"
+// V5.60.7: Clock Display page (clock.html v1.0.7)
+// - Fixed period detection: use first/last bell of each period instead of looking for anchorRole
+// - Renamed "Preview Display" to "Launch Display"
+// V5.60.6: Added debugging
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
