@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.0.3 -->
+    <!-- Clock Display v1.0.4 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.0.3 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.0.4 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -290,7 +290,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.0.3 | Ellis Web Bell v5.60.3
+            Clock Display v1.0.4 | Ellis Web Bell v5.60.4
         </div>
     </div>
     
@@ -318,7 +318,7 @@
     </div>
     
     <script>
-        // Clock Display v1.0.3
+        // Clock Display v1.0.4
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -328,6 +328,9 @@
             storageBucket: "ellisbell-c185c.firebasestorage.app",
             appId: "1:441560045695:web:94e51a006663404b8f474a"
         };
+        
+        // App ID for Firestore paths
+        const appId = firebaseConfig.appId;
         
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -550,7 +553,11 @@
             if (!scheduleId || scheduleData[scheduleId]) return;
             
             try {
-                const doc = await db.collection('schedules').doc(scheduleId).get();
+                // Correct path: /artifacts/{appId}/public/data/schedules/{scheduleId}
+                const doc = await db.collection('artifacts').doc(appId)
+                    .collection('public').doc('data')
+                    .collection('schedules').doc(scheduleId).get();
+                    
                 if (doc.exists) {
                     const data = doc.data();
                     scheduleData[scheduleId] = {
@@ -572,7 +579,11 @@
         async function loadAllSchedules() {
             console.log('Loading all schedules...');
             try {
-                const snapshot = await db.collection('schedules').get();
+                // Correct path: /artifacts/{appId}/public/data/schedules
+                const snapshot = await db.collection('artifacts').doc(appId)
+                    .collection('public').doc('data')
+                    .collection('schedules').get();
+                    
                 console.log(`Firestore returned ${snapshot.size} schedules`);
                 const schedules = [];
                 snapshot.forEach(doc => {
