@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.0.7 -->
+    <!-- Clock Display v1.0.8 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.0.7 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.0.8 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -199,8 +199,8 @@
         }
         
         .column-label {
-            font-size: clamp(1.2rem, 4vw, 2rem);
-            font-weight: 700;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            font-weight: 600;
             color: #a0a0a0;
             margin-bottom: 8px;
             white-space: nowrap;
@@ -209,8 +209,8 @@
         }
         
         .column-period {
-            font-size: clamp(1rem, 3.5vw, 1.8rem);
-            font-weight: 600;
+            font-size: clamp(1.4rem, 5vw, 2.5rem);
+            font-weight: 700;
             color: #fff;
             min-height: 1.5em;
         }
@@ -290,7 +290,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.0.7 | Ellis Web Bell v5.60.7
+            Clock Display v1.0.8 | Ellis Web Bell v5.60.8
         </div>
     </div>
     
@@ -318,7 +318,7 @@
     </div>
     
     <script>
-        // Clock Display v1.0.7
+        // Clock Display v1.0.8
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -394,6 +394,15 @@
             }
         }
         
+        // Format seconds since midnight as 12-hour time
+        function formatSecondsAs12Hour(totalSeconds) {
+            let hours = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${String(mins).padStart(2, '0')} ${ampm}`;
+        }
+        
         // Convert time string (HH:MM:SS) to seconds since midnight
         function timeToSeconds(timeStr) {
             const [h, m, s] = timeStr.split(':').map(Number);
@@ -454,7 +463,8 @@
                     console.log(`  -> In period: ${name}`);
                     return { 
                         status: 'in-period', 
-                        periodName: name 
+                        periodName: name,
+                        endSeconds: range.end
                     };
                 }
             }
@@ -532,7 +542,7 @@
                 switch (status.status) {
                     case 'in-period':
                         periodEl.textContent = status.periodName;
-                        countdownEl.textContent = '';
+                        countdownEl.textContent = `ends at ${formatSecondsAs12Hour(status.endSeconds)}`;
                         break;
                     case 'waiting':
                         periodEl.textContent = `${status.nextPeriod}`;
