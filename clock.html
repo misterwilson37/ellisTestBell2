@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.0.8 -->
+    <!-- Clock Display v1.0.9 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.0.8 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.0.9 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -74,7 +74,7 @@
         
         .setup-row {
             display: grid;
-            grid-template-columns: 80px 1fr 120px;
+            grid-template-columns: 80px 1fr 120px 50px;
             gap: 12px;
             margin-bottom: 16px;
             align-items: center;
@@ -86,7 +86,7 @@
         }
         
         .setup-row select,
-        .setup-row input {
+        .setup-row input[type="text"] {
             padding: 10px 12px;
             border-radius: 6px;
             border: 1px solid #333;
@@ -97,9 +97,23 @@
         }
         
         .setup-row select:focus,
-        .setup-row input:focus {
+        .setup-row input[type="text"]:focus {
             outline: none;
             border-color: var(--carolina-blue);
+        }
+        
+        .audio-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        
+        .audio-toggle input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
         
         .setup-actions {
@@ -258,6 +272,7 @@
                 <option value="">Loading schedules...</option>
             </select>
             <input type="text" id="setup-label-1" placeholder="Label (e.g., 6th)">
+            <label class="audio-toggle"><input type="checkbox" id="setup-audio-1"> 🔔</label>
         </div>
         
         <div class="setup-row">
@@ -266,6 +281,7 @@
                 <option value="">Loading schedules...</option>
             </select>
             <input type="text" id="setup-label-2" placeholder="Label (e.g., 7th)">
+            <label class="audio-toggle"><input type="checkbox" id="setup-audio-2"> 🔔</label>
         </div>
         
         <div class="setup-row">
@@ -274,6 +290,7 @@
                 <option value="">Loading schedules...</option>
             </select>
             <input type="text" id="setup-label-3" placeholder="Label (e.g., 8th)">
+            <label class="audio-toggle"><input type="checkbox" id="setup-audio-3"> 🔔</label>
         </div>
         
         <div class="setup-actions">
@@ -290,7 +307,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.0.8 | Ellis Web Bell v5.60.8
+            Clock Display v1.0.9 | Ellis Web Bell v5.60.9
         </div>
     </div>
     
@@ -318,7 +335,7 @@
     </div>
     
     <script>
-        // Clock Display v1.0.8
+        // Clock Display v1.0.9
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -341,8 +358,14 @@
         let scheduleData = {}; // { scheduleId: { name, periods: [...] } }
         let config = {
             s1: null, s2: null, s3: null,  // Schedule IDs
-            l1: '', l2: '', l3: ''          // Labels
+            l1: '', l2: '', l3: '',         // Labels
+            a1: false, a2: false, a3: false // Audio enabled
         };
+        let playedBells = new Set(); // Track bells that have played today
+        let lastDateCheck = null; // To reset playedBells at midnight
+        
+        // Ellis Bell audio
+        const ellisBellUrl = 'ellisBell.mp3'; // Local file, or could use Firebase Storage URL
         
         // Wait for auth to be ready
         function waitForAuth() {
@@ -363,6 +386,9 @@
             config.l1 = params.get('l1') || '';
             config.l2 = params.get('l2') || '';
             config.l3 = params.get('l3') || '';
+            config.a1 = params.get('a1') === '1';
+            config.a2 = params.get('a2') === '1';
+            config.a3 = params.get('a3') === '1';
             
             return config.s1 || config.s2 || config.s3;
         }
@@ -508,6 +534,65 @@
             document.getElementById('main-clock').textContent = formatTime12Hour(now);
         }
         
+        // Play Ellis Bell sound
+        function playEllisBell() {
+            try {
+                const audio = new Audio(ellisBellUrl);
+                audio.play().catch(err => {
+                    console.log('Audio play failed (user interaction may be required):', err);
+                });
+            } catch (err) {
+                console.error('Error creating audio:', err);
+            }
+        }
+        
+        // Check for bells that need to ring
+        function checkBellTimes() {
+            const now = new Date();
+            const today = now.toDateString();
+            
+            // Reset played bells at midnight
+            if (lastDateCheck !== today) {
+                playedBells.clear();
+                lastDateCheck = today;
+            }
+            
+            const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            
+            // Check each column that has audio enabled
+            const columns = [
+                { scheduleId: config.s1, audioEnabled: config.a1 },
+                { scheduleId: config.s2, audioEnabled: config.a2 },
+                { scheduleId: config.s3, audioEnabled: config.a3 }
+            ];
+            
+            for (const col of columns) {
+                if (!col.scheduleId || !col.audioEnabled) continue;
+                
+                const schedule = scheduleData[col.scheduleId];
+                if (!schedule || !schedule.periods) continue;
+                
+                for (const period of schedule.periods) {
+                    if (period.isEnabled === false) continue;
+                    
+                    for (const bell of (period.bells || [])) {
+                        if (!bell.time) continue;
+                        
+                        // Create unique bell ID
+                        const bellKey = `${col.scheduleId}-${period.name}-${bell.time}`;
+                        
+                        // Check if this bell should ring now (within the current second)
+                        if (bell.time === currentTimeStr && !playedBells.has(bellKey)) {
+                            console.log(`🔔 Playing bell: ${period.name} at ${bell.time}`);
+                            playedBells.add(bellKey);
+                            playEllisBell();
+                            return; // Only play one bell at a time
+                        }
+                    }
+                }
+            }
+        }
+        
         // Update schedule columns
         function updateColumns() {
             const columns = [
@@ -649,6 +734,9 @@
             const l1 = document.getElementById('setup-label-1').value;
             const l2 = document.getElementById('setup-label-2').value;
             const l3 = document.getElementById('setup-label-3').value;
+            const a1 = document.getElementById('setup-audio-1').checked;
+            const a2 = document.getElementById('setup-audio-2').checked;
+            const a3 = document.getElementById('setup-audio-3').checked;
             
             const params = new URLSearchParams();
             if (s1) params.set('s1', s1);
@@ -657,6 +745,9 @@
             if (l1) params.set('l1', l1);
             if (l2) params.set('l2', l2);
             if (l3) params.set('l3', l3);
+            if (a1) params.set('a1', '1');
+            if (a2) params.set('a2', '1');
+            if (a3) params.set('a3', '1');
             
             const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
             
@@ -736,12 +827,16 @@
                 console.log('About to call updateClock and updateColumns');
                 console.log('Config after label assignment:', JSON.stringify(config));
                 console.log('ScheduleData keys:', Object.keys(scheduleData));
+                console.log('Audio enabled:', { a1: config.a1, a2: config.a2, a3: config.a3 });
                 
                 updateClock();
                 updateColumns();
                 
-                // Update clock every second
-                setInterval(updateClock, 1000);
+                // Update clock and check bells every second
+                setInterval(() => {
+                    updateClock();
+                    checkBellTimes();
+                }, 1000);
                 
                 // Update columns every 5 seconds (period status)
                 setInterval(updateColumns, 5000);
