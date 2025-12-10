@@ -4,17 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.0 -->
+    <!-- Clock Display v1.1 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.0 */
+        /* Clock Display v1.1 - School Colors: Black, White, Grey, Carolina Blue */
+        :root {
+            --carolina-blue: #4B9CD3;
+            --carolina-blue-light: #7BAFD4;
+            --dark-grey: #1a1a1a;
+            --darker-grey: #111111;
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -36,17 +44,18 @@
         
         /* Setup mode styles */
         body.setup-mode {
-            background: #1a1a2e;
+            background: var(--darker-grey);
         }
         
         #setup-panel {
             display: none;
-            background: #16213e;
+            background: var(--dark-grey);
             border-radius: 12px;
             padding: 24px;
             max-width: 600px;
             width: 100%;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border: 1px solid #333;
         }
         
         body.setup-mode #setup-panel {
@@ -60,7 +69,7 @@
         #setup-panel h2 {
             font-size: 1.5rem;
             margin-bottom: 20px;
-            color: #e94560;
+            color: var(--carolina-blue);
         }
         
         .setup-row {
@@ -81,7 +90,7 @@
             padding: 10px 12px;
             border-radius: 6px;
             border: 1px solid #333;
-            background: #0f0f1a;
+            background: #000;
             color: #fff;
             font-size: 14px;
             font-family: inherit;
@@ -90,7 +99,7 @@
         .setup-row select:focus,
         .setup-row input:focus {
             outline: none;
-            border-color: #e94560;
+            border-color: var(--carolina-blue);
         }
         
         .setup-actions {
@@ -112,12 +121,12 @@
         }
         
         .btn-primary {
-            background: #e94560;
+            background: var(--carolina-blue);
             color: #fff;
         }
         
         .btn-primary:hover {
-            background: #d63850;
+            background: var(--carolina-blue-light);
         }
         
         .btn-secondary {
@@ -132,13 +141,14 @@
         #generated-url {
             margin-top: 16px;
             padding: 12px;
-            background: #0f0f1a;
+            background: #000;
             border-radius: 6px;
             font-family: monospace;
             font-size: 12px;
             word-break: break-all;
             display: none;
-            color: #4ade80;
+            color: var(--carolina-blue-light);
+            border: 1px solid #333;
         }
         
         #generated-url.visible {
@@ -148,8 +158,8 @@
         .setup-note {
             margin-top: 16px;
             padding: 12px;
-            background: rgba(74, 222, 128, 0.1);
-            border-left: 3px solid #4ade80;
+            background: rgba(75, 156, 211, 0.1);
+            border-left: 3px solid var(--carolina-blue);
             font-size: 13px;
             color: #a0a0a0;
         }
@@ -184,7 +194,8 @@
             text-align: center;
             padding: 16px;
             border-radius: 8px;
-            background: rgba(255,255,255,0.05);
+            background: var(--dark-grey);
+            border: 1px solid #333;
         }
         
         .column-label {
@@ -206,7 +217,7 @@
         
         .column-countdown {
             font-size: clamp(0.9rem, 2.5vw, 1.3rem);
-            color: #e94560;
+            color: var(--carolina-blue);
             margin-top: 4px;
             min-height: 1.3em;
         }
@@ -219,7 +230,7 @@
         
         /* Error state */
         .error-message {
-            color: #e94560;
+            color: var(--carolina-blue);
             font-size: 1rem;
             margin-top: 8px;
         }
@@ -303,7 +314,7 @@
     </div>
     
     <script>
-        // Clock Display v1.0
+        // Clock Display v1.1
         
         // Firebase config (same as main app)
         const firebaseConfig = {
@@ -318,6 +329,7 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
         
         // State
         let scheduleData = {}; // { scheduleId: { name, periods: [...] } }
@@ -325,6 +337,7 @@
             s1: null, s2: null, s3: null,  // Schedule IDs
             l1: '', l2: '', l3: ''          // Labels
         };
+        let authReady = false;
         
         // Parse URL parameters
         function parseUrlParams() {
@@ -625,6 +638,16 @@
         
         // Initialize
         async function init() {
+            // Sign in anonymously first
+            try {
+                await auth.signInAnonymously();
+                console.log('Signed in anonymously');
+                authReady = true;
+            } catch (error) {
+                console.error('Auth error:', error);
+                // Continue anyway - might work if Firestore rules allow
+            }
+            
             const hasConfig = parseUrlParams();
             
             if (!hasConfig) {
