@@ -1,4 +1,5 @@
-const APP_VERSION = "5.58.6"
+const APP_VERSION = "5.58.7"
+// V5.58.7: Fixed syntax error (extra closing brace in showImportPreviewModal)
 // V5.58.6: Import improvements
 // - Added rename input to import preview modal (pre-filled with original name)
 // - Added warning banner for linked schedules (based on shared schedule)
@@ -11303,7 +11304,6 @@ function showImportPreviewModal(analysis) {
         }
         
         importPreviewAvailable.innerHTML = availableHtml;
-    }
     }
     
     // Build "Modified" section
