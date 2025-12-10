@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.0.4 -->
+    <!-- Clock Display v1.0.6 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.0.4 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.0.6 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -290,7 +290,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.0.4 | Ellis Web Bell v5.60.4
+            Clock Display v1.0.6 | Ellis Web Bell v5.60.6
         </div>
     </div>
     
@@ -318,7 +318,7 @@
     </div>
     
     <script>
-        // Clock Display v1.0.4
+        // Clock Display v1.0.6
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -404,8 +404,11 @@
         function getPeriodStatus(scheduleId) {
             const schedule = scheduleData[scheduleId];
             if (!schedule || !schedule.periods) {
+                console.log(`getPeriodStatus(${scheduleId}): No schedule or periods`);
                 return { status: 'error', message: 'No data' };
             }
+            
+            console.log(`getPeriodStatus(${scheduleId}): ${schedule.periods.length} periods`);
             
             const now = new Date();
             const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
@@ -414,6 +417,8 @@
             const allBells = [];
             for (const period of schedule.periods) {
                 if (period.isEnabled === false) continue;
+                
+                console.log(`  Period "${period.name}": ${(period.bells || []).length} bells`);
                 
                 for (const bell of (period.bells || [])) {
                     if (bell.time) {
@@ -427,6 +432,8 @@
                     }
                 }
             }
+            
+            console.log(`  Total bells with times: ${allBells.length}`);
             
             // Sort by time
             allBells.sort((a, b) => a.seconds - b.seconds);
@@ -510,6 +517,9 @@
                 { id: 'col-3', scheduleId: config.s3, label: config.l3 }
             ];
             
+            console.log('Updating columns with config:', config);
+            console.log('Schedule data available:', Object.keys(scheduleData));
+            
             for (const col of columns) {
                 const element = document.getElementById(col.id);
                 const labelEl = element.querySelector('.column-label');
@@ -525,7 +535,10 @@
                     continue;
                 }
                 
+                console.log(`Column ${col.id}: scheduleId=${col.scheduleId}, data exists=${!!scheduleData[col.scheduleId]}`);
+                
                 const status = getPeriodStatus(col.scheduleId);
+                console.log(`Column ${col.id} status:`, status);
                 
                 switch (status.status) {
                     case 'in-period':
@@ -721,6 +734,10 @@
                 }
                 
                 // Initial render
+                console.log('About to call updateClock and updateColumns');
+                console.log('Config after label assignment:', JSON.stringify(config));
+                console.log('ScheduleData keys:', Object.keys(scheduleData));
+                
                 updateClock();
                 updateColumns();
                 
