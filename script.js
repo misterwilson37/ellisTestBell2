@@ -1,8 +1,9 @@
-const APP_VERSION = "5.60.8"
-// V5.60.8: Clock Display page (clock.html v1.0.8)
-// - Show "ends at X:XX" when in a period
-// - Made period name larger than column label
-// V5.60.7: Fixed period detection using first/last bell
+const APP_VERSION = "5.60.9"
+// V5.60.9: Clock Display page (clock.html v1.0.9)
+// - Added audio support with per-column checkbox in setup
+// - Audio plays Ellis Bell when bell times are reached
+// - URL parameters a1, a2, a3 control audio per column
+// V5.60.8: Show end time when in period, larger period names
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
