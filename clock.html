@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.1 -->
+    <!-- Clock Display v1.0.2 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.1 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.0.2 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -288,6 +288,10 @@
             <strong>Tip:</strong> Once generated, bookmark the URL or use it in your signage system. 
             The display will automatically load with your configured schedules.
         </div>
+        
+        <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
+            Clock Display v1.0.2 | Ellis Web Bell v5.60.2
+        </div>
     </div>
     
     <!-- Clock Display (shown when schedules are configured) -->
@@ -314,7 +318,7 @@
     </div>
     
     <script>
-        // Clock Display v1.1
+        // Clock Display v1.0.2
         
         // Firebase config (same as main app)
         const firebaseConfig = {
@@ -337,7 +341,16 @@
             s1: null, s2: null, s3: null,  // Schedule IDs
             l1: '', l2: '', l3: ''          // Labels
         };
-        let authReady = false;
+        
+        // Wait for auth to be ready
+        function waitForAuth() {
+            return new Promise((resolve) => {
+                const unsubscribe = auth.onAuthStateChanged((user) => {
+                    unsubscribe();
+                    resolve(user);
+                });
+            });
+        }
         
         // Parse URL parameters
         function parseUrlParams() {
@@ -558,16 +571,21 @@
         
         // Load all shared schedules (for setup panel)
         async function loadAllSchedules() {
+            console.log('Loading all schedules...');
             try {
                 const snapshot = await db.collection('schedules').get();
+                console.log(`Firestore returned ${snapshot.size} schedules`);
                 const schedules = [];
                 snapshot.forEach(doc => {
+                    console.log(`  - ${doc.id}: ${doc.data().name}`);
                     schedules.push({ id: doc.id, name: doc.data().name });
                 });
                 schedules.sort((a, b) => a.name.localeCompare(b.name));
                 return schedules;
             } catch (error) {
                 console.error('Error loading schedules:', error);
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
                 return [];
             }
         }
@@ -582,12 +600,23 @@
                 document.getElementById('setup-schedule-3')
             ];
             
+            if (schedules.length === 0) {
+                const errorHtml = '<option value="">(No schedules found - check console)</option>';
+                selects.forEach(select => {
+                    select.innerHTML = errorHtml;
+                });
+                console.warn('No schedules loaded - check Firebase auth and Firestore rules');
+                return;
+            }
+            
             const optionsHtml = '<option value="">(None)</option>' + 
                 schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
             
             selects.forEach(select => {
                 select.innerHTML = optionsHtml;
             });
+            
+            console.log(`Populated dropdowns with ${schedules.length} schedules`);
         }
         
         // Generate URL from setup form
@@ -638,14 +667,18 @@
         
         // Initialize
         async function init() {
-            // Sign in anonymously first
+            console.log('Clock Display initializing...');
+            
+            // Sign in anonymously and wait for auth state
             try {
+                console.log('Attempting anonymous sign-in...');
                 await auth.signInAnonymously();
-                console.log('Signed in anonymously');
-                authReady = true;
+                const user = await waitForAuth();
+                console.log('Auth ready, user:', user ? user.uid : 'none');
             } catch (error) {
                 console.error('Auth error:', error);
-                // Continue anyway - might work if Firestore rules allow
+                console.error('Auth error code:', error.code);
+                console.error('Auth error message:', error.message);
             }
             
             const hasConfig = parseUrlParams();
@@ -653,6 +686,7 @@
             if (!hasConfig) {
                 // Show setup panel
                 document.body.classList.add('setup-mode');
+                console.log('Setup mode - loading schedule list...');
                 await populateSetupDropdowns();
                 
                 // Setup event listeners
