@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.1.1 -->
+    <!-- Clock Display v1.1.2 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.1.1 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.1.2 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -349,7 +349,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.1.1 | Ellis Web Bell v5.61.1
+            Clock Display v1.1.2 | Ellis Web Bell v5.61.2
             <br>
             <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
         </div>
@@ -384,7 +384,7 @@
     </div>
     
     <script>
-        // Clock Display v1.1.1
+        // Clock Display v1.1.2
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -852,16 +852,26 @@
         async function init() {
             console.log('Clock Display initializing...');
             
-            // Sign in anonymously and wait for auth state
+            // Check if user is already authenticated (e.g., from main app)
+            // Only sign in anonymously if no existing auth
             try {
-                console.log('Attempting anonymous sign-in...');
-                await auth.signInAnonymously();
-                const user = await waitForAuth();
-                console.log('Auth ready, user:', user ? user.uid : 'none');
+                const currentUser = await waitForAuth();
+                if (currentUser) {
+                    console.log('Already authenticated as:', currentUser.uid, currentUser.isAnonymous ? '(anonymous)' : '(signed in)');
+                } else {
+                    console.log('No existing auth, signing in anonymously...');
+                    await auth.signInAnonymously();
+                    const user = await waitForAuth();
+                    console.log('Signed in anonymously:', user?.uid);
+                }
             } catch (error) {
                 console.error('Auth error:', error);
-                console.error('Auth error code:', error.code);
-                console.error('Auth error message:', error.message);
+                // Try anonymous as fallback
+                try {
+                    await auth.signInAnonymously();
+                } catch (e) {
+                    console.error('Fallback anonymous auth failed:', e);
+                }
             }
             
             const hasConfig = parseUrlParams();
