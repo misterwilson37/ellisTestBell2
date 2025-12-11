@@ -1,9 +1,9 @@
-const APP_VERSION = "5.60.9"
-// V5.60.9: Clock Display page (clock.html v1.0.9)
-// - Added audio support with per-column checkbox in setup
-// - Audio plays Ellis Bell when bell times are reached
-// - URL parameters a1, a2, a3 control audio per column
-// V5.60.8: Show end time when in period, larger period names
+const APP_VERSION = "5.61.0"
+// V5.61.0: Clock Display v1.1.0 + tvOS Dashboard link
+// - Added hover popup icon to clock display (hidden on touch/TV)
+// - Added "Launch Last" button for quick access to previous config
+// - Added tvOS Dashboard config button to Admin Zone
+// V5.60.9: Added audio support to clock display
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
