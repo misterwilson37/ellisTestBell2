@@ -1,8 +1,10 @@
-const APP_VERSION = "5.61.2"
-// V5.61.2: Clock Display v1.1.2
-// - Clock now preserves existing auth instead of forcing anonymous sign-in
-// - Fixes logout issue when returning from clock to main bell page
-// V5.61.1: Bug fixes and admin enhancements
+const APP_VERSION = "5.61.3"
+// V5.61.3: UI improvements and bug fixes
+// - Clock: Sound selector for logged-in users, fixed padding for bell icons
+// - Hide + Bell button instead of greying out for anonymous users
+// - Import modal now always shows rename option (was skipping for admin backups)
+// - Added clock version to index.html footer
+// V5.61.2: Clock Display v1.1.2 - preserve existing auth
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
@@ -3958,10 +3960,12 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
                 <!-- Management Controls (Right Side) -->
                 <div class="flex-shrink-0 flex items-center space-x-2">
                     <!-- NEW: Add Bell to Period Button -->
+                    <!-- V5.45.2: Hidden instead of disabled for anonymous users -->
                     <button data-period-name="${safePeriodName}" 
                             class="add-bell-to-period-btn px-3 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
                             title="Add a new bell to the ${safePeriodName} period"
-                            ${!activePersonalScheduleId ? 'disabled' : ''}>
+                            ${isUserAnonymous ? 'style="display: none;"' : ''}
+                            ${!activePersonalScheduleId && !isAdmin ? 'disabled' : ''}>
                         + Bell
                     </button>
                     
@@ -11758,37 +11762,8 @@ async function handleImportCurrentFileChange(e) {
             // Hide the initial status
             importStatus.classList.add('hidden');
             
-            // If it's a personal backup OR has modifications, show preview modal
-            if (analysis.isPersonalBackup || analysis.modified.sounds.items.length > 0 || analysis.modified.visuals.items.length > 0) {
-                showImportPreviewModal(analysis);
-            } else {
-                // Admin backup with no modifications - show simple confirmation
-                const confirmed = await showConfirmationModal(
-                    `This will OVERWRITE your current schedule "${currentSchedule.name}" with the data from "${data.schedule.name}" (from file: ${file.name}). This action cannot be undone.`,
-                    "Confirm Overwrite Current Schedule",
-                    "Overwrite Current"
-                );
-
-                if (!confirmed) {
-                    importStatus.textContent = "Import cancelled by user.";
-                    setTimeout(() => importStatus.classList.add('hidden'), 3000);
-                    importCurrentFileInput.value = '';
-                    return;
-                }
-
-                // Proceed with direct import
-                importStatus.textContent = `Importing and overwriting "${currentSchedule.name}"...`;
-                importStatus.classList.remove('hidden');
-                
-                const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
-                await updateDoc(scheduleRef, { 
-                    name: data.schedule.name, 
-                    periods: data.schedule.periods 
-                });
-
-                importStatus.textContent = `Successfully overwrote "${currentSchedule.name}" with "${data.schedule.name}".`;
-                setTimeout(() => importStatus.classList.add('hidden'), 4000);
-            }
+            // V5.45.2: Always show preview modal with rename option
+            showImportPreviewModal(analysis);
 
         } catch (error) {
             console.error("Current schedule import failed:", error);
