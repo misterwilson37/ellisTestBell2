@@ -1,10 +1,10 @@
-const APP_VERSION = "5.61.3"
+const APP_VERSION = "5.61.4"
+// V5.61.4: Clock Display v1.1.4
+// - Fixed bell icon overflow - increased panel padding
+// - Sound selector now loads from Firebase Storage (same as main app)
+// - Moved sound selector between columns and buttons with proper spacing
+// - Added default sounds (Bell, Chime, Beep, Alarm) to dropdown
 // V5.61.3: UI improvements and bug fixes
-// - Clock: Sound selector for logged-in users, fixed padding for bell icons
-// - Hide + Bell button instead of greying out for anonymous users
-// - Import modal now always shows rename option (was skipping for admin backups)
-// - Added clock version to index.html footer
-// V5.61.2: Clock Display v1.1.2 - preserve existing auth
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
