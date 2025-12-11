@@ -2,18 +2,19 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard 1.0.1</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 3840px; height: 2160px; overflow: hidden; background: #000; }
+        html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
         
         .container { display: flex; width: 100%; height: 100%; }
         
-        .left { width: 2880px; height: 2160px; }
-        .right { width: 960px; height: 2160px; display: flex; flex-direction: column; }
+        .left { width: 75%; height: 100%; }
+        .right { width: 25%; height: 100%; display: flex; flex-direction: column; }
         
-        .clock-area { height: 540px; }
-        .slides-area { height: 1620px; }
+        .clock-area { height: 25%; }
+        .slides-area { height: 75%; }
         
         iframe { border: none; width: 100%; height: 100%; }
     </style>
@@ -34,9 +35,8 @@
     </div>
 
     <script>
-        // Refresh iframes periodically
-        setInterval(() => { document.getElementById('canva').src = document.getElementById('canva').src; }, 3600000); // 1 hour
-        setInterval(() => { document.getElementById('slides').src = document.getElementById('slides').src; }, 300000); // 5 min
+        setInterval(() => { document.getElementById('canva').src = document.getElementById('canva').src; }, 3600000);
+        setInterval(() => { document.getElementById('slides').src = document.getElementById('slides').src; }, 300000);
     </script>
 </body>
 </html>
