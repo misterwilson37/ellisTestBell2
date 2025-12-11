@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.1.0 -->
+    <!-- Clock Display v1.1.1 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.1.0 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.1.1 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -349,7 +349,9 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.1.0 | Ellis Web Bell v5.61.0
+            Clock Display v1.1.1 | Ellis Web Bell v5.61.1
+            <br>
+            <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
         </div>
     </div>
     
@@ -382,7 +384,7 @@
     </div>
     
     <script>
-        // Clock Display v1.1.0
+        // Clock Display v1.1.1
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -822,6 +824,15 @@
             const top = (screen.height - height) / 2;
             window.open(url, 'ClockDisplay', `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`);
         }
+        
+        // ESC key returns to configuration
+        function handleKeyPress(e) {
+            if (e.key === 'Escape') {
+                // Go to config page (remove URL parameters)
+                window.location.href = window.location.pathname;
+            }
+        }
+        document.addEventListener('keydown', handleKeyPress);
         
         // Copy URL to clipboard
         async function copyUrl() {
