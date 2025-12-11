@@ -1,10 +1,8 @@
-const APP_VERSION = "5.61.1"
+const APP_VERSION = "5.61.2"
+// V5.61.2: Clock Display v1.1.2
+// - Clock now preserves existing auth instead of forcing anonymous sign-in
+// - Fixes logout issue when returning from clock to main bell page
 // V5.61.1: Bug fixes and admin enhancements
-// - Clock: ESC key returns to configuration, added back link to main bell page
-// - Admin rename button now works for both shared and personal schedules
-// - Admins can delete periods on shared schedules
-// - Fixed "currentSchedule is not defined" error when deleting shared bells
-// V5.61.0: Clock Display v1.1.0 + tvOS Dashboard link
 // V5.60.0: Clock Display page initial release
 // V5.59.1: Fixed Simplified View wiping schedule
 // - Removed renderCombinedList() call from toggleSimplifiedView()
