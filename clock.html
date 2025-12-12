@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.1.4 -->
+    <!-- Clock Display v1.1.5 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.1.4 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.1.5 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -363,7 +363,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.1.4 | Ellis Web Bell v5.61.4
+            Clock Display v1.1.5 | Ellis Web Bell v5.61.5
             <br>
             <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
         </div>
@@ -398,7 +398,7 @@
     </div>
     
     <script>
-        // Clock Display v1.1.4
+        // Clock Display v1.1.5
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -1003,10 +1003,8 @@
                 setInterval(() => {
                     updateClock();
                     checkBellTimes();
+                    updateColumns(); // Update columns every second for smooth countdown
                 }, 1000);
-                
-                // Update columns every 5 seconds (period status)
-                setInterval(updateColumns, 5000);
             }
         }
         
