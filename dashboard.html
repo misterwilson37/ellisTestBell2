@@ -3,40 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard 1.0.1</title>
+    <title>Dashboard 1.1</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
         
         .container { display: flex; width: 100%; height: 100%; }
         
-        .left { width: 75%; height: 100%; }
+        .left { width: 75%; height: 100%; position: relative; }
         .right { width: 25%; height: 100%; display: flex; flex-direction: column; }
         
         .clock-area { height: 25%; }
         .slides-area { height: 75%; }
         
         iframe { border: none; width: 100%; height: 100%; }
+        
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-family: -apple-system, sans-serif;
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(3, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="left">
-            <iframe id="canva" src="https://www.canva.com/design/DAGxFBs3g6s/LIqKhh781L3rallj4Xcp1w/view?embed" allowfullscreen></iframe>
+            <div class="loading" id="loading">Loading video</div>
+            <video id="video" loop muted autoplay style="display:none;"></video>
         </div>
         <div class="right">
             <div class="clock-area">
-                <iframe id="clock" src="https://misterwilson37.github.io/ellisTestBell2/clock.html?s1=aG3WYSOVJd5EKKdZjSeq&s2=nNGdsY4spQph2YITgNWc&s3=T5CxiIUa6zstilwF6SWE&l1=6th&l2=7th&l3=8th&a1=1&a2=1&a3=1" allowfullscreen></iframe>
+                <iframe id="clock" src="" allowfullscreen></iframe>
             </div>
             <div class="slides-area">
-                <iframe id="slides" src="https://docs.google.com/presentation/d/e/2PACX-1vRGoECJPzxYQ4axmA2K0xy4idvI3m_N04OgWN_qpITDA0XCpT_ntcxLfp1tQvmf5Vn5jXeuHGhrC1A3/pub?start=true&loop=true&delayms=60000" allowfullscreen></iframe>
+                <iframe id="slides" src="" allowfullscreen></iframe>
             </div>
         </div>
     </div>
 
     <script>
-        setInterval(() => { document.getElementById('canva').src = document.getElementById('canva').src; }, 3600000);
-        setInterval(() => { document.getElementById('slides').src = document.getElementById('slides').src; }, 300000);
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDfo45UBu-pR8nqMQhVlS_QgyYZ2kzBdvM",
+            authDomain: "ellisbell-c185c.firebaseapp.com",
+            projectId: "ellisbell-c185c",
+            storageBucket: "ellisbell-c185c.firebasestorage.app",
+            appId: "1:441560045695:web:94e51a006663404b8f474a"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        const appId = "1:441560045695:web:94e51a006663404b8f474a";
+        const apiKey = "AIzaSyD5Y7uaZDz2qIJfkMkoP1ufX8t1PebfxOE";
+        
+        let currentVideoId = null;
+        
+        // Config document path
+        const configRef = db.collection('artifacts').doc(appId)
+            .collection('public').doc('data')
+            .collection('config').doc('dashboard');
+        
+        async function init() {
+            // Sign in anonymously
+            await auth.signInAnonymously();
+            
+            // Load config and set up real-time listener
+            configRef.onSnapshot(snapshot => {
+                if (snapshot.exists) {
+                    const config = snapshot.data();
+                    updateDashboard(config);
+                } else {
+                    console.warn('No config found, using defaults');
+                    updateDashboard({
+                        s1: 'aG3WYSOVJd5EKKdZjSeq',
+                        s2: 'nNGdsY4spQph2YITgNWc',
+                        s3: 'T5CxiIUa6zstilwF6SWE',
+                        l1: '6th',
+                        l2: '7th',
+                        l3: '8th'
+                    });
+                }
+            });
+            
+            // Check for new videos every 5 minutes
+            checkForNewVideo();
+            setInterval(checkForNewVideo, 300000);
+        }
+        
+        function updateDashboard(config) {
+            // Update clock URL
+            const clockParams = new URLSearchParams();
+            if (config.s1) clockParams.set('s1', config.s1);
+            if (config.s2) clockParams.set('s2', config.s2);
+            if (config.s3) clockParams.set('s3', config.s3);
+            if (config.l1) clockParams.set('l1', config.l1);
+            if (config.l2) clockParams.set('l2', config.l2);
+            if (config.l3) clockParams.set('l3', config.l3);
+            clockParams.set('a1', '1');
+            clockParams.set('a2', '1');
+            clockParams.set('a3', '1');
+            
+            document.getElementById('clock').src = 
+                `https://misterwilson37.github.io/ellisTestBell2/clock.html?${clockParams.toString()}`;
+            
+            // Update slides URL (using sheet ID if available)
+            const sheetId = config.sheetID || '1v7ZuPnQcG2FnDRITFo55u-c4CRT9CMhDL_-yDmzE5sA';
+            document.getElementById('slides').src = 
+                `https://docs.google.com/presentation/d/e/2PACX-1vRGoECJPzxYQ4axmA2K0xy4idvI3m_N04OgWN_qpITDA0XCpT_ntcxLfp1tQvmf5Vn5jXeuHGhrC1A3/pub?start=true&loop=true&delayms=60000`;
+            
+            // Update video folder ID if changed
+            const newFolderId = config.videoFolderId || '1rhirAMiKrhkteVPk4wB7Giumi9agnP6N';
+            if (window.currentFolderId !== newFolderId) {
+                window.currentFolderId = newFolderId;
+                checkForNewVideo();
+            }
+        }
+        
+        async function checkForNewVideo() {
+            // Use folder ID from config
+            const folderId = window.currentFolderId || '1rhirAMiKrhkteVPk4wB7Giumi9agnP6N';
+            
+            // Query Google Drive API for videos in folder
+            const query = `'${folderId}'+in+parents+and+mimeType+contains+'video'`;
+            const fields = 'files(id,name,modifiedTime)';
+            const url = `https://www.googleapis.com/drive/v3/files?q=${query}&key=${apiKey}&orderBy=modifiedTime+desc&fields=${fields}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.files && data.files.length > 0) {
+                    const newestVideo = data.files[0];
+                    
+                    if (newestVideo.id !== currentVideoId) {
+                        console.log('Loading new video:', newestVideo.name);
+                        loadVideo(newestVideo.id, newestVideo.name);
+                    }
+                } else {
+                    console.warn('No videos found in folder');
+                    document.getElementById('loading').textContent = 'No videos in folder';
+                }
+            } catch (error) {
+                console.error('Error checking for videos:', error);
+                document.getElementById('loading').textContent = 'Error loading video';
+            }
+        }
+        
+        function loadVideo(fileId, fileName) {
+            currentVideoId = fileId;
+            
+            const video = document.getElementById('video');
+            const loading = document.getElementById('loading');
+            
+            // Google Drive API streaming URL
+            const videoUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+            
+            video.src = videoUrl;
+            video.style.display = 'block';
+            loading.style.display = 'none';
+            
+            video.addEventListener('error', () => {
+                console.error('Video playback error');
+                loading.textContent = 'Video playback error';
+                loading.style.display = 'block';
+            });
+            
+            video.play().catch(err => {
+                console.error('Play error:', err);
+            });
+        }
+        
+        init();
     </script>
 </body>
 </html>
