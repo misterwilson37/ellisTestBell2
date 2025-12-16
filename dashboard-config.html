@@ -236,12 +236,21 @@
             color: #666;
             margin-top: 4px;
         }
+        
+        .help a {
+            color: var(--carolina-blue);
+            text-decoration: none;
+        }
+        
+        .help a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📺 Dashboard Config</h1>
-        <p class="subtitle">Configure the Ellis tvOS Dashboard</p>
+        <p class="subtitle">Configure the Ellis tvOS Dashboard & Web Dashboard</p>
         
         <!-- Login Section -->
         <div id="login-section">
@@ -270,9 +279,13 @@
             <div class="section">
                 <h2>🎬 Video</h2>
                 <div class="field">
-                    <label>Google Drive Video URL</label>
-                    <input type="text" id="videoURL" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
-                    <p class="help">Upload Canva export to Google Drive, set to "Anyone with link", paste URL here</p>
+                    <label>Google Drive Folder ID</label>
+                    <input type="text" id="videoFolderId" placeholder="1rhirAMiKrhkteVPk4wB7Giumi9agnP6N">
+                    <p class="help">
+                        Share a Google Drive folder (Anyone with link), then paste the ID here.<br>
+                        The ID is the last part of the folder URL: <code>drive.google.com/drive/folders/<strong>ID_HERE</strong></code><br>
+                        The newest video in this folder will play automatically on both dashboards.
+                    </p>
                 </div>
             </div>
             
@@ -430,7 +443,7 @@
                 const doc = await configRef.get();
                 if (doc.exists) {
                     const data = doc.data();
-                    document.getElementById('videoURL').value = data.videoURL || '';
+                    document.getElementById('videoFolderId').value = data.videoFolderId || '1rhirAMiKrhkteVPk4wB7Giumi9agnP6N';
                     document.getElementById('s1').value = data.s1 || '';
                     document.getElementById('s2').value = data.s2 || '';
                     document.getElementById('s3').value = data.s3 || '';
@@ -450,7 +463,7 @@
             showStatus('status', 'Saving...', 'loading');
             
             const config = {
-                videoURL: document.getElementById('videoURL').value.trim() || null,
+                videoFolderId: document.getElementById('videoFolderId').value.trim() || '1rhirAMiKrhkteVPk4wB7Giumi9agnP6N',
                 s1: document.getElementById('s1').value || null,
                 s2: document.getElementById('s2').value || null,
                 s3: document.getElementById('s3').value || null,
@@ -468,7 +481,7 @@
             
             try {
                 await configRef.set(config, { merge: true });
-                showStatus('status', '✓ Configuration saved! The tvOS app will pick up changes automatically.', 'success');
+                showStatus('status', '✓ Configuration saved! Both tvOS and web dashboards will update automatically.', 'success');
             } catch (error) {
                 console.error('Save error:', error);
                 showStatus('status', 'Error saving: ' + error.message, 'error');
