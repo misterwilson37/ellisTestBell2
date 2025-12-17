@@ -1,4 +1,4 @@
-const APP_VERSION = "5.61.2"
+const APP_VERSION = "5.61.5"
 const CLOCK_VERSION = "1.1.7"
 const DASHBOARD_VERSION = "1.2.1"
 // V5.46.2: Dashboard v1.2.1 - user-customizable schedule view + ?tv param
