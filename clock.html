@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.2 -->
+    <!-- Clock Display v1.2.1 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.1.5 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.1.6 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -463,7 +463,7 @@
             let hours = date.getHours();
             const minutes = date.getMinutes();
             const seconds = date.getSeconds();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const ampm = hours >= 12 ? 'pm' : 'am';
             hours = hours % 12 || 12;
             return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
         }
@@ -489,7 +489,7 @@
         function formatSecondsAs12Hour(totalSeconds) {
             let hours = Math.floor(totalSeconds / 3600);
             const mins = Math.floor((totalSeconds % 3600) / 60);
-            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const ampm = hours >= 12 ? 'pm' : 'am';
             hours = hours % 12 || 12;
             return `${hours}:${String(mins).padStart(2, '0')} ${ampm}`;
         }
