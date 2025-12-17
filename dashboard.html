@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard 1.1.5</title>
-    <!-- Dashboard Display v1.1.5 -->
+    <title>Dashboard 1.2.0</title>
+    <!-- Dashboard Display v1.2.0 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.1.5 */
+        /* Dashboard Display v1.2.0 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -115,10 +115,14 @@
         }
         
         .column-period {
-            font-size: 6cqw;
+            font-size: 5cqw;
             font-weight: 700;
             color: #fff;
             line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 1.4em;
         }
         
         .column-period.active {
@@ -129,10 +133,186 @@
             font-size: 3.5cqw;
             color: var(--carolina-blue);
             margin-top: 1cqh;
+            white-space: nowrap;
+        }
+        
+        /* Setup Panel Styles */
+        body.setup-mode .container { display: none; }
+        body.setup-mode { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            background: #111;
+        }
+        
+        #setup-panel {
+            display: none;
+            background: var(--dark-grey);
+            border-radius: 12px;
+            padding: 24px 32px;
+            max-width: 650px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body.setup-mode #setup-panel { display: block; }
+        
+        #setup-panel h2 {
+            color: var(--carolina-blue);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .setup-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 120px;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        
+        .setup-row label {
+            font-weight: 600;
+            color: #a0a0a0;
+        }
+        
+        .setup-row select,
+        .setup-row input[type="text"] {
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: #000;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .setup-actions {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .setup-actions button {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: var(--carolina-blue);
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            background: var(--carolina-blue-light);
+        }
+        
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+        }
+        
+        .btn-secondary:hover {
+            background: #444;
+        }
+        
+        #generated-url {
+            margin-top: 16px;
+            padding: 12px;
+            background: #000;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: var(--carolina-blue);
+            display: none;
+        }
+        
+        #generated-url.visible { display: block; }
+        
+        .setup-note {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(75, 156, 211, 0.1);
+            border-left: 3px solid var(--carolina-blue);
+            font-size: 13px;
+            color: #a0a0a0;
+        }
+        
+        .version-info {
+            margin-top: 16px;
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .version-info a {
+            color: var(--carolina-blue);
+            text-decoration: none;
         }
     </style>
 </head>
 <body>
+    <!-- Setup Panel -->
+    <div id="setup-panel">
+        <h2 style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span>📺 School Dashboard Setup</span>
+            <span style="color: #444;">•</span>
+            <a href="clock.html" style="color: #a0a0a0; text-decoration: none; font-size: 0.85em;">🕐 Clock Display</a>
+        </h2>
+        
+        <div class="setup-row">
+            <label>Column 1:</label>
+            <select id="setup-schedule-1">
+                <option value="">Loading schedules...</option>
+            </select>
+            <input type="text" id="setup-label-1" placeholder="Label (e.g., 6th)">
+        </div>
+        
+        <div class="setup-row">
+            <label>Column 2:</label>
+            <select id="setup-schedule-2">
+                <option value="">Loading schedules...</option>
+            </select>
+            <input type="text" id="setup-label-2" placeholder="Label (e.g., 7th)">
+        </div>
+        
+        <div class="setup-row">
+            <label>Column 3:</label>
+            <select id="setup-schedule-3">
+                <option value="">Loading schedules...</option>
+            </select>
+            <input type="text" id="setup-label-3" placeholder="Label (e.g., 8th)">
+        </div>
+        
+        <div class="setup-actions">
+            <button class="btn-primary" id="generate-url-btn">Generate URL</button>
+            <button class="btn-secondary" id="preview-btn">Launch Dashboard</button>
+            <button class="btn-secondary" id="copy-url-btn" style="display:none;">Copy URL</button>
+            <button class="btn-secondary" id="last-config-btn" style="display:none;">📺 Launch Last</button>
+        </div>
+        
+        <div id="generated-url"></div>
+        
+        <div class="setup-note">
+            <strong>Tip:</strong> Video and slides are shared across all dashboards. 
+            Customize which schedules appear in your view using the options above.
+        </div>
+        
+        <div class="version-info">
+            Dashboard v1.2.0 | Ellis Web Bell
+            <br>
+            <a href="index.html">← Back to Bell Schedule</a>
+        </div>
+    </div>
+
     <div class="container">
         <div class="left">
             <div class="loading" id="loading">Loading video</div>
@@ -166,7 +346,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.1.5
+        // Dashboard Display v1.2.0
         const firebaseConfig = {
             apiKey: "AIzaSyDfo45UBu-pR8nqMQhVlS_QgyYZ2kzBdvM",
             authDomain: "ellisbell-c185c.firebaseapp.com",
@@ -184,45 +364,173 @@
         
         let currentVideoId = null;
         let schedules = {};
-        let config = {};
+        let scheduleConfig = {}; // Schedule selection (from URL or Firestore)
+        let mediaConfig = {};    // Video/slides (always from Firestore)
         
         const configRef = db.collection('artifacts').doc(appId)
             .collection('public').doc('data')
             .collection('config').doc('dashboard');
         
+        // Parse URL parameters for schedule config
+        function parseUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const s1 = params.get('s1');
+            const s2 = params.get('s2');
+            const s3 = params.get('s3');
+            
+            if (s1 || s2 || s3) {
+                return {
+                    s1: s1 || null,
+                    s2: s2 || null,
+                    s3: s3 || null,
+                    l1: params.get('l1') || '',
+                    l2: params.get('l2') || '',
+                    l3: params.get('l3') || ''
+                };
+            }
+            return null;
+        }
+        
         async function init() {
             await auth.signInAnonymously();
             
+            const urlConfig = parseUrlParams();
+            
+            if (!urlConfig) {
+                // No URL params - show setup mode
+                document.body.classList.add('setup-mode');
+                await populateSetupDropdowns();
+                setupEventListeners();
+                
+                // Also listen for Firestore config to pre-fill defaults
+                configRef.onSnapshot(snapshot => {
+                    if (snapshot.exists) {
+                        const data = snapshot.data();
+                        // Pre-fill dropdowns with Firestore defaults
+                        if (data.s1) document.getElementById('setup-schedule-1').value = data.s1;
+                        if (data.s2) document.getElementById('setup-schedule-2').value = data.s2;
+                        if (data.s3) document.getElementById('setup-schedule-3').value = data.s3;
+                        if (data.l1) document.getElementById('setup-label-1').value = data.l1;
+                        if (data.l2) document.getElementById('setup-label-2').value = data.l2;
+                        if (data.l3) document.getElementById('setup-label-3').value = data.l3;
+                    }
+                });
+                return;
+            }
+            
+            // Have URL params - show dashboard
+            scheduleConfig = urlConfig;
+            
+            // Listen for media config from Firestore (video folder, slides URL)
             configRef.onSnapshot(snapshot => {
                 if (snapshot.exists) {
-                    config = snapshot.data();
-                    updateDashboard(config);
-                    loadSchedules(config);
+                    mediaConfig = snapshot.data();
                 } else {
-                    config = {
-                        s1: 'aG3WYSOVJd5EKKdZjSeq',
-                        s2: 'nNGdsY4spQph2YITgNWc',
-                        s3: 'T5CxiIUa6zstilwF6SWE',
-                        l1: '6th',
-                        l2: '7th',
-                        l3: '8th'
-                    };
-                    updateDashboard(config);
-                    loadSchedules(config);
+                    mediaConfig = {};
                 }
+                updateMedia(mediaConfig);
             });
             
+            // Load schedules based on URL config
+            loadSchedules(scheduleConfig);
+            
+            // Start video check
             checkForNewVideo();
             setInterval(checkForNewVideo, 300000);
             
+            // Start clock updates
             setInterval(updateClock, 1000);
             updateClock();
         }
         
-        function updateDashboard(config) {
-            document.getElementById('slides').src = 
-                `https://docs.google.com/presentation/d/e/2PACX-1vRGoECJPzxYQ4axmA2K0xy4idvI3m_N04OgWN_qpITDA0XCpT_ntcxLfp1tQvmf5Vn5jXeuHGhrC1A3/pub?start=true&loop=true&delayms=60000`;
+        async function populateSetupDropdowns() {
+            try {
+                const schedulesSnapshot = await db.collection('artifacts').doc(appId)
+                    .collection('public').doc('data')
+                    .collection('schedules').get();
+                
+                const scheduleList = [];
+                schedulesSnapshot.forEach(doc => {
+                    scheduleList.push({ id: doc.id, name: doc.data().name });
+                });
+                
+                scheduleList.sort((a, b) => a.name.localeCompare(b.name));
+                
+                const optionsHtml = '<option value="">(None)</option>' + 
+                    scheduleList.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+                
+                document.getElementById('setup-schedule-1').innerHTML = optionsHtml;
+                document.getElementById('setup-schedule-2').innerHTML = optionsHtml;
+                document.getElementById('setup-schedule-3').innerHTML = optionsHtml;
+                
+            } catch (error) {
+                console.error('Error loading schedules:', error);
+            }
+        }
+        
+        function setupEventListeners() {
+            document.getElementById('generate-url-btn').addEventListener('click', generateUrl);
+            document.getElementById('preview-btn').addEventListener('click', () => {
+                const url = generateUrl();
+                localStorage.setItem('lastDashboardConfig', url);
+                window.location.href = url;
+            });
+            document.getElementById('copy-url-btn').addEventListener('click', copyUrl);
             
+            // Show "Launch Last" if saved config exists
+            const lastConfig = localStorage.getItem('lastDashboardConfig');
+            if (lastConfig) {
+                const btn = document.getElementById('last-config-btn');
+                btn.style.display = 'inline-block';
+                btn.addEventListener('click', () => window.location.href = lastConfig);
+            }
+        }
+        
+        function generateUrl() {
+            const s1 = document.getElementById('setup-schedule-1').value;
+            const s2 = document.getElementById('setup-schedule-2').value;
+            const s3 = document.getElementById('setup-schedule-3').value;
+            const l1 = document.getElementById('setup-label-1').value;
+            const l2 = document.getElementById('setup-label-2').value;
+            const l3 = document.getElementById('setup-label-3').value;
+            
+            const params = new URLSearchParams();
+            if (s1) params.set('s1', s1);
+            if (s2) params.set('s2', s2);
+            if (s3) params.set('s3', s3);
+            if (l1) params.set('l1', l1);
+            if (l2) params.set('l2', l2);
+            if (l3) params.set('l3', l3);
+            
+            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+            
+            document.getElementById('generated-url').textContent = url;
+            document.getElementById('generated-url').classList.add('visible');
+            document.getElementById('copy-url-btn').style.display = 'inline-block';
+            
+            return url;
+        }
+        
+        async function copyUrl() {
+            const url = document.getElementById('generated-url').textContent;
+            try {
+                await navigator.clipboard.writeText(url);
+                document.getElementById('copy-url-btn').textContent = 'Copied!';
+                setTimeout(() => {
+                    document.getElementById('copy-url-btn').textContent = 'Copy URL';
+                }, 2000);
+            } catch (err) {
+                console.error('Copy failed:', err);
+            }
+        }
+        
+        function updateMedia(config) {
+            // Update slides iframe
+            const slidesUrl = config.slidesUrl || 
+                'https://docs.google.com/presentation/d/e/2PACX-1vRGoECJPzxYQ4axmA2K0xy4idvI3m_N04OgWN_qpITDA0XCpT_ntcxLfp1tQvmf5Vn5jXeuHGhrC1A3/pub?start=true&loop=true&delayms=60000';
+            document.getElementById('slides').src = slidesUrl;
+            
+            // Update video folder
             const newFolderId = config.videoFolderId || '1rhirAMiKrhkteVPk4wB7Giumi9agnP6N';
             if (window.currentFolderId !== newFolderId) {
                 window.currentFolderId = newFolderId;
@@ -263,8 +571,8 @@
                 `${displayHours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} ${ampm}`;
             
             const columns = document.querySelectorAll('.schedule-column');
-            const scheduleIds = [config.s1, config.s2, config.s3];
-            const labels = [config.l1, config.l2, config.l3];
+            const scheduleIds = [scheduleConfig.s1, scheduleConfig.s2, scheduleConfig.s3];
+            const labels = [scheduleConfig.l1, scheduleConfig.l2, scheduleConfig.l3];
             
             scheduleIds.forEach((scheduleId, index) => {
                 if (scheduleId && schedules[scheduleId]) {
@@ -399,6 +707,13 @@
             
             video.play().catch(err => console.error('Play error:', err));
         }
+        
+        // ESC key returns to setup page
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.location.href = window.location.pathname;
+            }
+        });
         
         init();
     </script>
