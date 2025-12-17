@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bell Schedule Clock 1.2.1</title>
-    <!-- Clock Display v1.2.1 -->
+    <title>Bell Schedule Clock</title>
+    <!-- Clock Display v1.1.7 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.1.6 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.1.7 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -306,7 +306,11 @@
 <body>
     <!-- Setup Panel (shown when no schedules configured) -->
     <div id="setup-panel">
-        <h2>🕐 Clock Display Setup</h2>
+        <h2 style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span>🕐 Clock Display Setup</span>
+            <span style="color: #444;">•</span>
+            <a href="dashboard.html" style="color: #a0a0a0; text-decoration: none; font-size: 0.85em;">📺 School Dashboard</a>
+        </h2>
         
         <div class="setup-row">
             <label>Column 1:</label>
@@ -363,7 +367,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock Display v1.1.5 | Ellis Web Bell v5.61.5
+            Clock v1.1.7 | Dashboard v1.1.5 | Ellis Web Bell v5.46.0
             <br>
             <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
         </div>
@@ -398,7 +402,7 @@
     </div>
     
     <script>
-        // Clock Display v1.1.5
+        // Clock Display v1.1.7
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -879,9 +883,40 @@
             window.location.href = url;
         }
         
-        // Open in popup window
-        function openPopupWindow() {
+        // Open in popup window - uses Document PiP API for always-on-top behavior
+        async function openPopupWindow() {
             const url = window.location.href;
+            
+            // Try Document Picture-in-Picture API first (Chrome 116+)
+            if ('documentPictureInPicture' in window) {
+                try {
+                    const pipWindow = await documentPictureInPicture.requestWindow({
+                        width: 400,
+                        height: 300,
+                    });
+                    
+                    // Style the PiP window body
+                    pipWindow.document.body.style.margin = '0';
+                    pipWindow.document.body.style.padding = '0';
+                    pipWindow.document.body.style.overflow = 'hidden';
+                    pipWindow.document.body.style.background = '#000';
+                    
+                    // Create an iframe that loads the clock
+                    const iframe = pipWindow.document.createElement('iframe');
+                    iframe.src = url;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    pipWindow.document.body.appendChild(iframe);
+                    
+                    console.log('Opened clock in Picture-in-Picture mode');
+                    return;
+                } catch (error) {
+                    console.log('Document PiP not available, using regular popup:', error);
+                }
+            }
+            
+            // Fallback to regular popup
             const width = 960;
             const height = 540;
             const left = (screen.width - width) / 2;
