@@ -3,14 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard 1.1.2</title>
+    <title>Dashboard 1.1.3</title>
+    <!-- Dashboard Display v1.1.3 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
+    
     <style>
+        /* Dashboard Display v1.1.2 */
+        :root {
+            --carolina-blue: #4B9CD3;
+            --carolina-blue-light: #7BAFD4;
+            --dark-grey: #1a1a1a;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
         
@@ -27,7 +38,9 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 2%;
+            padding: 3%;
+            container-type: size;
+            font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
         }
         
         .slides-area { height: 70%; overflow: hidden; }
@@ -63,69 +76,59 @@
             60%, 100% { content: '...'; }
         }
         
-        /* Custom Clock Styles */
+        /* Clock Styles - using container queries */
         #main-clock {
-            font-size: 8cqw;
+            font-size: 18cqw;
             font-weight: 700;
             color: #fff;
             text-align: center;
             width: 100%;
-            line-height: 1;
-            margin-bottom: 2cqh;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.1;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
         }
         
         #schedule-columns {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 2%;
+            gap: 2cqw;
             width: 100%;
-            container-type: inline-size;
+            margin-top: 3cqh;
         }
         
         .schedule-column {
             text-align: center;
-            padding: 4%;
-            border-radius: 6px;
-            background: #1a1a1a;
+            padding: 2cqh 1cqw;
+            border-radius: 8px;
+            background: var(--dark-grey);
             border: 1px solid #333;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
         }
         
         .column-label {
-            font-size: 2.5cqw;
+            font-size: 4cqw;
             font-weight: 600;
             color: #a0a0a0;
             margin-bottom: 1cqh;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-family: -apple-system, sans-serif;
         }
         
         .column-period {
-            font-size: 4cqw;
+            font-size: 6cqw;
             font-weight: 700;
             color: #fff;
             line-height: 1.2;
-            min-height: 2.4em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: -apple-system, sans-serif;
         }
         
         .column-period.active {
-            color: #4B9CD3;
+            color: var(--carolina-blue);
         }
         
         .column-countdown {
-            font-size: 2cqw;
-            color: #4B9CD3;
+            font-size: 3.5cqw;
+            color: var(--carolina-blue);
             margin-top: 1cqh;
-            font-family: -apple-system, sans-serif;
         }
     </style>
 </head>
@@ -137,7 +140,7 @@
         </div>
         <div class="right">
             <div class="clock-area">
-                <div id="main-clock">--:--:--</div>
+                <div id="main-clock">--:--:-- --</div>
                 <div id="schedule-columns">
                     <div class="schedule-column">
                         <div class="column-label">--</div>
@@ -163,7 +166,7 @@
     </div>
 
     <script>
-        // Firebase config
+        // Dashboard Display v1.1.2
         const firebaseConfig = {
             apiKey: "AIzaSyDfo45UBu-pR8nqMQhVlS_QgyYZ2kzBdvM",
             authDomain: "ellisbell-c185c.firebaseapp.com",
@@ -183,23 +186,19 @@
         let schedules = {};
         let config = {};
         
-        // Config document path
         const configRef = db.collection('artifacts').doc(appId)
             .collection('public').doc('data')
             .collection('config').doc('dashboard');
         
         async function init() {
-            // Sign in anonymously
             await auth.signInAnonymously();
             
-            // Load config and set up real-time listener
             configRef.onSnapshot(snapshot => {
                 if (snapshot.exists) {
                     config = snapshot.data();
                     updateDashboard(config);
                     loadSchedules(config);
                 } else {
-                    console.warn('No config found, using defaults');
                     config = {
                         s1: 'aG3WYSOVJd5EKKdZjSeq',
                         s2: 'nNGdsY4spQph2YITgNWc',
@@ -213,22 +212,17 @@
                 }
             });
             
-            // Check for new videos every 5 minutes
             checkForNewVideo();
             setInterval(checkForNewVideo, 300000);
             
-            // Update clock every second
             setInterval(updateClock, 1000);
             updateClock();
         }
         
         function updateDashboard(config) {
-            // Update slides URL
-            const sheetId = config.sheetID || '1v7ZuPnQcG2FnDRITFo55u-c4CRT9CMhDL_-yDmzE5sA';
             document.getElementById('slides').src = 
                 `https://docs.google.com/presentation/d/e/2PACX-1vRGoECJPzxYQ4axmA2K0xy4idvI3m_N04OgWN_qpITDA0XCpT_ntcxLfp1tQvmf5Vn5jXeuHGhrC1A3/pub?start=true&loop=true&delayms=60000`;
             
-            // Update video folder ID if changed
             const newFolderId = config.videoFolderId || '1rhirAMiKrhkteVPk4wB7Giumi9agnP6N';
             if (window.currentFolderId !== newFolderId) {
                 window.currentFolderId = newFolderId;
@@ -268,7 +262,6 @@
             document.getElementById('main-clock').textContent = 
                 `${displayHours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} ${ampm}`;
             
-            // Update columns
             const columns = document.querySelectorAll('.schedule-column');
             const scheduleIds = [config.s1, config.s2, config.s3];
             const labels = [config.l1, config.l2, config.l3];
@@ -297,7 +290,6 @@
             const now = new Date();
             const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
             
-            // Check if in a period
             for (const period of schedule.periods) {
                 const bells = period.bells || [];
                 if (bells.length === 0) continue;
@@ -308,15 +300,10 @@
                 
                 if (nowSeconds >= start && nowSeconds < end) {
                     const endsAt = formatTime12Hour(end);
-                    return {
-                        period: period.name,
-                        countdown: `ends at ${endsAt}`,
-                        active: true
-                    };
+                    return { period: period.name, countdown: `ends at ${endsAt}`, active: true };
                 }
             }
             
-            // Find next period
             let nextPeriod = null;
             let nextStart = Infinity;
             
@@ -335,11 +322,7 @@
             
             if (nextPeriod) {
                 const countdown = nextStart - nowSeconds;
-                return {
-                    period: nextPeriod.name,
-                    countdown: `starts in ${formatCountdown(countdown)}`,
-                    active: false
-                };
+                return { period: nextPeriod.name, countdown: `starts in ${formatCountdown(countdown)}`, active: false };
             }
             
             return { period: 'Day Complete', countdown: '', active: false };
@@ -389,7 +372,6 @@
                         loadVideo(newestVideo.id, newestVideo.name);
                     }
                 } else {
-                    console.warn('No videos found in folder');
                     document.getElementById('loading').textContent = 'No videos in folder';
                 }
             } catch (error) {
@@ -411,14 +393,11 @@
             loading.style.display = 'none';
             
             video.addEventListener('error', () => {
-                console.error('Video playback error');
                 loading.textContent = 'Video playback error';
                 loading.style.display = 'block';
             });
             
-            video.play().catch(err => {
-                console.error('Play error:', err);
-            });
+            video.play().catch(err => console.error('Play error:', err));
         }
         
         init();
