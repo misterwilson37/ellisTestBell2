@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard 1.2.0</title>
-    <!-- Dashboard Display v1.2.0 -->
+    <title>Dashboard 1.2.2</title>
+    <!-- Dashboard Display v1.2.2 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.2.0 */
+        /* Dashboard Display v1.2.2 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -297,6 +297,7 @@
             <button class="btn-secondary" id="preview-btn">Launch Dashboard</button>
             <button class="btn-secondary" id="copy-url-btn" style="display:none;">Copy URL</button>
             <button class="btn-secondary" id="last-config-btn" style="display:none;">📺 Launch Last</button>
+            <a href="dashboard.html?tv" target="_blank" class="btn-secondary" style="display:inline-block; text-decoration:none; text-align:center;">📺 Launch TV View</a>
         </div>
         
         <div id="generated-url"></div>
@@ -304,10 +305,12 @@
         <div class="setup-note">
             <strong>Tip:</strong> Video and slides are shared across all dashboards. 
             Customize which schedules appear in your view using the options above.
+            <br><br>
+            <strong>For TVs:</strong> The "Launch TV View" button uses the centrally-managed admin configuration.
         </div>
         
         <div class="version-info">
-            Dashboard v1.2.0 | Ellis Web Bell
+            Dashboard v1.2.2 | Ellis Web Bell
             <br>
             <a href="index.html">← Back to Bell Schedule</a>
         </div>
@@ -346,7 +349,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.2.0
+        // Dashboard Display v1.2.2
         const firebaseConfig = {
             apiKey: "AIzaSyDfo45UBu-pR8nqMQhVlS_QgyYZ2kzBdvM",
             authDomain: "ellisbell-c185c.firebaseapp.com",
@@ -394,9 +397,11 @@
         async function init() {
             await auth.signInAnonymously();
             
+            const params = new URLSearchParams(window.location.search);
+            const useSharedConfig = params.has('tv') || params.has('shared');
             const urlConfig = parseUrlParams();
             
-            if (!urlConfig) {
+            if (!urlConfig && !useSharedConfig) {
                 // No URL params - show setup mode
                 document.body.classList.add('setup-mode');
                 await populateSetupDropdowns();
@@ -418,21 +423,41 @@
                 return;
             }
             
-            // Have URL params - show dashboard
-            scheduleConfig = urlConfig;
-            
-            // Listen for media config from Firestore (video folder, slides URL)
-            configRef.onSnapshot(snapshot => {
-                if (snapshot.exists) {
-                    mediaConfig = snapshot.data();
-                } else {
-                    mediaConfig = {};
-                }
-                updateMedia(mediaConfig);
-            });
-            
-            // Load schedules based on URL config
-            loadSchedules(scheduleConfig);
+            if (useSharedConfig) {
+                // ?tv or ?shared - use Firestore config for everything
+                configRef.onSnapshot(snapshot => {
+                    if (snapshot.exists) {
+                        const data = snapshot.data();
+                        scheduleConfig = {
+                            s1: data.s1 || null,
+                            s2: data.s2 || null,
+                            s3: data.s3 || null,
+                            l1: data.l1 || '',
+                            l2: data.l2 || '',
+                            l3: data.l3 || ''
+                        };
+                        mediaConfig = data;
+                        updateMedia(mediaConfig);
+                        loadSchedules(scheduleConfig);
+                    }
+                });
+            } else {
+                // Have custom URL params - show dashboard with those
+                scheduleConfig = urlConfig;
+                
+                // Listen for media config from Firestore (video folder, slides URL)
+                configRef.onSnapshot(snapshot => {
+                    if (snapshot.exists) {
+                        mediaConfig = snapshot.data();
+                    } else {
+                        mediaConfig = {};
+                    }
+                    updateMedia(mediaConfig);
+                });
+                
+                // Load schedules based on URL config
+                loadSchedules(scheduleConfig);
+            }
             
             // Start video check
             checkForNewVideo();
