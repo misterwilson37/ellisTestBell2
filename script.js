@@ -1,6 +1,6 @@
 const APP_VERSION = "5.46.2"
 const CLOCK_VERSION = "1.1.7"
-const DASHBOARD_VERSION = "1.2.2"
+const DASHBOARD_VERSION = "1.2.3"
 // V5.46.2: Dashboard v1.2.2 - added Launch TV View button
 // - Added CLOCK_VERSION and DASHBOARD_VERSION constants (dynamically displayed in footer)
 // V5.46.0: Clock Display v1.1.7 + Dashboard link
