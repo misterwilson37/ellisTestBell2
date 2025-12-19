@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard 1.2.2</title>
-    <!-- Dashboard Display v1.2.2 -->
+    <title>Dashboard 1.2.3</title>
+    <!-- Dashboard Display v1.2.3 -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.2.2 */
+        /* Dashboard Display v1.2.3 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -257,6 +257,46 @@
             color: var(--carolina-blue);
             text-decoration: none;
         }
+        
+        /* Popup icon - appears on hover */
+        #popup-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background: rgba(75, 156, 211, 0.8);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+        
+        #popup-icon:hover {
+            background: rgba(75, 156, 211, 1);
+        }
+        
+        #popup-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+        
+        /* Show on hover over the container */
+        .container:hover #popup-icon {
+            opacity: 1;
+        }
+        
+        /* Never show on touch devices (TVs, tablets) */
+        @media (hover: none) {
+            #popup-icon {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -303,20 +343,23 @@
         <div id="generated-url"></div>
         
         <div class="setup-note">
-            <strong>Tip:</strong> Video and slides are shared across all dashboards. 
-            Customize which schedules appear in your view using the options above.
+            <strong>Tip:</strong> Customize your personal view using the options above. Video and slides are shared.
             <br><br>
-            <strong>For TVs:</strong> The "Launch TV View" button uses the centrally-managed admin configuration.
+            <strong>📺 Launch TV View</strong> opens the shared dashboard that's on the school TVs (configured by admin).
         </div>
         
         <div class="version-info">
-            Dashboard v1.2.2 | Ellis Web Bell
+            Dashboard v1.2.3 | Ellis Web Bell
             <br>
             <a href="index.html">← Back to Bell Schedule</a>
         </div>
     </div>
 
     <div class="container">
+        <!-- Popup icon - appears on hover -->
+        <div id="popup-icon" title="Open in popup window" onclick="openPopupWindow()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+        </div>
         <div class="left">
             <div class="loading" id="loading">Loading video</div>
             <video id="video" loop muted autoplay style="display:none;"></video>
@@ -349,7 +392,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.2.2
+        // Dashboard Display v1.2.3
         const firebaseConfig = {
             apiKey: "AIzaSyDfo45UBu-pR8nqMQhVlS_QgyYZ2kzBdvM",
             authDomain: "ellisbell-c185c.firebaseapp.com",
@@ -394,8 +437,36 @@
             return null;
         }
         
+        // Wait for Firebase auth state
+        function waitForAuth() {
+            return new Promise((resolve) => {
+                const unsubscribe = auth.onAuthStateChanged((user) => {
+                    unsubscribe();
+                    resolve(user);
+                });
+            });
+        }
+        
         async function init() {
-            await auth.signInAnonymously();
+            // Check if user is already authenticated (e.g., from main app)
+            // Only sign in anonymously if no existing auth
+            try {
+                const currentUser = await waitForAuth();
+                if (currentUser) {
+                    console.log('Already authenticated as:', currentUser.uid, currentUser.isAnonymous ? '(anonymous)' : '(signed in)');
+                } else {
+                    console.log('No existing auth, signing in anonymously...');
+                    await auth.signInAnonymously();
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                // Try anonymous as fallback
+                try {
+                    await auth.signInAnonymously();
+                } catch (e) {
+                    console.error('Fallback anonymous auth failed:', e);
+                }
+            }
             
             const params = new URLSearchParams(window.location.search);
             const useSharedConfig = params.has('tv') || params.has('shared');
@@ -731,6 +802,47 @@
             });
             
             video.play().catch(err => console.error('Play error:', err));
+        }
+        
+        // Open in popup window - uses Document PiP API for always-on-top behavior
+        async function openPopupWindow() {
+            const url = window.location.href;
+            
+            // Try Document Picture-in-Picture API first (Chrome 116+)
+            if ('documentPictureInPicture' in window) {
+                try {
+                    const pipWindow = await documentPictureInPicture.requestWindow({
+                        width: 640,
+                        height: 400,
+                    });
+                    
+                    // Style the PiP window body
+                    pipWindow.document.body.style.margin = '0';
+                    pipWindow.document.body.style.padding = '0';
+                    pipWindow.document.body.style.overflow = 'hidden';
+                    pipWindow.document.body.style.background = '#000';
+                    
+                    // Create an iframe that loads the dashboard
+                    const iframe = pipWindow.document.createElement('iframe');
+                    iframe.src = url;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    pipWindow.document.body.appendChild(iframe);
+                    
+                    console.log('Opened dashboard in Picture-in-Picture mode');
+                    return;
+                } catch (error) {
+                    console.log('Document PiP not available, using regular popup:', error);
+                }
+            }
+            
+            // Fallback to regular popup
+            const width = 1280;
+            const height = 720;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            window.open(url, 'DashboardDisplay', `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`);
         }
         
         // ESC key returns to setup page
