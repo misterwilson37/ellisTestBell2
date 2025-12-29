@@ -1,6 +1,13 @@
-const APP_VERSION = "5.61.2"
+const APP_VERSION = "5.62.0"
 const CLOCK_VERSION = "1.1.7"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.62.0: Memory Management System
+// - Added automatic memory purge during safe windows (when no bells approaching)
+// - Audio players now auto-dispose after playback
+// - Tracks and cleans up Tone.Player instances to prevent accumulation
+// - Clears unused audio buffer cache periodically
+// - Added PRODUCTION_MODE flag to reduce console logging
+// - Safe memory window = 60s before next bell (no cleanup during critical times)
 // V5.61.2: Dashboard v1.2.2 - added Launch TV View button
 // - Added CLOCK_VERSION and DASHBOARD_VERSION constants (dynamically displayed in footer)
 // V5.61.0: Clock Display v1.1.7 + Dashboard link
@@ -748,6 +755,148 @@ let oscillatorAlertInterval = null; // NEW in 4.38: For pre-bell wake-up
 let isOscillatorAlert = false; // NEW in 4.38: Flag for pre-bell wake-up
 
 let periodCollapsePreference = {}; // NEW in 4.49: Store collapse state { periodName: bool }
+
+// ============================================
+// V5.61.0: MEMORY MANAGEMENT SYSTEM
+// Prevents memory leaks during long runtime
+// ============================================
+
+// Track active Tone.Player instances for cleanup
+let activeAudioPlayers = [];
+const MAX_CACHED_PLAYERS = 5; // Keep only recent players
+
+// Track last memory purge time
+let lastMemoryPurgeTime = 0;
+const MEMORY_PURGE_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const SAFE_WINDOW_THRESHOLD = 60 * 1000; // 60 seconds from next bell
+
+// Production mode flag - reduces console logging
+const PRODUCTION_MODE = true; // Set to false for debugging
+
+// Memory-safe console wrapper
+const safeLog = {
+    log: (...args) => { if (!PRODUCTION_MODE) console.log(...args); },
+    warn: (...args) => { console.warn(...args); }, // Always show warnings
+    error: (...args) => { console.error(...args); }, // Always show errors
+    important: (...args) => { console.log('[BELL]', ...args); } // Important logs always show
+};
+
+/**
+ * Check if we're in a safe window for memory operations
+ * Safe = more than SAFE_WINDOW_THRESHOLD ms until next bell
+ */
+function isInSafeMemoryWindow() {
+    const now = new Date();
+    const currentTimeHHMMSS = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    
+    const allBells = [...localSchedule, ...personalBells];
+    const nextBell = allBells
+        .filter(b => b.time > currentTimeHHMMSS)
+        .sort((a, b) => a.time.localeCompare(b.time))[0];
+    
+    if (!nextBell) return true; // No more bells today = safe
+    
+    const [h, m, s] = nextBell.time.split(':').map(Number);
+    const nextBellDate = new Date();
+    nextBellDate.setHours(h, m, s, 0);
+    
+    const msUntilBell = nextBellDate.getTime() - now.getTime();
+    return msUntilBell > SAFE_WINDOW_THRESHOLD;
+}
+
+/**
+ * Clean up old audio players to prevent memory buildup
+ */
+function cleanupAudioPlayers() {
+    if (activeAudioPlayers.length > MAX_CACHED_PLAYERS) {
+        const toRemove = activeAudioPlayers.splice(0, activeAudioPlayers.length - MAX_CACHED_PLAYERS);
+        toRemove.forEach(player => {
+            try {
+                if (player && typeof player.dispose === 'function') {
+                    player.stop();
+                    player.dispose();
+                }
+            } catch (e) {
+                // Ignore disposal errors
+            }
+        });
+        safeLog.log(`[Memory] Cleaned up ${toRemove.length} audio players`);
+    }
+}
+
+/**
+ * Purge non-essential cached data during safe windows
+ */
+function purgeMemoryIfSafe() {
+    const now = Date.now();
+    
+    // Don't purge too frequently
+    if (now - lastMemoryPurgeTime < MEMORY_PURGE_INTERVAL) return;
+    
+    // Don't purge if a bell is approaching
+    if (!isInSafeMemoryWindow()) {
+        safeLog.log('[Memory] Skipping purge - bell approaching');
+        return;
+    }
+    
+    safeLog.important('[Memory] Starting safe memory purge...');
+    lastMemoryPurgeTime = now;
+    
+    // 1. Clean up old audio players
+    cleanupAudioPlayers();
+    
+    // 2. Clear old audio buffer cache (keep only frequently used)
+    const essentialSounds = ['Bell', 'Chime', 'Beep', 'Alarm', 'ellisBell.mp3'];
+    const cacheKeys = Object.keys(synths);
+    let clearedCount = 0;
+    
+    cacheKeys.forEach(key => {
+        // Keep built-in synths and ellisBell
+        if (essentialSounds.includes(key)) return;
+        
+        // Keep buffers that are actively used in schedule
+        const soundInUse = [...localSchedule, ...personalBells].some(bell => 
+            bell.sound === key || bell.sound?.includes(key) || 
+            key.includes(bell.sound)
+        );
+        
+        if (!soundInUse && key.startsWith('buffer-')) {
+            delete synths[key];
+            clearedCount++;
+        }
+    });
+    
+    if (clearedCount > 0) {
+        safeLog.log(`[Memory] Cleared ${clearedCount} unused audio buffers`);
+    }
+    
+    // 3. Hint to browser for garbage collection (if available)
+    if (typeof window.gc === 'function') {
+        window.gc();
+    }
+    
+    safeLog.important('[Memory] Purge complete');
+}
+
+/**
+ * Track a new audio player for later cleanup
+ */
+function trackAudioPlayer(player) {
+    activeAudioPlayers.push(player);
+    // Immediate cleanup if we're way over limit
+    if (activeAudioPlayers.length > MAX_CACHED_PLAYERS * 2) {
+        cleanupAudioPlayers();
+    }
+}
+
+// Run memory check periodically (but only during safe windows)
+setInterval(() => {
+    purgeMemoryIfSafe();
+}, MEMORY_PURGE_INTERVAL);
+
+// ============================================
+// END V5.61.0: MEMORY MANAGEMENT SYSTEM
+// ============================================
 let currentVisualPeriodName = null; // NEW in 4.50: Tracks the period currently displayed by the visual cue.
 let currentVisualKey = null; // NEW: Tracks the actual visual being displayed (e.g., "after:bellId", "before:bellId", "period:name")
 
@@ -1671,7 +1820,14 @@ async function playBell(soundName) {
         if (synths[bufferCacheKey] instanceof AudioBuffer) {
             // console.log("Playing from AudioBuffer cache:", bufferCacheKey);
             const player = new Tone.Player(synths[bufferCacheKey]).toDestination();
+            trackAudioPlayer(player); // V5.61.0: Track for cleanup
             player.start(now);
+            // V5.61.0: Auto-dispose after playback
+            player.onstop = () => {
+                try { player.dispose(); } catch(e) {}
+                const idx = activeAudioPlayers.indexOf(player);
+                if (idx > -1) activeAudioPlayers.splice(idx, 1);
+            };
             return; // Played from cache
         }
 
@@ -1681,7 +1837,14 @@ async function playBell(soundName) {
             const buffer = await synths[bufferCacheKey];
             if (buffer) {
                 const player = new Tone.Player(buffer).toDestination();
+                trackAudioPlayer(player); // V5.61.0: Track for cleanup
                 player.start(now);
+                // V5.61.0: Auto-dispose after playback
+                player.onstop = () => {
+                    try { player.dispose(); } catch(e) {}
+                    const idx = activeAudioPlayers.indexOf(player);
+                    if (idx > -1) activeAudioPlayers.splice(idx, 1);
+                };
             } else {
                 // Promise resolved to null (it failed)
                 console.warn(`In-flight promise for ${bufferCacheKey} failed. Reverting to default.`);
@@ -1719,7 +1882,14 @@ async function playBell(soundName) {
         if (newBuffer) {
             synths[bufferCacheKey] = newBuffer; // Overwrite promise with resolved buffer
             const player = new Tone.Player(newBuffer).toDestination();
+            trackAudioPlayer(player); // V5.61.0: Track for cleanup
             player.start(now);
+            // V5.61.0: Auto-dispose after playback
+            player.onstop = () => {
+                try { player.dispose(); } catch(e) {}
+                const idx = activeAudioPlayers.indexOf(player);
+                if (idx > -1) activeAudioPlayers.splice(idx, 1);
+            };
         } else {
             // Fetching failed, play default as fallback
             console.warn("Falling back to default bell.");
@@ -2996,7 +3166,7 @@ function updateClock() {
         
         // Only update the DOM if the visual has actually changed
         if (newVisualKey !== currentVisualKey) {
-            console.log(`Visual: ${visualSource}`);
+            safeLog.log(`Visual: ${visualSource}`); // V5.61.0: Use safe logging
             visualCueContainer.innerHTML = visualHtml;
             currentVisualKey = newVisualKey;
         }
