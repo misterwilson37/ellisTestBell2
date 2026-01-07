@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.2.0 -->
+    <!-- Clock Display v1.2.1 -->
     <!-- v1.2.0: Added personal schedule support for teachers with multiple personal schedules -->
+    <!-- v1.2.0: Added relative bell time calculation (personal schedules use relative bells) -->
+    <!-- v1.2.0: Handles linked schedules (personal schedules based on shared schedules) -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -56,6 +58,8 @@
             padding: 24px 32px;
             max-width: 650px;
             width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             border: 1px solid #333;
         }
@@ -607,6 +611,133 @@
             return h * 3600 + m * 60 + (s || 0);
         }
         
+        // Convert seconds since midnight to HH:MM:SS string
+        function secondsToTime(totalSeconds) {
+            // Handle negative or overflow
+            while (totalSeconds < 0) totalSeconds += 86400;
+            totalSeconds = totalSeconds % 86400;
+            
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        
+        // Calculate relative bell time recursively
+        function calculateRelativeBellTime(bell, bellMap, allPeriods, visited = new Set()) {
+            // 1. If the bell already has a static time (and isn't relative), return it
+            if (bell.time && !bell.relative) {
+                return bell.time;
+            }
+            
+            // 2. Handle relative bell (by parentBellId)
+            if (bell.relative && bell.relative.parentBellId) {
+                if (visited.has(bell.bellId)) {
+                    console.error(`Circular dependency for bell "${bell.name}"`);
+                    return null;
+                }
+                visited.add(bell.bellId);
+                
+                const parentBell = bellMap.get(bell.relative.parentBellId);
+                if (!parentBell) {
+                    console.warn(`Parent bell not found for "${bell.name}"`);
+                    return null;
+                }
+                
+                const parentTime = calculateRelativeBellTime(parentBell, bellMap, allPeriods, new Set(visited));
+                if (!parentTime || typeof parentTime === 'object') return null;
+                
+                const parentSeconds = timeToSeconds(parentTime);
+                const myTimeSeconds = parentSeconds + bell.relative.offsetSeconds;
+                return secondsToTime(myTimeSeconds);
+            }
+            
+            // 3. Handle relative bell (by parentPeriodName + parentAnchorType)
+            if (bell.relative && bell.relative.parentPeriodName) {
+                if (visited.has(bell.bellId)) {
+                    console.error(`Circular dependency for bell "${bell.name}"`);
+                    return null;
+                }
+                visited.add(bell.bellId);
+                
+                const { parentPeriodName, parentAnchorType, offsetSeconds } = bell.relative;
+                const parentPeriod = allPeriods.find(p => p.name === parentPeriodName);
+                
+                if (!parentPeriod || !parentPeriod.bells) {
+                    console.warn(`Parent period "${parentPeriodName}" not found for "${bell.name}"`);
+                    return null;
+                }
+                
+                // Find anchor bell - look for anchorRole first, then fall back to name
+                let anchorBell = null;
+                const targetRole = parentAnchorType === 'period_start' ? 'start' : 'end';
+                
+                // Try anchorRole first
+                anchorBell = parentPeriod.bells.find(b => b.anchorRole === targetRole && !b.relative);
+                
+                // Fall back to name match
+                if (!anchorBell) {
+                    const targetName = parentAnchorType === 'period_start' ? 'Period Start' : 'Period End';
+                    anchorBell = parentPeriod.bells.find(b => b.name === targetName && !b.relative);
+                }
+                
+                // Fall back to first/last static bell
+                if (!anchorBell) {
+                    const staticBells = parentPeriod.bells.filter(b => b.time && !b.relative);
+                    if (staticBells.length > 0) {
+                        staticBells.sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
+                        anchorBell = parentAnchorType === 'period_start' ? staticBells[0] : staticBells[staticBells.length - 1];
+                    }
+                }
+                
+                if (!anchorBell) {
+                    console.warn(`No anchor bell found in "${parentPeriodName}" for "${bell.name}"`);
+                    return null;
+                }
+                
+                const anchorTime = calculateRelativeBellTime(anchorBell, bellMap, allPeriods, new Set(visited));
+                if (!anchorTime || typeof anchorTime === 'object') return null;
+                
+                const anchorSeconds = timeToSeconds(anchorTime);
+                const myTimeSeconds = anchorSeconds + offsetSeconds;
+                return secondsToTime(myTimeSeconds);
+            }
+            
+            // 4. Invalid bell
+            console.warn(`Invalid bell: "${bell.name}" has no time or relative data`);
+            return null;
+        }
+        
+        // Resolve all bell times in a schedule's periods (handles relative bells)
+        function resolveScheduleBellTimes(periods) {
+            if (!periods || periods.length === 0) return periods;
+            
+            // Build a map of all bells by bellId
+            const bellMap = new Map();
+            periods.forEach(period => {
+                (period.bells || []).forEach(bell => {
+                    if (bell.bellId) {
+                        bellMap.set(bell.bellId, bell);
+                    }
+                });
+            });
+            
+            // Calculate times for all bells
+            const resolvedPeriods = periods.map(period => {
+                const resolvedBells = (period.bells || []).map(bell => {
+                    const calculatedTime = calculateRelativeBellTime(bell, bellMap, periods, new Set());
+                    if (calculatedTime && typeof calculatedTime === 'string') {
+                        return { ...bell, time: calculatedTime };
+                    }
+                    return { ...bell, time: null }; // Failed to calculate
+                }).filter(bell => bell.time !== null);
+                
+                return { ...period, bells: resolvedBells };
+            });
+            
+            return resolvedPeriods;
+        }
+        
         // Get current period status for a schedule
         function getPeriodStatus(scheduleId) {
             const schedule = scheduleData[scheduleId];
@@ -877,9 +1008,64 @@
                     
                 if (doc.exists) {
                     const data = doc.data();
+                    let periods = data.periods || [];
+                    
+                    // Check if this schedule is linked to a base (shared) schedule
+                    const baseScheduleId = data.baseScheduleId;
+                    const isStandalone = !baseScheduleId || data.isStandalone;
+                    
+                    if (!isStandalone && baseScheduleId) {
+                        // Load the base schedule and merge periods
+                        console.log(`Personal schedule "${data.name}" is linked to base: ${baseScheduleId}`);
+                        
+                        // Load base schedule if not already loaded
+                        await loadSchedule(baseScheduleId);
+                        const baseSchedule = scheduleData[baseScheduleId];
+                        
+                        if (baseSchedule && baseSchedule.periods) {
+                            // Merge: base periods + personal periods
+                            const mergedPeriodsMap = new Map();
+                            
+                            // Add base periods first
+                            baseSchedule.periods.forEach(period => {
+                                mergedPeriodsMap.set(period.name, {
+                                    ...period,
+                                    bells: (period.bells || []).map(b => ({ ...b }))
+                                });
+                            });
+                            
+                            // Merge personal periods
+                            periods.forEach(period => {
+                                if (mergedPeriodsMap.has(period.name)) {
+                                    // Period exists in base - merge bells
+                                    const basePeriod = mergedPeriodsMap.get(period.name);
+                                    basePeriod.bells = [...basePeriod.bells, ...(period.bells || [])];
+                                } else {
+                                    // New personal-only period
+                                    mergedPeriodsMap.set(period.name, {
+                                        ...period,
+                                        bells: (period.bells || []).map(b => ({ ...b }))
+                                    });
+                                }
+                            });
+                            
+                            periods = Array.from(mergedPeriodsMap.values());
+                            console.log(`Merged ${baseSchedule.periods.length} base + personal periods`);
+                        }
+                    }
+                    
+                    // Resolve relative bell times
+                    periods = resolveScheduleBellTimes(periods);
+                    console.log(`Resolved bell times for personal schedule: ${data.name}`);
+                    
+                    // Log period bell counts for debugging
+                    periods.forEach(p => {
+                        console.log(`  Period "${p.name}": ${p.bells.length} bells after resolution`);
+                    });
+                    
                     scheduleData[key] = {
                         name: data.name,
-                        periods: data.periods || [],
+                        periods: periods,
                         isPersonal: true,
                         userId: userId
                     };
