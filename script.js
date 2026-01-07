@@ -1,4 +1,4 @@
-const APP_VERSION = "5.63.0"
+const APP_VERSION = "5.63.1"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
 // V5.63.0: Share Code Feature
@@ -6647,7 +6647,7 @@ async function handleRenameSharedScheduleSubmit(e) {
         schedule = allPersonalSchedules.find(s => s.id === activePersonalScheduleId);
         if (!schedule) return;
         // Personal schedules are stored under user's collection
-        docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'personalSchedules', activePersonalScheduleId);
+        docRef = doc(db, 'artifacts', appId, 'users', userId, 'personal_schedules', activePersonalScheduleId);
     } else if (type === 'shared' && activeBaseScheduleId && scheduleRef) {
         schedule = allSchedules.find(s => s.id === activeBaseScheduleId);
         if (!schedule) return;
@@ -8605,7 +8605,7 @@ async function createShareCode() {
             ownerId: userId,
             scheduleId: activePersonalScheduleId,
             scheduleName: schedule.name,
-            ownerName: currentUser?.displayName || 'Anonymous',
+            ownerName: auth.currentUser?.displayName || 'Anonymous',
             createdAt: new Date().toISOString()
         });
         
@@ -8834,11 +8834,14 @@ async function loadFollowingSchedules() {
 }
 
 /**
- * Update the "Following (N)" button text
+ * Update the "Manage Followed Schedules" button text with count
  */
 function updateFollowingButton() {
     if (manageFollowingBtn) {
-        manageFollowingBtn.textContent = `👥 Following (${followingSchedules.length})`;
+        const count = followingSchedules.length;
+        manageFollowingBtn.textContent = count > 0 
+            ? `👥 Manage Followed Schedules (${count})`
+            : `👥 Manage Followed Schedules`;
     }
 }
 
