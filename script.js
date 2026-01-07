@@ -1,6 +1,14 @@
-const APP_VERSION = "5.62.0"
-const CLOCK_VERSION = "1.1.7"
+const APP_VERSION = "5.63.0"
+const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.63.0: Share Code Feature
+// - Users can generate 6-character share codes for their personal schedules
+// - Colleagues can enter share codes to "follow" schedules (read-only access)
+// - Following schedules appear in schedule selector under "📥 Following" group
+// - Followers can duplicate shared schedules to their own account
+// - Share codes can be revoked by the owner
+// - Updated Firestore rules: personal schedules readable by all authenticated users
+// - Updated Storage rules: user sounds/visuals readable by all authenticated users
 // V5.62.0: Memory Management System
 // - Added automatic memory purge during safe windows (when no bells approaching)
 // - Audio players now auto-dispose after playback
@@ -649,6 +657,35 @@ const sharedAudioFilesList = document.getElementById('shared-audio-files-list');
 
 const signOutBtn = document.getElementById('signout-btn');
 
+// V5.63.0: Share Code Feature DOM Elements
+const shareScheduleModal = document.getElementById('share-schedule-modal');
+const shareScheduleName = document.getElementById('share-schedule-name');
+const shareCodeGenerate = document.getElementById('share-code-generate');
+const shareCodeDisplay = document.getElementById('share-code-display');
+const shareCodeValue = document.getElementById('share-code-value');
+const generateShareCodeBtn = document.getElementById('generate-share-code-btn');
+const copyShareCodeBtn = document.getElementById('copy-share-code-btn');
+const revokeShareCodeBtn = document.getElementById('revoke-share-code-btn');
+const shareScheduleStatus = document.getElementById('share-schedule-status');
+const shareScheduleCloseBtn = document.getElementById('share-schedule-close');
+const shareScheduleBtn = document.getElementById('share-schedule-btn');
+
+const enterShareCodeModal = document.getElementById('enter-share-code-modal');
+const enterShareCodeForm = document.getElementById('enter-share-code-form');
+const enterShareCodeInput = document.getElementById('enter-share-code-input');
+const shareCodePreview = document.getElementById('share-code-preview');
+const shareCodePreviewName = document.getElementById('share-code-preview-name');
+const shareCodePreviewOwner = document.getElementById('share-code-preview-owner');
+const enterShareCodeStatus = document.getElementById('enter-share-code-status');
+const enterShareCodeSubmit = document.getElementById('enter-share-code-submit');
+const enterShareCodeCancel = document.getElementById('enter-share-code-cancel');
+
+const manageFollowingModal = document.getElementById('manage-following-modal');
+const followingList = document.getElementById('following-list');
+const addShareCodeBtn = document.getElementById('add-share-code-btn');
+const manageFollowingCloseBtn = document.getElementById('manage-following-close');
+const manageFollowingBtn = document.getElementById('manage-following-btn');
+
 // DELETED: v3.24 - Removed hardcoded admin list
 // const ADMIN_EMAIL_LIST = [ ... ];
 
@@ -669,6 +706,11 @@ let schedulesCollectionRef; // For *all* shared schedules collection
 let sharedSchedulesListenerUnsubscribe = null; // v3.24 - For shared schedules
 let allSchedules = []; // Array of *all* shared schedules
 let allPersonalSchedules = []; // Array of *user's* personal schedules
+
+// V5.63.0: Share Code Feature State
+let followingSchedules = []; // Schedules the user is following
+let followingSchedulesData = {}; // Loaded schedule data for followed schedules
+let currentShareCodeLookup = null; // Temp storage for share code lookup result
 
 let activeBaseScheduleId = null; // MODIFIED: Renamed from activeScheduleId
 let activePersonalScheduleId = null; // NEW: ID of active personal schedule
@@ -4373,9 +4415,10 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
 function renderScheduleSelector() {
     // MODIFIED: v3.03 - Renders with optgroups
     // MODIFIED: V5.44 - Added standalone schedules optgroup
+    // MODIFIED: V5.63 - Added following schedules optgroup
     const lastSelectedId = localStorage.getItem('activeScheduleId') || (allSchedules.length > 0 ? `shared-${allSchedules[0].id}` : '');
     
-    if (allSchedules.length === 0 && allPersonalSchedules.length === 0) {
+    if (allSchedules.length === 0 && allPersonalSchedules.length === 0 && followingSchedules.length === 0) {
             scheduleSelector.innerHTML = '<option value="">No schedules found. Create one!</option>';
             setActiveSchedule(""); 
             return;
@@ -4402,6 +4445,13 @@ function renderScheduleSelector() {
             ${schedule.name}
         </option>`
     ).join('');
+    
+    // V5.63.0: Following schedules
+    let followingOptions = followingSchedules.map(f => 
+        `<option value="following-${f.ownerId}-${f.scheduleId}" ${`following-${f.ownerId}-${f.scheduleId}` === lastSelectedId ? 'selected' : ''}>
+            ${f.scheduleName} (${f.ownerName || 'Unknown'})
+        </option>`
+    ).join('');
 
     scheduleSelector.innerHTML = `
         <optgroup label="My Personal Schedules" id="personal-schedules-optgroup">
@@ -4410,6 +4460,11 @@ function renderScheduleSelector() {
         <optgroup label="My Custom Standalone Schedules" id="standalone-schedules-optgroup">
             ${standaloneOptions || '<option value="" disabled>No standalone schedules created.</option>'}
         </optgroup>
+        ${followingSchedules.length > 0 ? `
+        <optgroup label="📥 Following" id="following-schedules-optgroup">
+            ${followingOptions}
+        </optgroup>
+        ` : ''}
         <optgroup label="Shared Schedules" id="shared-schedules-optgroup">
             ${sharedOptions}
         </optgroup>
@@ -5640,6 +5695,9 @@ async function initFirebase() {
                     // V5.53: Load cloud preferences and set up listener
                     await loadUserPreferencesFromCloud();
                     setupUserPreferencesListener();
+                    // V5.63.0: Load following schedules
+                    await loadFollowingSchedules();
+                    updateFollowingButton();
                     // NEW V5.00: Enable custom quick bell button
                     showCustomQuickBellManagerBtn.disabled = false;
                     showCustomQuickBellManagerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -5648,6 +5706,7 @@ async function initFirebase() {
                     createStandaloneScheduleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 } else {
                     allPersonalSchedules = []; // Clear personal schedules
+                    followingSchedules = []; // V5.63.0: Clear following schedules
                     // NEW V5.00: Disable custom quick bell button
                     showCustomQuickBellManagerBtn.disabled = true;
                     showCustomQuickBellManagerBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -6040,6 +6099,11 @@ function setActiveSchedule(prefixedId) {
     createPersonalScheduleBtn.textContent = 'Copy as Personal Schedule';
     deletePersonalScheduleBtn.disabled = true;
     deletePersonalScheduleBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    // V5.63.0: Disable share button
+    if (shareScheduleBtn) {
+        shareScheduleBtn.disabled = true;
+        shareScheduleBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
     
     if (document.body.classList.contains('admin-mode')) {
         addSharedBellForm.querySelector('button[type="submit"]').disabled = true;
@@ -6171,6 +6235,12 @@ function setActiveSchedule(prefixedId) {
         
         deletePersonalScheduleBtn.disabled = false;
         deletePersonalScheduleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        
+        // V5.63.0: Enable share button for personal schedules
+        if (shareScheduleBtn) {
+            shareScheduleBtn.disabled = false;
+            shareScheduleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
         
         // v3.05: Enable "Duplicate" button and manager buttons
         createPersonalScheduleBtn.disabled = false;
@@ -6419,6 +6489,89 @@ function setActiveSchedule(prefixedId) {
                 recalculateAndRenderAll();
             });
         }
+    } else if (type === 'following') {
+        // V5.63.0: Handle following (shared by another user) schedules
+        // Format: following-ownerId-scheduleId
+        const parts = prefixedId.split('-');
+        const followOwnerId = parts[1];
+        const followScheduleId = parts.slice(2).join('-'); // In case schedule ID has dashes
+        
+        console.log("Setting active FOLLOWING schedule:", followScheduleId, "from user:", followOwnerId);
+        
+        // Find the following entry
+        const followEntry = followingSchedules.find(f => f.ownerId === followOwnerId && f.scheduleId === followScheduleId);
+        if (!followEntry) {
+            console.error("Could not find following schedule entry.");
+            return;
+        }
+        
+        // Set as viewing another user's schedule (read-only)
+        activeBaseScheduleId = null;
+        activePersonalScheduleId = null; // Not our schedule
+        
+        scheduleTitle.textContent = `${followEntry.scheduleName} (Following)`;
+        
+        // V5.63.0: Hide standalone badge for following schedules
+        if (standaloneScheduleBadge) {
+            standaloneScheduleBadge.classList.add('hidden');
+        }
+        
+        // Keep all edit buttons disabled (read-only view)
+        // But allow duplicate action
+        createPersonalScheduleBtn.disabled = true; // Will enable duplicate via different path
+        
+        // Load the schedule from the other user's account
+        const followScheduleRef = doc(db, 'artifacts', appId, 'users', followOwnerId, 'personal_schedules', followScheduleId);
+        
+        // Clear any existing listeners
+        if (activeScheduleListenerUnsubscribe) {
+            activeScheduleListenerUnsubscribe();
+            activeScheduleListenerUnsubscribe = null;
+        }
+        if (activePersonalScheduleListenerUnsubscribe) {
+            activePersonalScheduleListenerUnsubscribe();
+            activePersonalScheduleListenerUnsubscribe = null;
+        }
+        
+        activeScheduleListenerUnsubscribe = onSnapshot(followScheduleRef, async (docSnap) => {
+            if (docSnap.exists()) {
+                const scheduleData = docSnap.data();
+                
+                // Check if this is a standalone or linked schedule
+                const isStandalone = !scheduleData.baseScheduleId || scheduleData.isStandalone;
+                
+                if (isStandalone) {
+                    // Standalone: use periods directly
+                    localSchedulePeriods = scheduleData.periods || [];
+                    personalBellsPeriods = [];
+                } else {
+                    // Linked: need to load the base schedule too
+                    const baseRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', scheduleData.baseScheduleId);
+                    const baseSnap = await getDoc(baseRef);
+                    if (baseSnap.exists()) {
+                        const baseData = baseSnap.data();
+                        localSchedulePeriods = baseData.periods || [];
+                    } else {
+                        localSchedulePeriods = [];
+                    }
+                    personalBellsPeriods = scheduleData.periods || [];
+                }
+                
+                // Load bell overrides for display
+                personalBellOverrides = scheduleData.bellOverrides || {};
+                personalPassingPeriodVisual = scheduleData.passingPeriodVisual || null;
+                
+                console.log("Loaded following schedule:", followEntry.scheduleName);
+                
+                recalculateAndRenderAll();
+            } else {
+                console.warn("Following schedule no longer exists.");
+                localSchedulePeriods = [];
+                personalBellsPeriods = [];
+                scheduleTitle.textContent = "Schedule Not Found";
+                recalculateAndRenderAll();
+            }
+        });
     }
 }
 
@@ -8361,6 +8514,441 @@ async function confirmRestorePersonalSchedule() {
         confirmRestoreModal.classList.add('hidden');
     }
 }
+
+// ============================================
+// V5.63.0: SHARE CODE FEATURE
+// ============================================
+
+/**
+ * Generate a random 6-character share code
+ */
+function generateShareCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars (0,O,1,I)
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+/**
+ * Open the share schedule modal
+ */
+async function openShareScheduleModal() {
+    if (!activePersonalScheduleId) {
+        showUserMessage('Please select a personal schedule first', 'error');
+        return;
+    }
+    
+    const schedule = allPersonalSchedules.find(s => s.id === activePersonalScheduleId);
+    if (!schedule) return;
+    
+    shareScheduleName.textContent = schedule.name;
+    shareScheduleStatus.classList.add('hidden');
+    
+    // Check if this schedule already has a share code
+    try {
+        const shareCodesRef = collection(db, 'artifacts', appId, 'public', 'data', 'share_codes');
+        const snapshot = await getDocs(shareCodesRef);
+        
+        let existingCode = null;
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.ownerId === userId && data.scheduleId === activePersonalScheduleId) {
+                existingCode = docSnap.id;
+            }
+        });
+        
+        if (existingCode) {
+            // Show existing code
+            shareCodeGenerate.classList.add('hidden');
+            shareCodeDisplay.classList.remove('hidden');
+            shareCodeValue.value = existingCode;
+        } else {
+            // Show generate button
+            shareCodeGenerate.classList.remove('hidden');
+            shareCodeDisplay.classList.add('hidden');
+        }
+        
+        shareScheduleModal.classList.remove('hidden');
+    } catch (error) {
+        console.error('Error checking share code:', error);
+        showUserMessage('Error checking share status', 'error');
+    }
+}
+
+/**
+ * Generate a new share code for the current schedule
+ */
+async function createShareCode() {
+    if (!activePersonalScheduleId || !userId) return;
+    
+    const schedule = allPersonalSchedules.find(s => s.id === activePersonalScheduleId);
+    if (!schedule) return;
+    
+    try {
+        shareScheduleStatus.textContent = 'Generating...';
+        shareScheduleStatus.classList.remove('hidden');
+        
+        // Generate unique code (check for collisions)
+        let code = generateShareCode();
+        let attempts = 0;
+        while (attempts < 10) {
+            const codeDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'share_codes', code));
+            if (!codeDoc.exists()) break;
+            code = generateShareCode();
+            attempts++;
+        }
+        
+        // Create the share code document
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'share_codes', code), {
+            ownerId: userId,
+            scheduleId: activePersonalScheduleId,
+            scheduleName: schedule.name,
+            ownerName: currentUser?.displayName || 'Anonymous',
+            createdAt: new Date().toISOString()
+        });
+        
+        // Update UI
+        shareCodeValue.value = code;
+        shareCodeGenerate.classList.add('hidden');
+        shareCodeDisplay.classList.remove('hidden');
+        shareScheduleStatus.textContent = 'Share code created!';
+        
+        showUserMessage(`Share code created: ${code}`, 'success');
+        
+    } catch (error) {
+        console.error('Error creating share code:', error);
+        shareScheduleStatus.textContent = 'Error creating share code';
+        shareScheduleStatus.classList.remove('hidden');
+    }
+}
+
+/**
+ * Copy share code to clipboard
+ */
+async function copyShareCodeToClipboard() {
+    const code = shareCodeValue.value;
+    try {
+        await navigator.clipboard.writeText(code);
+        showUserMessage('Share code copied!', 'success');
+    } catch (error) {
+        // Fallback
+        shareCodeValue.select();
+        document.execCommand('copy');
+        showUserMessage('Share code copied!', 'success');
+    }
+}
+
+/**
+ * Revoke (delete) a share code
+ */
+async function revokeShareCode() {
+    const code = shareCodeValue.value;
+    if (!code) return;
+    
+    if (!confirm('Revoke this share code? Anyone following your schedule will lose access.')) {
+        return;
+    }
+    
+    try {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'share_codes', code));
+        
+        shareCodeGenerate.classList.remove('hidden');
+        shareCodeDisplay.classList.add('hidden');
+        shareCodeValue.value = '';
+        
+        showUserMessage('Share code revoked', 'success');
+    } catch (error) {
+        console.error('Error revoking share code:', error);
+        showUserMessage('Error revoking share code', 'error');
+    }
+}
+
+/**
+ * Look up a share code as user types
+ */
+async function lookupShareCode(code) {
+    code = code.toUpperCase().trim();
+    
+    if (code.length !== 6) {
+        shareCodePreview.classList.add('hidden');
+        enterShareCodeSubmit.disabled = true;
+        currentShareCodeLookup = null;
+        return;
+    }
+    
+    try {
+        enterShareCodeStatus.textContent = 'Looking up...';
+        enterShareCodeStatus.classList.remove('hidden');
+        
+        const codeDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'share_codes', code));
+        
+        if (!codeDoc.exists()) {
+            enterShareCodeStatus.textContent = 'Share code not found';
+            enterShareCodeStatus.className = 'text-red-600 text-sm mt-4';
+            shareCodePreview.classList.add('hidden');
+            enterShareCodeSubmit.disabled = true;
+            currentShareCodeLookup = null;
+            return;
+        }
+        
+        const data = codeDoc.data();
+        
+        // Check if already following
+        const alreadyFollowing = followingSchedules.some(f => 
+            f.ownerId === data.ownerId && f.scheduleId === data.scheduleId
+        );
+        
+        if (alreadyFollowing) {
+            enterShareCodeStatus.textContent = "You're already following this schedule";
+            enterShareCodeStatus.className = 'text-yellow-600 text-sm mt-4';
+            shareCodePreview.classList.add('hidden');
+            enterShareCodeSubmit.disabled = true;
+            currentShareCodeLookup = null;
+            return;
+        }
+        
+        // Check if it's own schedule
+        if (data.ownerId === userId) {
+            enterShareCodeStatus.textContent = 'This is your own schedule!';
+            enterShareCodeStatus.className = 'text-yellow-600 text-sm mt-4';
+            shareCodePreview.classList.add('hidden');
+            enterShareCodeSubmit.disabled = true;
+            currentShareCodeLookup = null;
+            return;
+        }
+        
+        // Show preview
+        shareCodePreviewName.textContent = data.scheduleName;
+        shareCodePreviewOwner.textContent = `Shared by: ${data.ownerName || 'Unknown'}`;
+        shareCodePreview.classList.remove('hidden');
+        enterShareCodeStatus.classList.add('hidden');
+        enterShareCodeSubmit.disabled = false;
+        
+        currentShareCodeLookup = {
+            code: code,
+            ...data
+        };
+        
+    } catch (error) {
+        console.error('Error looking up share code:', error);
+        enterShareCodeStatus.textContent = 'Error looking up code';
+        enterShareCodeStatus.className = 'text-red-600 text-sm mt-4';
+        enterShareCodeSubmit.disabled = true;
+    }
+}
+
+/**
+ * Follow a schedule from a share code
+ */
+async function followSchedule() {
+    if (!currentShareCodeLookup || !userId) return;
+    
+    try {
+        enterShareCodeStatus.textContent = 'Following...';
+        enterShareCodeStatus.className = 'text-blue-600 text-sm mt-4';
+        enterShareCodeStatus.classList.remove('hidden');
+        
+        // Add to following collection
+        const followingRef = collection(db, 'artifacts', appId, 'users', userId, 'following');
+        await addDoc(followingRef, {
+            shareCode: currentShareCodeLookup.code,
+            ownerId: currentShareCodeLookup.ownerId,
+            scheduleId: currentShareCodeLookup.scheduleId,
+            scheduleName: currentShareCodeLookup.scheduleName,
+            ownerName: currentShareCodeLookup.ownerName,
+            addedAt: new Date().toISOString()
+        });
+        
+        showUserMessage(`Now following: ${currentShareCodeLookup.scheduleName}`, 'success');
+        
+        // Close modal and refresh
+        enterShareCodeModal.classList.add('hidden');
+        enterShareCodeForm.reset();
+        shareCodePreview.classList.add('hidden');
+        currentShareCodeLookup = null;
+        
+        // Reload following list
+        await loadFollowingSchedules();
+        updateFollowingButton();
+        populateScheduleSelector();
+        
+    } catch (error) {
+        console.error('Error following schedule:', error);
+        enterShareCodeStatus.textContent = 'Error following schedule';
+        enterShareCodeStatus.className = 'text-red-600 text-sm mt-4';
+    }
+}
+
+/**
+ * Unfollow a schedule
+ */
+async function unfollowSchedule(followDocId, scheduleName) {
+    if (!confirm(`Stop following "${scheduleName}"?`)) return;
+    
+    try {
+        await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'following', followDocId));
+        
+        showUserMessage(`Unfollowed: ${scheduleName}`, 'success');
+        
+        // Reload
+        await loadFollowingSchedules();
+        updateFollowingButton();
+        populateScheduleSelector();
+        renderFollowingList();
+        
+    } catch (error) {
+        console.error('Error unfollowing:', error);
+        showUserMessage('Error unfollowing schedule', 'error');
+    }
+}
+
+/**
+ * Load all schedules the user is following
+ */
+async function loadFollowingSchedules() {
+    if (!userId) {
+        followingSchedules = [];
+        return;
+    }
+    
+    try {
+        const followingRef = collection(db, 'artifacts', appId, 'users', userId, 'following');
+        const snapshot = await getDocs(followingRef);
+        
+        followingSchedules = [];
+        snapshot.forEach(docSnap => {
+            followingSchedules.push({
+                docId: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+        
+        console.log(`Loaded ${followingSchedules.length} following schedules`);
+        
+    } catch (error) {
+        console.error('Error loading following schedules:', error);
+        followingSchedules = [];
+    }
+}
+
+/**
+ * Update the "Following (N)" button text
+ */
+function updateFollowingButton() {
+    if (manageFollowingBtn) {
+        manageFollowingBtn.textContent = `👥 Following (${followingSchedules.length})`;
+    }
+}
+
+/**
+ * Render the following list in the manage modal
+ */
+function renderFollowingList() {
+    if (!followingList) return;
+    
+    if (followingSchedules.length === 0) {
+        followingList.innerHTML = '<p class="text-gray-500 text-center py-4">You\'re not following any schedules yet.</p>';
+        return;
+    }
+    
+    followingList.innerHTML = followingSchedules.map(f => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+                <p class="font-semibold text-gray-800">${f.scheduleName}</p>
+                <p class="text-sm text-gray-500">by ${f.ownerName || 'Unknown'}</p>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="duplicateFollowedSchedule('${f.ownerId}', '${f.scheduleId}', '${f.scheduleName.replace(/'/g, "\\'")}')" 
+                        class="px-3 py-1 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200" title="Duplicate as your own">
+                    📋 Copy
+                </button>
+                <button type="button" onclick="unfollowSchedule('${f.docId}', '${f.scheduleName.replace(/'/g, "\\'")}')" 
+                        class="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200" title="Unfollow">
+                    ✕
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+/**
+ * Duplicate a followed schedule as your own personal schedule
+ */
+async function duplicateFollowedSchedule(ownerId, scheduleId, scheduleName) {
+    if (!userId) return;
+    
+    const newName = prompt('Name for your copy:', `${scheduleName} (Copy)`);
+    if (!newName) return;
+    
+    try {
+        showUserMessage('Duplicating schedule...', 'info');
+        
+        // Load the source schedule
+        const sourceRef = doc(db, 'artifacts', appId, 'users', ownerId, 'personal_schedules', scheduleId);
+        const sourceSnap = await getDoc(sourceRef);
+        
+        if (!sourceSnap.exists()) {
+            showUserMessage('Source schedule not found', 'error');
+            return;
+        }
+        
+        const sourceData = sourceSnap.data();
+        
+        // Create new schedule with copied data
+        const newScheduleRef = doc(collection(db, 'artifacts', appId, 'users', userId, 'personal_schedules'));
+        
+        await setDoc(newScheduleRef, {
+            name: newName,
+            baseScheduleId: sourceData.baseScheduleId || null,
+            isStandalone: sourceData.isStandalone || false,
+            periods: sourceData.periods || [],
+            bellOverrides: {}, // Start fresh - don't copy overrides
+            passingPeriodVisual: sourceData.passingPeriodVisual || null,
+            createdAt: new Date().toISOString(),
+            copiedFrom: {
+                ownerId: ownerId,
+                scheduleId: scheduleId,
+                scheduleName: scheduleName
+            }
+        });
+        
+        showUserMessage(`Created: ${newName}`, 'success');
+        
+        // Close modal if open
+        manageFollowingModal?.classList.add('hidden');
+        
+    } catch (error) {
+        console.error('Error duplicating schedule:', error);
+        showUserMessage('Error duplicating schedule', 'error');
+    }
+}
+
+/**
+ * Open the manage following modal
+ */
+function openManageFollowingModal() {
+    renderFollowingList();
+    manageFollowingModal.classList.remove('hidden');
+}
+
+/**
+ * Open the enter share code modal
+ */
+function openEnterShareCodeModal() {
+    enterShareCodeForm.reset();
+    shareCodePreview.classList.add('hidden');
+    enterShareCodeStatus.classList.add('hidden');
+    enterShareCodeSubmit.disabled = true;
+    currentShareCodeLookup = null;
+    enterShareCodeModal.classList.remove('hidden');
+    enterShareCodeInput.focus();
+}
+
+// ============================================
+// END V5.63.0: SHARE CODE FEATURE
+// ============================================
 
 // --- End v3.05 Functions ---
 
@@ -13410,6 +13998,58 @@ function init() {
         renamePersonalScheduleStatus.classList.add('hidden');
     });
 
+    // V5.63.0: Share Code Feature Event Listeners
+    if (shareScheduleBtn) {
+        shareScheduleBtn.addEventListener('click', openShareScheduleModal);
+    }
+    if (generateShareCodeBtn) {
+        generateShareCodeBtn.addEventListener('click', createShareCode);
+    }
+    if (copyShareCodeBtn) {
+        copyShareCodeBtn.addEventListener('click', copyShareCodeToClipboard);
+    }
+    if (revokeShareCodeBtn) {
+        revokeShareCodeBtn.addEventListener('click', revokeShareCode);
+    }
+    if (shareScheduleCloseBtn) {
+        shareScheduleCloseBtn.addEventListener('click', () => shareScheduleModal.classList.add('hidden'));
+    }
+    
+    // Enter Share Code
+    if (enterShareCodeInput) {
+        enterShareCodeInput.addEventListener('input', (e) => {
+            const code = e.target.value.toUpperCase();
+            e.target.value = code; // Force uppercase
+            lookupShareCode(code);
+        });
+    }
+    if (enterShareCodeForm) {
+        enterShareCodeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            followSchedule();
+        });
+    }
+    if (enterShareCodeCancel) {
+        enterShareCodeCancel.addEventListener('click', () => {
+            enterShareCodeModal.classList.add('hidden');
+            enterShareCodeForm.reset();
+        });
+    }
+    
+    // Manage Following
+    if (manageFollowingBtn) {
+        manageFollowingBtn.addEventListener('click', openManageFollowingModal);
+    }
+    if (addShareCodeBtn) {
+        addShareCodeBtn.addEventListener('click', () => {
+            manageFollowingModal.classList.add('hidden');
+            openEnterShareCodeModal();
+        });
+    }
+    if (manageFollowingCloseBtn) {
+        manageFollowingCloseBtn.addEventListener('click', () => manageFollowingModal.classList.add('hidden'));
+    }
+
 
     // Modals (Delete Bell)
     deleteBellConfirmBtn.addEventListener('click', confirmDeleteBell);
@@ -15214,6 +15854,10 @@ function init() {
                 { id: 'bulk-edit-modal', close: () => bulkEditModal.classList.add('hidden') },
                 { id: 'custom-quick-bell-manager-modal', close: () => document.getElementById('custom-quick-bell-manager-modal')?.classList.add('hidden') },
                 { id: 'passing-period-visual-modal', close: () => document.getElementById('passing-period-visual-modal')?.classList.add('hidden') },
+                // V5.63.0: Share Code Feature Modals
+                { id: 'share-schedule-modal', close: () => shareScheduleModal?.classList.add('hidden') },
+                { id: 'enter-share-code-modal', close: () => { enterShareCodeModal?.classList.add('hidden'); enterShareCodeForm?.reset(); } },
+                { id: 'manage-following-modal', close: () => manageFollowingModal?.classList.add('hidden') },
             ];
             
             // Find the first visible modal and close it
