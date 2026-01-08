@@ -1,6 +1,9 @@
 const APP_VERSION = "5.63.3"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.63.3: Share code feature fixes
+// - Fixed: populateScheduleSelector() -> renderScheduleSelector() (function didn't exist)
+// - Fixed: Unfollow now switches to another schedule if viewing the unfollowed one
 // V5.63.2: Fixed custom quick bell visual and sound upload
 // - Visual upload: Set currentVisualSelectTarget when opening upload from custom bell manager
 // - Visual upload: Added custom bell manager dropdowns to updateVisualDropdowns()
@@ -8778,7 +8781,7 @@ async function followSchedule() {
         // Reload following list
         await loadFollowingSchedules();
         updateFollowingButton();
-        populateScheduleSelector();
+        renderScheduleSelector();
         
     } catch (error) {
         console.error('Error following schedule:', error);
@@ -8794,6 +8797,12 @@ async function unfollowSchedule(followDocId, scheduleName) {
     if (!confirm(`Stop following "${scheduleName}"?`)) return;
     
     try {
+        // Check if we're currently viewing this schedule
+        const currentSelection = scheduleSelector.value;
+        const isViewingUnfollowed = currentSelection.startsWith('following-') && 
+            followingSchedules.find(f => f.docId === followDocId && 
+                currentSelection === `following-${f.ownerId}-${f.scheduleId}`);
+        
         await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'following', followDocId));
         
         showUserMessage(`Unfollowed: ${scheduleName}`, 'success');
@@ -8801,8 +8810,16 @@ async function unfollowSchedule(followDocId, scheduleName) {
         // Reload
         await loadFollowingSchedules();
         updateFollowingButton();
-        populateScheduleSelector();
+        renderScheduleSelector();
         renderFollowingList();
+        
+        // If we were viewing the unfollowed schedule, switch to first available
+        if (isViewingUnfollowed) {
+            const firstOption = scheduleSelector.querySelector('option:not([disabled])');
+            if (firstOption && firstOption.value) {
+                setActiveSchedule(firstOption.value);
+            }
+        }
         
     } catch (error) {
         console.error('Error unfollowing:', error);
