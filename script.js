@@ -1,10 +1,12 @@
-const APP_VERSION = "5.63.2"
+const APP_VERSION = "5.63.3"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
-// V5.63.2: Fixed custom quick bell visual upload
-// - Set currentVisualSelectTarget when opening upload from custom bell manager
-// - Added custom bell manager dropdowns to updateVisualDropdowns()
-// - Upload completion now properly updates hidden inputs for custom bells
+// V5.63.2: Fixed custom quick bell visual and sound upload
+// - Visual upload: Set currentVisualSelectTarget when opening upload from custom bell manager
+// - Visual upload: Added custom bell manager dropdowns to updateVisualDropdowns()
+// - Visual upload: Upload completion now properly updates hidden inputs for custom bells
+// - Sound upload: Added handler for [UPLOAD] selection in custom bell sound dropdown
+// - Sound upload: Added custom bell sound selects to addNewAudioOption() and updateSoundDropdowns()
 // V5.63.1: Bug fixes
 // - Users can generate 6-character share codes for their personal schedules
 // - Colleagues can enter share codes to "follow" schedules (read-only access)
@@ -12924,10 +12926,12 @@ function renderAudioFileManager() {
     * NEW V4.76: Helper to add a new option to all audio dropdowns
     */
 function addNewAudioOption(url, name, nickname = '') { // MODIFIED V4.97
+    // V5.63.2: Include custom bell sound selects
     const selects = [
         sharedSoundInput, multiBellSoundInput, editBellSoundInput,
         changeSoundSelect, quickBellSoundSelect, addStaticBellSound, 
-        relativeBellSoundSelect
+        relativeBellSoundSelect,
+        ...document.querySelectorAll('.custom-bell-sound-select')
     ];
     selects.forEach(select => {
         if (!select) return;
@@ -12945,6 +12949,7 @@ function updateSoundDropdowns() {
     // --- MODIFIED: v3.43 ---
     // with the v2.24 (working) logic of using `file.url` as the
     // value for the options. This is the other half of the fix.
+    // V5.63.2: Include custom bell sound selects
     
     const selects = [
         // This is the full list of selects from v3.42
@@ -12960,7 +12965,9 @@ function updateSoundDropdowns() {
         { el: relativeBellSoundSelect, myGroup: 'relative-my-sounds-optgroup', sharedGroup: 'relative-shared-sounds-optgroup' },
         // V5.58.0: Add period modal sound selects
         { el: multiPeriodStartSoundInput, myGroup: 'period-start-my-sounds-optgroup', sharedGroup: 'period-start-shared-sounds-optgroup' },
-        { el: multiPeriodEndSoundInput, myGroup: 'period-end-my-sounds-optgroup', sharedGroup: 'period-end-shared-sounds-optgroup' }
+        { el: multiPeriodEndSoundInput, myGroup: 'period-end-my-sounds-optgroup', sharedGroup: 'period-end-shared-sounds-optgroup' },
+        // V5.63.2: Include all custom bell sound selects from the manager
+        ...Array.from(document.querySelectorAll('.custom-bell-sound-select')).map(el => ({ el, myGroup: null, sharedGroup: null }))
     ];
 
     // NEW V4.76: Add [UPLOAD] option
@@ -13701,9 +13708,11 @@ function init() {
     
     // NEW V5.01: Listener for the Active/Deactive checkbox (Toggle interaction)
     // V5.43.1: Also handle visual dropdown changes
+    // V5.63.2: Also handle sound dropdown [UPLOAD]
     customQuickBellListContainer.addEventListener('change', (e) => {
         const toggle = e.target.closest('.custom-quick-bell-toggle');
         const visualSelect = e.target.closest('.custom-bell-visual-select');
+        const soundSelect = e.target.closest('.custom-bell-sound-select'); // V5.63.2
         
         if (toggle) {
             const row = toggle.closest('.p-4');
@@ -13833,6 +13842,25 @@ function init() {
                 const fgColorInput = row.querySelector(`input[data-field="iconFgColor"][data-bell-id="${bellId}"]`);
                 if (bgColorInput) bgColorInput.value = bgColor;
                 if (fgColorInput) fgColorInput.value = fgColor;
+            }
+        }
+        
+        // V5.63.2: Handle sound dropdown [UPLOAD] selection
+        if (soundSelect) {
+            const selectedValue = soundSelect.value;
+            
+            if (selectedValue === '[UPLOAD]') {
+                // Store the select element that triggered this
+                currentSoundSelectTarget = soundSelect;
+                
+                // Revert to previous selection
+                const bellId = parseInt(soundSelect.dataset.bellId);
+                const bellData = customQuickBells.find(b => b && b.id === bellId);
+                soundSelect.value = bellData?.sound || 'ellisBell.mp3';
+                
+                // Open the audio upload modal
+                uploadAudioModal.classList.remove('hidden');
+                audioUploadStatus.classList.add('hidden');
             }
         }
     });
