@@ -1,7 +1,11 @@
-const APP_VERSION = "5.63.1"
+const APP_VERSION = "5.63.2"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
-// V5.63.0: Share Code Feature
+// V5.63.2: Fixed custom quick bell visual upload
+// - Set currentVisualSelectTarget when opening upload from custom bell manager
+// - Added custom bell manager dropdowns to updateVisualDropdowns()
+// - Upload completion now properly updates hidden inputs for custom bells
+// V5.63.1: Bug fixes
 // - Users can generate 6-character share codes for their personal schedules
 // - Colleagues can enter share codes to "follow" schedules (read-only access)
 // - Following schedules appear in schedule selector under "📥 Following" group
@@ -9939,6 +9943,15 @@ async function handleVisualUpload() {
             }
             console.log('Updated quick bell visual cue for slot', currentCustomBellIconSlot);
         }
+        
+        // V5.63.2: If this is a custom bell manager dropdown, update hidden inputs
+        if (currentVisualSelectTarget.classList.contains('custom-bell-visual-select') && currentCustomBellIconSlot) {
+            const hiddenVisualCue = document.querySelector(`input[data-bell-id="${currentCustomBellIconSlot}"][data-field="visualCue"]`);
+            if (hiddenVisualCue) {
+                hiddenVisualCue.value = downloadURL;
+            }
+            console.log('Updated custom bell visual cue for slot', currentCustomBellIconSlot);
+        }
                 
         currentVisualSelectTarget = null; // Clear state (only once!)
         uploadVisualModal.classList.add('hidden'); // Close modal
@@ -10610,6 +10623,7 @@ function updateVisualDropdowns() {
     // Added 5.31.1: Dropdowns to add images to individual bells
     // MODIFIED V5.42.0: Added passing period visual select
     // MODIFIED V5.58.3: Added period modal visual select
+    // MODIFIED V5.63.2: Added custom bell manager visual selects
     const selects = [ 
         editPeriodImageSelect, 
         newPeriodImageSelect, 
@@ -10620,7 +10634,9 @@ function updateVisualDropdowns() {
         document.getElementById('multi-bell-visual'),
         document.getElementById('multi-relative-bell-visual'),
         document.getElementById('passing-period-visual-select'), // NEW V5.42.0
-        document.getElementById('multi-period-visual') // V5.58.3: Period modal visual
+        document.getElementById('multi-period-visual'), // V5.58.3: Period modal visual
+        // V5.63.2: Include all custom bell visual selects from the manager
+        ...document.querySelectorAll('.custom-bell-visual-select')
     ];
     
     // 1. Create options for default SVGs (dynamically)
@@ -13741,6 +13757,7 @@ function init() {
             // Handle special values
             if (selectedValue === '[UPLOAD]') {
                 currentCustomBellIconSlot = bellId;
+                currentVisualSelectTarget = visualSelect; // V5.63.2: Set target so upload completion updates this dropdown
                 uploadVisualModal.style.zIndex = '70';
                 uploadVisualModal.classList.remove('hidden');
                 visualUploadStatus.classList.add('hidden');
