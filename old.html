@@ -168,6 +168,30 @@
             -webkit-flex-direction: row;
             flex-direction: row;
         }
+        .button-row {
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-orient: horizontal;
+            -webkit-flex-direction: row;
+            flex-direction: row;
+            gap: 10px;
+        }
+        .button-row button {
+            -webkit-box-flex: 1;
+            -webkit-flex: 1;
+            flex: 1;
+        }
+        .btn-refresh {
+            background: #0ea5e9;
+            color: #fff;
+        }
+        .last-refresh {
+            text-align: center;
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -204,10 +228,14 @@
                 <div class="bell-list" id="bell-list"></div>
             </div>
             
-            <button type="button" id="change-schedule-btn" class="btn-secondary">Change Schedule</button>
+            <div class="button-row">
+                <button type="button" id="refresh-schedule-btn" class="btn-refresh">🔄 Refresh</button>
+                <button type="button" id="change-schedule-btn" class="btn-secondary">Change Schedule</button>
+            </div>
+            <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.1.0 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.2.0 (iOS 9+)</div>
     </div>
     
     <!-- Hidden audio element for bell sounds -->
@@ -244,6 +272,8 @@
         var nextBellEl = document.getElementById('next-bell');
         var bellListEl = document.getElementById('bell-list');
         var changeScheduleBtn = document.getElementById('change-schedule-btn');
+        var refreshScheduleBtn = document.getElementById('refresh-schedule-btn');
+        var lastRefreshEl = document.getElementById('last-refresh');
         var bellAudio = document.getElementById('bell-audio');
         
         // === UTILITIES ===
@@ -515,11 +545,12 @@
                     }
                     bells = uniqueBells;
                     
-                    // Save to localStorage
+                    // Save to localStorage with timestamp
                     try {
                         localStorage.setItem('ellisBellLegacy_code', code);
                         localStorage.setItem('ellisBellLegacy_bells', JSON.stringify(bells));
                         localStorage.setItem('ellisBellLegacy_name', scheduleName);
+                        localStorage.setItem('ellisBellLegacy_timestamp', Date.now().toString());
                     } catch (e) {
                         // localStorage might not be available
                     }
@@ -764,10 +795,16 @@
             
             var url = soundUrl || DEFAULT_SOUND;
             
-            // Handle relative paths or default sounds
-            if (url === 'ellisBell.mp3' || url.indexOf('http') !== 0) {
+            // Handle relative paths or default sounds - convert to full Firebase URL
+            if (!url || url === 'ellisBell.mp3' || url === '[SILENT]' || url.indexOf('http') !== 0) {
+                if (url === '[SILENT]') {
+                    console.log('Silent bell - not playing');
+                    return;
+                }
                 url = DEFAULT_SOUND;
             }
+            
+            console.log('Playing sound:', url);
             
             try {
                 bellAudio.src = url;
@@ -788,8 +825,30 @@
             renderBellList();
             updateClock();
             
+            // Reset refresh button
+            refreshScheduleBtn.textContent = '🔄 Refresh';
+            refreshScheduleBtn.disabled = false;
+            
+            // Show last refresh time
+            updateLastRefreshDisplay();
+            
             if (clockInterval) clearInterval(clockInterval);
             clockInterval = setInterval(updateClock, 1000);
+        }
+        
+        function updateLastRefreshDisplay() {
+            try {
+                var savedTimestamp = localStorage.getItem('ellisBellLegacy_timestamp');
+                if (savedTimestamp) {
+                    var date = new Date(parseInt(savedTimestamp, 10));
+                    var timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    lastRefreshEl.textContent = 'Last updated: ' + timeStr + ' (auto-refreshes every 4 hours)';
+                } else {
+                    lastRefreshEl.textContent = '';
+                }
+            } catch (e) {
+                lastRefreshEl.textContent = '';
+            }
         }
         
         function updateClock() {
@@ -890,18 +949,57 @@
                 localStorage.removeItem('ellisBellLegacy_code');
                 localStorage.removeItem('ellisBellLegacy_bells');
                 localStorage.removeItem('ellisBellLegacy_name');
+                localStorage.removeItem('ellisBellLegacy_timestamp');
             } catch (e) {}
         };
         
+        refreshScheduleBtn.onclick = function() {
+            var savedCode = null;
+            try {
+                savedCode = localStorage.getItem('ellisBellLegacy_code');
+            } catch (e) {}
+            
+            if (savedCode) {
+                refreshScheduleBtn.textContent = '⏳ Refreshing...';
+                refreshScheduleBtn.disabled = true;
+                loadScheduleFromCode(savedCode);
+            } else {
+                // No saved code, switch to code entry screen
+                changeScheduleBtn.click();
+            }
+        };
+        
         // === INITIALIZATION ===
+        
+        var REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
         
         function init() {
             // Try to restore from localStorage
             try {
                 var savedBells = localStorage.getItem('ellisBellLegacy_bells');
                 var savedName = localStorage.getItem('ellisBellLegacy_name');
+                var savedCode = localStorage.getItem('ellisBellLegacy_code');
+                var savedTimestamp = localStorage.getItem('ellisBellLegacy_timestamp');
                 
                 if (savedBells && savedName) {
+                    // Check if data is stale (older than 4 hours)
+                    var isStale = false;
+                    if (savedTimestamp) {
+                        var age = Date.now() - parseInt(savedTimestamp, 10);
+                        isStale = age > REFRESH_INTERVAL_MS;
+                        console.log('Cache age: ' + Math.round(age / 60000) + ' minutes, stale: ' + isStale);
+                    } else {
+                        // No timestamp = old cache, treat as stale
+                        isStale = true;
+                    }
+                    
+                    if (isStale && savedCode) {
+                        // Auto-refresh from server
+                        console.log('Cache is stale, refreshing schedule...');
+                        loadScheduleFromCode(savedCode);
+                        return;
+                    }
+                    
                     bells = JSON.parse(savedBells);
                     scheduleName = savedName;
                     
@@ -911,7 +1009,9 @@
                         return;
                     }
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.log('Error loading from cache:', e);
+            }
             
             // Focus the input
             shareCodeInput.focus();
