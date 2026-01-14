@@ -207,7 +207,7 @@
             <button type="button" id="change-schedule-btn" class="btn-secondary">Change Schedule</button>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.0.0 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.0.1 (iOS 9+)</div>
     </div>
     
     <!-- Hidden audio element for bell sounds -->
@@ -402,20 +402,56 @@
                 var schedulePath = '/artifacts/' + APP_ID + '/users/' + ownerId + '/personal_schedules/' + scheduleId;
                 
                 fetchDocument(schedulePath, function(err2, scheduleDoc) {
-                    loadBtn.disabled = false;
-                    
                     if (err2) {
+                        loadBtn.disabled = false;
                         showStatus('Schedule not found (may have been deleted)', 'error');
                         return;
                     }
                     
                     var scheduleData = parseFields(scheduleDoc.fields || {});
+                    console.log('Personal schedule data:', scheduleData);
                     
-                    // Extract bells from periods
-                    bells = extractBellsFromSchedule(scheduleData);
+                    // Check if this is a standalone or linked schedule
+                    var isStandalone = !scheduleData.baseScheduleId || scheduleData.isStandalone;
+                    console.log('Is standalone:', isStandalone, 'baseScheduleId:', scheduleData.baseScheduleId);
+                    
+                    if (isStandalone) {
+                        // Standalone: extract bells directly
+                        bells = extractBellsFromSchedule(scheduleData);
+                        finishLoading(code);
+                    } else {
+                        // Linked: need to also load the base schedule
+                        showStatus('Loading base schedule...', '');
+                        var basePath = '/artifacts/' + APP_ID + '/public/data/schedules/' + scheduleData.baseScheduleId;
+                        
+                        fetchDocument(basePath, function(err3, baseDoc) {
+                            if (err3) {
+                                console.warn('Could not load base schedule, using personal only');
+                                bells = extractBellsFromSchedule(scheduleData);
+                            } else {
+                                var baseData = parseFields(baseDoc.fields || {});
+                                console.log('Base schedule data:', baseData);
+                                
+                                // Extract bells from base schedule
+                                var baseBells = extractBellsFromSchedule(baseData);
+                                // Extract bells from personal schedule (overrides/additions)
+                                var personalBells = extractBellsFromSchedule(scheduleData);
+                                
+                                // Merge: base bells + personal bells
+                                bells = baseBells.concat(personalBells);
+                            }
+                            finishLoading(code);
+                        });
+                    }
+                });
+                
+                function finishLoading(code) {
+                    loadBtn.disabled = false;
+                    
+                    console.log('Extracted bells:', bells);
                     
                     if (bells.length === 0) {
-                        showStatus('No bells found in schedule', 'error');
+                        showStatus('No bells found in schedule (check console for debug info)', 'error');
                         return;
                     }
                     
@@ -423,6 +459,17 @@
                     bells.sort(function(a, b) {
                         return a.time.localeCompare(b.time);
                     });
+                    
+                    // Remove duplicates (same time)
+                    var uniqueBells = [];
+                    var seenTimes = {};
+                    for (var i = 0; i < bells.length; i++) {
+                        if (!seenTimes[bells[i].time]) {
+                            seenTimes[bells[i].time] = true;
+                            uniqueBells.push(bells[i]);
+                        }
+                    }
+                    bells = uniqueBells;
                     
                     // Save to localStorage
                     try {
@@ -440,7 +487,7 @@
                         codeScreen.classList.add('hidden');
                         audioScreen.classList.remove('hidden');
                     }, 500);
-                });
+                }
             });
         }
         
@@ -448,17 +495,45 @@
             var extractedBells = [];
             var periods = scheduleData.periods || [];
             
+            console.log('extractBellsFromSchedule - periods:', periods);
+            console.log('extractBellsFromSchedule - periods length:', periods.length);
+            
             for (var i = 0; i < periods.length; i++) {
                 var period = periods[i];
-                if (!period || !period.bells) continue;
+                console.log('Period ' + i + ':', period);
                 
-                var periodBells = period.bells;
+                if (!period) {
+                    console.log('Period ' + i + ' is null/undefined');
+                    continue;
+                }
+                
+                var periodBells = period.bells || [];
+                console.log('Period ' + i + ' bells:', periodBells);
+                
+                if (!periodBells || periodBells.length === 0) {
+                    console.log('Period ' + i + ' has no bells');
+                    continue;
+                }
+                
                 for (var j = 0; j < periodBells.length; j++) {
                     var bell = periodBells[j];
-                    if (!bell || !bell.time) continue;
+                    console.log('Bell ' + i + '-' + j + ':', bell);
+                    
+                    if (!bell) {
+                        console.log('Bell is null');
+                        continue;
+                    }
+                    
+                    if (!bell.time) {
+                        console.log('Bell has no time property');
+                        continue;
+                    }
                     
                     // Skip relative bells (they need calculation we can't do easily)
-                    if (bell.isRelative) continue;
+                    if (bell.isRelative) {
+                        console.log('Skipping relative bell:', bell.name);
+                        continue;
+                    }
                     
                     // Ensure time has seconds
                     var time = bell.time;
@@ -475,6 +550,7 @@
                 }
             }
             
+            console.log('extractBellsFromSchedule - total extracted:', extractedBells.length);
             return extractedBells;
         }
         
