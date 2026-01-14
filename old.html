@@ -207,7 +207,7 @@
             <button type="button" id="change-schedule-btn" class="btn-secondary">Change Schedule</button>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.0.1 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.1.0 (iOS 9+)</div>
     </div>
     
     <!-- Hidden audio element for bell sounds -->
@@ -432,13 +432,57 @@
                                 var baseData = parseFields(baseDoc.fields || {});
                                 console.log('Base schedule data:', baseData);
                                 
-                                // Extract bells from base schedule
-                                var baseBells = extractBellsFromSchedule(baseData);
-                                // Extract bells from personal schedule (overrides/additions)
-                                var personalBells = extractBellsFromSchedule(scheduleData);
+                                // Merge periods from base + personal so relative bells can find their anchors
+                                var basePeriods = baseData.periods || [];
+                                var personalPeriods = scheduleData.periods || [];
                                 
-                                // Merge: base bells + personal bells
-                                bells = baseBells.concat(personalBells);
+                                // Create merged periods array
+                                var mergedPeriods = [];
+                                var periodMap = {};
+                                
+                                // Add base periods first
+                                for (var bp = 0; bp < basePeriods.length; bp++) {
+                                    var period = basePeriods[bp];
+                                    if (period && period.name) {
+                                        periodMap[period.name] = {
+                                            name: period.name,
+                                            bells: period.bells ? period.bells.slice() : []
+                                        };
+                                    }
+                                }
+                                
+                                // Merge personal periods (add bells to existing or create new)
+                                for (var pp = 0; pp < personalPeriods.length; pp++) {
+                                    var pPeriod = personalPeriods[pp];
+                                    if (pPeriod && pPeriod.name) {
+                                        if (periodMap[pPeriod.name]) {
+                                            // Period exists - add personal bells to it
+                                            var existingBells = periodMap[pPeriod.name].bells;
+                                            var newBells = pPeriod.bells || [];
+                                            for (var nb = 0; nb < newBells.length; nb++) {
+                                                existingBells.push(newBells[nb]);
+                                            }
+                                        } else {
+                                            // New period from personal schedule
+                                            periodMap[pPeriod.name] = {
+                                                name: pPeriod.name,
+                                                bells: pPeriod.bells ? pPeriod.bells.slice() : []
+                                            };
+                                        }
+                                    }
+                                }
+                                
+                                // Convert map to array
+                                for (var pName in periodMap) {
+                                    if (periodMap.hasOwnProperty(pName)) {
+                                        mergedPeriods.push(periodMap[pName]);
+                                    }
+                                }
+                                
+                                console.log('Merged periods:', mergedPeriods);
+                                
+                                // Extract from merged
+                                bells = extractBellsFromSchedule({ periods: mergedPeriods });
                             }
                             finishLoading(code);
                         });
@@ -491,6 +535,19 @@
             });
         }
         
+        // Convert seconds to HH:MM:SS
+        function secondsToTimeStr(totalSeconds) {
+            // Handle negative times (wrap to previous day - not ideal but prevents crashes)
+            while (totalSeconds < 0) totalSeconds += 86400;
+            // Handle overflow past midnight
+            totalSeconds = totalSeconds % 86400;
+            
+            var h = Math.floor(totalSeconds / 3600);
+            var m = Math.floor((totalSeconds % 3600) / 60);
+            var s = totalSeconds % 60;
+            return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+        
         function extractBellsFromSchedule(scheduleData) {
             var extractedBells = [];
             var periods = scheduleData.periods || [];
@@ -498,45 +555,155 @@
             console.log('extractBellsFromSchedule - periods:', periods);
             console.log('extractBellsFromSchedule - periods length:', periods.length);
             
+            // First pass: collect all static bells and build maps
+            var bellMap = {}; // bellId -> bell with time
+            var allBells = []; // all bells for processing
+            
             for (var i = 0; i < periods.length; i++) {
                 var period = periods[i];
-                console.log('Period ' + i + ':', period);
+                if (!period || !period.bells) continue;
                 
-                if (!period) {
-                    console.log('Period ' + i + ' is null/undefined');
-                    continue;
+                for (var j = 0; j < period.bells.length; j++) {
+                    var bell = period.bells[j];
+                    if (!bell) continue;
+                    
+                    // Add period reference to bell
+                    bell._periodName = period.name;
+                    bell._periodBells = period.bells;
+                    allBells.push(bell);
+                    
+                    // If static bell with time, add to map
+                    if (bell.time && !bell.relative && bell.bellId) {
+                        bellMap[bell.bellId] = bell;
+                    }
+                }
+            }
+            
+            console.log('Static bells in map:', Object.keys(bellMap).length);
+            console.log('Total bells to process:', allBells.length);
+            
+            // Second pass: calculate relative bell times
+            function calculateBellTime(bell, visited) {
+                if (!visited) visited = {};
+                
+                // If already has a static time (not relative), return it
+                if (bell.time && !bell.relative) {
+                    return bell.time;
                 }
                 
-                var periodBells = period.bells || [];
-                console.log('Period ' + i + ' bells:', periodBells);
-                
-                if (!periodBells || periodBells.length === 0) {
-                    console.log('Period ' + i + ' has no bells');
-                    continue;
+                // If no relative data, skip
+                if (!bell.relative) {
+                    console.log('Bell has no time and no relative data:', bell.name);
+                    return null;
                 }
                 
-                for (var j = 0; j < periodBells.length; j++) {
-                    var bell = periodBells[j];
-                    console.log('Bell ' + i + '-' + j + ':', bell);
-                    
-                    if (!bell) {
-                        console.log('Bell is null');
-                        continue;
+                // Check for circular reference
+                if (bell.bellId && visited[bell.bellId]) {
+                    console.warn('Circular reference detected for bell:', bell.name);
+                    return null;
+                }
+                if (bell.bellId) visited[bell.bellId] = true;
+                
+                var parentTime = null;
+                
+                // Method 1: Parent by bellId
+                if (bell.relative.parentBellId) {
+                    var parentBell = bellMap[bell.relative.parentBellId];
+                    if (!parentBell) {
+                        // Try to find in allBells
+                        for (var k = 0; k < allBells.length; k++) {
+                            if (allBells[k].bellId === bell.relative.parentBellId) {
+                                parentBell = allBells[k];
+                                break;
+                            }
+                        }
                     }
                     
-                    if (!bell.time) {
-                        console.log('Bell has no time property');
-                        continue;
+                    if (parentBell) {
+                        parentTime = calculateBellTime(parentBell, visited);
+                    } else {
+                        console.warn('Parent bell not found:', bell.relative.parentBellId);
+                    }
+                }
+                // Method 2: Parent by period anchor (period_start / period_end)
+                else if (bell.relative.parentPeriodName) {
+                    var parentPeriodName = bell.relative.parentPeriodName;
+                    var anchorType = bell.relative.parentAnchorType;
+                    
+                    // Find the parent period
+                    var parentPeriod = null;
+                    for (var p = 0; p < periods.length; p++) {
+                        if (periods[p].name === parentPeriodName) {
+                            parentPeriod = periods[p];
+                            break;
+                        }
                     }
                     
-                    // Skip relative bells (they need calculation we can't do easily)
-                    if (bell.isRelative) {
-                        console.log('Skipping relative bell:', bell.name);
-                        continue;
+                    if (parentPeriod && parentPeriod.bells && parentPeriod.bells.length > 0) {
+                        // Find anchor bell (first static = period_start, last static = period_end)
+                        var staticBells = [];
+                        for (var sb = 0; sb < parentPeriod.bells.length; sb++) {
+                            var b = parentPeriod.bells[sb];
+                            if (b.time && !b.relative) {
+                                staticBells.push(b);
+                            }
+                        }
+                        
+                        // Sort by time
+                        staticBells.sort(function(a, b) {
+                            return a.time.localeCompare(b.time);
+                        });
+                        
+                        var anchorBell = null;
+                        if (anchorType === 'period_start' && staticBells.length > 0) {
+                            anchorBell = staticBells[0];
+                        } else if (anchorType === 'period_end' && staticBells.length > 0) {
+                            anchorBell = staticBells[staticBells.length - 1];
+                        }
+                        
+                        // Fallback: look for anchorRole or named bells
+                        if (!anchorBell) {
+                            for (var ar = 0; ar < parentPeriod.bells.length; ar++) {
+                                var arBell = parentPeriod.bells[ar];
+                                if (anchorType === 'period_start' && arBell.anchorRole === 'start') {
+                                    anchorBell = arBell;
+                                    break;
+                                }
+                                if (anchorType === 'period_end' && arBell.anchorRole === 'end') {
+                                    anchorBell = arBell;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (anchorBell) {
+                            parentTime = calculateBellTime(anchorBell, visited);
+                        } else {
+                            console.warn('No anchor bell found in period:', parentPeriodName);
+                        }
+                    } else {
+                        console.warn('Parent period not found or empty:', parentPeriodName);
                     }
-                    
+                }
+                
+                // Calculate final time
+                if (parentTime) {
+                    var parentSeconds = timeToSeconds(parentTime);
+                    var offsetSeconds = bell.relative.offsetSeconds || 0;
+                    var finalSeconds = parentSeconds + offsetSeconds;
+                    return secondsToTimeStr(finalSeconds);
+                }
+                
+                return null;
+            }
+            
+            // Process all bells
+            for (var b = 0; b < allBells.length; b++) {
+                var bell = allBells[b];
+                var time = calculateBellTime(bell, {});
+                
+                if (time) {
                     // Ensure time has seconds
-                    var time = bell.time;
                     if (time.split(':').length === 2) {
                         time = time + ':00';
                     }
@@ -545,8 +712,12 @@
                         time: time,
                         name: bell.name || 'Bell',
                         sound: bell.sound || DEFAULT_SOUND,
-                        periodName: period.name || ''
+                        periodName: bell._periodName || ''
                     });
+                    
+                    console.log('Added bell:', bell.name, 'at', time, bell.relative ? '(relative)' : '(static)');
+                } else {
+                    console.log('Could not calculate time for bell:', bell.name);
                 }
             }
             
