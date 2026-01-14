@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ellis Bell - Legacy (iOS 9)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #7dd3fc;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .clock {
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            font-family: "Courier New", monospace;
+            color: #fff;
+            margin: 10px 0;
+        }
+        .countdown {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            font-family: "Courier New", monospace;
+            color: #4ade80;
+            margin: 10px 0;
+        }
+        .next-bell {
+            text-align: center;
+            font-size: 18px;
+            color: #94a3b8;
+            margin: 10px 0;
+        }
+        .schedule-name {
+            text-align: center;
+            font-size: 16px;
+            color: #7dd3fc;
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 20px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            background: #1e293b;
+            color: #fff;
+            outline: none;
+        }
+        input[type="text"]:focus {
+            border-color: #7dd3fc;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: #fff;
+        }
+        .btn-primary:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: #475569;
+            color: #fff;
+        }
+        .btn-enable {
+            background: #22c55e;
+            color: #fff;
+            font-size: 18px;
+            padding: 20px;
+        }
+        .status {
+            text-align: center;
+            font-size: 14px;
+            color: #fbbf24;
+            margin-top: 10px;
+        }
+        .error {
+            color: #f87171;
+        }
+        .success {
+            color: #4ade80;
+        }
+        .hidden {
+            display: none;
+        }
+        .bell-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .bell-item {
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-pack: justify;
+            -webkit-justify-content: space-between;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 14px;
+        }
+        .bell-time {
+            color: #7dd3fc;
+            font-family: monospace;
+        }
+        .bell-name {
+            color: #e2e8f0;
+        }
+        .bell-passed {
+            opacity: 0.4;
+            text-decoration: line-through;
+        }
+        .version {
+            text-align: center;
+            font-size: 11px;
+            color: #475569;
+            margin-top: 20px;
+        }
+        /* iOS 9 flexbox fixes */
+        .flex-row {
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-orient: horizontal;
+            -webkit-flex-direction: row;
+            flex-direction: row;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Ellis Bell</h1>
+        
+        <!-- Code Entry Screen -->
+        <div id="code-screen" class="card">
+            <label for="share-code">Enter Share Code:</label>
+            <input type="text" id="share-code" maxlength="6" placeholder="ABC123" autocomplete="off" autocorrect="off" autocapitalize="characters">
+            <button type="button" id="load-btn" class="btn-primary">Load Schedule</button>
+            <div id="code-status" class="status hidden"></div>
+        </div>
+        
+        <!-- Audio Enable Screen (iOS requires user gesture) -->
+        <div id="audio-screen" class="card hidden">
+            <p style="text-align: center; margin-bottom: 15px; color: #94a3b8;">
+                iOS requires you to tap below to enable bell sounds.
+            </p>
+            <button type="button" id="enable-audio-btn" class="btn-enable">🔊 Enable Bell Sounds</button>
+        </div>
+        
+        <!-- Main Clock Screen -->
+        <div id="clock-screen" class="hidden">
+            <div class="card">
+                <div class="schedule-name" id="schedule-name">Loading...</div>
+                <div class="clock" id="current-time">--:--:--</div>
+                <div class="countdown" id="countdown">--:--</div>
+                <div class="next-bell" id="next-bell">Loading schedule...</div>
+            </div>
+            
+            <div class="card">
+                <label>Today's Bells:</label>
+                <div class="bell-list" id="bell-list"></div>
+            </div>
+            
+            <button type="button" id="change-schedule-btn" class="btn-secondary">Change Schedule</button>
+        </div>
+        
+        <div class="version">Ellis Bell Legacy v1.0.0 (iOS 9+)</div>
+    </div>
+    
+    <!-- Hidden audio element for bell sounds -->
+    <audio id="bell-audio" preload="auto"></audio>
+    
+    <script>
+    (function() {
+        'use strict';
+        
+        // === CONFIGURATION ===
+        var PROJECT_ID = 'ellisbell-c185c';
+        var APP_ID = '1:441560045695:web:94e51a006663404b8f474a';
+        var FIRESTORE_BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID + '/databases/(default)/documents';
+        var DEFAULT_SOUND = 'https://firebasestorage.googleapis.com/v0/b/ellisbell-c185c.appspot.com/o/sounds%2Fpublic%2FellisBell.mp3?alt=media';
+        
+        // === STATE ===
+        var bells = [];
+        var scheduleName = '';
+        var audioEnabled = false;
+        var lastRungBellTime = null;
+        var clockInterval = null;
+        
+        // === DOM ELEMENTS ===
+        var codeScreen = document.getElementById('code-screen');
+        var audioScreen = document.getElementById('audio-screen');
+        var clockScreen = document.getElementById('clock-screen');
+        var shareCodeInput = document.getElementById('share-code');
+        var loadBtn = document.getElementById('load-btn');
+        var codeStatus = document.getElementById('code-status');
+        var enableAudioBtn = document.getElementById('enable-audio-btn');
+        var scheduleNameEl = document.getElementById('schedule-name');
+        var currentTimeEl = document.getElementById('current-time');
+        var countdownEl = document.getElementById('countdown');
+        var nextBellEl = document.getElementById('next-bell');
+        var bellListEl = document.getElementById('bell-list');
+        var changeScheduleBtn = document.getElementById('change-schedule-btn');
+        var bellAudio = document.getElementById('bell-audio');
+        
+        // === UTILITIES ===
+        
+        // Array.find polyfill for iOS 9
+        function arrayFind(arr, predicate) {
+            for (var i = 0; i < arr.length; i++) {
+                if (predicate(arr[i], i, arr)) {
+                    return arr[i];
+                }
+            }
+            return undefined;
+        }
+        
+        // Parse Firestore REST API field value
+        function parseFieldValue(field) {
+            if (!field) return null;
+            if (field.stringValue !== undefined) return field.stringValue;
+            if (field.integerValue !== undefined) return parseInt(field.integerValue, 10);
+            if (field.booleanValue !== undefined) return field.booleanValue;
+            if (field.arrayValue !== undefined) {
+                var arr = [];
+                var values = field.arrayValue.values || [];
+                for (var i = 0; i < values.length; i++) {
+                    arr.push(parseFieldValue(values[i]));
+                }
+                return arr;
+            }
+            if (field.mapValue !== undefined) {
+                return parseFields(field.mapValue.fields || {});
+            }
+            return null;
+        }
+        
+        // Parse Firestore fields object
+        function parseFields(fields) {
+            var result = {};
+            for (var key in fields) {
+                if (fields.hasOwnProperty(key)) {
+                    result[key] = parseFieldValue(fields[key]);
+                }
+            }
+            return result;
+        }
+        
+        // Format time to 12-hour with AM/PM
+        function formatTime12Hour(timeStr) {
+            if (!timeStr) return '--:--';
+            var parts = timeStr.split(':');
+            var hours = parseInt(parts[0], 10);
+            var minutes = parts[1];
+            var ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            if (hours === 0) hours = 12;
+            return hours + ':' + minutes + ' ' + ampm;
+        }
+        
+        // Format countdown
+        function formatCountdown(seconds) {
+            if (seconds < 0) return '--:--';
+            var h = Math.floor(seconds / 3600);
+            var m = Math.floor((seconds % 3600) / 60);
+            var s = seconds % 60;
+            if (h > 0) {
+                return h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+            }
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+        
+        // Get current time as HH:MM:SS
+        function getCurrentTimeHHMMSS() {
+            var now = new Date();
+            var h = now.getHours();
+            var m = now.getMinutes();
+            var s = now.getSeconds();
+            return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+        
+        // Convert HH:MM:SS to seconds since midnight
+        function timeToSeconds(timeStr) {
+            var parts = timeStr.split(':');
+            return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2] || 0, 10);
+        }
+        
+        // Show status message
+        function showStatus(message, type) {
+            codeStatus.textContent = message;
+            codeStatus.className = 'status ' + (type || '');
+            codeStatus.classList.remove('hidden');
+        }
+        
+        // === API CALLS ===
+        
+        function fetchDocument(path, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', FIRESTORE_BASE + path, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            callback(null, data);
+                        } catch (e) {
+                            callback(new Error('Failed to parse response'));
+                        }
+                    } else if (xhr.status === 404) {
+                        callback(new Error('Not found'));
+                    } else {
+                        callback(new Error('Request failed: ' + xhr.status));
+                    }
+                }
+            };
+            xhr.onerror = function() {
+                callback(new Error('Network error'));
+            };
+            xhr.send();
+        }
+        
+        // === SCHEDULE LOADING ===
+        
+        function loadScheduleFromCode(code) {
+            code = code.toUpperCase().trim();
+            
+            if (code.length !== 6) {
+                showStatus('Code must be 6 characters', 'error');
+                return;
+            }
+            
+            showStatus('Looking up code...', '');
+            loadBtn.disabled = true;
+            
+            // Step 1: Fetch share code document
+            var shareCodePath = '/artifacts/' + APP_ID + '/public/data/share_codes/' + code;
+            
+            fetchDocument(shareCodePath, function(err, shareCodeDoc) {
+                if (err) {
+                    showStatus('Share code not found', 'error');
+                    loadBtn.disabled = false;
+                    return;
+                }
+                
+                var shareData = parseFields(shareCodeDoc.fields || {});
+                var ownerId = shareData.ownerId;
+                var scheduleId = shareData.scheduleId;
+                scheduleName = shareData.scheduleName || 'Schedule';
+                
+                if (!ownerId || !scheduleId) {
+                    showStatus('Invalid share code data', 'error');
+                    loadBtn.disabled = false;
+                    return;
+                }
+                
+                showStatus('Loading schedule...', '');
+                
+                // Step 2: Fetch the personal schedule
+                var schedulePath = '/artifacts/' + APP_ID + '/users/' + ownerId + '/personal_schedules/' + scheduleId;
+                
+                fetchDocument(schedulePath, function(err2, scheduleDoc) {
+                    loadBtn.disabled = false;
+                    
+                    if (err2) {
+                        showStatus('Schedule not found (may have been deleted)', 'error');
+                        return;
+                    }
+                    
+                    var scheduleData = parseFields(scheduleDoc.fields || {});
+                    
+                    // Extract bells from periods
+                    bells = extractBellsFromSchedule(scheduleData);
+                    
+                    if (bells.length === 0) {
+                        showStatus('No bells found in schedule', 'error');
+                        return;
+                    }
+                    
+                    // Sort bells by time
+                    bells.sort(function(a, b) {
+                        return a.time.localeCompare(b.time);
+                    });
+                    
+                    // Save to localStorage
+                    try {
+                        localStorage.setItem('ellisBellLegacy_code', code);
+                        localStorage.setItem('ellisBellLegacy_bells', JSON.stringify(bells));
+                        localStorage.setItem('ellisBellLegacy_name', scheduleName);
+                    } catch (e) {
+                        // localStorage might not be available
+                    }
+                    
+                    showStatus('Loaded ' + bells.length + ' bells!', 'success');
+                    
+                    // Show audio enable screen (iOS requirement)
+                    setTimeout(function() {
+                        codeScreen.classList.add('hidden');
+                        audioScreen.classList.remove('hidden');
+                    }, 500);
+                });
+            });
+        }
+        
+        function extractBellsFromSchedule(scheduleData) {
+            var extractedBells = [];
+            var periods = scheduleData.periods || [];
+            
+            for (var i = 0; i < periods.length; i++) {
+                var period = periods[i];
+                if (!period || !period.bells) continue;
+                
+                var periodBells = period.bells;
+                for (var j = 0; j < periodBells.length; j++) {
+                    var bell = periodBells[j];
+                    if (!bell || !bell.time) continue;
+                    
+                    // Skip relative bells (they need calculation we can't do easily)
+                    if (bell.isRelative) continue;
+                    
+                    // Ensure time has seconds
+                    var time = bell.time;
+                    if (time.split(':').length === 2) {
+                        time = time + ':00';
+                    }
+                    
+                    extractedBells.push({
+                        time: time,
+                        name: bell.name || 'Bell',
+                        sound: bell.sound || DEFAULT_SOUND,
+                        periodName: period.name || ''
+                    });
+                }
+            }
+            
+            return extractedBells;
+        }
+        
+        // === AUDIO ===
+        
+        function enableAudio() {
+            // iOS requires user gesture to enable audio
+            bellAudio.src = DEFAULT_SOUND;
+            bellAudio.volume = 0.01; // Very quiet test
+            
+            var playPromise = bellAudio.play();
+            
+            // Handle both promise and non-promise (older Safari)
+            if (playPromise !== undefined) {
+                playPromise.then(function() {
+                    bellAudio.pause();
+                    bellAudio.currentTime = 0;
+                    bellAudio.volume = 1.0;
+                    audioEnabled = true;
+                    startClock();
+                }).catch(function(e) {
+                    // Try again without promise handling
+                    audioEnabled = true;
+                    startClock();
+                });
+            } else {
+                // Older browsers
+                setTimeout(function() {
+                    bellAudio.pause();
+                    bellAudio.currentTime = 0;
+                    bellAudio.volume = 1.0;
+                    audioEnabled = true;
+                    startClock();
+                }, 100);
+            }
+        }
+        
+        function playBellSound(soundUrl) {
+            if (!audioEnabled) return;
+            
+            var url = soundUrl || DEFAULT_SOUND;
+            
+            // Handle relative paths or default sounds
+            if (url === 'ellisBell.mp3' || url.indexOf('http') !== 0) {
+                url = DEFAULT_SOUND;
+            }
+            
+            try {
+                bellAudio.src = url;
+                bellAudio.currentTime = 0;
+                bellAudio.play();
+            } catch (e) {
+                console.error('Error playing bell:', e);
+            }
+        }
+        
+        // === CLOCK ===
+        
+        function startClock() {
+            audioScreen.classList.add('hidden');
+            clockScreen.classList.remove('hidden');
+            
+            scheduleNameEl.textContent = scheduleName;
+            renderBellList();
+            updateClock();
+            
+            if (clockInterval) clearInterval(clockInterval);
+            clockInterval = setInterval(updateClock, 1000);
+        }
+        
+        function updateClock() {
+            var now = getCurrentTimeHHMMSS();
+            var nowSeconds = timeToSeconds(now);
+            
+            // Update current time display
+            currentTimeEl.textContent = formatTime12Hour(now);
+            
+            // Find next bell
+            var nextBell = null;
+            for (var i = 0; i < bells.length; i++) {
+                var bellSeconds = timeToSeconds(bells[i].time);
+                if (bellSeconds > nowSeconds) {
+                    nextBell = bells[i];
+                    break;
+                }
+            }
+            
+            if (nextBell) {
+                var nextBellSeconds = timeToSeconds(nextBell.time);
+                var secondsUntil = nextBellSeconds - nowSeconds;
+                
+                countdownEl.textContent = formatCountdown(secondsUntil);
+                nextBellEl.textContent = 'until ' + nextBell.name;
+                
+                // Check if bell should ring (within 1 second and not already rung)
+                if (secondsUntil <= 0 && secondsUntil > -2 && lastRungBellTime !== nextBell.time) {
+                    lastRungBellTime = nextBell.time;
+                    playBellSound(nextBell.sound);
+                    renderBellList(); // Update list to show passed bells
+                }
+            } else {
+                countdownEl.textContent = '--:--';
+                nextBellEl.textContent = 'No more bells today';
+            }
+            
+            // Ring any bell that matches current time (backup check)
+            for (var j = 0; j < bells.length; j++) {
+                var bell = bells[j];
+                var bellTime = bell.time.substring(0, 5); // HH:MM
+                var currentTime = now.substring(0, 5);
+                
+                if (bellTime === currentTime && now.substring(6, 8) === '00' && lastRungBellTime !== bell.time) {
+                    lastRungBellTime = bell.time;
+                    playBellSound(bell.sound);
+                    renderBellList();
+                }
+            }
+        }
+        
+        function renderBellList() {
+            var now = getCurrentTimeHHMMSS();
+            var nowSeconds = timeToSeconds(now);
+            var html = '';
+            
+            for (var i = 0; i < bells.length; i++) {
+                var bell = bells[i];
+                var bellSeconds = timeToSeconds(bell.time);
+                var passed = bellSeconds <= nowSeconds;
+                
+                html += '<div class="bell-item' + (passed ? ' bell-passed' : '') + '">';
+                html += '<span class="bell-time">' + formatTime12Hour(bell.time) + '</span>';
+                html += '<span class="bell-name">' + bell.name + '</span>';
+                html += '</div>';
+            }
+            
+            bellListEl.innerHTML = html;
+        }
+        
+        // === EVENT LISTENERS ===
+        
+        loadBtn.onclick = function() {
+            loadScheduleFromCode(shareCodeInput.value);
+        };
+        
+        shareCodeInput.onkeypress = function(e) {
+            if (e.keyCode === 13 || e.which === 13) {
+                loadScheduleFromCode(shareCodeInput.value);
+            }
+        };
+        
+        enableAudioBtn.onclick = function() {
+            enableAudio();
+        };
+        
+        changeScheduleBtn.onclick = function() {
+            if (clockInterval) clearInterval(clockInterval);
+            bells = [];
+            lastRungBellTime = null;
+            clockScreen.classList.add('hidden');
+            codeScreen.classList.remove('hidden');
+            codeStatus.classList.add('hidden');
+            shareCodeInput.value = '';
+            shareCodeInput.focus();
+            
+            try {
+                localStorage.removeItem('ellisBellLegacy_code');
+                localStorage.removeItem('ellisBellLegacy_bells');
+                localStorage.removeItem('ellisBellLegacy_name');
+            } catch (e) {}
+        };
+        
+        // === INITIALIZATION ===
+        
+        function init() {
+            // Try to restore from localStorage
+            try {
+                var savedBells = localStorage.getItem('ellisBellLegacy_bells');
+                var savedName = localStorage.getItem('ellisBellLegacy_name');
+                
+                if (savedBells && savedName) {
+                    bells = JSON.parse(savedBells);
+                    scheduleName = savedName;
+                    
+                    if (bells.length > 0) {
+                        codeScreen.classList.add('hidden');
+                        audioScreen.classList.remove('hidden');
+                        return;
+                    }
+                }
+            } catch (e) {}
+            
+            // Focus the input
+            shareCodeInput.focus();
+        }
+        
+        init();
+    })();
+    </script>
+</body>
+</html>
