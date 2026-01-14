@@ -11,89 +11,91 @@
             padding: 0;
         }
         body {
-            font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
+            font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
             background-color: #f3f4f6;
             min-height: 100vh;
             color: #1f2937;
-            padding: 20px;
+            padding: 3vmin;
         }
         .container {
-            max-width: 500px;
+            max-width: 95vw;
             margin: 0 auto;
         }
         h1 {
             text-align: center;
-            font-size: 28px;
-            margin-bottom: 20px;
+            font-size: 6vmin;
+            margin-bottom: 3vmin;
             color: #1e3a5f;
             font-weight: bold;
         }
         .card {
             background: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 2vmin;
+            padding: 4vmin;
+            margin-bottom: 3vmin;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .clock-card {
             background: #1f2937;
             color: #fff;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
+            border-radius: 3vmin;
+            padding: 5vmin;
+            margin-bottom: 3vmin;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .clock {
-            font-size: 56px;
+            font-size: 18vmin;
             font-weight: bold;
             text-align: center;
-            font-family: 'Century Gothic', 'Courier New', monospace;
+            font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
             color: #fff;
-            margin: 10px 0;
-            letter-spacing: 2px;
+            margin: 2vmin 0;
+            letter-spacing: 0.5vmin;
+            line-height: 1.1;
         }
         .countdown {
-            font-size: 42px;
+            font-size: 14vmin;
             font-weight: bold;
             text-align: center;
-            font-family: 'Century Gothic', 'Courier New', monospace;
+            font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
             color: #4ade80;
-            margin: 10px 0;
+            margin: 2vmin 0;
+            line-height: 1.1;
         }
         .next-bell {
             text-align: center;
-            font-size: 18px;
+            font-size: 5vmin;
             color: #9ca3af;
-            margin: 10px 0;
+            margin: 2vmin 0;
         }
         .schedule-name {
             text-align: center;
-            font-size: 14px;
+            font-size: 3vmin;
             color: #6b7280;
-            margin-bottom: 10px;
+            margin-bottom: 2vmin;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.3vmin;
         }
         label {
             display: block;
-            font-size: 14px;
+            font-size: 3.5vmin;
             color: #6b7280;
-            margin-bottom: 8px;
+            margin-bottom: 2vmin;
             font-weight: 500;
         }
         input[type="text"] {
             width: 100%;
-            padding: 12px;
-            font-size: 20px;
+            padding: 3vmin;
+            font-size: 5vmin;
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 4px;
+            letter-spacing: 1vmin;
             border: 2px solid #e5e7eb;
-            border-radius: 8px;
+            border-radius: 2vmin;
             background: #fff;
             color: #1f2937;
             outline: none;
-            font-family: 'Century Gothic', monospace;
+            font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
         }
         input[type="text"]:focus {
             border-color: #3b82f6;
@@ -101,14 +103,14 @@
         }
         button {
             width: 100%;
-            padding: 14px;
-            font-size: 16px;
+            padding: 3vmin;
+            font-size: 4vmin;
             font-weight: bold;
             border: none;
-            border-radius: 8px;
+            border-radius: 2vmin;
             cursor: pointer;
-            margin-top: 12px;
-            font-family: 'Century Gothic', sans-serif;
+            margin-top: 3vmin;
+            font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
         }
         .btn-primary {
             background: #3b82f6;
@@ -131,17 +133,17 @@
         .btn-enable {
             background: #22c55e;
             color: #fff;
-            font-size: 18px;
-            padding: 20px;
+            font-size: 5vmin;
+            padding: 4vmin;
         }
         .btn-enable:hover {
             background: #16a34a;
         }
         .status {
             text-align: center;
-            font-size: 14px;
+            font-size: 3.5vmin;
             color: #f59e0b;
-            margin-top: 10px;
+            margin-top: 2vmin;
         }
         .error {
             color: #ef4444;
@@ -153,9 +155,9 @@
             display: none;
         }
         .bell-list {
-            max-height: 250px;
+            max-height: 40vmin;
             overflow-y: auto;
-            margin-top: 15px;
+            margin-top: 3vmin;
         }
         .bell-item {
             display: -webkit-box;
@@ -164,16 +166,16 @@
             -webkit-box-pack: justify;
             -webkit-justify-content: space-between;
             justify-content: space-between;
-            padding: 10px 0;
+            padding: 2vmin 0;
             border-bottom: 1px solid #e5e7eb;
-            font-size: 14px;
+            font-size: 3.5vmin;
         }
         .bell-item:last-child {
             border-bottom: none;
         }
         .bell-time {
             color: #3b82f6;
-            font-family: 'Century Gothic', monospace;
+            font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
             font-weight: 600;
         }
         .bell-name {
@@ -185,8 +187,8 @@
         }
         .bell-next {
             background: #dbeafe;
-            margin: 0 -20px;
-            padding: 10px 20px;
+            margin: 0 -4vmin;
+            padding: 2vmin 4vmin;
             border-radius: 0;
         }
         .bell-next .bell-time {
@@ -198,9 +200,9 @@
         }
         .version {
             text-align: center;
-            font-size: 11px;
+            font-size: 2.5vmin;
             color: #9ca3af;
-            margin-top: 20px;
+            margin-top: 3vmin;
         }
         /* iOS 9 flexbox fixes */
         .flex-row {
@@ -218,7 +220,7 @@
             -webkit-box-orient: horizontal;
             -webkit-flex-direction: row;
             flex-direction: row;
-            gap: 10px;
+            gap: 2vmin;
         }
         .button-row button {
             -webkit-box-flex: 1;
@@ -235,29 +237,29 @@
         }
         .last-refresh {
             text-align: center;
-            font-size: 11px;
+            font-size: 2.5vmin;
             color: #9ca3af;
-            margin-top: 8px;
+            margin-top: 2vmin;
         }
         /* Header styling */
         .header {
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 4vmin;
         }
         .header-icon {
-            font-size: 48px;
-            margin-bottom: 8px;
+            font-size: 10vmin;
+            margin-bottom: 1vmin;
         }
         .header-title {
-            font-size: 24px;
+            font-size: 6vmin;
             color: #1e3a5f;
             font-weight: bold;
             margin: 0;
         }
         .header-subtitle {
-            font-size: 12px;
+            font-size: 3vmin;
             color: #9ca3af;
-            margin-top: 4px;
+            margin-top: 1vmin;
         }
     </style>
 </head>
@@ -306,7 +308,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.3.0 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.3.1 (iOS 9+)</div>
     </div>
     
     <!-- Hidden audio element for bell sounds -->
