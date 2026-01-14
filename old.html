@@ -11,10 +11,10 @@
             padding: 0;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%);
+            font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
+            background-color: #f3f4f6;
             min-height: 100vh;
-            color: #fff;
+            color: #1f2937;
             padding: 20px;
         }
         .container {
@@ -23,49 +23,63 @@
         }
         h1 {
             text-align: center;
-            font-size: 24px;
+            font-size: 28px;
             margin-bottom: 20px;
-            color: #7dd3fc;
+            color: #1e3a5f;
+            font-weight: bold;
         }
         .card {
-            background: rgba(255, 255, 255, 0.1);
+            background: #fff;
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .clock-card {
+            background: #1f2937;
+            color: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .clock {
-            font-size: 48px;
+            font-size: 56px;
             font-weight: bold;
             text-align: center;
-            font-family: "Courier New", monospace;
+            font-family: 'Century Gothic', 'Courier New', monospace;
             color: #fff;
             margin: 10px 0;
+            letter-spacing: 2px;
         }
         .countdown {
-            font-size: 36px;
+            font-size: 42px;
             font-weight: bold;
             text-align: center;
-            font-family: "Courier New", monospace;
+            font-family: 'Century Gothic', 'Courier New', monospace;
             color: #4ade80;
             margin: 10px 0;
         }
         .next-bell {
             text-align: center;
             font-size: 18px;
-            color: #94a3b8;
+            color: #9ca3af;
             margin: 10px 0;
         }
         .schedule-name {
             text-align: center;
-            font-size: 16px;
-            color: #7dd3fc;
+            font-size: 14px;
+            color: #6b7280;
             margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         label {
             display: block;
             font-size: 14px;
-            color: #94a3b8;
+            color: #6b7280;
             margin-bottom: 8px;
+            font-weight: 500;
         }
         input[type="text"] {
             width: 100%;
@@ -74,14 +88,16 @@
             text-align: center;
             text-transform: uppercase;
             letter-spacing: 4px;
-            border: 2px solid #334155;
+            border: 2px solid #e5e7eb;
             border-radius: 8px;
-            background: #1e293b;
-            color: #fff;
+            background: #fff;
+            color: #1f2937;
             outline: none;
+            font-family: 'Century Gothic', monospace;
         }
         input[type="text"]:focus {
-            border-color: #7dd3fc;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         button {
             width: 100%;
@@ -92,18 +108,25 @@
             border-radius: 8px;
             cursor: pointer;
             margin-top: 12px;
+            font-family: 'Century Gothic', sans-serif;
         }
         .btn-primary {
             background: #3b82f6;
             color: #fff;
         }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
         .btn-primary:disabled {
-            background: #475569;
+            background: #9ca3af;
             cursor: not-allowed;
         }
         .btn-secondary {
-            background: #475569;
-            color: #fff;
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .btn-secondary:hover {
+            background: #d1d5db;
         }
         .btn-enable {
             background: #22c55e;
@@ -111,23 +134,26 @@
             font-size: 18px;
             padding: 20px;
         }
+        .btn-enable:hover {
+            background: #16a34a;
+        }
         .status {
             text-align: center;
             font-size: 14px;
-            color: #fbbf24;
+            color: #f59e0b;
             margin-top: 10px;
         }
         .error {
-            color: #f87171;
+            color: #ef4444;
         }
         .success {
-            color: #4ade80;
+            color: #22c55e;
         }
         .hidden {
             display: none;
         }
         .bell-list {
-            max-height: 200px;
+            max-height: 250px;
             overflow-y: auto;
             margin-top: 15px;
         }
@@ -138,25 +164,42 @@
             -webkit-box-pack: justify;
             -webkit-justify-content: space-between;
             justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
             font-size: 14px;
         }
+        .bell-item:last-child {
+            border-bottom: none;
+        }
         .bell-time {
-            color: #7dd3fc;
-            font-family: monospace;
+            color: #3b82f6;
+            font-family: 'Century Gothic', monospace;
+            font-weight: 600;
         }
         .bell-name {
-            color: #e2e8f0;
+            color: #374151;
         }
         .bell-passed {
             opacity: 0.4;
             text-decoration: line-through;
         }
+        .bell-next {
+            background: #dbeafe;
+            margin: 0 -20px;
+            padding: 10px 20px;
+            border-radius: 0;
+        }
+        .bell-next .bell-time {
+            color: #1d4ed8;
+        }
+        .bell-next .bell-name {
+            color: #1e40af;
+            font-weight: 600;
+        }
         .version {
             text-align: center;
             font-size: 11px;
-            color: #475569;
+            color: #9ca3af;
             margin-top: 20px;
         }
         /* iOS 9 flexbox fixes */
@@ -181,22 +224,50 @@
             -webkit-box-flex: 1;
             -webkit-flex: 1;
             flex: 1;
+            margin-top: 0;
         }
         .btn-refresh {
             background: #0ea5e9;
             color: #fff;
         }
+        .btn-refresh:hover {
+            background: #0284c7;
+        }
         .last-refresh {
             text-align: center;
             font-size: 11px;
-            color: #64748b;
+            color: #9ca3af;
             margin-top: 8px;
+        }
+        /* Header styling */
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .header-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+        .header-title {
+            font-size: 24px;
+            color: #1e3a5f;
+            font-weight: bold;
+            margin: 0;
+        }
+        .header-subtitle {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 4px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔔 Ellis Bell</h1>
+        <div class="header">
+            <div class="header-icon">🔔</div>
+            <h1 class="header-title">Ellis Bell</h1>
+            <p class="header-subtitle">Legacy Mode</p>
+        </div>
         
         <!-- Code Entry Screen -->
         <div id="code-screen" class="card">
@@ -208,7 +279,7 @@
         
         <!-- Audio Enable Screen (iOS requires user gesture) -->
         <div id="audio-screen" class="card hidden">
-            <p style="text-align: center; margin-bottom: 15px; color: #94a3b8;">
+            <p style="text-align: center; margin-bottom: 15px; color: #6b7280;">
                 iOS requires you to tap below to enable bell sounds.
             </p>
             <button type="button" id="enable-audio-btn" class="btn-enable">🔊 Enable Bell Sounds</button>
@@ -216,7 +287,7 @@
         
         <!-- Main Clock Screen -->
         <div id="clock-screen" class="hidden">
-            <div class="card">
+            <div class="clock-card">
                 <div class="schedule-name" id="schedule-name">Loading...</div>
                 <div class="clock" id="current-time">--:--:--</div>
                 <div class="countdown" id="countdown">--:--</div>
@@ -235,7 +306,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.2.0 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.3.0 (iOS 9+)</div>
     </div>
     
     <!-- Hidden audio element for bell sounds -->
@@ -904,19 +975,41 @@
             var now = getCurrentTimeHHMMSS();
             var nowSeconds = timeToSeconds(now);
             var html = '';
+            var foundNext = false;
             
             for (var i = 0; i < bells.length; i++) {
                 var bell = bells[i];
                 var bellSeconds = timeToSeconds(bell.time);
                 var passed = bellSeconds <= nowSeconds;
+                var isNext = !passed && !foundNext;
                 
-                html += '<div class="bell-item' + (passed ? ' bell-passed' : '') + '">';
+                if (isNext) foundNext = true;
+                
+                var classes = 'bell-item';
+                if (passed) classes += ' bell-passed';
+                if (isNext) classes += ' bell-next';
+                
+                html += '<div class="' + classes + '">';
                 html += '<span class="bell-time">' + formatTime12Hour(bell.time) + '</span>';
                 html += '<span class="bell-name">' + bell.name + '</span>';
                 html += '</div>';
             }
             
             bellListEl.innerHTML = html;
+            
+            // Auto-scroll to show next bell
+            var nextBellEl = bellListEl.querySelector('.bell-next');
+            if (nextBellEl) {
+                // Scroll so next bell is near top of visible area
+                var listTop = bellListEl.scrollTop;
+                var listHeight = bellListEl.clientHeight;
+                var itemTop = nextBellEl.offsetTop - bellListEl.offsetTop;
+                
+                // Only scroll if next bell isn't already visible near the top
+                if (itemTop < listTop || itemTop > listTop + listHeight * 0.5) {
+                    bellListEl.scrollTop = Math.max(0, itemTop - 40);
+                }
+            }
         }
         
         // === EVENT LISTENERS ===
