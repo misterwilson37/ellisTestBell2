@@ -7,6 +7,7 @@
     <style>
         * {
             box-sizing: border-box;
+            -webkit-box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
@@ -33,6 +34,7 @@
             border-radius: 2vmin;
             padding: 4vmin;
             margin-bottom: 3vmin;
+            -webkit-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .clock-card {
@@ -41,6 +43,7 @@
             border-radius: 3vmin;
             padding: 5vmin;
             margin-bottom: 3vmin;
+            -webkit-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .clock {
@@ -96,9 +99,12 @@
             color: #1f2937;
             outline: none;
             font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
+            -webkit-appearance: none;
+            appearance: none;
         }
         input[type="text"]:focus {
             border-color: #3b82f6;
+            -webkit-box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         button {
@@ -111,6 +117,8 @@
             cursor: pointer;
             margin-top: 3vmin;
             font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
+            -webkit-appearance: none;
+            appearance: none;
         }
         .btn-primary {
             background: #3b82f6;
@@ -157,6 +165,7 @@
         .bell-list {
             max-height: 40vmin;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             margin-top: 3vmin;
         }
         .bell-item {
@@ -204,7 +213,7 @@
             color: #9ca3af;
             margin-top: 3vmin;
         }
-        /* iOS 9 flexbox fixes */
+        /* iOS 9 flexbox fixes - NO gap property, use margins instead */
         .flex-row {
             display: -webkit-box;
             display: -webkit-flex;
@@ -220,13 +229,20 @@
             -webkit-box-orient: horizontal;
             -webkit-flex-direction: row;
             flex-direction: row;
-            gap: 2vmin;
+            /* NO gap - use margins on children instead */
         }
         .button-row button {
             -webkit-box-flex: 1;
             -webkit-flex: 1;
             flex: 1;
             margin-top: 0;
+        }
+        /* Gap replacement: margin on first button's right side */
+        .button-row button:first-child {
+            margin-right: 1vmin;
+        }
+        .button-row button:last-child {
+            margin-left: 1vmin;
         }
         .btn-refresh {
             background: #0ea5e9;
@@ -308,7 +324,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.3.1 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.3.2 (iOS 9+)</div>
     </div>
     
     <!-- Hidden audio element for bell sounds -->
@@ -317,6 +333,15 @@
     <script>
     (function() {
         'use strict';
+        
+        // === CONSOLE SAFETY (some old WebViews lack console) ===
+        if (typeof console === 'undefined' || typeof console.log === 'undefined') {
+            window.console = {
+                log: function() {},
+                warn: function() {},
+                error: function() {}
+            };
+        }
         
         // === CONFIGURATION ===
         var PROJECT_ID = 'ellisbell-c185c';
@@ -436,6 +461,27 @@
             codeStatus.textContent = message;
             codeStatus.className = 'status ' + (type || '');
             codeStatus.classList.remove('hidden');
+        }
+        
+        // Safe time formatting with fallback for older Safari
+        function formatTimeForDisplay(date) {
+            try {
+                // Try modern approach first
+                var result = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                // Check if it actually worked (some old Safari returns full string anyway)
+                if (result && result.length < 15) {
+                    return result;
+                }
+            } catch (e) {
+                // Fall through to manual formatting
+            }
+            // Manual fallback for iOS 9 and older
+            var h = date.getHours();
+            var m = date.getMinutes();
+            var ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            if (h === 0) h = 12;
+            return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
         }
         
         // === API CALLS ===
@@ -836,10 +882,16 @@
             bellAudio.src = DEFAULT_SOUND;
             bellAudio.volume = 0.01; // Very quiet test
             
-            var playPromise = bellAudio.play();
+            var playPromise;
+            try {
+                playPromise = bellAudio.play();
+            } catch (e) {
+                // Older browsers might throw
+                playPromise = undefined;
+            }
             
             // Handle both promise and non-promise (older Safari)
-            if (playPromise !== undefined) {
+            if (playPromise !== undefined && typeof playPromise.then === 'function') {
                 playPromise.then(function() {
                     bellAudio.pause();
                     bellAudio.currentTime = 0;
@@ -848,15 +900,20 @@
                     startClock();
                 }).catch(function(e) {
                     // Try again without promise handling
+                    console.warn('Audio promise rejected:', e);
                     audioEnabled = true;
                     startClock();
                 });
             } else {
-                // Older browsers
+                // Older browsers - just wait a bit
                 setTimeout(function() {
-                    bellAudio.pause();
-                    bellAudio.currentTime = 0;
-                    bellAudio.volume = 1.0;
+                    try {
+                        bellAudio.pause();
+                        bellAudio.currentTime = 0;
+                        bellAudio.volume = 1.0;
+                    } catch (e) {
+                        console.warn('Audio setup error:', e);
+                    }
                     audioEnabled = true;
                     startClock();
                 }, 100);
@@ -914,7 +971,7 @@
                 var savedTimestamp = localStorage.getItem('ellisBellLegacy_timestamp');
                 if (savedTimestamp) {
                     var date = new Date(parseInt(savedTimestamp, 10));
-                    var timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    var timeStr = formatTimeForDisplay(date);
                     lastRefreshEl.textContent = 'Last updated: ' + timeStr + ' (auto-refreshes every 4 hours)';
                 } else {
                     lastRefreshEl.textContent = '';
@@ -1000,12 +1057,12 @@
             bellListEl.innerHTML = html;
             
             // Auto-scroll to show next bell
-            var nextBellEl = bellListEl.querySelector('.bell-next');
-            if (nextBellEl) {
+            var nextBellItem = bellListEl.querySelector('.bell-next');
+            if (nextBellItem) {
                 // Scroll so next bell is near top of visible area
                 var listTop = bellListEl.scrollTop;
                 var listHeight = bellListEl.clientHeight;
-                var itemTop = nextBellEl.offsetTop - bellListEl.offsetTop;
+                var itemTop = nextBellItem.offsetTop - bellListEl.offsetTop;
                 
                 // Only scroll if next bell isn't already visible near the top
                 if (itemTop < listTop || itemTop > listTop + listHeight * 0.5) {
