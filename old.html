@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ellis Bell - Legacy (iOS 9)</title>
+    
+    <!-- Add to Home Screen - iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Ellis Bell">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231f2937' width='100' height='100' rx='20'/><text x='50' y='68' font-size='50' text-anchor='middle'>🔔</text></svg>">
+    
+    <!-- Add to Home Screen - Android/Chrome -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1f2937">
+    
+    <!-- Prevent phone number detection -->
+    <meta name="format-detection" content="telephone=no">
+    
     <style>
         * {
             box-sizing: border-box;
@@ -17,7 +31,56 @@
             min-height: 100vh;
             color: #1f2937;
             padding: 3vmin;
+            -webkit-transition: background-color 0.3s, color 0.3s;
+            transition: background-color 0.3s, color 0.3s;
         }
+        
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #111827;
+            color: #f3f4f6;
+        }
+        body.dark-mode .card {
+            background: #1f2937;
+            color: #f3f4f6;
+        }
+        body.dark-mode .card label {
+            color: #9ca3af;
+        }
+        body.dark-mode input[type="text"] {
+            background: #374151;
+            border-color: #4b5563;
+            color: #f3f4f6;
+        }
+        body.dark-mode input[type="text"]:focus {
+            border-color: #60a5fa;
+        }
+        body.dark-mode .btn-secondary {
+            background: #374151;
+            color: #e5e7eb;
+        }
+        body.dark-mode .btn-secondary:hover {
+            background: #4b5563;
+        }
+        body.dark-mode .header-title {
+            color: #93c5fd;
+        }
+        body.dark-mode .bell-item {
+            border-bottom-color: #374151;
+        }
+        body.dark-mode .bell-name {
+            color: #e5e7eb;
+        }
+        body.dark-mode .bell-next {
+            background: #1e3a5f;
+        }
+        body.dark-mode .bell-next .bell-time {
+            color: #93c5fd;
+        }
+        body.dark-mode .bell-next .bell-name {
+            color: #bfdbfe;
+        }
+        
         .container {
             max-width: 95vw;
             margin: 0 auto;
@@ -36,6 +99,8 @@
             margin-bottom: 3vmin;
             -webkit-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            -webkit-transition: background-color 0.3s, color 0.3s;
+            transition: background-color 0.3s, color 0.3s;
         }
         .clock-card {
             background: #1f2937;
@@ -88,7 +153,7 @@
         }
         input[type="text"] {
             width: 100%;
-            padding: 3vmin;
+            padding: 4vmin;
             font-size: 5vmin;
             text-align: center;
             text-transform: uppercase;
@@ -101,6 +166,8 @@
             font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
             -webkit-appearance: none;
             appearance: none;
+            -webkit-transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
         }
         input[type="text"]:focus {
             border-color: #3b82f6;
@@ -109,7 +176,7 @@
         }
         button {
             width: 100%;
-            padding: 3vmin;
+            padding: 4vmin;
             font-size: 4vmin;
             font-weight: bold;
             border: none;
@@ -119,12 +186,16 @@
             font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
             -webkit-appearance: none;
             appearance: none;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+            /* Larger touch targets */
+            min-height: 12vmin;
         }
         .btn-primary {
             background: #3b82f6;
             color: #fff;
         }
-        .btn-primary:hover {
+        .btn-primary:hover,
+        .btn-primary:active {
             background: #2563eb;
         }
         .btn-primary:disabled {
@@ -134,17 +205,22 @@
         .btn-secondary {
             background: #e5e7eb;
             color: #374151;
+            -webkit-transition: background-color 0.3s, color 0.3s;
+            transition: background-color 0.3s, color 0.3s;
         }
-        .btn-secondary:hover {
+        .btn-secondary:hover,
+        .btn-secondary:active {
             background: #d1d5db;
         }
         .btn-enable {
             background: #22c55e;
             color: #fff;
             font-size: 5vmin;
-            padding: 4vmin;
+            padding: 5vmin;
+            min-height: 15vmin;
         }
-        .btn-enable:hover {
+        .btn-enable:hover,
+        .btn-enable:active {
             background: #16a34a;
         }
         .status {
@@ -175,9 +251,11 @@
             -webkit-box-pack: justify;
             -webkit-justify-content: space-between;
             justify-content: space-between;
-            padding: 2vmin 0;
+            padding: 2.5vmin 0;
             border-bottom: 1px solid #e5e7eb;
             font-size: 3.5vmin;
+            -webkit-transition: border-color 0.3s;
+            transition: border-color 0.3s;
         }
         .bell-item:last-child {
             border-bottom: none;
@@ -189,6 +267,8 @@
         }
         .bell-name {
             color: #374151;
+            -webkit-transition: color 0.3s;
+            transition: color 0.3s;
         }
         .bell-passed {
             opacity: 0.4;
@@ -197,8 +277,10 @@
         .bell-next {
             background: #dbeafe;
             margin: 0 -4vmin;
-            padding: 2vmin 4vmin;
+            padding: 2.5vmin 4vmin;
             border-radius: 0;
+            -webkit-transition: background-color 0.3s;
+            transition: background-color 0.3s;
         }
         .bell-next .bell-time {
             color: #1d4ed8;
@@ -229,27 +311,44 @@
             -webkit-box-orient: horizontal;
             -webkit-flex-direction: row;
             flex-direction: row;
-            /* NO gap - use margins on children instead */
+            -webkit-flex-wrap: wrap;
+            flex-wrap: wrap;
         }
         .button-row button {
             -webkit-box-flex: 1;
-            -webkit-flex: 1;
-            flex: 1;
-            margin-top: 0;
+            -webkit-flex: 1 1 auto;
+            flex: 1 1 auto;
+            margin: 1vmin;
+            min-width: 40%;
         }
-        /* Gap replacement: margin on first button's right side */
-        .button-row button:first-child {
-            margin-right: 1vmin;
-        }
-        .button-row button:last-child {
-            margin-left: 1vmin;
+        .button-row-3 button {
+            -webkit-flex: 1 1 30%;
+            flex: 1 1 30%;
+            min-width: 30%;
         }
         .btn-refresh {
             background: #0ea5e9;
             color: #fff;
         }
-        .btn-refresh:hover {
+        .btn-refresh:hover,
+        .btn-refresh:active {
             background: #0284c7;
+        }
+        .btn-dark-toggle {
+            background: #6366f1;
+            color: #fff;
+        }
+        .btn-dark-toggle:hover,
+        .btn-dark-toggle:active {
+            background: #4f46e5;
+        }
+        .btn-fullscreen {
+            background: #8b5cf6;
+            color: #fff;
+        }
+        .btn-fullscreen:hover,
+        .btn-fullscreen:active {
+            background: #7c3aed;
         }
         .last-refresh {
             text-align: center;
@@ -271,11 +370,64 @@
             color: #1e3a5f;
             font-weight: bold;
             margin: 0;
+            -webkit-transition: color 0.3s;
+            transition: color 0.3s;
         }
         .header-subtitle {
             font-size: 3vmin;
             color: #9ca3af;
             margin-top: 1vmin;
+        }
+        
+        /* Kiosk mode - hide non-essential UI */
+        body.kiosk-mode .bell-list-card,
+        body.kiosk-mode .button-row,
+        body.kiosk-mode .last-refresh,
+        body.kiosk-mode .version {
+            display: none;
+        }
+        body.kiosk-mode .clock-card {
+            margin-bottom: 0;
+        }
+        body.kiosk-mode .clock {
+            font-size: 22vmin;
+        }
+        body.kiosk-mode .countdown {
+            font-size: 18vmin;
+        }
+        body.kiosk-mode .next-bell {
+            font-size: 6vmin;
+        }
+        
+        /* Tap zone to exit kiosk mode */
+        .kiosk-exit-zone {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 15vmin;
+            height: 15vmin;
+            z-index: 1000;
+            /* Invisible but tappable */
+        }
+        .kiosk-exit-zone.hidden {
+            display: none;
+        }
+        
+        /* Home screen hint */
+        .homescreen-hint {
+            text-align: center;
+            font-size: 2.5vmin;
+            color: #9ca3af;
+            margin-top: 2vmin;
+            padding: 2vmin;
+            background: rgba(0,0,0,0.05);
+            border-radius: 1vmin;
+        }
+        body.dark-mode .homescreen-hint {
+            background: rgba(255,255,255,0.05);
+        }
+        .homescreen-hint.hidden {
+            display: none;
         }
     </style>
 </head>
@@ -293,6 +445,9 @@
             <input type="text" id="share-code" maxlength="6" placeholder="ABC123" autocomplete="off" autocorrect="off" autocapitalize="characters">
             <button type="button" id="load-btn" class="btn-primary">Load Schedule</button>
             <div id="code-status" class="status hidden"></div>
+            <div id="homescreen-hint" class="homescreen-hint hidden">
+                💡 Tip: Add this page to your home screen for a full-screen clock experience!
+            </div>
         </div>
         
         <!-- Audio Enable Screen (iOS requires user gesture) -->
@@ -312,20 +467,28 @@
                 <div class="next-bell" id="next-bell">Loading schedule...</div>
             </div>
             
-            <div class="card">
+            <div class="card bell-list-card">
                 <label>Today's Bells:</label>
                 <div class="bell-list" id="bell-list"></div>
             </div>
             
-            <div class="button-row">
+            <div class="button-row button-row-3">
                 <button type="button" id="refresh-schedule-btn" class="btn-refresh">🔄 Refresh</button>
+                <button type="button" id="dark-mode-btn" class="btn-dark-toggle">🌙 Dark</button>
+                <button type="button" id="fullscreen-btn" class="btn-fullscreen">⛶ Full</button>
+            </div>
+            <div class="button-row">
+                <button type="button" id="kiosk-btn" class="btn-secondary">🖥️ Kiosk Mode</button>
                 <button type="button" id="change-schedule-btn" class="btn-secondary">Change Schedule</button>
             </div>
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.3.2 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.4.0 (iOS 9+)</div>
     </div>
+    
+    <!-- Invisible tap zone to exit kiosk mode (top-right corner) -->
+    <div id="kiosk-exit-zone" class="kiosk-exit-zone hidden"></div>
     
     <!-- Hidden audio element for bell sounds -->
     <audio id="bell-audio" preload="auto"></audio>
@@ -334,7 +497,11 @@
     (function() {
         'use strict';
         
-        // === CONSOLE SAFETY (some old WebViews lack console) ===
+        // ===========================================
+        // === POLYFILLS FOR LEGACY BROWSERS ===
+        // ===========================================
+        
+        // Console safety (some old WebViews lack console)
         if (typeof console === 'undefined' || typeof console.log === 'undefined') {
             window.console = {
                 log: function() {},
@@ -343,20 +510,124 @@
             };
         }
         
+        // String.trim polyfill
+        if (!String.prototype.trim) {
+            String.prototype.trim = function() {
+                return this.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
+            };
+        }
+        
+        // Object.keys polyfill
+        if (!Object.keys) {
+            Object.keys = function(obj) {
+                var keys = [];
+                for (var key in obj) {
+                    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                        keys.push(key);
+                    }
+                }
+                return keys;
+            };
+        }
+        
+        // Array.isArray polyfill
+        if (!Array.isArray) {
+            Array.isArray = function(arg) {
+                return Object.prototype.toString.call(arg) === '[object Array]';
+            };
+        }
+        
+        // classList polyfill for old browsers
+        if (!('classList' in document.documentElement)) {
+            Object.defineProperty(HTMLElement.prototype, 'classList', {
+                get: function() {
+                    var self = this;
+                    function update(fn) {
+                        return function(value) {
+                            var classes = self.className.split(/\s+/);
+                            var index = classes.indexOf(value);
+                            fn(classes, index, value);
+                            self.className = classes.join(' ');
+                        };
+                    }
+                    return {
+                        add: update(function(classes, index, value) {
+                            if (index === -1) classes.push(value);
+                        }),
+                        remove: update(function(classes, index) {
+                            if (index !== -1) classes.splice(index, 1);
+                        }),
+                        toggle: update(function(classes, index, value) {
+                            if (index === -1) classes.push(value);
+                            else classes.splice(index, 1);
+                        }),
+                        contains: function(value) {
+                            return self.className.split(/\s+/).indexOf(value) !== -1;
+                        }
+                    };
+                }
+            });
+        }
+        
+        // Array.indexOf polyfill (needed for classList polyfill)
+        if (!Array.prototype.indexOf) {
+            Array.prototype.indexOf = function(searchElement, fromIndex) {
+                var k;
+                if (this == null) throw new TypeError('"this" is null or not defined');
+                var o = Object(this);
+                var len = o.length >>> 0;
+                if (len === 0) return -1;
+                var n = fromIndex | 0;
+                if (n >= len) return -1;
+                k = Math.max(n >= 0 ? n : len - Math.abs(n), 0);
+                while (k < len) {
+                    if (k in o && o[k] === searchElement) return k;
+                    k++;
+                }
+                return -1;
+            };
+        }
+        
+        // Date.now polyfill
+        if (!Date.now) {
+            Date.now = function() {
+                return new Date().getTime();
+            };
+        }
+        
+        // JSON polyfill check (should exist but just in case)
+        if (typeof JSON === 'undefined') {
+            console.error('JSON not supported - this browser is too old');
+            alert('This browser does not support JSON. Please use a newer browser.');
+            return;
+        }
+        
+        // ===========================================
         // === CONFIGURATION ===
+        // ===========================================
+        
         var PROJECT_ID = 'ellisbell-c185c';
         var APP_ID = '1:441560045695:web:94e51a006663404b8f474a';
         var FIRESTORE_BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID + '/databases/(default)/documents';
         var DEFAULT_SOUND = 'https://firebasestorage.googleapis.com/v0/b/ellisbell-c185c.appspot.com/o/sounds%2Fpublic%2FellisBell.mp3?alt=media';
         
+        // ===========================================
         // === STATE ===
+        // ===========================================
+        
         var bells = [];
         var scheduleName = '';
         var audioEnabled = false;
         var lastRungBellTime = null;
         var clockInterval = null;
+        var wakeLock = null;
+        var kioskTapCount = 0;
+        var kioskTapTimer = null;
         
+        // ===========================================
         // === DOM ELEMENTS ===
+        // ===========================================
+        
         var codeScreen = document.getElementById('code-screen');
         var audioScreen = document.getElementById('audio-screen');
         var clockScreen = document.getElementById('clock-screen');
@@ -373,8 +644,15 @@
         var refreshScheduleBtn = document.getElementById('refresh-schedule-btn');
         var lastRefreshEl = document.getElementById('last-refresh');
         var bellAudio = document.getElementById('bell-audio');
+        var darkModeBtn = document.getElementById('dark-mode-btn');
+        var fullscreenBtn = document.getElementById('fullscreen-btn');
+        var kioskBtn = document.getElementById('kiosk-btn');
+        var kioskExitZone = document.getElementById('kiosk-exit-zone');
+        var homescreenHint = document.getElementById('homescreen-hint');
         
+        // ===========================================
         // === UTILITIES ===
+        // ===========================================
         
         // Array.find polyfill for iOS 9
         function arrayFind(arr, predicate) {
@@ -410,7 +688,7 @@
         function parseFields(fields) {
             var result = {};
             for (var key in fields) {
-                if (fields.hasOwnProperty(key)) {
+                if (Object.prototype.hasOwnProperty.call(fields, key)) {
                     result[key] = parseFieldValue(fields[key]);
                 }
             }
@@ -460,22 +738,19 @@
         function showStatus(message, type) {
             codeStatus.textContent = message;
             codeStatus.className = 'status ' + (type || '');
-            codeStatus.classList.remove('hidden');
+            removeClass(codeStatus, 'hidden');
         }
         
         // Safe time formatting with fallback for older Safari
         function formatTimeForDisplay(date) {
             try {
-                // Try modern approach first
                 var result = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                // Check if it actually worked (some old Safari returns full string anyway)
                 if (result && result.length < 15) {
                     return result;
                 }
             } catch (e) {
                 // Fall through to manual formatting
             }
-            // Manual fallback for iOS 9 and older
             var h = date.getHours();
             var m = date.getMinutes();
             var ampm = h >= 12 ? 'PM' : 'AM';
@@ -484,7 +759,43 @@
             return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
         }
         
+        // Safe class manipulation (works even if classList polyfill fails)
+        function addClass(el, className) {
+            if (el.classList) {
+                el.classList.add(className);
+            } else {
+                if ((' ' + el.className + ' ').indexOf(' ' + className + ' ') === -1) {
+                    el.className = el.className ? el.className + ' ' + className : className;
+                }
+            }
+        }
+        
+        function removeClass(el, className) {
+            if (el.classList) {
+                el.classList.remove(className);
+            } else {
+                el.className = el.className.replace(new RegExp('(^|\\s)' + className + '(\\s|$)', 'g'), ' ').trim();
+            }
+        }
+        
+        function hasClass(el, className) {
+            if (el.classList) {
+                return el.classList.contains(className);
+            }
+            return (' ' + el.className + ' ').indexOf(' ' + className + ' ') !== -1;
+        }
+        
+        function toggleClass(el, className) {
+            if (hasClass(el, className)) {
+                removeClass(el, className);
+            } else {
+                addClass(el, className);
+            }
+        }
+        
+        // ===========================================
         // === API CALLS ===
+        // ===========================================
         
         function fetchDocument(path, callback) {
             var xhr = new XMLHttpRequest();
@@ -511,7 +822,9 @@
             xhr.send();
         }
         
+        // ===========================================
         // === SCHEDULE LOADING ===
+        // ===========================================
         
         function loadScheduleFromCode(code) {
             code = code.toUpperCase().trim();
@@ -524,7 +837,6 @@
             showStatus('Looking up code...', '');
             loadBtn.disabled = true;
             
-            // Step 1: Fetch share code document
             var shareCodePath = '/artifacts/' + APP_ID + '/public/data/share_codes/' + code;
             
             fetchDocument(shareCodePath, function(err, shareCodeDoc) {
@@ -547,7 +859,6 @@
                 
                 showStatus('Loading schedule...', '');
                 
-                // Step 2: Fetch the personal schedule
                 var schedulePath = '/artifacts/' + APP_ID + '/users/' + ownerId + '/personal_schedules/' + scheduleId;
                 
                 fetchDocument(schedulePath, function(err2, scheduleDoc) {
@@ -560,16 +871,13 @@
                     var scheduleData = parseFields(scheduleDoc.fields || {});
                     console.log('Personal schedule data:', scheduleData);
                     
-                    // Check if this is a standalone or linked schedule
                     var isStandalone = !scheduleData.baseScheduleId || scheduleData.isStandalone;
                     console.log('Is standalone:', isStandalone, 'baseScheduleId:', scheduleData.baseScheduleId);
                     
                     if (isStandalone) {
-                        // Standalone: extract bells directly
                         bells = extractBellsFromSchedule(scheduleData);
                         finishLoading(code);
                     } else {
-                        // Linked: need to also load the base schedule
                         showStatus('Loading base schedule...', '');
                         var basePath = '/artifacts/' + APP_ID + '/public/data/schedules/' + scheduleData.baseScheduleId;
                         
@@ -581,15 +889,11 @@
                                 var baseData = parseFields(baseDoc.fields || {});
                                 console.log('Base schedule data:', baseData);
                                 
-                                // Merge periods from base + personal so relative bells can find their anchors
                                 var basePeriods = baseData.periods || [];
                                 var personalPeriods = scheduleData.periods || [];
-                                
-                                // Create merged periods array
                                 var mergedPeriods = [];
                                 var periodMap = {};
                                 
-                                // Add base periods first
                                 for (var bp = 0; bp < basePeriods.length; bp++) {
                                     var period = basePeriods[bp];
                                     if (period && period.name) {
@@ -600,19 +904,16 @@
                                     }
                                 }
                                 
-                                // Merge personal periods (add bells to existing or create new)
                                 for (var pp = 0; pp < personalPeriods.length; pp++) {
                                     var pPeriod = personalPeriods[pp];
                                     if (pPeriod && pPeriod.name) {
                                         if (periodMap[pPeriod.name]) {
-                                            // Period exists - add personal bells to it
                                             var existingBells = periodMap[pPeriod.name].bells;
                                             var newBells = pPeriod.bells || [];
                                             for (var nb = 0; nb < newBells.length; nb++) {
                                                 existingBells.push(newBells[nb]);
                                             }
                                         } else {
-                                            // New period from personal schedule
                                             periodMap[pPeriod.name] = {
                                                 name: pPeriod.name,
                                                 bells: pPeriod.bells ? pPeriod.bells.slice() : []
@@ -621,16 +922,13 @@
                                     }
                                 }
                                 
-                                // Convert map to array
                                 for (var pName in periodMap) {
-                                    if (periodMap.hasOwnProperty(pName)) {
+                                    if (Object.prototype.hasOwnProperty.call(periodMap, pName)) {
                                         mergedPeriods.push(periodMap[pName]);
                                     }
                                 }
                                 
                                 console.log('Merged periods:', mergedPeriods);
-                                
-                                // Extract from merged
                                 bells = extractBellsFromSchedule({ periods: mergedPeriods });
                             }
                             finishLoading(code);
@@ -648,12 +946,10 @@
                         return;
                     }
                     
-                    // Sort bells by time
                     bells.sort(function(a, b) {
                         return a.time.localeCompare(b.time);
                     });
                     
-                    // Remove duplicates (same time)
                     var uniqueBells = [];
                     var seenTimes = {};
                     for (var i = 0; i < bells.length; i++) {
@@ -664,7 +960,6 @@
                     }
                     bells = uniqueBells;
                     
-                    // Save to localStorage with timestamp
                     try {
                         localStorage.setItem('ellisBellLegacy_code', code);
                         localStorage.setItem('ellisBellLegacy_bells', JSON.stringify(bells));
@@ -676,20 +971,16 @@
                     
                     showStatus('Loaded ' + bells.length + ' bells!', 'success');
                     
-                    // Show audio enable screen (iOS requirement)
                     setTimeout(function() {
-                        codeScreen.classList.add('hidden');
-                        audioScreen.classList.remove('hidden');
+                        addClass(codeScreen, 'hidden');
+                        removeClass(audioScreen, 'hidden');
                     }, 500);
                 }
             });
         }
         
-        // Convert seconds to HH:MM:SS
         function secondsToTimeStr(totalSeconds) {
-            // Handle negative times (wrap to previous day - not ideal but prevents crashes)
             while (totalSeconds < 0) totalSeconds += 86400;
-            // Handle overflow past midnight
             totalSeconds = totalSeconds % 86400;
             
             var h = Math.floor(totalSeconds / 3600);
@@ -705,9 +996,8 @@
             console.log('extractBellsFromSchedule - periods:', periods);
             console.log('extractBellsFromSchedule - periods length:', periods.length);
             
-            // First pass: collect all static bells and build maps
-            var bellMap = {}; // bellId -> bell with time
-            var allBells = []; // all bells for processing
+            var bellMap = {};
+            var allBells = [];
             
             for (var i = 0; i < periods.length; i++) {
                 var period = periods[i];
@@ -717,12 +1007,10 @@
                     var bell = period.bells[j];
                     if (!bell) continue;
                     
-                    // Add period reference to bell
                     bell._periodName = period.name;
                     bell._periodBells = period.bells;
                     allBells.push(bell);
                     
-                    // If static bell with time, add to map
                     if (bell.time && !bell.relative && bell.bellId) {
                         bellMap[bell.bellId] = bell;
                     }
@@ -732,22 +1020,18 @@
             console.log('Static bells in map:', Object.keys(bellMap).length);
             console.log('Total bells to process:', allBells.length);
             
-            // Second pass: calculate relative bell times
             function calculateBellTime(bell, visited) {
                 if (!visited) visited = {};
                 
-                // If already has a static time (not relative), return it
                 if (bell.time && !bell.relative) {
                     return bell.time;
                 }
                 
-                // If no relative data, skip
                 if (!bell.relative) {
                     console.log('Bell has no time and no relative data:', bell.name);
                     return null;
                 }
                 
-                // Check for circular reference
                 if (bell.bellId && visited[bell.bellId]) {
                     console.warn('Circular reference detected for bell:', bell.name);
                     return null;
@@ -756,11 +1040,9 @@
                 
                 var parentTime = null;
                 
-                // Method 1: Parent by bellId
                 if (bell.relative.parentBellId) {
                     var parentBell = bellMap[bell.relative.parentBellId];
                     if (!parentBell) {
-                        // Try to find in allBells
                         for (var k = 0; k < allBells.length; k++) {
                             if (allBells[k].bellId === bell.relative.parentBellId) {
                                 parentBell = allBells[k];
@@ -775,12 +1057,10 @@
                         console.warn('Parent bell not found:', bell.relative.parentBellId);
                     }
                 }
-                // Method 2: Parent by period anchor (period_start / period_end)
                 else if (bell.relative.parentPeriodName) {
                     var parentPeriodName = bell.relative.parentPeriodName;
                     var anchorType = bell.relative.parentAnchorType;
                     
-                    // Find the parent period
                     var parentPeriod = null;
                     for (var p = 0; p < periods.length; p++) {
                         if (periods[p].name === parentPeriodName) {
@@ -790,7 +1070,6 @@
                     }
                     
                     if (parentPeriod && parentPeriod.bells && parentPeriod.bells.length > 0) {
-                        // Find anchor bell (first static = period_start, last static = period_end)
                         var staticBells = [];
                         for (var sb = 0; sb < parentPeriod.bells.length; sb++) {
                             var b = parentPeriod.bells[sb];
@@ -799,7 +1078,6 @@
                             }
                         }
                         
-                        // Sort by time
                         staticBells.sort(function(a, b) {
                             return a.time.localeCompare(b.time);
                         });
@@ -811,7 +1089,6 @@
                             anchorBell = staticBells[staticBells.length - 1];
                         }
                         
-                        // Fallback: look for anchorRole or named bells
                         if (!anchorBell) {
                             for (var ar = 0; ar < parentPeriod.bells.length; ar++) {
                                 var arBell = parentPeriod.bells[ar];
@@ -836,7 +1113,6 @@
                     }
                 }
                 
-                // Calculate final time
                 if (parentTime) {
                     var parentSeconds = timeToSeconds(parentTime);
                     var offsetSeconds = bell.relative.offsetSeconds || 0;
@@ -847,13 +1123,11 @@
                 return null;
             }
             
-            // Process all bells
             for (var b = 0; b < allBells.length; b++) {
                 var bell = allBells[b];
                 var time = calculateBellTime(bell, {});
                 
                 if (time) {
-                    // Ensure time has seconds
                     if (time.split(':').length === 2) {
                         time = time + ':00';
                     }
@@ -875,22 +1149,21 @@
             return extractedBells;
         }
         
+        // ===========================================
         // === AUDIO ===
+        // ===========================================
         
         function enableAudio() {
-            // iOS requires user gesture to enable audio
             bellAudio.src = DEFAULT_SOUND;
-            bellAudio.volume = 0.01; // Very quiet test
+            bellAudio.volume = 0.01;
             
             var playPromise;
             try {
                 playPromise = bellAudio.play();
             } catch (e) {
-                // Older browsers might throw
                 playPromise = undefined;
             }
             
-            // Handle both promise and non-promise (older Safari)
             if (playPromise !== undefined && typeof playPromise.then === 'function') {
                 playPromise.then(function() {
                     bellAudio.pause();
@@ -899,13 +1172,11 @@
                     audioEnabled = true;
                     startClock();
                 }).catch(function(e) {
-                    // Try again without promise handling
                     console.warn('Audio promise rejected:', e);
                     audioEnabled = true;
                     startClock();
                 });
             } else {
-                // Older browsers - just wait a bit
                 setTimeout(function() {
                     try {
                         bellAudio.pause();
@@ -925,7 +1196,6 @@
             
             var url = soundUrl || DEFAULT_SOUND;
             
-            // Handle relative paths or default sounds - convert to full Firebase URL
             if (!url || url === 'ellisBell.mp3' || url === '[SILENT]' || url.indexOf('http') !== 0) {
                 if (url === '[SILENT]') {
                     console.log('Silent bell - not playing');
@@ -945,25 +1215,28 @@
             }
         }
         
+        // ===========================================
         // === CLOCK ===
+        // ===========================================
         
         function startClock() {
-            audioScreen.classList.add('hidden');
-            clockScreen.classList.remove('hidden');
+            addClass(audioScreen, 'hidden');
+            removeClass(clockScreen, 'hidden');
             
             scheduleNameEl.textContent = scheduleName;
             renderBellList();
             updateClock();
             
-            // Reset refresh button
             refreshScheduleBtn.textContent = '🔄 Refresh';
             refreshScheduleBtn.disabled = false;
             
-            // Show last refresh time
             updateLastRefreshDisplay();
             
             if (clockInterval) clearInterval(clockInterval);
             clockInterval = setInterval(updateClock, 1000);
+            
+            // Try to acquire wake lock
+            requestWakeLock();
         }
         
         function updateLastRefreshDisplay() {
@@ -985,10 +1258,8 @@
             var now = getCurrentTimeHHMMSS();
             var nowSeconds = timeToSeconds(now);
             
-            // Update current time display
             currentTimeEl.textContent = formatTime12Hour(now);
             
-            // Find next bell
             var nextBell = null;
             for (var i = 0; i < bells.length; i++) {
                 var bellSeconds = timeToSeconds(bells[i].time);
@@ -1005,21 +1276,19 @@
                 countdownEl.textContent = formatCountdown(secondsUntil);
                 nextBellEl.textContent = 'until ' + nextBell.name;
                 
-                // Check if bell should ring (within 1 second and not already rung)
                 if (secondsUntil <= 0 && secondsUntil > -2 && lastRungBellTime !== nextBell.time) {
                     lastRungBellTime = nextBell.time;
                     playBellSound(nextBell.sound);
-                    renderBellList(); // Update list to show passed bells
+                    renderBellList();
                 }
             } else {
                 countdownEl.textContent = '--:--';
                 nextBellEl.textContent = 'No more bells today';
             }
             
-            // Ring any bell that matches current time (backup check)
             for (var j = 0; j < bells.length; j++) {
                 var bell = bells[j];
-                var bellTime = bell.time.substring(0, 5); // HH:MM
+                var bellTime = bell.time.substring(0, 5);
                 var currentTime = now.substring(0, 5);
                 
                 if (bellTime === currentTime && now.substring(6, 8) === '00' && lastRungBellTime !== bell.time) {
@@ -1056,22 +1325,208 @@
             
             bellListEl.innerHTML = html;
             
-            // Auto-scroll to show next bell
             var nextBellItem = bellListEl.querySelector('.bell-next');
             if (nextBellItem) {
-                // Scroll so next bell is near top of visible area
                 var listTop = bellListEl.scrollTop;
                 var listHeight = bellListEl.clientHeight;
                 var itemTop = nextBellItem.offsetTop - bellListEl.offsetTop;
                 
-                // Only scroll if next bell isn't already visible near the top
                 if (itemTop < listTop || itemTop > listTop + listHeight * 0.5) {
                     bellListEl.scrollTop = Math.max(0, itemTop - 40);
                 }
             }
         }
         
+        // ===========================================
+        // === DARK MODE ===
+        // ===========================================
+        
+        function toggleDarkMode() {
+            toggleClass(document.body, 'dark-mode');
+            var isDark = hasClass(document.body, 'dark-mode');
+            darkModeBtn.textContent = isDark ? '☀️ Light' : '🌙 Dark';
+            
+            try {
+                localStorage.setItem('ellisBellLegacy_darkMode', isDark ? '1' : '0');
+            } catch (e) {}
+        }
+        
+        function loadDarkModePreference() {
+            try {
+                var pref = localStorage.getItem('ellisBellLegacy_darkMode');
+                if (pref === '1') {
+                    addClass(document.body, 'dark-mode');
+                    darkModeBtn.textContent = '☀️ Light';
+                }
+            } catch (e) {}
+        }
+        
+        // ===========================================
+        // === FULLSCREEN ===
+        // ===========================================
+        
+        function toggleFullscreen() {
+            var doc = document;
+            var docEl = document.documentElement;
+            
+            var requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || 
+                           docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+            var exitFS = doc.exitFullscreen || doc.webkitExitFullscreen || 
+                        doc.mozCancelFullScreen || doc.msExitFullscreen;
+            var isFS = doc.fullscreenElement || doc.webkitFullscreenElement || 
+                      doc.mozFullScreenElement || doc.msFullscreenElement;
+            
+            try {
+                if (!isFS && requestFS) {
+                    requestFS.call(docEl);
+                } else if (isFS && exitFS) {
+                    exitFS.call(doc);
+                }
+            } catch (e) {
+                console.warn('Fullscreen not supported:', e);
+            }
+        }
+        
+        function updateFullscreenButton() {
+            var doc = document;
+            var isFS = doc.fullscreenElement || doc.webkitFullscreenElement || 
+                      doc.mozFullScreenElement || doc.msFullscreenElement;
+            fullscreenBtn.textContent = isFS ? '⛶ Exit' : '⛶ Full';
+        }
+        
+        // ===========================================
+        // === KIOSK MODE ===
+        // ===========================================
+        
+        function enterKioskMode() {
+            addClass(document.body, 'kiosk-mode');
+            removeClass(kioskExitZone, 'hidden');
+            
+            // Also try fullscreen
+            toggleFullscreen();
+            
+            try {
+                localStorage.setItem('ellisBellLegacy_kioskMode', '1');
+            } catch (e) {}
+        }
+        
+        function exitKioskMode() {
+            removeClass(document.body, 'kiosk-mode');
+            addClass(kioskExitZone, 'hidden');
+            
+            try {
+                localStorage.setItem('ellisBellLegacy_kioskMode', '0');
+            } catch (e) {}
+        }
+        
+        function handleKioskExitTap() {
+            kioskTapCount++;
+            
+            if (kioskTapTimer) {
+                clearTimeout(kioskTapTimer);
+            }
+            
+            if (kioskTapCount >= 3) {
+                kioskTapCount = 0;
+                exitKioskMode();
+            } else {
+                kioskTapTimer = setTimeout(function() {
+                    kioskTapCount = 0;
+                }, 1000);
+            }
+        }
+        
+        function loadKioskModePreference() {
+            try {
+                var pref = localStorage.getItem('ellisBellLegacy_kioskMode');
+                if (pref === '1') {
+                    // Delay to let page load first
+                    setTimeout(function() {
+                        enterKioskMode();
+                    }, 500);
+                }
+            } catch (e) {}
+        }
+        
+        // ===========================================
+        // === WAKE LOCK ===
+        // ===========================================
+        
+        function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    navigator.wakeLock.request('screen').then(function(lock) {
+                        wakeLock = lock;
+                        console.log('Wake lock acquired');
+                        
+                        wakeLock.addEventListener('release', function() {
+                            console.log('Wake lock released');
+                        });
+                    }).catch(function(e) {
+                        console.warn('Wake lock failed:', e);
+                    });
+                } catch (e) {
+                    console.warn('Wake lock not supported:', e);
+                }
+            }
+        }
+        
+        function releaseWakeLock() {
+            if (wakeLock) {
+                try {
+                    wakeLock.release();
+                    wakeLock = null;
+                } catch (e) {}
+            }
+        }
+        
+        // ===========================================
+        // === VISIBILITY API (Battery Saving) ===
+        // ===========================================
+        
+        function handleVisibilityChange() {
+            var hidden = document.hidden || document.webkitHidden || document.mozHidden || document.msHidden;
+            
+            if (hidden) {
+                // Page is hidden - pause updates (but keep checking for bells)
+                console.log('Page hidden - reducing updates');
+            } else {
+                // Page is visible again - refresh display
+                console.log('Page visible - resuming');
+                if (clockInterval) {
+                    updateClock();
+                    renderBellList();
+                }
+                // Try to reacquire wake lock
+                requestWakeLock();
+            }
+        }
+        
+        // ===========================================
+        // === HOME SCREEN DETECTION ===
+        // ===========================================
+        
+        function isRunningAsApp() {
+            // iOS standalone mode
+            if (window.navigator.standalone === true) {
+                return true;
+            }
+            // Android/Chrome standalone mode
+            if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+                return true;
+            }
+            return false;
+        }
+        
+        function showHomescreenHint() {
+            if (!isRunningAsApp()) {
+                removeClass(homescreenHint, 'hidden');
+            }
+        }
+        
+        // ===========================================
         // === EVENT LISTENERS ===
+        // ===========================================
         
         loadBtn.onclick = function() {
             loadScheduleFromCode(shareCodeInput.value);
@@ -1091,11 +1546,13 @@
             if (clockInterval) clearInterval(clockInterval);
             bells = [];
             lastRungBellTime = null;
-            clockScreen.classList.add('hidden');
-            codeScreen.classList.remove('hidden');
-            codeStatus.classList.add('hidden');
+            addClass(clockScreen, 'hidden');
+            removeClass(codeScreen, 'hidden');
+            addClass(codeStatus, 'hidden');
             shareCodeInput.value = '';
             shareCodeInput.focus();
+            
+            releaseWakeLock();
             
             try {
                 localStorage.removeItem('ellisBellLegacy_code');
@@ -1116,17 +1573,56 @@
                 refreshScheduleBtn.disabled = true;
                 loadScheduleFromCode(savedCode);
             } else {
-                // No saved code, switch to code entry screen
                 changeScheduleBtn.click();
             }
         };
         
-        // === INITIALIZATION ===
+        darkModeBtn.onclick = function() {
+            toggleDarkMode();
+        };
         
-        var REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+        fullscreenBtn.onclick = function() {
+            toggleFullscreen();
+        };
+        
+        kioskBtn.onclick = function() {
+            enterKioskMode();
+        };
+        
+        kioskExitZone.onclick = function() {
+            handleKioskExitTap();
+        };
+        
+        // Fullscreen change events
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+        document.addEventListener('mozfullscreenchange', updateFullscreenButton);
+        document.addEventListener('MSFullscreenChange', updateFullscreenButton);
+        
+        // Visibility change events
+        var visibilityEvent = 'visibilitychange';
+        if (typeof document.webkitHidden !== 'undefined') {
+            visibilityEvent = 'webkitvisibilitychange';
+        } else if (typeof document.mozHidden !== 'undefined') {
+            visibilityEvent = 'mozvisibilitychange';
+        } else if (typeof document.msHidden !== 'undefined') {
+            visibilityEvent = 'msvisibilitychange';
+        }
+        document.addEventListener(visibilityEvent, handleVisibilityChange);
+        
+        // ===========================================
+        // === INITIALIZATION ===
+        // ===========================================
+        
+        var REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
         
         function init() {
-            // Try to restore from localStorage
+            // Load preferences
+            loadDarkModePreference();
+            
+            // Show homescreen hint after a delay
+            setTimeout(showHomescreenHint, 2000);
+            
             try {
                 var savedBells = localStorage.getItem('ellisBellLegacy_bells');
                 var savedName = localStorage.getItem('ellisBellLegacy_name');
@@ -1134,19 +1630,16 @@
                 var savedTimestamp = localStorage.getItem('ellisBellLegacy_timestamp');
                 
                 if (savedBells && savedName) {
-                    // Check if data is stale (older than 4 hours)
                     var isStale = false;
                     if (savedTimestamp) {
                         var age = Date.now() - parseInt(savedTimestamp, 10);
                         isStale = age > REFRESH_INTERVAL_MS;
                         console.log('Cache age: ' + Math.round(age / 60000) + ' minutes, stale: ' + isStale);
                     } else {
-                        // No timestamp = old cache, treat as stale
                         isStale = true;
                     }
                     
                     if (isStale && savedCode) {
-                        // Auto-refresh from server
                         console.log('Cache is stale, refreshing schedule...');
                         loadScheduleFromCode(savedCode);
                         return;
@@ -1156,8 +1649,11 @@
                     scheduleName = savedName;
                     
                     if (bells.length > 0) {
-                        codeScreen.classList.add('hidden');
-                        audioScreen.classList.remove('hidden');
+                        addClass(codeScreen, 'hidden');
+                        removeClass(audioScreen, 'hidden');
+                        
+                        // Load kiosk mode preference after showing audio screen
+                        loadKioskModePreference();
                         return;
                     }
                 }
@@ -1165,7 +1661,6 @@
                 console.log('Error loading from cache:', e);
             }
             
-            // Focus the input
             shareCodeInput.focus();
         }
         
