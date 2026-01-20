@@ -131,6 +131,11 @@
             margin: 2vmin 0;
             line-height: 1.1;
         }
+        .countdown-unit {
+            font-size: 5vmin;
+            font-weight: normal;
+            color: #86efac;
+        }
         .next-bell {
             text-align: center;
             font-size: 5vmin;
@@ -357,37 +362,13 @@
             color: #9ca3af;
             margin-top: 2vmin;
         }
-        /* Header styling - horizontal layout with icon on left */
+        /* Header styling - centered, no icon */
         .header {
-            display: -webkit-box;
-            display: -webkit-flex;
-            display: flex;
-            -webkit-box-orient: horizontal;
-            -webkit-flex-direction: row;
-            flex-direction: row;
-            -webkit-box-align: center;
-            -webkit-align-items: center;
-            align-items: center;
-            -webkit-box-pack: center;
-            -webkit-justify-content: center;
-            justify-content: center;
+            text-align: center;
             margin-bottom: 3vmin;
         }
-        .header-icon {
-            font-size: 12vmin;
-            margin-right: 3vmin;
-            line-height: 1;
-        }
-        .header-text {
-            display: -webkit-box;
-            display: -webkit-flex;
-            display: flex;
-            -webkit-box-orient: vertical;
-            -webkit-flex-direction: column;
-            flex-direction: column;
-        }
         .header-title {
-            font-size: 8vmin;
+            font-size: 7vmin;
             color: #1e3a5f;
             font-weight: bold;
             margin: 0;
@@ -401,7 +382,8 @@
             margin-top: 0.5vmin;
         }
         
-        /* Kiosk mode - hide non-essential UI */
+        /* Kiosk mode - hide non-essential UI, maximize clock */
+        body.kiosk-mode .header,
         body.kiosk-mode .bell-list-card,
         body.kiosk-mode .button-row,
         body.kiosk-mode .last-refresh,
@@ -412,14 +394,21 @@
             margin-bottom: 0;
         }
         body.kiosk-mode .clock {
-            font-size: 18vmin;
+            font-size: 20vmin;
         }
         body.kiosk-mode .countdown {
-            font-size: 15vmin;
+            font-size: 16vmin;
+        }
+        body.kiosk-mode .countdown-unit {
+            font-size: 6vmin;
         }
         body.kiosk-mode .next-bell {
             font-size: 6vmin;
         }
+        body.kiosk-mode .schedule-name {
+            font-size: 4vmin;
+        }
+        
         /* Kiosk exit hint */
         .kiosk-exit-hint {
             text-align: center;
@@ -475,11 +464,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="header-icon">🔔</div>
-            <div class="header-text">
-                <h1 class="header-title">Ellis Bell</h1>
-                <p class="header-subtitle">Legacy Mode</p>
-            </div>
+            <h1 class="header-title">Ellis Bell</h1>
+            <p class="header-subtitle">Legacy Mode</p>
         </div>
         
         <!-- Code Entry Screen -->
@@ -489,7 +475,7 @@
             <button type="button" id="load-btn" class="btn-primary">Load Schedule</button>
             <div id="code-status" class="status hidden"></div>
             <div id="homescreen-hint" class="homescreen-hint hidden">
-                💡 Tip: Add this page to your home screen for a full-screen clock experience!
+                Tip: Add this page to your home screen for a full-screen clock experience!
             </div>
         </div>
         
@@ -498,7 +484,7 @@
             <p style="text-align: center; margin-bottom: 15px; color: #6b7280;">
                 iOS requires you to tap below to enable bell sounds.
             </p>
-            <button type="button" id="enable-audio-btn" class="btn-enable">🔊 Enable Bell Sounds</button>
+            <button type="button" id="enable-audio-btn" class="btn-enable">Enable Bell Sounds</button>
         </div>
         
         <!-- Main Clock Screen -->
@@ -521,18 +507,18 @@
             </div>
             
             <div class="button-row button-row-3">
-                <button type="button" id="refresh-schedule-btn" class="btn-refresh">🔄 Refresh</button>
-                <button type="button" id="dark-mode-btn" class="btn-dark-toggle">🌙 Dark</button>
-                <button type="button" id="fullscreen-btn" class="btn-fullscreen">⛶ Full</button>
+                <button type="button" id="refresh-schedule-btn" class="btn-refresh">Refresh</button>
+                <button type="button" id="dark-mode-btn" class="btn-dark-toggle">Dark</button>
+                <button type="button" id="fullscreen-btn" class="btn-fullscreen">Full</button>
             </div>
             <div class="button-row">
-                <button type="button" id="kiosk-btn" class="btn-secondary">🖥️ Kiosk Mode</button>
+                <button type="button" id="kiosk-btn" class="btn-secondary">Kiosk Mode</button>
                 <button type="button" id="change-schedule-btn" class="btn-secondary">Change Schedule</button>
             </div>
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.4.1 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.4.3 (iOS 9+)</div>
     </div>
     
     <!-- Invisible tap zone to exit kiosk mode (top-right corner) -->
@@ -744,29 +730,43 @@
             return result;
         }
         
-        // Format time to 12-hour with AM/PM (compact version to prevent wrapping)
+        // Format time to 12-hour with lowercase am/pm
         function formatTime12Hour(timeStr) {
             if (!timeStr) return '--:--';
             var parts = timeStr.split(':');
             var hours = parseInt(parts[0], 10);
             var minutes = parts[1];
-            var ampm = hours >= 12 ? 'PM' : 'AM';
+            var ampm = hours >= 12 ? 'pm' : 'am';
             hours = hours % 12;
             if (hours === 0) hours = 12;
-            // No space before AM/PM to save horizontal space
             return hours + ':' + minutes + ampm;
         }
         
-        // Format countdown
+        // Format countdown with units
         function formatCountdown(seconds) {
-            if (seconds < 0) return '--:--';
+            if (seconds < 0) return '--:-- <span class="countdown-unit"></span>';
             var h = Math.floor(seconds / 3600);
             var m = Math.floor((seconds % 3600) / 60);
             var s = seconds % 60;
+            
+            var timeStr;
+            var unit;
+            
             if (h > 0) {
-                return h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+                // Hours: show h:mm:ss hours
+                timeStr = h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+                unit = h === 1 ? 'hour' : 'hours';
+            } else if (m > 0) {
+                // Minutes: show m:ss minutes
+                timeStr = m + ':' + (s < 10 ? '0' : '') + s;
+                unit = m === 1 ? 'minute' : 'minutes';
+            } else {
+                // Seconds only: show ss seconds
+                timeStr = String(s);
+                unit = s === 1 ? 'second' : 'seconds';
             }
-            return m + ':' + (s < 10 ? '0' : '') + s;
+            
+            return timeStr + ' <span class="countdown-unit">' + unit + '</span>';
         }
         
         // Get current time as HH:MM:SS
@@ -803,10 +803,10 @@
             }
             var h = date.getHours();
             var m = date.getMinutes();
-            var ampm = h >= 12 ? 'PM' : 'AM';
+            var ampm = h >= 12 ? 'pm' : 'am';
             h = h % 12;
             if (h === 0) h = 12;
-            return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+            return h + ':' + (m < 10 ? '0' : '') + m + ampm;
         }
         
         // Safe class manipulation (works even if classList polyfill fails)
@@ -1277,7 +1277,7 @@
             renderBellList();
             updateClock();
             
-            refreshScheduleBtn.textContent = '🔄 Refresh';
+            refreshScheduleBtn.textContent = 'Refresh';
             refreshScheduleBtn.disabled = false;
             
             updateLastRefreshDisplay();
@@ -1323,29 +1323,18 @@
                 var nextBellSeconds = timeToSeconds(nextBell.time);
                 var secondsUntil = nextBellSeconds - nowSeconds;
                 
-                countdownEl.textContent = formatCountdown(secondsUntil);
+                countdownEl.innerHTML = formatCountdown(secondsUntil);
                 nextBellEl.textContent = 'until ' + nextBell.name;
                 
+                // Ring bell when countdown reaches zero
                 if (secondsUntil <= 0 && secondsUntil > -2 && lastRungBellTime !== nextBell.time) {
                     lastRungBellTime = nextBell.time;
                     playBellSound(nextBell.sound);
                     renderBellList();
                 }
             } else {
-                countdownEl.textContent = '--:--';
+                countdownEl.innerHTML = '--:-- <span class="countdown-unit"></span>';
                 nextBellEl.textContent = 'No more bells today';
-            }
-            
-            for (var j = 0; j < bells.length; j++) {
-                var bell = bells[j];
-                var bellTime = bell.time.substring(0, 5);
-                var currentTime = now.substring(0, 5);
-                
-                if (bellTime === currentTime && now.substring(6, 8) === '00' && lastRungBellTime !== bell.time) {
-                    lastRungBellTime = bell.time;
-                    playBellSound(bell.sound);
-                    renderBellList();
-                }
             }
         }
         
@@ -1394,7 +1383,7 @@
         function toggleDarkMode() {
             toggleClass(document.body, 'dark-mode');
             var isDark = hasClass(document.body, 'dark-mode');
-            darkModeBtn.textContent = isDark ? '☀️ Light' : '🌙 Dark';
+            darkModeBtn.textContent = isDark ? 'Light' : 'Dark';
             
             try {
                 localStorage.setItem('ellisBellLegacy_darkMode', isDark ? '1' : '0');
@@ -1406,7 +1395,7 @@
                 var pref = localStorage.getItem('ellisBellLegacy_darkMode');
                 if (pref === '1') {
                     addClass(document.body, 'dark-mode');
-                    darkModeBtn.textContent = '☀️ Light';
+                    darkModeBtn.textContent = 'Light';
                 }
             } catch (e) {}
         }
@@ -1441,7 +1430,7 @@
             var doc = document;
             var isFS = doc.fullscreenElement || doc.webkitFullscreenElement || 
                       doc.mozFullScreenElement || doc.msFullscreenElement;
-            fullscreenBtn.textContent = isFS ? '⛶ Exit' : '⛶ Full';
+            fullscreenBtn.textContent = isFS ? 'Exit' : 'Full';
         }
         
         // ===========================================
@@ -1619,7 +1608,7 @@
             } catch (e) {}
             
             if (savedCode) {
-                refreshScheduleBtn.textContent = '⏳ Refreshing...';
+                refreshScheduleBtn.textContent = 'Refreshing...';
                 refreshScheduleBtn.disabled = true;
                 loadScheduleFromCode(savedCode);
             } else {
