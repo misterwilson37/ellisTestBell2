@@ -518,7 +518,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.4.3 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.4.4 (iOS 9+)</div>
     </div>
     
     <!-- Invisible tap zone to exit kiosk mode (top-right corner) -->
@@ -742,7 +742,7 @@
             return hours + ':' + minutes + ampm;
         }
         
-        // Format countdown with units
+        // Format countdown with short units
         function formatCountdown(seconds) {
             if (seconds < 0) return '--:-- <span class="countdown-unit"></span>';
             var h = Math.floor(seconds / 3600);
@@ -753,17 +753,17 @@
             var unit;
             
             if (h > 0) {
-                // Hours: show h:mm:ss hours
+                // Hours: show h:mm:ss hr.
                 timeStr = h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-                unit = h === 1 ? 'hour' : 'hours';
+                unit = 'hr.';
             } else if (m > 0) {
-                // Minutes: show m:ss minutes
+                // Minutes: show m:ss min.
                 timeStr = m + ':' + (s < 10 ? '0' : '') + s;
-                unit = m === 1 ? 'minute' : 'minutes';
+                unit = 'min.';
             } else {
-                // Seconds only: show ss seconds
+                // Seconds only: show ss sec.
                 timeStr = String(s);
-                unit = s === 1 ? 'second' : 'seconds';
+                unit = 'sec.';
             }
             
             return timeStr + ' <span class="countdown-unit">' + unit + '</span>';
@@ -1310,10 +1310,11 @@
             
             currentTimeEl.textContent = formatTime12Hour(now);
             
+            // Find next bell - use >= so we still catch the bell at the exact second it rings
             var nextBell = null;
             for (var i = 0; i < bells.length; i++) {
                 var bellSeconds = timeToSeconds(bells[i].time);
-                if (bellSeconds > nowSeconds) {
+                if (bellSeconds >= nowSeconds) {
                     nextBell = bells[i];
                     break;
                 }
@@ -1327,7 +1328,7 @@
                 nextBellEl.textContent = 'until ' + nextBell.name;
                 
                 // Ring bell when countdown reaches zero
-                if (secondsUntil <= 0 && secondsUntil > -2 && lastRungBellTime !== nextBell.time) {
+                if (secondsUntil === 0 && lastRungBellTime !== nextBell.time) {
                     lastRungBellTime = nextBell.time;
                     playBellSound(nextBell.sound);
                     renderBellList();
@@ -1347,7 +1348,7 @@
             for (var i = 0; i < bells.length; i++) {
                 var bell = bells[i];
                 var bellSeconds = timeToSeconds(bell.time);
-                var passed = bellSeconds <= nowSeconds;
+                var passed = bellSeconds < nowSeconds;
                 var isNext = !passed && !foundNext;
                 
                 if (isNext) foundNext = true;
