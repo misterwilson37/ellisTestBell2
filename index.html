@@ -2,44 +2,13 @@
 <html lang="en">
 <head>
     <!--
-	  v 5.48.1 - LEGACY BROWSER REDIRECT
+	  v 5.48.2 - LEGACY BROWSER REDIRECT
 	-->
 	
 	<script>
-	(function() {
-	    var dominated = false;
-	    
-	    try {
-	        // Test 1: Check for Promise
-	        if (typeof Promise === 'undefined') dominated = true;
-	        
-	        // Test 2: Check for fetch
-	        if (typeof fetch === 'undefined') dominated = true;
-	        
-	        // Test 3: Check for Array.includes
-	        if (typeof Array.prototype.includes === 'undefined') dominated = true;
-	        
-	        // Test 4: Check for Object.assign
-	        if (typeof Object.assign === 'undefined') dominated = true;
-	        
-	        // Test 5: Check for arrow function support via Function constructor
-	        // This is safer than eval() on old browsers
-	        if (!dominated) {
-	            try {
-	                new Function('return () => {}');
-	            } catch (e) {
-	                dominated = true;
-	            }
-	        }
-	        
-	    } catch (e) {
-	        dominated = true;
-	    }
-	    
-	    if (dominated) {
-	        window.location.replace('old.html');
-	    }
-	})();
+	if (typeof Promise === 'undefined' || typeof fetch === 'undefined') {
+	    window.location.href = 'old.html';
+	}
 	</script>
 	
 	<!--
@@ -55,7 +24,7 @@
 
 	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.48.0</title>
+    <title>Ellis Web Bell 5.48.2</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -1236,7 +1205,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.48</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.48.2</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -2783,4 +2752,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.48 -->
+<!-- Version 5.48.2 -->
