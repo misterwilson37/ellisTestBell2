@@ -502,10 +502,10 @@
         /* Visual cue container - hidden by default */
         .visual-cue-container {
             display: none;
-            width: 25vmin;
-            height: 25vmin;
-            min-width: 25vmin;
-            min-height: 25vmin;
+            width: 38vmin;
+            height: 38vmin;
+            min-width: 38vmin;
+            min-height: 38vmin;
             background: #374151;
             border-radius: 2vmin;
             margin-right: 4vmin;
@@ -542,17 +542,28 @@
             text-align: left;
         }
         
+        /* Larger text when visual mode is on (landscape) */
+        body.visual-mode .clock {
+            font-size: 17vmin;
+        }
+        body.visual-mode .countdown {
+            font-size: 14vmin;
+        }
+        body.visual-mode .next-bell {
+            font-size: 6vmin;
+        }
+        
         /* Visual cue image/svg styling */
         .visual-cue-img {
-            max-width: 90%;
-            max-height: 90%;
+            max-width: 95%;
+            max-height: 95%;
             width: auto;
             height: auto;
             object-fit: contain;
         }
         .visual-cue-svg {
-            width: 70%;
-            height: 70%;
+            width: 80%;
+            height: 80%;
             color: #9ca3af;
         }
         
@@ -571,7 +582,7 @@
             align-items: center;
         }
         .visual-cue-text {
-            font-size: 10vmin;
+            font-size: 14vmin;
             font-weight: bold;
             font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
             line-height: 1;
@@ -580,14 +591,23 @@
         
         /* Kiosk mode with visual cues */
         body.kiosk-mode.visual-mode .visual-cue-container {
-            width: 35vmin;
-            height: 35vmin;
-            min-width: 35vmin;
-            min-height: 35vmin;
+            width: 45vmin;
+            height: 45vmin;
+            min-width: 45vmin;
+            min-height: 45vmin;
             margin-right: 5vmin;
         }
         body.kiosk-mode.visual-mode .visual-cue-text {
-            font-size: 16vmin;
+            font-size: 20vmin;
+        }
+        body.kiosk-mode.visual-mode .clock {
+            font-size: 18vmin;
+        }
+        body.kiosk-mode.visual-mode .countdown {
+            font-size: 15vmin;
+        }
+        body.kiosk-mode.visual-mode .next-bell {
+            font-size: 6vmin;
         }
         
         /* Dark mode visual cue */
@@ -607,10 +627,10 @@
             }
             
             body.visual-mode .visual-cue-container {
-                width: 30vmin;
-                height: 30vmin;
-                min-width: 30vmin;
-                min-height: 30vmin;
+                width: 40vmin;
+                height: 40vmin;
+                min-width: 40vmin;
+                min-height: 40vmin;
                 margin-right: 0;
                 margin-bottom: 3vmin;
             }
@@ -623,27 +643,33 @@
                 text-align: center;
             }
             
-            /* Slightly smaller clock text in portrait to fit better */
+            /* Larger clock text in portrait */
             body.visual-mode .clock {
-                font-size: 13vmin;
+                font-size: 14vmin;
             }
             body.visual-mode .countdown {
-                font-size: 10vmin;
+                font-size: 12vmin;
+            }
+            body.visual-mode .next-bell {
+                font-size: 5vmin;
             }
             
             /* Kiosk + portrait */
             body.kiosk-mode.visual-mode .visual-cue-container {
-                width: 25vmin;
-                height: 25vmin;
-                min-width: 25vmin;
-                min-height: 25vmin;
+                width: 35vmin;
+                height: 35vmin;
+                min-width: 35vmin;
+                min-height: 35vmin;
                 margin-bottom: 2vmin;
             }
             body.kiosk-mode.visual-mode .clock {
-                font-size: 16vmin;
+                font-size: 18vmin;
             }
             body.kiosk-mode.visual-mode .countdown {
-                font-size: 12vmin;
+                font-size: 14vmin;
+            }
+            body.kiosk-mode.visual-mode .next-bell {
+                font-size: 6vmin;
             }
         }
     </style>
@@ -716,7 +742,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.5.1 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.5.2 (iOS 9+)</div>
     </div>
     
     <!-- Invisible tap zone to exit kiosk mode (top-right corner) -->
