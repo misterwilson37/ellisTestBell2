@@ -2,39 +2,42 @@
 <html lang="en">
 <head>
     <!--
-	  v 5.48 - LEGACY BROWSER REDIRECT
+	  v 5.48.1 - LEGACY BROWSER REDIRECT
 	-->
 	
 	<script>
 	(function() {
-	    'use strict';
+	    var dominated = false;
+	    
 	    try {
-	        // Test for features that index.html requires
-	        // If any of these fail, redirect to legacy version
+	        // Test 1: Check for Promise
+	        if (typeof Promise === 'undefined') dominated = true;
 	        
-	        // ES6: const, let, arrow functions
-	        eval('const t=()=>{}');
+	        // Test 2: Check for fetch
+	        if (typeof fetch === 'undefined') dominated = true;
 	        
-	        // Promises
-	        if (typeof Promise === 'undefined') throw 1;
+	        // Test 3: Check for Array.includes
+	        if (typeof Array.prototype.includes === 'undefined') dominated = true;
 	        
-	        // Fetch API
-	        if (typeof fetch === 'undefined') throw 1;
+	        // Test 4: Check for Object.assign
+	        if (typeof Object.assign === 'undefined') dominated = true;
 	        
-	        // Template literals
-	        eval('`test`');
-	        
-	        // Array methods
-	        if (typeof [].find !== 'function') throw 1;
-	        if (typeof [].includes !== 'function') throw 1;
-	        
-	        // Object methods
-	        if (typeof Object.assign !== 'function') throw 1;
+	        // Test 5: Check for arrow function support via Function constructor
+	        // This is safer than eval() on old browsers
+	        if (!dominated) {
+	            try {
+	                new Function('return () => {}');
+	            } catch (e) {
+	                dominated = true;
+	            }
+	        }
 	        
 	    } catch (e) {
-	        // Browser doesn't support required features - redirect to legacy
-	        // Using replace() so the back button doesn't get stuck in a loop
-	        window.location.replace('old.html' + window.location.search);
+	        dominated = true;
+	    }
+	    
+	    if (dominated) {
+	        window.location.replace('old.html');
 	    }
 	})();
 	</script>
