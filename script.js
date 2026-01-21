@@ -1,4 +1,4 @@
-const APP_VERSION = "5.63.3"
+const APP_VERSION = "5.63.4"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
 // V5.63.3: Share code feature fixes
@@ -13314,7 +13314,6 @@ function init() {
     }
     
     // Optional: Also update the Browser Tab Title automatically
-    document.title = `Ellis Web Bell ${APP_VERSION}`;
     console.log(`App Version Loaded: ${APP_VERSION}`);
     
     // V5.51.0: Register Service Worker for PWA support
