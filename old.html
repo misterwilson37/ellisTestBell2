@@ -662,6 +662,50 @@
             color: #6b7280;
         }
         
+        /* Landscape mode - larger sizes */
+        @media (orientation: landscape) {
+            body.visual-mode .visual-cue-container {
+                width: 50vmin;
+                height: 50vmin;
+                min-width: 50vmin;
+                min-height: 50vmin;
+            }
+            
+            body.visual-mode .clock {
+                font-size: 22vmin;
+            }
+            body.visual-mode .countdown {
+                font-size: 18vmin;
+            }
+            body.visual-mode .next-bell {
+                font-size: 7vmin;
+            }
+            
+            /* Kiosk + landscape */
+            body.kiosk-mode.visual-mode .visual-cue-container {
+                width: 55vmin;
+                height: 55vmin;
+                min-width: 55vmin;
+                min-height: 55vmin;
+            }
+            body.kiosk-mode.visual-mode .clock {
+                font-size: 22vmin;
+            }
+            body.kiosk-mode.visual-mode .countdown {
+                font-size: 18vmin;
+            }
+            body.kiosk-mode.visual-mode .next-bell {
+                font-size: 7vmin;
+            }
+            
+            body.visual-mode .visual-cue-text {
+                font-size: 18vmin;
+            }
+            body.kiosk-mode.visual-mode .visual-cue-text {
+                font-size: 22vmin;
+            }
+        }
+        
         /* Portrait mode - stack vertically */
         @media (orientation: portrait) {
             body.visual-mode .clock-card-inner {
@@ -793,7 +837,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.6.0 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.6.1 (iOS 9+)</div>
     </div>
     
     <!-- Invisible tap zone to exit kiosk mode (top-right corner) -->
