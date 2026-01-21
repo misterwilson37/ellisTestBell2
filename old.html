@@ -127,14 +127,14 @@
             font-weight: bold;
             text-align: center;
             font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
-            color: #4ade80;
+            color: #7BAFD4;
             margin: 2vmin 0;
             line-height: 1.1;
         }
         .countdown-unit {
             font-size: 5vmin;
             font-weight: normal;
-            color: #86efac;
+            color: #A8D1E7;
         }
         .next-bell {
             text-align: center;
@@ -681,6 +681,29 @@
                 font-size: 7vmin;
             }
             
+            /* Center schedule name and kiosk hint across full width */
+            body.visual-mode .clock-card {
+                position: relative;
+            }
+            body.visual-mode .schedule-name {
+                position: absolute;
+                top: 1vmin;
+                left: 0;
+                right: 0;
+                text-align: center;
+            }
+            body.visual-mode .kiosk-exit-hint {
+                position: absolute;
+                bottom: 1vmin;
+                left: 0;
+                right: 0;
+                text-align: center;
+            }
+            body.visual-mode .clock-card-inner {
+                padding-top: 5vmin;
+                padding-bottom: 4vmin;
+            }
+            
             /* Kiosk + landscape */
             body.kiosk-mode.visual-mode .visual-cue-container {
                 width: 55vmin;
@@ -837,7 +860,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.6.1 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.6.3 (iOS 9+)</div>
     </div>
     
     <!-- Invisible tap zone to exit kiosk mode (top-right corner) -->
