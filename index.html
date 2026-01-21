@@ -1,9 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <!--
+	  v 5.48 - LEGACY BROWSER REDIRECT
+	-->
+	
+	<script>
+	(function() {
+	    'use strict';
+	    try {
+	        // Test for features that index.html requires
+	        // If any of these fail, redirect to legacy version
+	        
+	        // ES6: const, let, arrow functions
+	        eval('const t=()=>{}');
+	        
+	        // Promises
+	        if (typeof Promise === 'undefined') throw 1;
+	        
+	        // Fetch API
+	        if (typeof fetch === 'undefined') throw 1;
+	        
+	        // Template literals
+	        eval('`test`');
+	        
+	        // Array methods
+	        if (typeof [].find !== 'function') throw 1;
+	        if (typeof [].includes !== 'function') throw 1;
+	        
+	        // Object methods
+	        if (typeof Object.assign !== 'function') throw 1;
+	        
+	    } catch (e) {
+	        // Browser doesn't support required features - redirect to legacy
+	        // Using replace() so the back button doesn't get stuck in a loop
+	        window.location.replace('old.html' + window.location.search);
+	    }
+	})();
+	</script>
+	
+	<!--
+	  This will catch:
+	  - Safari 9 and earlier
+	  - First-gen Kindle Fire (Silk browser)
+	  - IE 11 and earlier
+	  - Old Android WebViews
+	  - Any browser without ES6 support
+	  
+	  The redirect preserves any query string parameters.
+	-->
+
+	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.47.3</title>
+    <title>Ellis Web Bell 5.48.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -1184,7 +1233,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.47.3</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.48</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -2731,4 +2780,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.47.3 -->
+<!-- Version 5.48 -->
