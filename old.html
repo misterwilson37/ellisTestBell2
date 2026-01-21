@@ -460,6 +460,50 @@
             display: none;
         }
         
+        /* Public schedules dropdown */
+        .schedule-divider {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 3vmin;
+            margin: 3vmin 0;
+        }
+        select {
+            width: 100%;
+            padding: 4vmin;
+            font-size: 4vmin;
+            border: 2px solid #e5e7eb;
+            border-radius: 2vmin;
+            background: #fff;
+            color: #1f2937;
+            outline: none;
+            font-family: 'Century Gothic', 'Avant Garde', Arial, Helvetica, sans-serif;
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+            cursor: pointer;
+            /* Arrow indicator */
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 3vmin center;
+            background-size: 6vmin;
+            padding-right: 10vmin;
+        }
+        select:focus {
+            border-color: #3b82f6;
+            -webkit-box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        body.dark-mode select {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #f3f4f6;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+        }
+        body.dark-mode select:focus {
+            border-color: #60a5fa;
+        }
+        
         /* ===========================================
            VISUAL CUE STYLES (Safari 9 Compatible)
            =========================================== */
@@ -683,6 +727,13 @@
         
         <!-- Code Entry Screen -->
         <div id="code-screen" class="card">
+            <label for="public-schedule-select">Select a Public Schedule:</label>
+            <select id="public-schedule-select">
+                <option value="">Loading schedules...</option>
+            </select>
+            
+            <div class="schedule-divider">— or —</div>
+            
             <label for="share-code">Enter Share Code:</label>
             <input type="text" id="share-code" maxlength="6" placeholder="ABC123" autocomplete="off" autocorrect="off" autocapitalize="characters">
             <button type="button" id="load-btn" class="btn-primary">Load Schedule</button>
@@ -742,7 +793,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.5.2 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.6.0 (iOS 9+)</div>
     </div>
     
     <!-- Invisible tap zone to exit kiosk mode (top-right corner) -->
@@ -891,6 +942,7 @@
         var codeScreen = document.getElementById('code-screen');
         var audioScreen = document.getElementById('audio-screen');
         var clockScreen = document.getElementById('clock-screen');
+        var publicScheduleSelect = document.getElementById('public-schedule-select');
         var shareCodeInput = document.getElementById('share-code');
         var loadBtn = document.getElementById('load-btn');
         var codeStatus = document.getElementById('code-status');
@@ -1268,6 +1320,136 @@
                 callback(new Error('Network error'));
             };
             xhr.send();
+        }
+        
+        // ===========================================
+        // === PUBLIC SCHEDULES ===
+        // ===========================================
+        
+        var publicSchedules = [];
+        
+        function fetchPublicSchedules() {
+            var listPath = '/artifacts/' + APP_ID + '/public/data/schedules';
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', FIRESTORE_BASE + listPath, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            var documents = data.documents || [];
+                            publicSchedules = [];
+                            
+                            for (var i = 0; i < documents.length; i++) {
+                                var doc = documents[i];
+                                var fields = parseFields(doc.fields || {});
+                                var nameParts = doc.name.split('/');
+                                var scheduleId = nameParts[nameParts.length - 1];
+                                
+                                publicSchedules.push({
+                                    id: scheduleId,
+                                    name: fields.name || fields.scheduleName || scheduleId,
+                                    data: fields
+                                });
+                            }
+                            
+                            // Sort alphabetically
+                            publicSchedules.sort(function(a, b) {
+                                return a.name.localeCompare(b.name);
+                            });
+                            
+                            populatePublicScheduleDropdown();
+                        } catch (e) {
+                            console.error('Error parsing public schedules:', e);
+                            publicScheduleSelect.innerHTML = '<option value="">Error loading schedules</option>';
+                        }
+                    } else {
+                        console.error('Error fetching public schedules:', xhr.status);
+                        publicScheduleSelect.innerHTML = '<option value="">Error loading schedules</option>';
+                    }
+                }
+            };
+            xhr.onerror = function() {
+                publicScheduleSelect.innerHTML = '<option value="">Network error</option>';
+            };
+            xhr.send();
+        }
+        
+        function populatePublicScheduleDropdown() {
+            var html = '<option value="">-- Select a schedule --</option>';
+            
+            for (var i = 0; i < publicSchedules.length; i++) {
+                var schedule = publicSchedules[i];
+                html += '<option value="' + schedule.id + '">' + schedule.name + '</option>';
+            }
+            
+            if (publicSchedules.length === 0) {
+                html = '<option value="">No public schedules available</option>';
+            }
+            
+            publicScheduleSelect.innerHTML = html;
+        }
+        
+        function loadPublicSchedule(scheduleId) {
+            if (!scheduleId) return;
+            
+            // Find the schedule in our cached list
+            var selectedSchedule = null;
+            for (var i = 0; i < publicSchedules.length; i++) {
+                if (publicSchedules[i].id === scheduleId) {
+                    selectedSchedule = publicSchedules[i];
+                    break;
+                }
+            }
+            
+            if (!selectedSchedule) {
+                showStatus('Schedule not found', 'error');
+                return;
+            }
+            
+            showStatus('Loading ' + selectedSchedule.name + '...', '');
+            scheduleName = selectedSchedule.name;
+            
+            // Extract bells from the public schedule
+            bells = extractBellsFromSchedule(selectedSchedule.data);
+            
+            console.log('Public schedule bells:', bells);
+            
+            if (bells.length === 0) {
+                showStatus('No bells found in schedule', 'error');
+                return;
+            }
+            
+            // Sort and deduplicate
+            bells.sort(function(a, b) {
+                return a.time.localeCompare(b.time);
+            });
+            
+            var uniqueBells = [];
+            var seenTimes = {};
+            for (var j = 0; j < bells.length; j++) {
+                if (!seenTimes[bells[j].time]) {
+                    seenTimes[bells[j].time] = true;
+                    uniqueBells.push(bells[j]);
+                }
+            }
+            bells = uniqueBells;
+            
+            // Save to localStorage (use schedule ID as "code")
+            try {
+                localStorage.setItem('ellisBellLegacy_code', 'PUBLIC_' + scheduleId);
+                localStorage.setItem('ellisBellLegacy_bells', JSON.stringify(bells));
+                localStorage.setItem('ellisBellLegacy_name', scheduleName);
+                localStorage.setItem('ellisBellLegacy_timestamp', Date.now().toString());
+                localStorage.setItem('ellisBellLegacy_publicScheduleId', scheduleId);
+            } catch (e) {}
+            
+            showStatus('Loaded ' + bells.length + ' bells!', 'success');
+            
+            setTimeout(function() {
+                addClass(codeScreen, 'hidden');
+                removeClass(audioScreen, 'hidden');
+            }, 500);
         }
         
         // ===========================================
@@ -1986,6 +2168,13 @@
             }
         };
         
+        publicScheduleSelect.onchange = function() {
+            var selectedId = publicScheduleSelect.value;
+            if (selectedId) {
+                loadPublicSchedule(selectedId);
+            }
+        };
+        
         enableAudioBtn.onclick = function() {
             enableAudio();
         };
@@ -1998,6 +2187,7 @@
             removeClass(codeScreen, 'hidden');
             addClass(codeStatus, 'hidden');
             shareCodeInput.value = '';
+            publicScheduleSelect.selectedIndex = 0;
             shareCodeInput.focus();
             
             releaseWakeLock();
@@ -2007,6 +2197,7 @@
                 localStorage.removeItem('ellisBellLegacy_bells');
                 localStorage.removeItem('ellisBellLegacy_name');
                 localStorage.removeItem('ellisBellLegacy_timestamp');
+                localStorage.removeItem('ellisBellLegacy_publicScheduleId');
             } catch (e) {}
         };
         
@@ -2019,7 +2210,50 @@
             if (savedCode) {
                 refreshScheduleBtn.textContent = 'Refreshing...';
                 refreshScheduleBtn.disabled = true;
-                loadScheduleFromCode(savedCode);
+                
+                // Check if it's a public schedule
+                if (savedCode.indexOf('PUBLIC_') === 0) {
+                    var publicId = savedCode.replace('PUBLIC_', '');
+                    // Refetch public schedules and reload
+                    var listPath = '/artifacts/' + APP_ID + '/public/data/schedules';
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', FIRESTORE_BASE + listPath, true);
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4) {
+                            refreshScheduleBtn.textContent = 'Refresh';
+                            refreshScheduleBtn.disabled = false;
+                            
+                            if (xhr.status === 200) {
+                                try {
+                                    var data = JSON.parse(xhr.responseText);
+                                    var documents = data.documents || [];
+                                    publicSchedules = [];
+                                    
+                                    for (var i = 0; i < documents.length; i++) {
+                                        var doc = documents[i];
+                                        var fields = parseFields(doc.fields || {});
+                                        var nameParts = doc.name.split('/');
+                                        var schedId = nameParts[nameParts.length - 1];
+                                        
+                                        publicSchedules.push({
+                                            id: schedId,
+                                            name: fields.name || fields.scheduleName || schedId,
+                                            data: fields
+                                        });
+                                    }
+                                    
+                                    populatePublicScheduleDropdown();
+                                    loadPublicSchedule(publicId);
+                                } catch (e) {
+                                    console.error('Error refreshing public schedule:', e);
+                                }
+                            }
+                        }
+                    };
+                    xhr.send();
+                } else {
+                    loadScheduleFromCode(savedCode);
+                }
             } else {
                 changeScheduleBtn.click();
             }
@@ -2079,6 +2313,9 @@
             loadDarkModePreference();
             loadVisualModePreference();
             
+            // Fetch public schedules for dropdown
+            fetchPublicSchedules();
+            
             // Show homescreen hint after a delay
             setTimeout(showHomescreenHint, 2000);
             
@@ -2100,7 +2337,19 @@
                     
                     if (isStale && savedCode) {
                         console.log('Cache is stale, refreshing schedule...');
-                        loadScheduleFromCode(savedCode);
+                        // Check if it was a public schedule
+                        if (savedCode.indexOf('PUBLIC_') === 0) {
+                            var publicId = savedCode.replace('PUBLIC_', '');
+                            // We need to wait for public schedules to load first
+                            // For now, just use cached bells
+                            bells = JSON.parse(savedBells);
+                            scheduleName = savedName;
+                            addClass(codeScreen, 'hidden');
+                            removeClass(audioScreen, 'hidden');
+                            loadKioskModePreference();
+                        } else {
+                            loadScheduleFromCode(savedCode);
+                        }
                         return;
                     }
                     
