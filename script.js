@@ -1,4 +1,4 @@
-const APP_VERSION = "5.64.0"
+const APP_VERSION = "5.64.0.1"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
 // V5.64.0: Mini Pop-Out Window + Text Wrapping Fix
