@@ -1,4 +1,4 @@
-const APP_VERSION = "5.64.0.1"
+const APP_VERSION = "5.64.1"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
 // V5.64.0: Mini Pop-Out Window + Text Wrapping Fix
@@ -2848,7 +2848,7 @@ async function toggleMiniPictureInPicture() {
         
         const miniDoc = miniPipWindow.document;
         
-        // Add mini PiP styles - everything scales with window size
+        // Add mini PiP styles - scale to fill the window
         const miniStyle = miniDoc.createElement('style');
         miniStyle.textContent = `
             * {
@@ -2869,17 +2869,13 @@ async function toggleMiniPictureInPicture() {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 3vmin;
-                padding: 2vmin;
+                gap: 12px;
+                padding: 8px;
             }
             .mini-pip-visual {
-                width: 28vmin;
-                height: 28vmin;
-                min-width: 40px;
-                min-height: 40px;
-                max-width: 90px;
-                max-height: 90px;
-                border-radius: 12%;
+                height: calc(100% - 4px);
+                aspect-ratio: 1;
+                border-radius: 8px;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -2889,8 +2885,8 @@ async function toggleMiniPictureInPicture() {
             }
             .mini-pip-visual img,
             .mini-pip-visual svg {
-                width: 100%;
-                height: 100%;
+                width: 85%;
+                height: 85%;
                 object-fit: contain;
             }
             .mini-pip-countdown-wrapper {
@@ -2901,23 +2897,24 @@ async function toggleMiniPictureInPicture() {
                 flex: 1;
                 min-width: 0;
                 overflow: hidden;
+                height: 100%;
             }
             .mini-pip-countdown {
-                font-size: 14vmin;
+                font-size: 55vh;
                 font-weight: bold;
                 color: #ffffff;
-                line-height: 1;
+                line-height: 0.85;
                 white-space: nowrap;
                 font-variant-numeric: tabular-nums;
             }
             .mini-pip-bell-name {
-                font-size: 4vmin;
+                font-size: 14vh;
                 color: #9ca3af;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 max-width: 100%;
-                margin-top: 1vmin;
+                line-height: 1.2;
             }
             /* Warning effect classes */
             .warning-pulse-subtle { animation: warning-pulse-subtle 2s ease-in-out infinite; }
