@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.48.5</title>
+    <title>Ellis Web Bell 5.64.2</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -1184,7 +1184,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.48.5</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.64.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -1218,16 +1218,6 @@
 
                 <!-- V5.47.0: Added wrapper for PiP button positioning (button must be outside container that gets innerHTML replaced) -->
                 <div id="visual-cue-wrapper" class="md:col-span-2 relative group w-full mx-auto">
-                    <!-- V5.64.0: Mini Pop Out Button - compact countdown only (positioned below full pop-out) -->
-                    <button id="mini-pip-toggle-btn" 
-                        class="absolute top-12 right-2 p-2 bg-black bg-opacity-50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-opacity-70"
-                        title="Mini pop-out (countdown only)">
-                        <!-- Small rectangle icon representing compact window -->
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="4" y="6" width="16" height="12" rx="2" ry="2"></rect>
-                            <line x1="8" y1="12" x2="16" y2="12"></line>
-                        </svg>
-                    </button>
                     <!-- V5.47.0: Pop Out Button (Document PiP) - positioned relative to wrapper -->
                     <button id="pip-toggle-btn" 
                         class="absolute top-2 right-2 p-2 bg-black bg-opacity-50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-opacity-70"
@@ -2741,4 +2731,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.48.5 -->
+<!-- Version 5.64.2 -->
