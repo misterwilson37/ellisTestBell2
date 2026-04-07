@@ -1,12 +1,11 @@
-const APP_VERSION = "5.64.1"
+const APP_VERSION = "5.64.2"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
-// V5.64.0: Mini Pop-Out Window + Text Wrapping Fix
-// - Added Mini Pop-Out button (top-right of visual cue, next to full pop-out)
-// - Mini pop-out shows only countdown + icon - perfect for small screen spaces
-// - Mini pop-out is fully resizable with proportional scaling of all elements
+// V5.64.0: Enhanced PiP Kiosk Mode + Text Wrapping Fix
+// - Enhanced PiP kiosk mode with responsive scaling (icon fills height, countdown scales with viewport)
+// - Kiosk mode now has dark background, properly hides quick bells and action buttons
 // - Fixed text wrapping issue in full pop-out where "are" would drop to second line
-// - Both pop-outs can be open simultaneously on different monitors
+// - Fixed warning settings modal scrolling on smaller screens
 // V5.63.3: Share code feature fixes
 // - Fixed: populateScheduleSelector() -> renderScheduleSelector() (function didn't exist)
 // - Fixed: Unfollow now switches to another schedule if viewing the unfollowed one
@@ -1007,7 +1006,6 @@ let personalBellOverrides = {}; // { bellId: { sound, visualCue, visualMode, nic
 
 // NEW V5.47.0: Picture-in-Picture state
 let pipWindow = null; // Reference to the PiP window
-let miniPipWindow = null; // Reference to the Mini PiP window
 
 // NEW V5.49.0: Kiosk Mode state
 let kioskModeEnabled = false;
@@ -1122,7 +1120,6 @@ showUserMessage(`Skipped: ${bellToSkip.name} at ${formatTime12Hour(bellToSkip.ti
 // Force immediate UI update
 updateClock();
 updatePipWindow();
-updateMiniPipWindow();
 updateMainPageSkipButtons();
 }
 
@@ -1175,7 +1172,6 @@ showUserMessage(`Restored: ${bell.name} at ${formatTime12Hour(bell.time, true)}`
 // Force immediate UI update
 updateClock();
 updatePipWindow();
-updateMiniPipWindow();
 updateMainPageSkipButtons();
 }
 
@@ -2524,6 +2520,60 @@ async function togglePictureInPicture() {
             #pip-clock {
                 white-space: nowrap;
             }
+            
+            /* V5.64.0: Enhanced kiosk mode - responsive scaling */
+            body.pip-kiosk-mode {
+                background: #1f2937 !important;
+                padding: 8px !important;
+            }
+            body.pip-kiosk-mode .pip-layout {
+                display: flex !important;
+                grid-template-columns: none !important;
+                gap: 12px !important;
+                height: calc(100vh - 16px) !important;
+                align-items: center !important;
+            }
+            body.pip-kiosk-mode #pip-visual {
+                width: auto !important;
+                height: 100% !important;
+                min-height: 0 !important;
+                aspect-ratio: 1 !important;
+                flex-shrink: 0 !important;
+                border-radius: 8px !important;
+            }
+            body.pip-kiosk-mode #pip-visual > * {
+                width: 85% !important;
+                height: 85% !important;
+            }
+            body.pip-kiosk-mode .p-2 {
+                padding: 0 !important;
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                min-width: 0 !important;
+                height: 100% !important;
+            }
+            body.pip-kiosk-mode #pip-countdown {
+                font-size: 50vh !important;
+                line-height: 0.85 !important;
+                color: white !important;
+                white-space: nowrap !important;
+            }
+            body.pip-kiosk-mode #pip-bell-name {
+                font-size: 14vh !important;
+                line-height: 1.2 !important;
+                color: #9ca3af !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+            body.pip-kiosk-mode #pip-quick-bells {
+                display: none !important;
+            }
+            body.pip-kiosk-mode .pip-action-buttons {
+                display: none !important;
+            }
         `;
         pipDoc.head.appendChild(pipStyle);
         
@@ -2816,219 +2866,6 @@ function updatePipActionButtons(pipDoc) {
         }
     }
 }
-
-// ============================================
-// V5.64.0: MINI PICTURE-IN-PICTURE FUNCTIONALITY
-// Compact, resizable window with just countdown + icon
-// ============================================
-
-/**
- * Toggle Mini Picture-in-Picture mode - compact countdown display
- */
-async function toggleMiniPictureInPicture() {
-    // Check if Document PiP is supported
-    if (!('documentPictureInPicture' in window)) {
-        showUserMessage("Picture-in-Picture is not supported in this browser. Try Chrome, Edge, or another Chromium-based browser.");
-        return;
-    }
-    
-    // If Mini PiP is already open, close it
-    if (miniPipWindow && !miniPipWindow.closed) {
-        miniPipWindow.close();
-        miniPipWindow = null;
-        return;
-    }
-    
-    try {
-        // Request a smaller PiP window
-        miniPipWindow = await documentPictureInPicture.requestWindow({
-            width: 280,
-            height: 120
-        });
-        
-        const miniDoc = miniPipWindow.document;
-        
-        // Add mini PiP styles - scale to fill the window
-        const miniStyle = miniDoc.createElement('style');
-        miniStyle.textContent = `
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
-            html, body {
-                width: 100%;
-                height: 100%;
-                overflow: hidden;
-                background: #1f2937;
-                font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
-            }
-            .mini-pip-container {
-                width: 100%;
-                height: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 12px;
-                padding: 8px;
-            }
-            .mini-pip-visual {
-                height: calc(100% - 4px);
-                aspect-ratio: 1;
-                border-radius: 8px;
-                overflow: hidden;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: #374151;
-                flex-shrink: 0;
-            }
-            .mini-pip-visual img,
-            .mini-pip-visual svg {
-                width: 85%;
-                height: 85%;
-                object-fit: contain;
-            }
-            .mini-pip-countdown-wrapper {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                justify-content: center;
-                flex: 1;
-                min-width: 0;
-                overflow: hidden;
-                height: 100%;
-            }
-            .mini-pip-countdown {
-                font-size: 55vh;
-                font-weight: bold;
-                color: #ffffff;
-                line-height: 0.85;
-                white-space: nowrap;
-                font-variant-numeric: tabular-nums;
-            }
-            .mini-pip-bell-name {
-                font-size: 14vh;
-                color: #9ca3af;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 100%;
-                line-height: 1.2;
-            }
-            /* Warning effect classes */
-            .warning-pulse-subtle { animation: warning-pulse-subtle 2s ease-in-out infinite; }
-            .warning-pulse-medium { animation: warning-pulse-medium 1.5s ease-in-out infinite; }
-            .warning-pulse-urgent { animation: warning-pulse-urgent 0.8s ease-in-out infinite; }
-            @keyframes warning-pulse-subtle {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
-                50% { box-shadow: 0 0 20px 5px #fbbf24; }
-            }
-            @keyframes warning-pulse-medium {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
-                50% { box-shadow: 0 0 30px 10px #f97316; }
-            }
-            @keyframes warning-pulse-urgent {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-                50% { box-shadow: 0 0 40px 15px #ef4444; }
-            }
-            .warning-color-subtle { background-color: #fbbf24 !important; }
-            .warning-color-medium { background-color: #f97316 !important; }
-            .warning-color-urgent { background-color: #ef4444 !important; }
-        `;
-        miniDoc.head.appendChild(miniStyle);
-        
-        // Build the layout
-        const container = miniDoc.createElement('div');
-        container.className = 'mini-pip-container';
-        
-        // Visual icon (scaled down version of the visual cue)
-        const visualDiv = miniDoc.createElement('div');
-        visualDiv.id = 'mini-pip-visual';
-        visualDiv.className = 'mini-pip-visual';
-        
-        // Clone just the inner content of the visual cue
-        const mainVisual = document.getElementById('visual-cue-container');
-        if (mainVisual) {
-            visualDiv.innerHTML = mainVisual.innerHTML;
-        }
-        container.appendChild(visualDiv);
-        
-        // Countdown wrapper
-        const countdownWrapper = miniDoc.createElement('div');
-        countdownWrapper.className = 'mini-pip-countdown-wrapper';
-        
-        // Countdown display
-        const countdownDiv = miniDoc.createElement('div');
-        countdownDiv.id = 'mini-pip-countdown';
-        countdownDiv.className = 'mini-pip-countdown';
-        countdownDiv.textContent = document.getElementById('countdown-display')?.textContent || '--:--';
-        countdownWrapper.appendChild(countdownDiv);
-        
-        // Bell name (shortened)
-        const bellNameDiv = miniDoc.createElement('div');
-        bellNameDiv.id = 'mini-pip-bell-name';
-        bellNameDiv.className = 'mini-pip-bell-name';
-        const fullBellText = document.getElementById('next-bell-sentence')?.textContent || '';
-        // Extract just the bell name (remove "until " prefix and trailing period)
-        bellNameDiv.textContent = fullBellText.replace(/^until\s+/i, '').replace(/\.$/, '');
-        countdownWrapper.appendChild(bellNameDiv);
-        
-        container.appendChild(countdownWrapper);
-        miniDoc.body.appendChild(container);
-        
-        // Initial sync
-        updateMiniPipWindow();
-        
-        // Handle close
-        miniPipWindow.addEventListener('pagehide', () => {
-            miniPipWindow = null;
-        });
-        
-    } catch (error) {
-        console.error("Error opening Mini Picture-in-Picture:", error);
-        showUserMessage("Could not open Mini Picture-in-Picture: " + error.message);
-    }
-}
-
-/**
- * Update the Mini PiP window (called from updateClock)
- */
-function updateMiniPipWindow() {
-    if (!miniPipWindow || miniPipWindow.closed) return;
-    
-    const miniDoc = miniPipWindow.document;
-    
-    // Sync visual cue
-    const mainVisual = document.getElementById('visual-cue-container');
-    const miniVisual = miniDoc.getElementById('mini-pip-visual');
-    if (mainVisual && miniVisual) {
-        miniVisual.innerHTML = mainVisual.innerHTML;
-        
-        // Copy warning classes from main visual to mini visual
-        const warningClasses = [...mainVisual.classList].filter(c => c.startsWith('warning-'));
-        miniVisual.className = 'mini-pip-visual ' + warningClasses.join(' ');
-    }
-    
-    // Sync countdown
-    const mainCountdown = document.getElementById('countdown-display');
-    const miniCountdown = miniDoc.getElementById('mini-pip-countdown');
-    if (mainCountdown && miniCountdown) {
-        miniCountdown.textContent = mainCountdown.textContent;
-    }
-    
-    // Sync bell name (extract from "until X." format)
-    const mainBellName = document.getElementById('next-bell-sentence');
-    const miniBellName = miniDoc.getElementById('mini-pip-bell-name');
-    if (mainBellName && miniBellName) {
-        const fullText = mainBellName.textContent || '';
-        miniBellName.textContent = fullText.replace(/^until\s+/i, '').replace(/\.$/, '');
-    }
-}
-
-// ============================================
-// END V5.64.0: MINI PICTURE-IN-PICTURE
-// ============================================
 
 // ============================================
 // END V5.47.0: PICTURE-IN-PICTURE FUNCTIONALITY
@@ -3458,9 +3295,6 @@ function updateClock() {
     
     // V5.47.0: Update Picture-in-Picture window if open
     updatePipWindow();
-    
-    // V5.64.0: Update Mini Picture-in-Picture window if open
-    updateMiniPipWindow();
 }
 
 // --- NEW: Quick Bell Function (MODIFIED V5.00) ---
@@ -15025,18 +14859,6 @@ function init() {
         } else {
             // Hide button if not supported
             pipToggleBtn.style.display = 'none';
-        }
-    }
-    
-    // V5.64.0: Mini Picture-in-Picture toggle button
-    const miniPipToggleBtn = document.getElementById('mini-pip-toggle-btn');
-    if (miniPipToggleBtn) {
-        // Check if Document PiP is supported and show/hide button accordingly
-        if ('documentPictureInPicture' in window) {
-            miniPipToggleBtn.addEventListener('click', toggleMiniPictureInPicture);
-        } else {
-            // Hide button if not supported
-            miniPipToggleBtn.style.display = 'none';
         }
     }
     
