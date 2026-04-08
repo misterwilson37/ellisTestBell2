@@ -1,6 +1,15 @@
-const APP_VERSION = "5.64.2"
+const APP_VERSION = "5.65.0"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.65.0: Quick Bell Broadcast Feature
+// - Added broadcast toggle button next to sound dropdown (syncs quick bells across all logged-in devices)
+// - Added "Always broadcast" checkbox to custom quick bells
+// - Broadcast-enabled custom bells show a signal icon in the corner
+// - Cancel syncs across devices when broadcast is enabled
+// - Uses Firestore real-time listener for instant sync
+// V5.64.3: PiP Kiosk Mode Fixes
+// - Fixed visual cue icon not loading in kiosk mode
+// - Fixed countdown centering issue when window is small (now stays left-aligned)
 // V5.64.0: Enhanced PiP Kiosk Mode + Text Wrapping Fix
 // - Enhanced PiP kiosk mode with responsive scaling (icon fills height, countdown scales with viewport)
 // - Kiosk mode now has dark background, properly hides quick bells and action buttons
@@ -638,6 +647,7 @@ let pendingImportData = null; // Stores analyzed import data
 // NEW: Quick Bell Elements
 const quickBellControls = document.getElementById('quickBellControls');
 const quickBellSoundSelect = document.getElementById('quickBellSoundSelect');
+const quickBellBroadcastToggle = document.getElementById('quick-bell-broadcast-toggle'); // V5.65.0
 
 // MODIFIED: Custom Bell Form -> Personal Bell Form (v3.03)
 // DELETED in 4.40: Variables for the old add-personal-bell-form
@@ -782,6 +792,12 @@ let queueIgnoreShared = false;
 let queueVisual = '[DEFAULT_Q]';
 let queueActive = false;
 let queueTimerEndTime = null; // When current queue timer expires
+
+// V5.65.0: Quick Bell Broadcast State
+let broadcastEnabled = false; // Whether to broadcast quick bells to other devices
+let broadcastListenerUnsubscribe = null; // Firestore listener for incoming broadcasts
+let instanceId = crypto.randomUUID(); // Unique ID for this browser tab to prevent self-triggering
+let lastProcessedBroadcastTimestamp = 0; // Prevent duplicate processing
 
 let mutedBellIds = new Set(); 
 let skippedBellOccurrences = new Set(); // V5.47.9: Temporarily skipped bells (format: "bellId:YYYY-MM-DD")
@@ -2537,13 +2553,26 @@ async function togglePictureInPicture() {
                 width: auto !important;
                 height: 100% !important;
                 min-height: 0 !important;
+                max-height: 100% !important;
                 aspect-ratio: 1 !important;
                 flex-shrink: 0 !important;
                 border-radius: 8px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
             }
-            body.pip-kiosk-mode #pip-visual > * {
+            body.pip-kiosk-mode #pip-visual img {
                 width: 85% !important;
                 height: 85% !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
+                object-fit: contain !important;
+            }
+            body.pip-kiosk-mode #pip-visual svg {
+                width: 85% !important;
+                height: 85% !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
             }
             body.pip-kiosk-mode .p-2 {
                 padding: 0 !important;
@@ -2551,6 +2580,7 @@ async function togglePictureInPicture() {
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: center !important;
+                align-items: flex-start !important;
                 min-width: 0 !important;
                 height: 100% !important;
             }
@@ -2559,6 +2589,7 @@ async function togglePictureInPicture() {
                 line-height: 0.85 !important;
                 color: white !important;
                 white-space: nowrap !important;
+                text-align: left !important;
             }
             body.pip-kiosk-mode #pip-bell-name {
                 font-size: 14vh !important;
@@ -2567,6 +2598,7 @@ async function togglePictureInPicture() {
                 white-space: nowrap !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
+                text-align: left !important;
             }
             body.pip-kiosk-mode #pip-quick-bells {
                 display: none !important;
@@ -3298,7 +3330,7 @@ function updateClock() {
 }
 
 // --- NEW: Quick Bell Function (MODIFIED V5.00) ---
-function startQuickBell(hours = 0, minutes = 0, seconds = 0, sound, name = "Quick Bell") {
+function startQuickBell(hours = 0, minutes = 0, seconds = 0, sound, name = "Quick Bell", shouldBroadcast = false) {
     const now = new Date();
     // V5.44.8: Include hours in calculation
     const totalMillis = (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
@@ -3310,10 +3342,159 @@ function startQuickBell(hours = 0, minutes = 0, seconds = 0, sound, name = "Quic
     
     // NEW V5.00: Store quick bell name for countdown display
     quickBellEndTime.bellName = name; 
+    
+    // V5.65.0: Store whether this bell was broadcast (for cancel sync)
+    quickBellEndTime.wasBroadcast = shouldBroadcast || broadcastEnabled;
 
     console.log(`Quick bell set for ${hours}h ${minutes}m ${seconds}s from now. Sound: ${quickBellSound}`);
+    
+    // V5.65.0: Broadcast to other devices if enabled
+    if ((shouldBroadcast || broadcastEnabled) && currentUser) {
+        broadcastQuickBell('start', hours, minutes, seconds, quickBellSound, name, totalMillis);
+    }
+    
     updateClock(); // Update display immediately
 }
+
+// ============================================================
+// V5.65.0: Quick Bell Broadcast Functions
+// Sync quick bells across all logged-in devices for the same user
+// ============================================================
+
+/**
+ * Send a quick bell broadcast to Firestore
+ */
+async function broadcastQuickBell(action, hours, minutes, seconds, sound, name, durationMs) {
+    if (!currentUser) return;
+    
+    try {
+        const broadcastRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'quick_bell_broadcast', 'current');
+        await setDoc(broadcastRef, {
+            action: action, // 'start' or 'cancel'
+            hours: hours || 0,
+            minutes: minutes || 0,
+            seconds: seconds || 0,
+            sound: sound || 'ellisBell.mp3',
+            name: name || 'Quick Bell',
+            durationMs: durationMs || 0,
+            timestamp: Date.now(),
+            originInstance: instanceId
+        });
+        console.log(`[Broadcast] Sent ${action} broadcast for "${name}"`);
+    } catch (error) {
+        console.error('[Broadcast] Error sending broadcast:', error);
+    }
+}
+
+/**
+ * Set up listener for incoming quick bell broadcasts
+ */
+function setupBroadcastListener() {
+    if (!currentUser) return;
+    
+    // Clean up existing listener
+    if (broadcastListenerUnsubscribe) {
+        broadcastListenerUnsubscribe();
+        broadcastListenerUnsubscribe = null;
+    }
+    
+    const broadcastRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'quick_bell_broadcast', 'current');
+    
+    broadcastListenerUnsubscribe = onSnapshot(broadcastRef, (docSnap) => {
+        if (!docSnap.exists()) return;
+        
+        const data = docSnap.data();
+        
+        // Ignore broadcasts from this instance
+        if (data.originInstance === instanceId) {
+            console.log('[Broadcast] Ignoring own broadcast');
+            return;
+        }
+        
+        // Ignore old broadcasts (more than 5 seconds old)
+        const age = Date.now() - data.timestamp;
+        if (age > 5000) {
+            console.log(`[Broadcast] Ignoring stale broadcast (${age}ms old)`);
+            return;
+        }
+        
+        // Prevent duplicate processing
+        if (data.timestamp <= lastProcessedBroadcastTimestamp) {
+            console.log('[Broadcast] Ignoring already-processed broadcast');
+            return;
+        }
+        lastProcessedBroadcastTimestamp = data.timestamp;
+        
+        console.log(`[Broadcast] Received ${data.action} broadcast for "${data.name}"`);
+        
+        if (data.action === 'start') {
+            // Start the quick bell locally (without re-broadcasting)
+            const now = new Date();
+            quickBellEndTime = new Date(now.getTime() + data.durationMs);
+            quickBellEndTime.bellName = data.name;
+            quickBellEndTime.wasBroadcast = true; // Mark as broadcast-received
+            quickBellSound = data.sound;
+            document.getElementById('cancel-quick-bell-btn').classList.remove('hidden');
+            updateClock();
+            showUserMessage(`📡 ${data.name} started (synced from another device)`);
+        } else if (data.action === 'cancel') {
+            // Cancel the quick bell locally
+            quickBellEndTime = null;
+            document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
+            updateClock();
+            showUserMessage(`📡 Quick bell cancelled (synced from another device)`);
+        }
+    }, (error) => {
+        console.error('[Broadcast] Listener error:', error);
+    });
+    
+    console.log('[Broadcast] Listener set up for user:', currentUser.uid);
+}
+
+/**
+ * Clean up broadcast listener
+ */
+function cleanupBroadcastListener() {
+    if (broadcastListenerUnsubscribe) {
+        broadcastListenerUnsubscribe();
+        broadcastListenerUnsubscribe = null;
+    }
+}
+
+/**
+ * Toggle broadcast mode on/off
+ */
+function toggleBroadcastMode() {
+    broadcastEnabled = !broadcastEnabled;
+    updateBroadcastToggleUI();
+    
+    if (broadcastEnabled) {
+        showUserMessage('📡 Broadcast ON - Quick bells will sync to all your devices');
+    } else {
+        showUserMessage('📡 Broadcast OFF - Quick bells only on this device');
+    }
+}
+
+/**
+ * Update the broadcast toggle button UI
+ */
+function updateBroadcastToggleUI() {
+    if (!quickBellBroadcastToggle) return;
+    
+    if (broadcastEnabled) {
+        quickBellBroadcastToggle.classList.remove('bg-gray-200', 'text-gray-500');
+        quickBellBroadcastToggle.classList.add('bg-sky-500', 'text-white');
+        quickBellBroadcastToggle.title = 'Broadcast to all devices (ON)';
+    } else {
+        quickBellBroadcastToggle.classList.remove('bg-sky-500', 'text-white');
+        quickBellBroadcastToggle.classList.add('bg-gray-200', 'text-gray-500');
+        quickBellBroadcastToggle.title = 'Broadcast to all devices (off)';
+    }
+}
+
+// ============================================================
+// END V5.65.0: Quick Bell Broadcast Functions
+// ============================================================
 
 // ============================================================
 // NEW V5.55.0: Quick Bell Queue Functions
@@ -3848,6 +4029,19 @@ function renderCustomQuickBells() {
                             aria-label="Preview" ${disabledAttr}>&#9654;</button>
                 </div>
                 
+                <!-- V5.65.0: ROW 2.5: Broadcast Toggle -->
+                <div class="flex items-center gap-2 ${disabledClass}">
+                    <input type="checkbox" data-bell-id="${id}" data-field="alwaysBroadcast" name="alwaysBroadcast-${id}"
+                            class="custom-bell-broadcast-toggle custom-bell-editable-input h-4 w-4 text-sky-600 rounded focus:ring-sky-500"
+                            ${bell && bell.alwaysBroadcast ? 'checked' : ''} ${disabledAttr}>
+                    <label class="text-sm text-gray-600 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"></path>
+                        </svg>
+                        Always broadcast to all devices
+                    </label>
+                </div>
+                
                 <!-- ROW 3: Visual Cue Dropdown (full width) -->
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Visual Cue</label>
@@ -3953,6 +4147,15 @@ function renderCustomQuickBells() {
             }
 
             // V5.44.8: Add hours data attribute
+            // V5.65.0: Add broadcast data attribute and indicator
+            const broadcastIndicator = bell.alwaysBroadcast ? `
+                <span class="absolute top-0 right-0 w-3 h-3 text-white" title="Broadcasts to all devices">
+                    <svg class="w-full h-full drop-shadow" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"></path>
+                    </svg>
+                </span>
+            ` : '';
+            
             return `
             <button data-custom-id="${bell.id}"
                     data-hours="${hours}"
@@ -3960,9 +4163,11 @@ function renderCustomQuickBells() {
                     data-seconds="${seconds}"
                     data-sound="${bell.sound}"
                     data-name="${bell.name}"
+                    data-broadcast="${bell.alwaysBroadcast ? 'true' : 'false'}"
                     class="custom-quick-launch-btn font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 w-11 relative overflow-hidden group flex items-center justify-center"
                     style="background-color: ${bell.iconBgColor}; color: ${bell.iconFgColor};">
                     ${visualContent}
+                    ${broadcastIndicator}
                     <span class="absolute inset-0 bg-black bg-opacity-75 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             ${formattedTime}
                     </span>
@@ -4045,6 +4250,8 @@ function syncCustomBellFormToArray() {
         const iconTextInput = row.querySelector(`input[data-field="iconText"][data-bell-id="${bellId}"]`);
         const iconBgColorInput = row.querySelector(`input[data-field="iconBgColor"][data-bell-id="${bellId}"]`);
         const iconFgColorInput = row.querySelector(`input[data-field="iconFgColor"][data-bell-id="${bellId}"]`);
+        // V5.65.0: Broadcast toggle
+        const broadcastToggle = row.querySelector(`input[data-field="alwaysBroadcast"][data-bell-id="${bellId}"]`);
         
         bell.isActive = toggle.checked;
         if (nameInput) bell.name = nameInput.value;
@@ -4056,6 +4263,8 @@ function syncCustomBellFormToArray() {
         if (iconTextInput) bell.iconText = iconTextInput.value;
         if (iconBgColorInput) bell.iconBgColor = iconBgColorInput.value;
         if (iconFgColorInput) bell.iconFgColor = iconFgColorInput.value;
+        // V5.65.0: Sync broadcast setting
+        if (broadcastToggle) bell.alwaysBroadcast = broadcastToggle.checked;
     });
 }
 
@@ -5765,6 +5974,8 @@ async function initFirebase() {
                     listenForPersonalSchedules(user.uid);
                     // NEW V5.00: Start Custom Quick Bell listener
                     listenForCustomQuickBells(user.uid);
+                    // V5.65.0: Set up broadcast listener for quick bell sync
+                    setupBroadcastListener();
                     // V5.53: Load cloud preferences and set up listener
                     await loadUserPreferencesFromCloud();
                     setupUserPreferencesListener();
@@ -5777,6 +5988,11 @@ async function initFirebase() {
                     // V5.44: Enable standalone schedule button
                     createStandaloneScheduleBtn.disabled = false;
                     createStandaloneScheduleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    // V5.65.0: Enable broadcast toggle
+                    if (quickBellBroadcastToggle) {
+                        quickBellBroadcastToggle.disabled = false;
+                        quickBellBroadcastToggle.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
                 } else {
                     allPersonalSchedules = []; // Clear personal schedules
                     followingSchedules = []; // V5.63.0: Clear following schedules
@@ -5786,6 +6002,11 @@ async function initFirebase() {
                     // V5.44: Disable standalone schedule button
                     createStandaloneScheduleBtn.disabled = true;
                     createStandaloneScheduleBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    // V5.65.0: Disable broadcast toggle for anonymous users
+                    if (quickBellBroadcastToggle) {
+                        quickBellBroadcastToggle.disabled = true;
+                        quickBellBroadcastToggle.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
                 }
                 schedulesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedules');
                 // MODIFIED: v3.24 - Changed to real-time listener
@@ -5854,6 +6075,10 @@ async function initFirebase() {
                     customQuickBellsListenerUnsubscribe();
                     customQuickBellsListenerUnsubscribe = null;
                 }
+                // V5.65.0: Clean up broadcast listener
+                cleanupBroadcastListener();
+                broadcastEnabled = false;
+                updateBroadcastToggleUI();
                 // V5.53: Unsubscribe from user preferences
                 if (userPreferencesListenerUnsubscribe) {
                     userPreferencesListenerUnsubscribe();
@@ -13946,6 +14171,7 @@ function init() {
     });
 
     // NEW: Quick Launch Listener for Custom Buttons
+    // V5.65.0: Updated to support per-bell broadcast setting
     quickBellControls.addEventListener('click', (e) => {
         const customBtn = e.target.closest('.custom-quick-launch-btn');
         if (customBtn) {
@@ -13954,7 +14180,8 @@ function init() {
             const seconds = parseInt(customBtn.dataset.seconds, 10) || 0;
             const sound = customBtn.dataset.sound;
             const name = customBtn.dataset.name;
-            startQuickBell(hours, minutes, seconds, sound, name);
+            const shouldBroadcast = customBtn.dataset.broadcast === 'true';
+            startQuickBell(hours, minutes, seconds, sound, name, shouldBroadcast);
         }
     });
     
@@ -14349,6 +14576,12 @@ function init() {
     document.getElementById('preview-quick-bell-sound')?.addEventListener('click', () => {
         playBell(document.getElementById('quickBellSoundSelect').value);
     });
+    
+    // V5.65.0: Broadcast toggle button
+    if (quickBellBroadcastToggle) {
+        quickBellBroadcastToggle.addEventListener('click', toggleBroadcastMode);
+    }
+    
     document.getElementById('preview-multi-bell-sound')?.addEventListener('click', () => {
         playBell(document.getElementById('multi-bell-sound').value);
     });
@@ -14785,6 +15018,10 @@ function init() {
         if (queueActive) {
             cancelQueue();
         } else {
+            // V5.65.0: Broadcast cancel if the bell was broadcast-started
+            if (quickBellEndTime && quickBellEndTime.wasBroadcast && currentUser) {
+                broadcastQuickBell('cancel', 0, 0, 0, '', '', 0);
+            }
             quickBellEndTime = null;
             quickBellSound = 'ellisBell.mp3';
             document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
