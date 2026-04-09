@@ -1,6 +1,11 @@
-const APP_VERSION = "5.65.1"
+const APP_VERSION = "5.65.2"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.65.2: Broadcast Fix - Use correct user variable
+// - Fixed: Changed currentUser (undefined) to userId (correct variable)
+// - Added detailed console logging for debugging
+// - Added user-visible messages when broadcast sends/receives
+// - Increased stale broadcast threshold from 5s to 10s
 // V5.65.1: Broadcast Toggle Fix
 // - Fixed broadcast toggle button not responding to clicks (DOM timing issue)
 // - Removed disabled attribute from HTML, button now works for all users
@@ -3351,7 +3356,7 @@ function startQuickBell(hours = 0, minutes = 0, seconds = 0, sound, name = "Quic
     console.log(`Quick bell set for ${hours}h ${minutes}m ${seconds}s from now. Sound: ${quickBellSound}`);
     
     // V5.65.0: Broadcast to other devices if enabled
-    if ((shouldBroadcast || broadcastEnabled) && currentUser) {
+    if ((shouldBroadcast || broadcastEnabled) && userId && !isUserAnonymous) {
         broadcastQuickBell('start', hours, minutes, seconds, quickBellSound, name, totalMillis);
     }
     
@@ -3367,11 +3372,17 @@ function startQuickBell(hours = 0, minutes = 0, seconds = 0, sound, name = "Quic
  * Send a quick bell broadcast to Firestore
  */
 async function broadcastQuickBell(action, hours, minutes, seconds, sound, name, durationMs) {
-    if (!currentUser) return;
+    if (!userId || isUserAnonymous) {
+        console.log('[Broadcast] Cannot send - no user or anonymous');
+        return;
+    }
+    
+    const broadcastPath = `artifacts/${appId}/users/${userId}/quick_bell_broadcast/current`;
+    console.log('[Broadcast] Sending to path:', broadcastPath);
     
     try {
-        const broadcastRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'quick_bell_broadcast', 'current');
-        await setDoc(broadcastRef, {
+        const broadcastRef = doc(db, 'artifacts', appId, 'users', userId, 'quick_bell_broadcast', 'current');
+        const broadcastData = {
             action: action, // 'start' or 'cancel'
             hours: hours || 0,
             minutes: minutes || 0,
@@ -3381,18 +3392,28 @@ async function broadcastQuickBell(action, hours, minutes, seconds, sound, name, 
             durationMs: durationMs || 0,
             timestamp: Date.now(),
             originInstance: instanceId
-        });
-        console.log(`[Broadcast] Sent ${action} broadcast for "${name}"`);
+        };
+        console.log('[Broadcast] Data:', broadcastData);
+        
+        await setDoc(broadcastRef, broadcastData);
+        console.log(`[Broadcast] Successfully sent ${action} broadcast for "${name}"`);
+        showUserMessage(`📡 Broadcast sent: ${name}`);
     } catch (error) {
         console.error('[Broadcast] Error sending broadcast:', error);
+        showUserMessage(`⚠️ Broadcast failed: ${error.message}`);
     }
 }
 
 /**
  * Set up listener for incoming quick bell broadcasts
+ * NOTE: This listener should be active regardless of whether broadcastEnabled is true
+ * The toggle only affects SENDING, not RECEIVING
  */
 function setupBroadcastListener() {
-    if (!currentUser) return;
+    if (!userId || isUserAnonymous) {
+        console.log('[Broadcast] Cannot set up listener - no user or anonymous');
+        return;
+    }
     
     // Clean up existing listener
     if (broadcastListenerUnsubscribe) {
@@ -3400,22 +3421,25 @@ function setupBroadcastListener() {
         broadcastListenerUnsubscribe = null;
     }
     
-    const broadcastRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'quick_bell_broadcast', 'current');
+    const broadcastRef = doc(db, 'artifacts', appId, 'users', userId, 'quick_bell_broadcast', 'current');
+    console.log('[Broadcast] Setting up listener at path:', `artifacts/${appId}/users/${userId}/quick_bell_broadcast/current`);
     
     broadcastListenerUnsubscribe = onSnapshot(broadcastRef, (docSnap) => {
+        console.log('[Broadcast] Received snapshot, exists:', docSnap.exists());
         if (!docSnap.exists()) return;
         
         const data = docSnap.data();
+        console.log('[Broadcast] Snapshot data:', data);
         
         // Ignore broadcasts from this instance
         if (data.originInstance === instanceId) {
-            console.log('[Broadcast] Ignoring own broadcast');
+            console.log('[Broadcast] Ignoring own broadcast (origin:', data.originInstance, ', this:', instanceId, ')');
             return;
         }
         
-        // Ignore old broadcasts (more than 5 seconds old)
+        // Ignore old broadcasts (more than 10 seconds old - increased from 5)
         const age = Date.now() - data.timestamp;
-        if (age > 5000) {
+        if (age > 10000) {
             console.log(`[Broadcast] Ignoring stale broadcast (${age}ms old)`);
             return;
         }
@@ -3427,7 +3451,7 @@ function setupBroadcastListener() {
         }
         lastProcessedBroadcastTimestamp = data.timestamp;
         
-        console.log(`[Broadcast] Received ${data.action} broadcast for "${data.name}"`);
+        console.log(`[Broadcast] Processing ${data.action} broadcast for "${data.name}"`);
         
         if (data.action === 'start') {
             // Start the quick bell locally (without re-broadcasting)
@@ -3448,9 +3472,10 @@ function setupBroadcastListener() {
         }
     }, (error) => {
         console.error('[Broadcast] Listener error:', error);
+        showUserMessage('⚠️ Broadcast sync error - check console');
     });
     
-    console.log('[Broadcast] Listener set up for user:', currentUser.uid);
+    console.log('[Broadcast] Listener set up successfully for user:', userId);
 }
 
 /**
@@ -15022,7 +15047,7 @@ function init() {
             cancelQueue();
         } else {
             // V5.65.0: Broadcast cancel if the bell was broadcast-started
-            if (quickBellEndTime && quickBellEndTime.wasBroadcast && currentUser) {
+            if (quickBellEndTime && quickBellEndTime.wasBroadcast && userId && !isUserAnonymous) {
                 broadcastQuickBell('cancel', 0, 0, 0, '', '', 0);
             }
             quickBellEndTime = null;
