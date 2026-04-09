@@ -1,6 +1,9 @@
-const APP_VERSION = "5.65.2"
+const APP_VERSION = "5.65.3"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.65.3: Remove broadcast popup messages
+// - Removed "Broadcast sent" and "synced from another device" modals (too intrusive)
+// - Console logging remains for debugging if needed
 // V5.65.2: Broadcast Fix - Use correct user variable
 // - Fixed: Changed currentUser (undefined) to userId (correct variable)
 // - Added detailed console logging for debugging
@@ -3397,10 +3400,8 @@ async function broadcastQuickBell(action, hours, minutes, seconds, sound, name, 
         
         await setDoc(broadcastRef, broadcastData);
         console.log(`[Broadcast] Successfully sent ${action} broadcast for "${name}"`);
-        showUserMessage(`📡 Broadcast sent: ${name}`);
     } catch (error) {
         console.error('[Broadcast] Error sending broadcast:', error);
-        showUserMessage(`⚠️ Broadcast failed: ${error.message}`);
     }
 }
 
@@ -3462,17 +3463,14 @@ function setupBroadcastListener() {
             quickBellSound = data.sound;
             document.getElementById('cancel-quick-bell-btn').classList.remove('hidden');
             updateClock();
-            showUserMessage(`📡 ${data.name} started (synced from another device)`);
         } else if (data.action === 'cancel') {
             // Cancel the quick bell locally
             quickBellEndTime = null;
             document.getElementById('cancel-quick-bell-btn').classList.add('hidden');
             updateClock();
-            showUserMessage(`📡 Quick bell cancelled (synced from another device)`);
         }
     }, (error) => {
         console.error('[Broadcast] Listener error:', error);
-        showUserMessage('⚠️ Broadcast sync error - check console');
     });
     
     console.log('[Broadcast] Listener set up successfully for user:', userId);
