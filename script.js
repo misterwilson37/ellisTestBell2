@@ -1,6 +1,9 @@
-const APP_VERSION = "5.65.0"
+const APP_VERSION = "5.65.1"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.65.1: Broadcast Toggle Fix
+// - Fixed broadcast toggle button not responding to clicks (DOM timing issue)
+// - Removed disabled attribute from HTML, button now works for all users
 // V5.65.0: Quick Bell Broadcast Feature
 // - Added broadcast toggle button next to sound dropdown (syncs quick bells across all logged-in devices)
 // - Added "Always broadcast" checkbox to custom quick bells
@@ -647,7 +650,6 @@ let pendingImportData = null; // Stores analyzed import data
 // NEW: Quick Bell Elements
 const quickBellControls = document.getElementById('quickBellControls');
 const quickBellSoundSelect = document.getElementById('quickBellSoundSelect');
-const quickBellBroadcastToggle = document.getElementById('quick-bell-broadcast-toggle'); // V5.65.0
 
 // MODIFIED: Custom Bell Form -> Personal Bell Form (v3.03)
 // DELETED in 4.40: Variables for the old add-personal-bell-form
@@ -3479,16 +3481,17 @@ function toggleBroadcastMode() {
  * Update the broadcast toggle button UI
  */
 function updateBroadcastToggleUI() {
-    if (!quickBellBroadcastToggle) return;
+    const btn = document.getElementById('quick-bell-broadcast-toggle');
+    if (!btn) return;
     
     if (broadcastEnabled) {
-        quickBellBroadcastToggle.classList.remove('bg-gray-200', 'text-gray-500');
-        quickBellBroadcastToggle.classList.add('bg-sky-500', 'text-white');
-        quickBellBroadcastToggle.title = 'Broadcast to all devices (ON)';
+        btn.classList.remove('bg-gray-200', 'text-gray-500');
+        btn.classList.add('bg-sky-500', 'text-white');
+        btn.title = 'Broadcast to all devices (ON)';
     } else {
-        quickBellBroadcastToggle.classList.remove('bg-sky-500', 'text-white');
-        quickBellBroadcastToggle.classList.add('bg-gray-200', 'text-gray-500');
-        quickBellBroadcastToggle.title = 'Broadcast to all devices (off)';
+        btn.classList.remove('bg-sky-500', 'text-white');
+        btn.classList.add('bg-gray-200', 'text-gray-500');
+        btn.title = 'Broadcast to all devices (off)';
     }
 }
 
@@ -5989,9 +5992,10 @@ async function initFirebase() {
                     createStandaloneScheduleBtn.disabled = false;
                     createStandaloneScheduleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     // V5.65.0: Enable broadcast toggle
-                    if (quickBellBroadcastToggle) {
-                        quickBellBroadcastToggle.disabled = false;
-                        quickBellBroadcastToggle.classList.remove('opacity-50', 'cursor-not-allowed');
+                    const broadcastBtn = document.getElementById('quick-bell-broadcast-toggle');
+                    if (broadcastBtn) {
+                        broadcastBtn.disabled = false;
+                        broadcastBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     }
                 } else {
                     allPersonalSchedules = []; // Clear personal schedules
@@ -6003,9 +6007,10 @@ async function initFirebase() {
                     createStandaloneScheduleBtn.disabled = true;
                     createStandaloneScheduleBtn.classList.add('opacity-50', 'cursor-not-allowed');
                     // V5.65.0: Disable broadcast toggle for anonymous users
-                    if (quickBellBroadcastToggle) {
-                        quickBellBroadcastToggle.disabled = true;
-                        quickBellBroadcastToggle.classList.add('opacity-50', 'cursor-not-allowed');
+                    const broadcastBtnAnon = document.getElementById('quick-bell-broadcast-toggle');
+                    if (broadcastBtnAnon) {
+                        broadcastBtnAnon.disabled = true;
+                        broadcastBtnAnon.classList.add('opacity-50', 'cursor-not-allowed');
                     }
                 }
                 schedulesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedules');
@@ -14578,9 +14583,7 @@ function init() {
     });
     
     // V5.65.0: Broadcast toggle button
-    if (quickBellBroadcastToggle) {
-        quickBellBroadcastToggle.addEventListener('click', toggleBroadcastMode);
-    }
+    document.getElementById('quick-bell-broadcast-toggle')?.addEventListener('click', toggleBroadcastMode);
     
     document.getElementById('preview-multi-bell-sound')?.addEventListener('click', () => {
         playBell(document.getElementById('multi-bell-sound').value);
