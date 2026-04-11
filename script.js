@@ -1,6 +1,14 @@
-const APP_VERSION = "5.65.3"
+const APP_VERSION = "5.66.0"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.66.0: Theme & Display Settings
+// - Added Theme & Display panel in Visual Manager section
+// - Light/Dark theme presets with one-click toggle
+// - Custom color pickers for: background, card, text, secondary text, accent, countdown
+// - Toggle to hide visual cue graphic
+// - Live preview panel showing how changes will look
+// - Theme persists to localStorage and syncs to cloud
+// - CSS variables applied to entire page for seamless theming
 // V5.65.3: Remove broadcast popup messages
 // - Removed "Broadcast sent" and "synced from another device" modals (too intrusive)
 // - Console logging remains for debugging if needed
@@ -2437,6 +2445,309 @@ function applyPipKioskMode(pipDoc, enabled) {
         if (toggleBtn) toggleBtn.title = 'Enter Kiosk Mode';
     }
 }
+
+// ============================================
+// V5.66.0: THEME & DISPLAY FUNCTIONALITY
+// ============================================
+
+// Theme state
+let currentTheme = 'light'; // 'light', 'dark', or 'custom'
+let customThemeColors = {
+    bgPrimary: '#f3f4f6',
+    bgCard: '#ffffff',
+    textPrimary: '#111827',
+    textSecondary: '#6b7280',
+    textMuted: '#9ca3af',
+    accent: '#2563eb',
+    countdown: '#111827',
+    border: '#e5e7eb'
+};
+let visualCueEnabled = true;
+
+// Light theme defaults
+const lightThemeColors = {
+    bgPrimary: '#f3f4f6',
+    bgCard: '#ffffff',
+    textPrimary: '#111827',
+    textSecondary: '#6b7280',
+    textMuted: '#9ca3af',
+    accent: '#2563eb',
+    countdown: '#111827',
+    border: '#e5e7eb'
+};
+
+// Dark theme defaults
+const darkThemeColors = {
+    bgPrimary: '#111827',
+    bgCard: '#1f2937',
+    textPrimary: '#f9fafb',
+    textSecondary: '#d1d5db',
+    textMuted: '#9ca3af',
+    accent: '#60a5fa',
+    countdown: '#f9fafb',
+    border: '#374151'
+};
+
+/**
+ * Load theme preference from localStorage
+ */
+function loadThemePreference() {
+    try {
+        const storedTheme = localStorage.getItem('theme');
+        const storedVisualCue = localStorage.getItem('visualCueEnabled');
+        const storedCustomColors = localStorage.getItem('customThemeColors');
+        
+        if (storedTheme) {
+            currentTheme = storedTheme;
+        }
+        
+        if (storedVisualCue !== null) {
+            visualCueEnabled = storedVisualCue === 'true';
+        }
+        
+        if (storedCustomColors) {
+            customThemeColors = JSON.parse(storedCustomColors);
+        }
+        
+        applyTheme();
+        updateThemeUI();
+    } catch (e) {
+        console.error('Error loading theme preference:', e);
+    }
+}
+
+/**
+ * Save theme preference to localStorage
+ */
+function saveThemePreference() {
+    try {
+        localStorage.setItem('theme', currentTheme);
+        localStorage.setItem('visualCueEnabled', visualCueEnabled ? 'true' : 'false');
+        localStorage.setItem('customThemeColors', JSON.stringify(customThemeColors));
+        // Also save to cloud
+        saveUserPreferencesToCloud();
+    } catch (e) {
+        console.error('Error saving theme preference:', e);
+    }
+}
+
+/**
+ * Apply the current theme to the document
+ */
+function applyTheme() {
+    const root = document.documentElement;
+    
+    // Set data-theme attribute for CSS
+    if (currentTheme === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+    } else {
+        root.removeAttribute('data-theme');
+    }
+    
+    // Apply custom colors (these override both light and dark)
+    const colors = currentTheme === 'dark' ? darkThemeColors : lightThemeColors;
+    const finalColors = { ...colors, ...customThemeColors };
+    
+    // Only apply custom colors if we have customizations different from the base theme
+    if (currentTheme !== 'custom') {
+        // Use theme defaults
+        root.style.setProperty('--theme-bg-primary', colors.bgPrimary);
+        root.style.setProperty('--theme-bg-card', colors.bgCard);
+        root.style.setProperty('--theme-text-primary', colors.textPrimary);
+        root.style.setProperty('--theme-text-secondary', colors.textSecondary);
+        root.style.setProperty('--theme-text-muted', colors.textMuted);
+        root.style.setProperty('--theme-accent', colors.accent);
+        root.style.setProperty('--theme-countdown', colors.countdown);
+        root.style.setProperty('--theme-border', colors.border);
+    } else {
+        // Apply custom colors
+        root.style.setProperty('--theme-bg-primary', customThemeColors.bgPrimary);
+        root.style.setProperty('--theme-bg-card', customThemeColors.bgCard);
+        root.style.setProperty('--theme-text-primary', customThemeColors.textPrimary);
+        root.style.setProperty('--theme-text-secondary', customThemeColors.textSecondary);
+        root.style.setProperty('--theme-text-muted', customThemeColors.textMuted || customThemeColors.textSecondary);
+        root.style.setProperty('--theme-accent', customThemeColors.accent);
+        root.style.setProperty('--theme-countdown', customThemeColors.countdown);
+        root.style.setProperty('--theme-border', customThemeColors.border || '#e5e7eb');
+    }
+    
+    // Apply visual cue visibility
+    if (visualCueEnabled) {
+        document.body.classList.remove('hide-visual-cue');
+    } else {
+        document.body.classList.add('hide-visual-cue');
+    }
+    
+    // Update preview panel
+    updateThemePreview();
+}
+
+/**
+ * Update the preview panel with current colors
+ */
+function updateThemePreview() {
+    const preview = document.getElementById('theme-preview-panel');
+    const previewVisual = document.getElementById('preview-visual-cue');
+    
+    if (preview) {
+        // The preview uses CSS variables, so it updates automatically
+        // Just toggle visual cue visibility in preview
+        if (previewVisual) {
+            previewVisual.style.display = visualCueEnabled ? 'flex' : 'none';
+        }
+    }
+}
+
+/**
+ * Update the theme UI controls to reflect current state
+ */
+function updateThemeUI() {
+    const lightBtn = document.getElementById('theme-light-btn');
+    const darkBtn = document.getElementById('theme-dark-btn');
+    const visualCueToggle = document.getElementById('toggle-visual-cue');
+    
+    // Update theme buttons
+    if (lightBtn && darkBtn) {
+        if (currentTheme === 'dark') {
+            lightBtn.classList.remove('border-blue-500');
+            lightBtn.classList.add('border-transparent');
+            darkBtn.classList.add('border-blue-500');
+            darkBtn.classList.remove('border-transparent');
+        } else {
+            lightBtn.classList.add('border-blue-500');
+            lightBtn.classList.remove('border-transparent');
+            darkBtn.classList.remove('border-blue-500');
+            darkBtn.classList.add('border-transparent');
+        }
+    }
+    
+    // Update visual cue toggle
+    if (visualCueToggle) {
+        visualCueToggle.checked = visualCueEnabled;
+    }
+    
+    // Update color pickers
+    const colors = currentTheme === 'dark' ? darkThemeColors : 
+                   currentTheme === 'custom' ? customThemeColors : lightThemeColors;
+    
+    const bgInput = document.getElementById('theme-color-bg');
+    const cardInput = document.getElementById('theme-color-card');
+    const textInput = document.getElementById('theme-color-text');
+    const textSecInput = document.getElementById('theme-color-text-secondary');
+    const accentInput = document.getElementById('theme-color-accent');
+    const countdownInput = document.getElementById('theme-color-countdown');
+    
+    if (bgInput) bgInput.value = colors.bgPrimary;
+    if (cardInput) cardInput.value = colors.bgCard;
+    if (textInput) textInput.value = colors.textPrimary;
+    if (textSecInput) textSecInput.value = colors.textSecondary;
+    if (accentInput) accentInput.value = colors.accent;
+    if (countdownInput) countdownInput.value = colors.countdown;
+}
+
+/**
+ * Set theme to light mode
+ */
+function setLightTheme() {
+    currentTheme = 'light';
+    customThemeColors = { ...lightThemeColors };
+    applyTheme();
+    updateThemeUI();
+    saveThemePreference();
+}
+
+/**
+ * Set theme to dark mode
+ */
+function setDarkTheme() {
+    currentTheme = 'dark';
+    customThemeColors = { ...darkThemeColors };
+    applyTheme();
+    updateThemeUI();
+    saveThemePreference();
+}
+
+/**
+ * Apply a custom color change
+ */
+function applyCustomColor(property, value) {
+    customThemeColors[property] = value;
+    currentTheme = 'custom';
+    applyTheme();
+    saveThemePreference();
+}
+
+/**
+ * Reset custom colors to current theme defaults
+ */
+function resetCustomColors() {
+    const baseColors = currentTheme === 'dark' ? darkThemeColors : lightThemeColors;
+    customThemeColors = { ...baseColors };
+    currentTheme = currentTheme === 'dark' ? 'dark' : 'light';
+    applyTheme();
+    updateThemeUI();
+    saveThemePreference();
+}
+
+/**
+ * Toggle visual cue visibility
+ */
+function toggleVisualCue(enabled) {
+    visualCueEnabled = enabled;
+    applyTheme();
+    saveThemePreference();
+}
+
+/**
+ * Initialize theme event listeners
+ */
+function initThemeListeners() {
+    // Theme buttons
+    document.getElementById('theme-light-btn')?.addEventListener('click', setLightTheme);
+    document.getElementById('theme-dark-btn')?.addEventListener('click', setDarkTheme);
+    
+    // Custom colors toggle
+    document.getElementById('toggle-custom-colors-btn')?.addEventListener('click', () => {
+        const panel = document.getElementById('custom-colors-panel');
+        const chevron = document.getElementById('custom-colors-chevron');
+        if (panel && chevron) {
+            panel.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-90');
+        }
+    });
+    
+    // Color pickers
+    document.getElementById('theme-color-bg')?.addEventListener('input', (e) => {
+        applyCustomColor('bgPrimary', e.target.value);
+    });
+    document.getElementById('theme-color-card')?.addEventListener('input', (e) => {
+        applyCustomColor('bgCard', e.target.value);
+    });
+    document.getElementById('theme-color-text')?.addEventListener('input', (e) => {
+        applyCustomColor('textPrimary', e.target.value);
+    });
+    document.getElementById('theme-color-text-secondary')?.addEventListener('input', (e) => {
+        applyCustomColor('textSecondary', e.target.value);
+    });
+    document.getElementById('theme-color-accent')?.addEventListener('input', (e) => {
+        applyCustomColor('accent', e.target.value);
+    });
+    document.getElementById('theme-color-countdown')?.addEventListener('input', (e) => {
+        applyCustomColor('countdown', e.target.value);
+    });
+    
+    // Reset button
+    document.getElementById('reset-custom-colors-btn')?.addEventListener('click', resetCustomColors);
+    
+    // Visual cue toggle
+    document.getElementById('toggle-visual-cue')?.addEventListener('change', (e) => {
+        toggleVisualCue(e.target.checked);
+    });
+}
+
+// ============================================
+// END V5.66.0: THEME & DISPLAY FUNCTIONALITY
+// ============================================
 
 // ============================================
 // V5.47.0: PICTURE-IN-PICTURE FUNCTIONALITY
@@ -13604,6 +13915,10 @@ async function confirmDeleteAudio() {
 // --- Init and Event Listeners ---
 function init() {
     initFirebase();
+    
+    // V5.66.0: Initialize theme early so it applies before page is visible
+    loadThemePreference();
+    initThemeListeners();
 
     // --- VERSION STAMP ---
     // This finds the HTML element and stamps the JS version onto it
