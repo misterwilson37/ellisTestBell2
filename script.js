@@ -1,6 +1,18 @@
-const APP_VERSION = "5.66.0"
+const APP_VERSION = "5.66.2"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.66.2: Theme & Bell Editing Fixes
+// - Fixed dark mode: visual cue container now uses theme variable
+// - Fixed light mode contrast: darker secondary text colors for readability
+// - Fixed shared bell sound editing:
+//   - ALL users can now change sound (creates personal override, only affects their room)
+//   - Sound dropdown enabled by default for everyone
+//   - Admins see "Override for all users" checkbox to optionally push to shared bell
+//   - Non-admins don't see checkbox (their changes are always personal)
+// - Added CSS variables for visual background, button colors
+// V5.66.1: Broadcast Toggle Fix
+// - Added onclick fallback to broadcast toggle button
+// - Added pointer-events-none to SVG to prevent click interception
 // V5.66.0: Theme & Display Settings
 // - Added Theme & Display panel in Visual Manager section
 // - Light/Dark theme presets with one-click toggle
@@ -2455,12 +2467,15 @@ let currentTheme = 'light'; // 'light', 'dark', or 'custom'
 let customThemeColors = {
     bgPrimary: '#f3f4f6',
     bgCard: '#ffffff',
+    bgVisual: '#1f2937',
     textPrimary: '#111827',
-    textSecondary: '#6b7280',
-    textMuted: '#9ca3af',
+    textSecondary: '#4b5563',
+    textMuted: '#6b7280',
     accent: '#2563eb',
     countdown: '#111827',
-    border: '#e5e7eb'
+    border: '#d1d5db',
+    buttonBg: '#e5e7eb',
+    buttonText: '#374151'
 };
 let visualCueEnabled = true;
 
@@ -2468,24 +2483,30 @@ let visualCueEnabled = true;
 const lightThemeColors = {
     bgPrimary: '#f3f4f6',
     bgCard: '#ffffff',
+    bgVisual: '#1f2937',
     textPrimary: '#111827',
-    textSecondary: '#6b7280',
-    textMuted: '#9ca3af',
+    textSecondary: '#4b5563',
+    textMuted: '#6b7280',
     accent: '#2563eb',
     countdown: '#111827',
-    border: '#e5e7eb'
+    border: '#d1d5db',
+    buttonBg: '#e5e7eb',
+    buttonText: '#374151'
 };
 
 // Dark theme defaults
 const darkThemeColors = {
     bgPrimary: '#111827',
     bgCard: '#1f2937',
+    bgVisual: '#374151',
     textPrimary: '#f9fafb',
     textSecondary: '#d1d5db',
     textMuted: '#9ca3af',
     accent: '#60a5fa',
     countdown: '#f9fafb',
-    border: '#374151'
+    border: '#374151',
+    buttonBg: '#374151',
+    buttonText: '#e5e7eb'
 };
 
 /**
@@ -2553,22 +2574,28 @@ function applyTheme() {
         // Use theme defaults
         root.style.setProperty('--theme-bg-primary', colors.bgPrimary);
         root.style.setProperty('--theme-bg-card', colors.bgCard);
+        root.style.setProperty('--theme-bg-visual', colors.bgVisual);
         root.style.setProperty('--theme-text-primary', colors.textPrimary);
         root.style.setProperty('--theme-text-secondary', colors.textSecondary);
         root.style.setProperty('--theme-text-muted', colors.textMuted);
         root.style.setProperty('--theme-accent', colors.accent);
         root.style.setProperty('--theme-countdown', colors.countdown);
         root.style.setProperty('--theme-border', colors.border);
+        root.style.setProperty('--theme-button-bg', colors.buttonBg);
+        root.style.setProperty('--theme-button-text', colors.buttonText);
     } else {
         // Apply custom colors
         root.style.setProperty('--theme-bg-primary', customThemeColors.bgPrimary);
         root.style.setProperty('--theme-bg-card', customThemeColors.bgCard);
+        root.style.setProperty('--theme-bg-visual', customThemeColors.bgVisual || '#1f2937');
         root.style.setProperty('--theme-text-primary', customThemeColors.textPrimary);
         root.style.setProperty('--theme-text-secondary', customThemeColors.textSecondary);
         root.style.setProperty('--theme-text-muted', customThemeColors.textMuted || customThemeColors.textSecondary);
         root.style.setProperty('--theme-accent', customThemeColors.accent);
         root.style.setProperty('--theme-countdown', customThemeColors.countdown);
-        root.style.setProperty('--theme-border', customThemeColors.border || '#e5e7eb');
+        root.style.setProperty('--theme-border', customThemeColors.border || '#d1d5db');
+        root.style.setProperty('--theme-button-bg', customThemeColors.buttonBg || '#e5e7eb');
+        root.style.setProperty('--theme-button-text', customThemeColors.buttonText || '#374151');
     }
     
     // Apply visual cue visibility
@@ -7735,38 +7762,38 @@ function handleEditBellClick(bell) {
         
         // NEW 5.32.3: Handle anchor bells (shared type) - lock time but allow visual/sound/name
         // FIX V5.57.1: Added else clause for custom bells to ensure time input is enabled
+        // FIX V5.66.2: All users can set personal sound override; admin checkbox escalates to shared
         if (bell.type === 'shared') {
             const isAdmin = document.body.classList.contains('admin-mode');
                 
+            // Lock time for non-admins
             if (isAdmin) {
-                // Admin editing shared bell - full control with override checkbox
                 editBellTimeInput.disabled = false;
                 editBellTimeInput.style.opacity = '1';
                 editBellTimeInput.style.cursor = 'text';
-                    
-                // Hide lock message
                 const lockMsgDiv = document.getElementById('edit-time-lock-message');
                 if (lockMsgDiv) lockMsgDiv.classList.add('hidden');
-                    
-                editBellOverrideContainer.classList.remove('hidden');
-                document.getElementById('edit-bell-visual-override-container')?.classList.remove('hidden');
-                if (editBellOverrideCheckbox) editBellOverrideCheckbox.checked = false;
-                editBellSoundInput.disabled = true;
             } else {
-                // Non-admin editing shared bell - lock time, auto-override sound/name/visual
                 editBellTimeInput.disabled = true;
                 editBellTimeInput.style.opacity = '0.5';
                 editBellTimeInput.style.cursor = 'not-allowed';
-                    
-                // Show lock message in dedicated div
                 const lockMsgDiv = document.getElementById('edit-time-lock-message');
                 if (lockMsgDiv) lockMsgDiv.classList.remove('hidden');
-                    
-                // Hide override checkboxes - teachers always override
+            }
+            
+            // Sound is ALWAYS editable (personal override)
+            editBellSoundInput.disabled = false;
+            
+            // Admin sees checkbox to optionally push change to all users
+            // Non-admin doesn't see it (their changes are always personal)
+            if (isAdmin) {
+                editBellOverrideContainer.classList.remove('hidden');
+                document.getElementById('edit-bell-visual-override-container')?.classList.remove('hidden');
+                // Default unchecked = personal override only
+                if (editBellOverrideCheckbox) editBellOverrideCheckbox.checked = false;
+            } else {
                 editBellOverrideContainer.classList.add('hidden');
                 document.getElementById('edit-bell-visual-override-container')?.classList.add('hidden');
-                // Enable sound editing (auto-override for teachers)
-                editBellSoundInput.disabled = false;
             }
         } else {
             // FIX V5.57.1: Custom bells (including personal period anchor/fluke bells)
@@ -8033,17 +8060,11 @@ async function handleEditBellSubmit(e) {
 
     // NEW in 4.21: Check if we should override the sound
     // FIX V5.42: Add null check for checkbox
-    // FIX V5.46.5: For non-admin users, always take the sound (checkbox is hidden for them)
-    const isAdmin = document.body.classList.contains('admin-mode');
+    // FIX V5.66.2: Always capture the sound value for shared bells
+    // The save path (personal override vs shared bell) is determined later
     if (oldBell.type === 'shared') {
-        if (isAdmin && editBellOverrideCheckbox?.checked) {
-            // Admin with checkbox checked - take the new sound
-            newBell.sound = editBellSoundInput.value;
-        } else if (!isAdmin) {
-            // Non-admin always overrides (checkbox is hidden)
-            newBell.sound = editBellSoundInput.value;
-        }
-        // If admin and checkbox NOT checked, newBell.sound stays as oldBell.sound
+        // Always capture the sound - save path determines where it goes
+        newBell.sound = editBellSoundInput.value;
     } else if (oldBell.type === 'custom') {
         // It's a custom bell, so always take the new sound
         newBell.sound = editBellSoundInput.value;
@@ -8074,10 +8095,12 @@ async function handleEditBellSubmit(e) {
         // --- Case 1: Editing a Shared Bell ---
         if (oldBell.type === 'shared') {
             const isAdmin = document.body.classList.contains('admin-mode');
+            const wantsToOverrideForAll = isAdmin && editBellOverrideCheckbox?.checked;
             
-            // FIX V5.42.3: Non-admins can save personal overrides (nickname, visual)
-            // They just can't edit the actual shared bell data
-            if (!isAdmin) {
+            // FIX V5.66.2: Admin with checkbox UNCHECKED saves personal override (same as non-admin)
+            // Admin with checkbox CHECKED edits the actual shared bell for everyone
+            if (!wantsToOverrideForAll) {
+                // Personal override path (non-admin, or admin without checkbox)
                 const overrideKey = getBellOverrideKey(activeBaseScheduleId, oldBell);
                 const soundChanged = editBellSoundInput.value !== oldBell.originalSound;
                 const nameChanged = newBell.name !== oldBell.name;
@@ -8159,7 +8182,8 @@ async function handleEditBellSubmit(e) {
                 return;
             }
             
-            // Admin path: Actually edit the shared bell
+            // Admin path with checkbox checked: Actually edit the shared bell for all users
+            // V5.66.2: Only reaches here if admin AND override checkbox is checked
             // V4.0 LOGIC: Find and update the bell within the periods array
             const currentSchedule = allSchedules.find(s => s.id === activeBaseScheduleId);
             if (!currentSchedule) throw new Error("Active shared schedule not found.");
