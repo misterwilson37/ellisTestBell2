@@ -1,6 +1,13 @@
-const APP_VERSION = "5.66.2"
+const APP_VERSION = "5.66.3"
 const CLOCK_VERSION = "1.3.0"
 const DASHBOARD_VERSION = "1.2.3"
+// V5.66.3: Time Format Fixes & Theme Improvements
+// - FIX: Schedules with HH:MM times (without seconds) now work correctly
+//   - Root cause: setHours() with undefined seconds created Invalid Date, breaking countdown
+//   - Fixed in: updateClock(), isSafeToCleanup(), getDateForBellTime()
+// - NEW: Auto-migration normalizes HH:MM -> HH:MM:SS on schedule load (admins fix shared, users fix personal)
+// - Fixed bell item hover in dark mode (white-on-white issue)
+// - Added --theme-bg-hover and --theme-border-light CSS variables
 // V5.66.2: Theme & Bell Editing Fixes
 // - Fixed dark mode: visual cue container now uses theme variable
 // - Fixed light mode contrast: darker secondary text colors for readability
@@ -898,9 +905,13 @@ function isInSafeMemoryWindow() {
     
     if (!nextBell) return true; // No more bells today = safe
     
-    const [h, m, s] = nextBell.time.split(':').map(Number);
+    // V5.66.3: Handle both "HH:MM" and "HH:MM:SS" formats
+    const timeParts = nextBell.time.split(':').map(Number);
+    const h = timeParts[0] || 0;
+    const m = timeParts[1] || 0;
+    const secs = timeParts[2] || 0;
     const nextBellDate = new Date();
-    nextBellDate.setHours(h, m, s, 0);
+    nextBellDate.setHours(h, m, secs, 0);
     
     const msUntilBell = nextBellDate.getTime() - now.getTime();
     return msUntilBell > SAFE_WINDOW_THRESHOLD;
@@ -1691,6 +1702,25 @@ const generateBellId = () => { // MODIFIED in 4.18: Changed to const arrow funct
 };
 
 /**
+    * NEW in 5.66.3: Normalizes a time string to HH:MM:SS format.
+    * Handles "HH:MM" -> "HH:MM:00" conversion.
+    * @param {string} time - The time string (HH:MM or HH:MM:SS)
+    * @returns {string} Normalized time in HH:MM:SS format, or original if invalid
+    */
+const normalizeTimeString = (time) => {
+    if (!time || typeof time !== 'string') return time;
+    const parts = time.split(':');
+    if (parts.length === 2) {
+        // HH:MM format - add :00 for seconds
+        return `${parts[0]}:${parts[1]}:00`;
+    } else if (parts.length === 3) {
+        // Already HH:MM:SS - ensure proper padding
+        return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:${parts[2].padStart(2, '0')}`;
+    }
+    return time; // Return as-is if format is unexpected
+};
+
+/**
     * NEW in 4.18: Calculates the absolute time (HH:MM:SS) based on an anchor and offset. (MOVED/REFACTORED)
     * @param {number} anchorSeconds - Anchor time in seconds from midnight.
     * @param {string} direction - 'before' or 'after'.
@@ -2058,12 +2088,16 @@ function findBellAfter(currentBell, allBells) {
 
 /**
     * NEW in 4.35: Helper to get a Date object for a bell's time on a specific day.
-    * @param {string} timeString - The HH:MM:SS time of the bell.
+    * @param {string} timeString - The HH:MM:SS or HH:MM time of the bell.
     * @param {Date} referenceDate - The "current" date object (from updateClock).
     * @returns {Date} A Date object for the bell on the reference day.
     */
 function getDateForBellTime(timeString, referenceDate) {
-    const [h, m, s] = timeString.split(':').map(Number);
+    // V5.66.3: Handle both "HH:MM" and "HH:MM:SS" formats
+    const timeParts = timeString.split(':').map(Number);
+    const h = timeParts[0] || 0;
+    const m = timeParts[1] || 0;
+    const s = timeParts[2] || 0;
     const bellDate = new Date(referenceDate);
     bellDate.setHours(h, m, s, 0); // Set time, clear milliseconds
     return bellDate;
@@ -2467,6 +2501,7 @@ let currentTheme = 'light'; // 'light', 'dark', or 'custom'
 let customThemeColors = {
     bgPrimary: '#f3f4f6',
     bgCard: '#ffffff',
+    bgHover: '#f9fafb',
     bgVisual: '#1f2937',
     textPrimary: '#111827',
     textSecondary: '#4b5563',
@@ -2474,6 +2509,7 @@ let customThemeColors = {
     accent: '#2563eb',
     countdown: '#111827',
     border: '#d1d5db',
+    borderLight: '#e5e7eb',
     buttonBg: '#e5e7eb',
     buttonText: '#374151'
 };
@@ -2483,6 +2519,7 @@ let visualCueEnabled = true;
 const lightThemeColors = {
     bgPrimary: '#f3f4f6',
     bgCard: '#ffffff',
+    bgHover: '#f9fafb',
     bgVisual: '#1f2937',
     textPrimary: '#111827',
     textSecondary: '#4b5563',
@@ -2490,6 +2527,7 @@ const lightThemeColors = {
     accent: '#2563eb',
     countdown: '#111827',
     border: '#d1d5db',
+    borderLight: '#e5e7eb',
     buttonBg: '#e5e7eb',
     buttonText: '#374151'
 };
@@ -2498,6 +2536,7 @@ const lightThemeColors = {
 const darkThemeColors = {
     bgPrimary: '#111827',
     bgCard: '#1f2937',
+    bgHover: '#374151',
     bgVisual: '#374151',
     textPrimary: '#f9fafb',
     textSecondary: '#d1d5db',
@@ -2505,6 +2544,7 @@ const darkThemeColors = {
     accent: '#60a5fa',
     countdown: '#f9fafb',
     border: '#374151',
+    borderLight: '#4b5563',
     buttonBg: '#374151',
     buttonText: '#e5e7eb'
 };
@@ -2574,6 +2614,7 @@ function applyTheme() {
         // Use theme defaults
         root.style.setProperty('--theme-bg-primary', colors.bgPrimary);
         root.style.setProperty('--theme-bg-card', colors.bgCard);
+        root.style.setProperty('--theme-bg-hover', colors.bgHover);
         root.style.setProperty('--theme-bg-visual', colors.bgVisual);
         root.style.setProperty('--theme-text-primary', colors.textPrimary);
         root.style.setProperty('--theme-text-secondary', colors.textSecondary);
@@ -2581,12 +2622,14 @@ function applyTheme() {
         root.style.setProperty('--theme-accent', colors.accent);
         root.style.setProperty('--theme-countdown', colors.countdown);
         root.style.setProperty('--theme-border', colors.border);
+        root.style.setProperty('--theme-border-light', colors.borderLight);
         root.style.setProperty('--theme-button-bg', colors.buttonBg);
         root.style.setProperty('--theme-button-text', colors.buttonText);
     } else {
         // Apply custom colors
         root.style.setProperty('--theme-bg-primary', customThemeColors.bgPrimary);
         root.style.setProperty('--theme-bg-card', customThemeColors.bgCard);
+        root.style.setProperty('--theme-bg-hover', customThemeColors.bgHover || '#f9fafb');
         root.style.setProperty('--theme-bg-visual', customThemeColors.bgVisual || '#1f2937');
         root.style.setProperty('--theme-text-primary', customThemeColors.textPrimary);
         root.style.setProperty('--theme-text-secondary', customThemeColors.textSecondary);
@@ -2594,6 +2637,7 @@ function applyTheme() {
         root.style.setProperty('--theme-accent', customThemeColors.accent);
         root.style.setProperty('--theme-countdown', customThemeColors.countdown);
         root.style.setProperty('--theme-border', customThemeColors.border || '#d1d5db');
+        root.style.setProperty('--theme-border-light', customThemeColors.borderLight || '#e5e7eb');
         root.style.setProperty('--theme-button-bg', customThemeColors.buttonBg || '#e5e7eb');
         root.style.setProperty('--theme-button-text', customThemeColors.buttonText || '#374151');
     }
@@ -3272,7 +3316,11 @@ function updateClock() {
     
     let millisToScheduleBell = Infinity;
     if (scheduleBellObject) {
-        const [h, m, s] = scheduleBellObject.time.split(':').map(Number);
+        // V5.66.3: Handle both "HH:MM" and "HH:MM:SS" formats
+        const timeParts = scheduleBellObject.time.split(':').map(Number);
+        const h = timeParts[0] || 0;
+        const m = timeParts[1] || 0;
+        const s = timeParts[2] || 0; // Default seconds to 0 if not provided
         const nextBellDate = new Date();
         nextBellDate.setHours(h, m, s, 0);
         millisToScheduleBell = nextBellDate.getTime() - nowTimestamp;
@@ -6838,6 +6886,7 @@ function setActiveSchedule(prefixedId) {
                 
                 // --- NEW V4.90: One-Time Bell ID Migration for BASE shared bells ---
                 // This must run for personal schedules too, so the base bells have IDs.
+                // V5.66.3: Also normalize time strings to HH:MM:SS format
                 let needsBaseMigration = false;
                 localSchedulePeriods.forEach(period => {
                     period.bells.forEach(bell => {
@@ -6846,14 +6895,23 @@ function setActiveSchedule(prefixedId) {
                             needsBaseMigration = true;
                             console.log(`Assigning new bellId to BASE bell: ${bell.name} in ${period.name}`);
                         }
+                        // V5.66.3: Normalize time strings (HH:MM -> HH:MM:SS)
+                        if (bell.time && !bell.relative) {
+                            const normalized = normalizeTimeString(bell.time);
+                            if (normalized !== bell.time) {
+                                console.log(`Normalizing time for BASE bell "${bell.name}": ${bell.time} -> ${normalized}`);
+                                bell.time = normalized;
+                                needsBaseMigration = true;
+                            }
+                        }
                     });
                 });
 
                 if (needsBaseMigration && document.body.classList.contains('admin-mode')) {
-                    console.log("Saving migrated bellId data back to BASE schedule...");
+                    console.log("Saving migrated data back to BASE schedule...");
                     updateDoc(scheduleRef, { periods: localSchedulePeriods }) 
-                        .then(() => console.log("Base schedule bellId migration successful."))
-                        .catch(err => console.error("Error saving base bellId migration:", err));
+                        .then(() => console.log("Base schedule migration successful."))
+                        .catch(err => console.error("Error saving base migration:", err));
                 }
                 // --- END V4.90 Migration ---
                 
@@ -6943,13 +7001,22 @@ function setActiveSchedule(prefixedId) {
                     let periodsToUse = personalData.periods || [];
                     let needsMigration = false;
                     
-                    // Check for missing bellIds
+                    // Check for missing bellIds and normalize time strings
                     periodsToUse.forEach(period => {
                         period.bells.forEach(bell => {
                             if (!bell.bellId) {
                                 bell.bellId = generateBellId();
                                 needsMigration = true;
                                 console.log(`Assigning new bellId to ${bell.name} in ${period.name}`);
+                            }
+                            // V5.66.3: Normalize time strings (HH:MM -> HH:MM:SS)
+                            if (bell.time && !bell.relative) {
+                                const normalized = normalizeTimeString(bell.time);
+                                if (normalized !== bell.time) {
+                                    console.log(`Normalizing time for "${bell.name}": ${bell.time} -> ${normalized}`);
+                                    bell.time = normalized;
+                                    needsMigration = true;
+                                }
                             }
                         });
                     });
@@ -7014,6 +7081,7 @@ function setActiveSchedule(prefixedId) {
 
                     // --- NEW V4.90: One-Time Bell ID Migration for SHARED bells ---
                     // This fixes the bug where overrides wouldn't save on refresh.
+                    // V5.66.3: Also normalize time strings to HH:MM:SS format
                     let needsSharedMigration = false;
                     localSchedulePeriods.forEach(period => {
                         period.bells.forEach(bell => {
@@ -7022,17 +7090,26 @@ function setActiveSchedule(prefixedId) {
                                 needsSharedMigration = true;
                                 console.log(`Assigning new bellId to SHARED bell: ${bell.name} in ${period.name}`);
                             }
+                            // V5.66.3: Normalize time strings (HH:MM -> HH:MM:SS)
+                            if (bell.time && !bell.relative) {
+                                const normalized = normalizeTimeString(bell.time);
+                                if (normalized !== bell.time) {
+                                    console.log(`Normalizing time for SHARED bell "${bell.name}": ${bell.time} -> ${normalized}`);
+                                    bell.time = normalized;
+                                    needsSharedMigration = true;
+                                }
+                            }
                         });
                     });
 
                     if (needsSharedMigration && document.body.classList.contains('admin-mode')) {
-                        console.log("Saving migrated bellId data back to SHARED schedule...");
+                        console.log("Saving migrated data back to SHARED schedule...");
                         // Fire-and-forget update.
                         // We only save if user is an admin to prevent write errors.
                         // Non-admins will still have the IDs in-memory for this session.
                         updateDoc(scheduleRef, { periods: localSchedulePeriods }) 
-                            .then(() => console.log("Shared schedule bellId migration successful."))
-                            .catch(err => console.error("Error saving shared bellId migration:", err));
+                            .then(() => console.log("Shared schedule migration successful."))
+                            .catch(err => console.error("Error saving shared migration:", err));
                     }
                     // --- END V4.90 Migration ---
                     
@@ -7085,13 +7162,23 @@ function setActiveSchedule(prefixedId) {
                         console.log("Running migration from flat 'bells' to 'periods' structure.");
                     }
                     
-                    // Now check for missing bellIds within the periods
+                    // Now check for missing bellIds and normalize time strings within the periods
                     periodsToUse.forEach(period => {
                         period.bells.forEach(bell => {
                             if (!bell.bellId) {
                                 bell.bellId = generateBellId();
                                 needsMigration = true;
                                 console.log(`Assigning new permanent bellId to ${bell.name} in ${period.name}`);
+                            }
+                            // V5.66.3: Normalize time strings (HH:MM -> HH:MM:SS)
+                            // Only for static bells (not relative bells)
+                            if (bell.time && !bell.relative) {
+                                const normalized = normalizeTimeString(bell.time);
+                                if (normalized !== bell.time) {
+                                    console.log(`Normalizing time for personal bell "${bell.name}": ${bell.time} -> ${normalized}`);
+                                    bell.time = normalized;
+                                    needsMigration = true;
+                                }
                             }
                         });
                     });
@@ -10497,11 +10584,23 @@ function recalculateAndRenderAll() {
         console.warn("Delaying calculation: base and personal schedules have not both loaded.");
         return; // Exit, wait for the other listener to fire
     }
-    // console.log("Running recalculateAndRenderAll..."); // Good for debugging
+    // V5.66.3: Debug logging for calculation
+    console.log("Running recalculateAndRenderAll...", {
+        localSchedulePeriodsCount: localSchedulePeriods.length,
+        personalBellsPeriodsCount: personalBellsPeriods.length,
+        activeBaseScheduleId,
+        activePersonalScheduleId
+    });
 
     // 1. Run the calculation engine
     // It reads from the global localSchedulePeriods and personalBellsPeriods
     const { calculatedPeriods, flatBellList } = resolveAllBellTimes();
+    
+    // V5.66.3: Debug calculation results
+    console.log("Calculation complete:", {
+        calculatedPeriodsCount: calculatedPeriods.length,
+        flatBellListCount: flatBellList.length
+    });
     
     calculatedPeriodsList = calculatedPeriods; // NEW in 4.18: Store final calculated periods
 
