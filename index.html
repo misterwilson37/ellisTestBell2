@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.66.2</title>
+    <title>Ellis Web Bell 5.66.3</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -48,6 +48,7 @@
         :root {
             --theme-bg-primary: #f3f4f6;
             --theme-bg-card: #ffffff;
+            --theme-bg-hover: #f9fafb;
             --theme-bg-visual: #1f2937;
             --theme-text-primary: #111827;
             --theme-text-secondary: #4b5563;
@@ -55,6 +56,7 @@
             --theme-accent: #2563eb;
             --theme-countdown: #111827;
             --theme-border: #d1d5db;
+            --theme-border-light: #e5e7eb;
             --theme-button-bg: #e5e7eb;
             --theme-button-text: #374151;
         }
@@ -100,6 +102,11 @@
             border-color: var(--theme-border) !important;
         }
         
+        /* Light borders (bell item separators) */
+        .border-gray-100 {
+            border-color: var(--theme-border-light) !important;
+        }
+        
         /* Theme for inputs and selects */
         input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
         select,
@@ -109,9 +116,15 @@
             border-color: var(--theme-border) !important;
         }
         
-        /* Theme for bell list items */
+        /* Theme for bell list items and hover states */
         .bg-gray-50 {
-            background-color: color-mix(in srgb, var(--theme-bg-card) 95%, var(--theme-bg-primary) 5%) !important;
+            background-color: var(--theme-bg-hover) !important;
+        }
+        
+        /* V5.66.3: Fix bell item hover - use theme color instead of gray-50 */
+        .bell-item:hover,
+        .hover\:bg-gray-50:hover {
+            background-color: var(--theme-bg-hover) !important;
         }
         
         /* Theme for visual cue container */
@@ -1279,7 +1292,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.66.2</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.66.3</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -2941,4 +2954,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.66.2 -->
+<!-- Version 5.66.3 -->
