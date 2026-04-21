@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.67.0</title>
+    <title>Ellis Web Bell 5.68.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -1292,7 +1292,8 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.66.3</h1>
+            <!-- v5.68.0: Version now dynamic (populated by script.js from APP_VERSION) — no more stale hardcoded strings. -->
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell <span id="header-version-display">5.68.0</span></h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -1475,6 +1476,18 @@
                             class="h-5 w-5 text-sky-600 rounded focus:ring-sky-500 mr-3 hidden"
                             title="Select/deselect all bells">
                      <h2 id="schedule-title" class="text-2xl font-semibold">Current Schedule</h2>
+                     <!-- v5.68.0: Inline rename button next to title. Routes to the existing
+                          rename-schedule-btn's handler in the Admin Zone via JS. Visible when a
+                          shared schedule is selected and admin-mode is on, OR when a personal
+                          schedule is selected and the user is authenticated. Hidden in kiosk mode. -->
+                     <button type="button" id="inline-rename-schedule-btn"
+                             class="ml-2 p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100 kiosk-hide hidden"
+                             title="Rename this schedule" aria-label="Rename this schedule">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                             <path d="M12 20h9"></path>
+                             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                         </svg>
+                     </button>
                  </div>
                  <div class="flex-shrink-0 flex gap-2">
                      <!-- NEW in 4.49: Collapse/Expand Buttons -->
@@ -2952,4 +2965,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.67.0 -->
+<!-- Version 5.68.0 -->
