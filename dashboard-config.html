@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Config</title>
+    <title>Dashboard Config v1.0.0</title>
+    <!-- Dashboard Config v1.0.0 -->
+    <!-- v1.0.0: First explicit version. Audit pass — shared firebase-config.js; version in <title> and footer. Previously unversioned. -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Shared Firebase config (v1.0.0: extracted from inline) -->
+    <script src="firebase-config.js"></script>
     
     <style>
         :root {
@@ -367,28 +372,31 @@
                 </p>
             </div>
             
-            <!-- Back Link -->
+            <!-- Back Link + Version -->
             <div style="margin-top: 32px; text-align: center;">
                 <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
+                <div style="margin-top: 12px; font-size: 11px; color: #666;">
+                    Dashboard Config v1.0.0
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Firebase config
-        const firebaseConfig = {
-            apiKey: "AIzaSyDfo45UBu-pR8nqMQhVlS_QgyYZ2kzBdvM",
-            authDomain: "ellisbell-c185c.firebaseapp.com",
-            projectId: "ellisbell-c185c",
-            storageBucket: "ellisbell-c185c.firebasestorage.app",
-            appId: "1:441560045695:web:94e51a006663404b8f474a"
-        };
+        // Dashboard Config v1.0.0
+        
+        // v1.0.0: Firebase config comes from shared firebase-config.js
+        // (loaded via <script src="firebase-config.js"> in <head>).
+        if (!window.firebaseConfig) {
+            throw new Error("firebase-config.js failed to load. Check <script> tag order in <head>.");
+        }
+        const firebaseConfig = window.firebaseConfig;
         
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
         
-        const appId = "1:441560045695:web:94e51a006663404b8f474a";
+        const appId = firebaseConfig.appId;
         const provider = new firebase.auth.GoogleAuthProvider();
         
         // Config document path
