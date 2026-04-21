@@ -3,11 +3,12 @@
 <head>
 	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.68.0</title>
+    <title>Ellis Web Bell 5.69.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1d4ed8">
+    <!-- v5.69.0: Carolina Blue (was indigo-700 #1d4ed8) -->
+    <meta name="theme-color" content="#4B9CD3">
     <meta name="description" content="A real-time, synchronized school bell schedule and timer system">
     
     <!-- iOS PWA Support -->
@@ -16,8 +17,8 @@
     <meta name="apple-mobile-web-app-title" content="Web Bell">
     <link rel="apple-touch-icon" href="icon-192.png">
     
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
+    <!-- Favicon (v5.69.0: fill updated from blue-600 #2563EB to Carolina #4B9CD3) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%234B9CD3%22><path d=%22M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z%22/></svg>">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
     
@@ -44,6 +45,8 @@
     <link rel="stylesheet" href="styles.css">
 
     <!-- V5.66.0: Theme CSS Variables & Overrides -->
+    <!-- v5.69.0: Carolina Blue palette. --theme-accent is text-safe (AA on white),
+         --theme-accent-bold is canonical Carolina for large surfaces (buttons, etc.). -->
     <style id="theme-styles">
         :root {
             --theme-bg-primary: #f3f4f6;
@@ -53,7 +56,8 @@
             --theme-text-primary: #111827;
             --theme-text-secondary: #4b5563;
             --theme-text-muted: #6b7280;
-            --theme-accent: #2563eb;
+            --theme-accent: #38759E;        /* Carolina Deep, AA on white */
+            --theme-accent-bold: #4B9CD3;   /* Canonical Carolina Blue */
             --theme-countdown: #111827;
             --theme-border: #d1d5db;
             --theme-border-light: #e5e7eb;
@@ -1292,8 +1296,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <!-- v5.68.0: Version now dynamic (populated by script.js from APP_VERSION) — no more stale hardcoded strings. -->
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell <span id="header-version-display">5.68.0</span></h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.69.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -2350,7 +2353,7 @@
                         </div>
                         <div class="text-center">
                             <label for="custom-text-bg-color" class="block text-sm font-medium text-gray-700 mb-1">Background</label>
-                            <input type="color" id="custom-text-bg-color" value="#4338CA" class="w-16 h-10 p-0 border-none rounded-md cursor-pointer mx-auto block">
+                            <input type="color" id="custom-text-bg-color" value="#4B9CD3" class="w-16 h-10 p-0 border-none rounded-md cursor-pointer mx-auto block">
                         </div>
                     </div>
                 </div>
@@ -2837,7 +2840,8 @@
                                         </div>
                                         <div>
                                             <label class="block text-xs font-medium text-gray-600 mb-1">Accent (Title)</label>
-                                            <input type="color" id="theme-color-accent" value="#2563eb" class="w-full h-8 rounded cursor-pointer">
+                                            <!-- v5.69.0: default Carolina Deep (AA on white) -->
+                                            <input type="color" id="theme-color-accent" value="#38759E" class="w-full h-8 rounded cursor-pointer">
                                         </div>
                                         <div>
                                             <label class="block text-xs font-medium text-gray-600 mb-1">Countdown</label>
@@ -2965,4 +2969,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.68.0 -->
+<!-- Version 5.69.0 -->
