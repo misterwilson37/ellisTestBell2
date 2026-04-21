@@ -3,19 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard 1.2.3</title>
-    <!-- Dashboard Display v1.2.3 -->
+    <title>Dashboard v1.2.4</title>
+    <!-- Dashboard Display v1.2.4 -->
+    <!-- v1.2.4: Audit pass — shared firebase-config.js; removed stale cross-refs; version in <title>. Note: broader dashboard redesign (Canva + house scores) is planned separately. -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Shared Firebase config (v1.2.4: extracted from inline) -->
+    <script src="firebase-config.js"></script>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.2.3 */
+        /* Dashboard Display v1.2.4 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -349,7 +353,7 @@
         </div>
         
         <div class="version-info">
-            Dashboard v1.2.3 | Ellis Web Bell
+            Dashboard v1.2.4
             <br>
             <a href="index.html">← Back to Bell Schedule</a>
         </div>
@@ -392,20 +396,20 @@
     </div>
 
     <script>
-        // Dashboard Display v1.2.3
-        const firebaseConfig = {
-            apiKey: "AIzaSyDfo45UBu-pR8nqMQhVlS_QgyYZ2kzBdvM",
-            authDomain: "ellisbell-c185c.firebaseapp.com",
-            projectId: "ellisbell-c185c",
-            storageBucket: "ellisbell-c185c.firebasestorage.app",
-            appId: "1:441560045695:web:94e51a006663404b8f474a"
-        };
+        // Dashboard Display v1.2.4
+        
+        // v1.2.4: Firebase config comes from shared firebase-config.js (loaded
+        // via <script src="firebase-config.js"> in <head>).
+        if (!window.firebaseConfig) {
+            throw new Error("firebase-config.js failed to load. Check <script> tag order in <head>.");
+        }
+        const firebaseConfig = window.firebaseConfig;
         
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
         
-        const appId = "1:441560045695:web:94e51a006663404b8f474a";
+        const appId = firebaseConfig.appId;
         const apiKey = "AIzaSyD5Y7uaZDz2qIJfkMkoP1ufX8t1PebfxOE";
         
         let currentVideoId = null;
