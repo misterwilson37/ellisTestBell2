@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bell Schedule Clock</title>
-    <!-- Clock Display v1.3.0 -->
+    <!-- Clock Display v1.3.1 -->
+    <!-- v1.3.1: Fix grid overflow in narrow frames (minmax(0,1fr) + min-width:0 + wrappable labels) -->
     <!-- v1.3.0: Support up to 9 schedules with automatic grid layout -->
     <!-- v1.2.0: Added personal schedule support for teachers with multiple personal schedules -->
     <!-- v1.2.0: Added relative bell time calculation (personal schedules use relative bells) -->
@@ -20,7 +21,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.3.0 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.3.1 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -397,19 +398,22 @@
         
         #schedule-columns {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            /* v1.3.1: minmax(0, 1fr) instead of bare 1fr — prevents columns from refusing
+               to shrink below their intrinsic content width, which was causing the grid
+               to overflow narrow iframes (Yodeck, dashboard.html, etc.). */
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 20px;
             width: 100%;
             transition: all 0.3s;
         }
         
         /* Dynamic grid layouts */
-        #schedule-columns.grid-1 { grid-template-columns: 1fr; max-width: 400px; }
-        #schedule-columns.grid-2 { grid-template-columns: repeat(2, 1fr); }
-        #schedule-columns.grid-3 { grid-template-columns: repeat(3, 1fr); }
-        #schedule-columns.grid-2x2 { grid-template-columns: repeat(2, 1fr); }
-        #schedule-columns.grid-3x2 { grid-template-columns: repeat(3, 1fr); }
-        #schedule-columns.grid-3x3 { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        #schedule-columns.grid-1 { grid-template-columns: minmax(0, 1fr); max-width: 400px; }
+        #schedule-columns.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        #schedule-columns.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        #schedule-columns.grid-2x2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        #schedule-columns.grid-3x2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        #schedule-columns.grid-3x3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
         
         .schedule-column {
             text-align: center;
@@ -418,6 +422,9 @@
             background: var(--dark-grey);
             border: 1px solid #333;
             display: none; /* Hidden by default */
+            /* v1.3.1: min-width: 0 belts-and-suspenders with grid's minmax(0, 1fr).
+               Grid items default to min-content width, which breaks ellipsis/wrapping. */
+            min-width: 0;
         }
         
         .schedule-column.active {
@@ -425,13 +432,15 @@
         }
         
         .column-label {
-            font-size: clamp(1rem, 3vw, 1.5rem);
+            font-size: clamp(0.85rem, 3vw, 1.5rem);
             font-weight: 600;
             color: #a0a0a0;
             margin-bottom: 8px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            /* v1.3.1: Allow the label to wrap onto 2 lines in narrow frames instead of
+               hard-truncating with ellipsis. More informative on narrow Yodeck/dashboard frames. */
+            line-height: 1.2;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
         
         .column-period {
@@ -585,7 +594,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock v1.3.0 | Dashboard v1.2.3 | Ellis Web Bell v5.46.2
+            Clock v1.3.1 | Dashboard v1.2.3 | Ellis Web Bell v5.46.2
             <br>
             <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
         </div>
@@ -650,7 +659,7 @@
     </div>
     
     <script>
-        // Clock Display v1.3.0 - Support up to 9 schedules with automatic grid layout
+        // Clock Display v1.3.1 - Support up to 9 schedules with automatic grid layout
         
         // Firebase config (must match main app)
         const firebaseConfig = {
@@ -1695,7 +1704,7 @@
         
         // Initialize
         async function init() {
-            console.log('Clock Display v1.3.0 initializing...');
+            console.log('Clock Display v1.3.1 initializing...');
             
             // Check if user is already authenticated (e.g., from main app)
             let currentUser = null;
