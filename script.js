@@ -1,6 +1,14 @@
-const APP_VERSION = "5.66.3"
-const CLOCK_VERSION = "1.3.0"
-const DASHBOARD_VERSION = "1.2.3"
+const APP_VERSION = "5.67.0"
+// V5.67.0: Audit pass — versioning cleanup + shared config + dead code removal
+// - REMOVED: CLOCK_VERSION and DASHBOARD_VERSION constants (stale cross-references).
+//   Each sibling file (clock.html, dashboard.html, dashboard-config.html) now
+//   tracks and displays its own version. index.html footer updated to match.
+// - REMOVED: Inline firebaseConfig declaration. Now read from window.firebaseConfig
+//   (defined in shared firebase-config.js). Consumers: index.html loads it before
+//   script.js; clock/dashboard/dashboard-config load it before their init logic.
+// - REMOVED: Dead functions — checkQueueUntilBell (never called outside definition),
+//   findPeriodAnchorBell (same), plus already-commented-out flattenPeriodsToBells
+//   and handleRelativeTimeChange blocks.
 // V5.66.3: Time Format Fixes & Theme Improvements
 // - FIX: Schedules with HH:MM times (without seconds) now work correctly
 //   - Root cause: setHours() with undefined seconds created Invalid Date, breaking countdown
@@ -4252,16 +4260,6 @@ function cancelQueue() {
     updateClock();
 }
 
-function checkQueueUntilBell(bellId) {
-    // Called when a bell rings - check if it matches our "until" bell
-    if (queueActive && queueRepeatMode === 'until' && queueUntilBellId === bellId) {
-        console.log('Queue "until" bell reached, stopping queue');
-        cancelQueue();
-        return true;
-    }
-    return false;
-}
-
 function getQueueVisualHtml() {
     if (queueVisual === '[DEFAULT_Q]') {
         // Default Q visual - a simple styled Q
@@ -5178,14 +5176,6 @@ function renderScheduleSelector() {
         setActiveSchedule(``); // No schedules at all
     }
 }
-
-// DELETED in 4.38: This function is no longer used.
-// The 'resolveAllBellTimes' engine now creates the flat bell list.
-/*
-function flattenPeriodsToBells(periodList) {
-    ...
-}
-*/
 
 /**
     * MODIFIED: v4.07 - Final robust logic for migrating old flat bell structure to the new period structure.
@@ -6240,17 +6230,13 @@ async function initFirebase() {
     if (auth) return; 
 
     try {
-        // MODIFIED: v4.26 - Reverted to hardcoded config from v4.23.
-        // The dynamic __firebase_config check (v4.24) is ONLY for the
-        // canvas environment and fails on external hosting (like GitHub Pages),
-        // which caused the "config is not defined" error.
-        const firebaseConfig = {
-            apiKey: "AIzaSyDfo45UBu-pR8nqMQhVlS_QgyYZ2kzBdvM",
-            authDomain: "ellisbell-c185c.firebaseapp.com", 
-            projectId: "ellisbell-c185c",
-            storageBucket: "ellisbell-c185c.firebasestorage.app",
-            appId: "1:441560045695:web:94e51a006663404b8f474a"
-        };
+        // V5.67.0: Read config from shared firebase-config.js (loaded before this
+        // module in index.html). Previously this block declared a local
+        // firebaseConfig const — now kept in one place across all surfaces.
+        if (!window.firebaseConfig) {
+            throw new Error("firebase-config.js must load before script.js. Check index.html <script> order.");
+        }
+        const firebaseConfig = window.firebaseConfig;
         
         // MODIFIED: v4.26 - Set global appId from hardcoded config
         appId = firebaseConfig.appId;
@@ -10142,14 +10128,6 @@ function openRelativeBellModal() {
     relativeBellModal.classList.remove('hidden');
 }
 
-// DELETED in 4.38: This function is no longer used.
-// The 'updateCalculatedTime' function now handles this logic.
-/*
-async function handleRelativeTimeChange() {
-    ...
-}
-*/
-
 /**
     * MODIFIED: v4.10 - Submits the new "relative" bell object.
     * This now saves a dependency link, NOT a static time.
@@ -10461,23 +10439,6 @@ function openMultiAddRelativeModal() {
     
     // 4. Show the modal
     multiAddRelativeBellModal.classList.remove('hidden');
-}
-
-/**
-    * NEW: v4.42 - Finds the "Period Start" or "Period End" bell for a given period.
-    */
-function findPeriodAnchorBell(periodName, anchorType) {
-    const period = calculatedPeriodsList.find(p => p.name === periodName);
-    if (!period || !period.bells || period.bells.length === 0) {
-        return null; // Period not found or is empty
-    }
-    
-    // Bells are already sorted by time
-    if (anchorType === 'period_start') {
-        return period.bells[0]; // First bell
-    } else {
-        return period.bells[period.bells.length - 1]; // Last bell
-    }
 }
 
 /**
@@ -14055,17 +14016,6 @@ function init() {
     if (cssVersionElement) {
         const cssVersion = getComputedStyle(document.documentElement).getPropertyValue('--css-version').trim().replace(/"/g, '');
         cssVersionElement.textContent = `v${cssVersion || '?.?.?'}`;
-    }
-    
-    // V5.46.2: Clock and Dashboard version displays
-    const clockVersionElement = document.getElementById('clock-version-display');
-    if (clockVersionElement) {
-        clockVersionElement.textContent = `v${CLOCK_VERSION}`;
-    }
-    
-    const dashboardVersionElement = document.getElementById('dashboard-version-display');
-    if (dashboardVersionElement) {
-        dashboardVersionElement.textContent = `v${DASHBOARD_VERSION}`;
     }
     
     // Optional: Also update the Browser Tab Title automatically
