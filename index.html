@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.66.3</title>
+    <title>Ellis Web Bell 5.67.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -2915,10 +2915,6 @@
    		 		App Version: <span id="app-version-display" class="font-bold text-gray-600">Loading...</span>
    		 		&nbsp;|&nbsp;
    		 		CSS Version: <span id="css-version-display" class="font-bold text-gray-600">Loading...</span>
-   		 		&nbsp;|&nbsp;
-   		 		Clock Version: <span id="clock-version-display" class="font-bold text-gray-600">Loading...</span>
-   		 		&nbsp;|&nbsp;
-   		 		Dashboard Version: <span id="dashboard-version-display" class="font-bold text-gray-600">Loading...</span>
 			</div>
         </footer>
 
@@ -2927,6 +2923,8 @@
     </div>
 
        	<!-- 5.06 Moving JS out -->
+        <!-- v5.67.0: firebase-config.js must load BEFORE script.js so window.firebaseConfig is populated when the module initializes -->
+        <script src="firebase-config.js"></script>
 		<script type="module" src="script.js"></script>
 </body>
 </html>
@@ -2954,4 +2952,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.66.3 -->
+<!-- Version 5.67.0 -->
