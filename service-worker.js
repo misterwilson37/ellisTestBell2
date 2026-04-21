@@ -1,21 +1,31 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.0.0
+ * Version: 1.1.0
  * 
  * Provides:
  * - Offline caching of core app files
  * - Background sync capabilities
  * - Install prompt support
+ *
+ * v1.1.0 changelog (2026-04):
+ * - Added clock.html and firebase-config.js to CORE_ASSETS — clock.html now
+ *   also registers this service worker, so teachers running the 3x3 grid all
+ *   day get cache-backed instant reloads after network blips.
+ * - Bumped CACHE_NAME from v1 -> v2 so every existing client evicts the old
+ *   cache on next activate (old cache lacked the new files and did not know
+ *   to fetch them).
  */
 
-const CACHE_NAME = 'ellis-web-bell-v1';
-const CACHE_VERSION = '1.0.0';
+const CACHE_NAME = 'ellis-web-bell-v2';
+const CACHE_VERSION = '1.1.0';
 
 // Core files to cache for offline use
 const CORE_ASSETS = [
   '/index.html',
+  '/clock.html',
   '/styles.css',
   '/script.js',
+  '/firebase-config.js',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png'
