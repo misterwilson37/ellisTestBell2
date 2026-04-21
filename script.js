@@ -1,4 +1,14 @@
-const APP_VERSION = "5.67.0"
+const APP_VERSION = "5.68.0"
+// V5.68.0: Inline rename button for discoverability
+// - Added a pencil-icon button next to the schedule title in the main view.
+//   The admin-rename capability already existed (in the Admin Zone since v4.91),
+//   but was undiscoverable. The new inline button dispatches to the existing
+//   handlers: openRenameSharedScheduleModal() for admins (handles both shared
+//   and personal schedules), handleRenamePersonalSchedule() for authenticated
+//   non-admins with a personal schedule selected.
+// - The inline button mirrors the enabled state of the existing two rename
+//   buttons — no new permission logic, just a more findable entry point.
+// - Hidden in kiosk mode via the existing .kiosk-hide class.
 // V5.67.0: Audit pass — versioning cleanup + shared config + dead code removal
 // - REMOVED: CLOCK_VERSION and DASHBOARD_VERSION constants (stale cross-references).
 //   Each sibling file (clock.html, dashboard.html, dashboard-config.html) now
@@ -343,6 +353,9 @@ const renameSharedNewNameInput = document.getElementById('rename-shared-new-name
 const renameSharedScheduleStatus = document.getElementById('rename-shared-schedule-status');
 const renameSharedCancelBtn = document.getElementById('rename-shared-cancel');
 const renameScheduleBtn = document.getElementById('rename-schedule-btn'); // The button in Admin Zone
+// v5.68.0: Inline pencil button next to schedule title. Mirrors the enabled state of
+// renameScheduleBtn (admin) or renamePersonalScheduleBtn (personal, non-admin).
+const inlineRenameScheduleBtn = document.getElementById('inline-rename-schedule-btn');
 
 // Personal Schedule Manager Buttons (These were missing!)
 const renamePersonalScheduleBtn = document.getElementById('rename-personal-schedule-btn');
@@ -6791,6 +6804,7 @@ function setActiveSchedule(prefixedId) {
 
     // NEW V4.91: Disable admin rename button
     renameScheduleBtn.disabled = true;
+    updateInlineRenameScheduleBtn(); // v5.68.0: mirror state to inline pencil button
     
     // v3.03: Disable personal schedule buttons
     createPersonalScheduleBtn.disabled = true;
@@ -6845,6 +6859,7 @@ function setActiveSchedule(prefixedId) {
                 importCurrentScheduleBtn.disabled = false;
                 // NEW V4.91: Enable shared rename button
                 renameScheduleBtn.disabled = false;
+                updateInlineRenameScheduleBtn(); // v5.68.0: mirror to inline pencil
             }
         }
 
@@ -6962,6 +6977,10 @@ function setActiveSchedule(prefixedId) {
         if (document.body.classList.contains('admin-mode')) {
             renameScheduleBtn.disabled = false;
         }
+        // v5.68.0: Personal schedule is selected — either the admin button or the
+        // user's own rename-personal button will be enabled; show the inline pencil.
+        renamePersonalScheduleBtn.disabled = false; // (already set just above; re-affirmed for clarity)
+        updateInlineRenameScheduleBtn();
         
         // NEW in 4.57: Enable new period button
         newPeriodBtn.disabled = false;
@@ -7419,6 +7438,39 @@ async function handleRenameSharedScheduleSubmit(e) {
     }
 }
 // --- END V4.91 ---
+
+/**
+ * v5.68.0: Keeps the inline pencil button next to the schedule title in sync
+ * with whichever of the two existing rename buttons is currently enabled.
+ * This is a pure mirror — it does not introduce new permission logic. The
+ * button is shown if renameScheduleBtn (Admin Zone) or renamePersonalScheduleBtn
+ * (personal-schedule panel) is enabled, and clicking it dispatches to the
+ * appropriate existing handler.
+ *
+ * Call this after any code path that toggles either of those two buttons.
+ */
+function updateInlineRenameScheduleBtn() {
+    if (!inlineRenameScheduleBtn) return; // Defensive: element may not exist in older cached HTML
+    const adminCanRename = !renameScheduleBtn.disabled;
+    const userCanRenamePersonal = !renamePersonalScheduleBtn.disabled;
+    if (adminCanRename || userCanRenamePersonal) {
+        inlineRenameScheduleBtn.classList.remove('hidden');
+    } else {
+        inlineRenameScheduleBtn.classList.add('hidden');
+    }
+}
+
+function handleInlineRenameScheduleClick() {
+    // Prefer the admin flow (works for both shared and personal) when admin-mode is on.
+    if (document.body.classList.contains('admin-mode') && !renameScheduleBtn.disabled) {
+        openRenameSharedScheduleModal();
+        return;
+    }
+    // Otherwise fall back to the personal-only flow.
+    if (!renamePersonalScheduleBtn.disabled) {
+        handleRenamePersonalSchedule();
+    }
+}
 
 /**
     * NEW: v3.02 (4.03?) - Opens the modal to confirm bell deletion.
@@ -14010,6 +14062,11 @@ function init() {
     if (versionElement) {
         versionElement.textContent = `v${APP_VERSION}`;
     }
+    // v5.68.0: Also stamp the header h1 so "Ellis Web Bell 5.xx.x" stays current.
+    const headerVersionElement = document.getElementById('header-version-display');
+    if (headerVersionElement) {
+        headerVersionElement.textContent = APP_VERSION;
+    }
     
     // V5.49.2: CSS version display - read from CSS custom property
     const cssVersionElement = document.getElementById('css-version-display');
@@ -14112,6 +14169,11 @@ function init() {
     renameSharedCancelBtn.addEventListener('click', () => {
         renameSharedScheduleModal.classList.add('hidden');
     });
+    // v5.68.0: Inline pencil button next to schedule title — routes to the
+    // appropriate existing rename handler.
+    if (inlineRenameScheduleBtn) {
+        inlineRenameScheduleBtn.addEventListener('click', handleInlineRenameScheduleClick);
+    }
 
     // NEW V5.00: Custom Quick Bell Manager Listeners
     showCustomQuickBellManagerBtn.addEventListener('click', () => {
