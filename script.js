@@ -1,4 +1,19 @@
-const APP_VERSION = "5.68.0"
+const APP_VERSION = "5.69.0"
+// V5.69.0: Carolina Blue palette — foundation pass (Tier 2 of audit, part 1 of ~3)
+// - Light/dark theme objects now use Carolina Blue hues instead of
+//   Tailwind blue-600/blue-400:
+//     Light accent: #38759E (Carolina Deep, WCAG AA-compliant on white at 4.99:1)
+//     Dark accent:  #8FC3E8 (Carolina Sky, excellent contrast on dark at 9.41:1)
+//     Bold accent:  #4B9CD3 (canonical Carolina Blue, used for large surfaces)
+// - Added --theme-accent-bold custom property for buttons/headers/backgrounds
+//   where contrast requirements are relaxed (large text / non-text UI).
+//   Existing --theme-accent remains the text-safe variant.
+// - Visual cue default background: 18 instances of #4338CA (indigo) replaced
+//   with #4B9CD3 (Carolina). Audited in context; all were "default bg color
+//   for custom-text visual cues" — not semantic, just a leftover default.
+// NOTE: This is the *foundation* of Tier 2. Tailwind class replacements
+// (blue-500 → theme-accent-bold, etc.) and the other files (clock.html,
+// dashboard.html, old.html, manifest.json) come in 5.70.0 and 5.71.0.
 // V5.68.0: Inline rename button for discoverability
 // - Added a pencil-icon button next to the schedule title in the main view.
 //   The admin-rename capability already existed (in the Admin Zone since v4.91),
@@ -2536,7 +2551,10 @@ let customThemeColors = {
 };
 let visualCueEnabled = true;
 
-// Light theme defaults
+// Light theme defaults — v5.69.0: Carolina Blue palette
+// School colors: Carolina Blue, black, grey, white.
+// Accent is AA-compliant Carolina ("Carolina Deep", #38759E) for text-level UI.
+// Bold accent is canonical Carolina (#4B9CD3) for buttons/headers/backgrounds.
 const lightThemeColors = {
     bgPrimary: '#f3f4f6',
     bgCard: '#ffffff',
@@ -2545,7 +2563,8 @@ const lightThemeColors = {
     textPrimary: '#111827',
     textSecondary: '#4b5563',
     textMuted: '#6b7280',
-    accent: '#2563eb',
+    accent: '#38759E',       // Carolina Deep — passes WCAG AA on white (4.99)
+    accentBold: '#4B9CD3',   // Canonical Carolina Blue — for large surfaces
     countdown: '#111827',
     border: '#d1d5db',
     borderLight: '#e5e7eb',
@@ -2553,7 +2572,7 @@ const lightThemeColors = {
     buttonText: '#374151'
 };
 
-// Dark theme defaults
+// Dark theme defaults — v5.69.0: Carolina Blue palette (lighter for dark bg contrast)
 const darkThemeColors = {
     bgPrimary: '#111827',
     bgCard: '#1f2937',
@@ -2562,7 +2581,8 @@ const darkThemeColors = {
     textPrimary: '#f9fafb',
     textSecondary: '#d1d5db',
     textMuted: '#9ca3af',
-    accent: '#60a5fa',
+    accent: '#8FC3E8',       // Carolina Sky — 9.41 on dark-bg, 11.14 on black (excellent)
+    accentBold: '#4B9CD3',   // Canonical Carolina still works on dark (5.91 on dark-bg)
     countdown: '#f9fafb',
     border: '#374151',
     borderLight: '#4b5563',
@@ -2641,6 +2661,7 @@ function applyTheme() {
         root.style.setProperty('--theme-text-secondary', colors.textSecondary);
         root.style.setProperty('--theme-text-muted', colors.textMuted);
         root.style.setProperty('--theme-accent', colors.accent);
+        root.style.setProperty('--theme-accent-bold', colors.accentBold); // v5.69.0: Carolina Blue for large surfaces
         root.style.setProperty('--theme-countdown', colors.countdown);
         root.style.setProperty('--theme-border', colors.border);
         root.style.setProperty('--theme-border-light', colors.borderLight);
@@ -2656,6 +2677,8 @@ function applyTheme() {
         root.style.setProperty('--theme-text-secondary', customThemeColors.textSecondary);
         root.style.setProperty('--theme-text-muted', customThemeColors.textMuted || customThemeColors.textSecondary);
         root.style.setProperty('--theme-accent', customThemeColors.accent);
+        // v5.69.0: If user hasn't set a custom accent-bold, fall back to canonical Carolina
+        root.style.setProperty('--theme-accent-bold', customThemeColors.accentBold || '#4B9CD3');
         root.style.setProperty('--theme-countdown', customThemeColors.countdown);
         root.style.setProperty('--theme-border', customThemeColors.border || '#d1d5db');
         root.style.setProperty('--theme-border-light', customThemeColors.borderLight || '#e5e7eb');
@@ -4348,9 +4371,9 @@ function renderCustomQuickBells() {
         const minutes = bell ? bell.minutes : 5;
         const seconds = bell ? bell.seconds : 0;
         // V5.03: Read/default the full visual cue (which includes custom text/colors or URL)
-        const rawVisualCue = bell ? (bell.visualCue || '[CUSTOM_TEXT] ?|#4338CA|#FFFFFF') : '[CUSTOM_TEXT] ?|#4338CA|#FFFFFF'; 
+        const rawVisualCue = bell ? (bell.visualCue || '[CUSTOM_TEXT] ?|#4B9CD3|#FFFFFF') : '[CUSTOM_TEXT] ?|#4B9CD3|#FFFFFF'; 
         const rawIconText = bell ? bell.iconText : String(id); // Legacy/Custom Text value
-        let iconColor = bell ? (bell.iconBgColor || '#4338CA') : '#4338CA';
+        let iconColor = bell ? (bell.iconBgColor || '#4B9CD3') : '#4B9CD3';
         let textColor = bell ? (bell.iconFgColor || '#FFFFFF') : '#FFFFFF';
         const sound = bell ? bell.sound : 'ellisBell.mp3';
         
@@ -6699,10 +6722,10 @@ function listenForCustomQuickBells(userId) {
                 seconds: b.seconds || 0,
                 // NEW V5.00: Read Icon Colors
                 iconText: b.iconText || String(index + 1),
-                iconBgColor: b.iconBgColor || '#4338CA',
+                iconBgColor: b.iconBgColor || '#4B9CD3',
                 iconFgColor: b.iconFgColor || '#FFFFFF',
                 // Added 5.25 to get visual uploads working
-                visualCue: b.visualCue || `[CUSTOM_TEXT] ${index + 1}|#4338CA|#FFFFFF`,
+                visualCue: b.visualCue || `[CUSTOM_TEXT] ${index + 1}|#4B9CD3|#FFFFFF`,
                     
                 sound: b.sound || 'ellisBell.mp3',
                 isActive: b.isActive !== false // 5.19.3 Default to TRUE (active/checked)
@@ -11521,7 +11544,7 @@ function getVisualHtml(value, periodName, _skipOverrideLookup = false) {
         // MODIFIED V5.41: Use centralized config
         const parts = value.replace('[CUSTOM_TEXT] ', '').split('|');
         const customText = parts[0] || '...';
-        const bgColor = parts[1] || '#4338CA'; // Default bg
+        const bgColor = parts[1] || '#4B9CD3'; // Default bg
         const fgColor = parts[2] || '#FFFFFF'; // Default fg
         
         const svgFontSize = customText.length > 2 ? 
@@ -11638,7 +11661,7 @@ function getVisualIconHtml(value, periodName) {
     if (value.startsWith('[CUSTOM_TEXT]')) {
         const parts = value.replace('[CUSTOM_TEXT] ', '').split('|');
         const customText = parts[0] || '...';
-        const bgColor = parts[1] || '#4338CA'; // Default bg
+        const bgColor = parts[1] || '#4B9CD3'; // Default bg
         const fgColor = parts[2] || '#FFFFFF'; // Default fg
         
         const svgFontSize = customText.length > 2 ? 
@@ -14062,11 +14085,6 @@ function init() {
     if (versionElement) {
         versionElement.textContent = `v${APP_VERSION}`;
     }
-    // v5.68.0: Also stamp the header h1 so "Ellis Web Bell 5.xx.x" stays current.
-    const headerVersionElement = document.getElementById('header-version-display');
-    if (headerVersionElement) {
-        headerVersionElement.textContent = APP_VERSION;
-    }
     
     // V5.49.2: CSS version display - read from CSS custom property
     const cssVersionElement = document.getElementById('css-version-display');
@@ -14277,9 +14295,9 @@ function init() {
                     
                     // NEW V5.00: Include Icon colors and text
                     iconText: slotData.iconText.trim().substring(0, 3) || String(id),
-                    iconBgColor: slotData.iconBgColor || '#4338CA',
+                    iconBgColor: slotData.iconBgColor || '#4B9CD3',
                     iconFgColor: slotData.iconFgColor || '#FFFFFF',
-                    visualCue: slotData.visualCue || '[CUSTOM_TEXT] ?|#4338CA|#FFFFFF',
+                    visualCue: slotData.visualCue || '[CUSTOM_TEXT] ?|#4B9CD3|#FFFFFF',
                     
                     sound: slotData.sound || 'ellisBell.mp3',
                     isActive: isActive
@@ -14341,7 +14359,7 @@ function init() {
                     minutes: 5,
                     seconds: 0,
                     iconText: String(newId),
-                    iconBgColor: '#4338CA',
+                    iconBgColor: '#4B9CD3',
                     iconFgColor: '#FFFFFF',
                     sound: 'ellisBell.mp3',
                     isActive: true
@@ -14384,7 +14402,7 @@ function init() {
                 if (visualCue.startsWith('[CUSTOM_TEXT] ')) {
                     const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
                     customTextInput.value = parts[0] || '';
-                    customTextBgColorInput.value = parts[1] || '#4338CA';
+                    customTextBgColorInput.value = parts[1] || '#4B9CD3';
                     customTextColorInput.value = parts[2] || '#FFFFFF';
                 }
                 
@@ -14567,11 +14585,11 @@ function init() {
                 if (selectedValue.startsWith('[CUSTOM_TEXT] ')) {
                     const parts = selectedValue.replace('[CUSTOM_TEXT] ', '').split('|');
                     customTextInput.value = parts[0] || '';
-                    customTextBgColorInput.value = parts[1] || '#4338CA';
+                    customTextBgColorInput.value = parts[1] || '#4B9CD3';
                     customTextColorInput.value = parts[2] || '#FFFFFF';
                 } else {
                     customTextInput.value = '';
-                    customTextBgColorInput.value = '#4338CA';
+                    customTextBgColorInput.value = '#4B9CD3';
                     customTextColorInput.value = '#FFFFFF';
                 }
                 
@@ -14603,7 +14621,7 @@ function init() {
             const buttonPreview = row.querySelector('.custom-bell-button-preview');
             if (buttonPreview) {
                 // V5.43.2: Determine bg/fg colors from value
-                let bgColor = '#4338CA';
+                let bgColor = '#4B9CD3';
                 let fgColor = '#FFFFFF';
                 
                 // Check for [BG:...] prefix first
@@ -15771,14 +15789,14 @@ function init() {
             
             // ALWAYS clear inputs first, then fill if there's a saved value
             customTextInput.value = ''; 
-            customTextBgColorInput.value = '#4338CA';
+            customTextBgColorInput.value = '#4B9CD3';
             customTextColorInput.value = '#FFFFFF';
             
             // MODIFIED V4.75: Logic to pre-fill input AND colors if saved
             if (originalValueCustom.startsWith('[CUSTOM_TEXT]')) {
                 const parts = originalValueCustom.replace('[CUSTOM_TEXT] ', '').split('|');
                 customTextInput.value = parts[0] || '';
-                customTextBgColorInput.value = parts[1] || '#4338CA';
+                customTextBgColorInput.value = parts[1] || '#4B9CD3';
                 customTextColorInput.value = parts[2] || '#FFFFFF';
                 e.target.value = originalValueCustom; // Keep the original custom value selected
             } else {
@@ -15826,7 +15844,7 @@ function init() {
             // Custom text - extract parts
             const parts = value.replace('[CUSTOM_TEXT] ', '').split('|');
             const text = parts[0] || '?';
-            const bgColor = parts[1] || '#4338CA';
+            const bgColor = parts[1] || '#4B9CD3';
             const fgColor = parts[2] || '#FFFFFF';
             
             previewFull.innerHTML = `<span class="text-6xl font-bold" style="color: ${fgColor};">${text}</span>`;
