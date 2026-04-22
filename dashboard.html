@@ -3,31 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.2.4</title>
-    <!-- Dashboard Display v1.2.4 -->
-    <!-- v1.2.4: Audit pass — shared firebase-config.js; removed stale cross-refs; version in <title>. Note: broader dashboard redesign (Canva + house scores) is planned separately. -->
+    <title>Dashboard v1.3.0</title>
+    <!-- Dashboard Display v1.3.0 -->
+    <!-- v1.3.0: Palette alignment with main app (Tier 2 of audit, sibling pass).
+         - Body background #000 -> #111827 slate; gradient panel updated to match.
+         - Added --carolina-blue-sky and --slate-bg variables.
+         - Note: broader dashboard redesign (Canva + house scores) is planned separately. -->
+    <!-- v1.2.4: Audit pass — shared firebase-config.js; removed stale cross-refs; version in <title>. -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    <!-- Shared Firebase config (v1.2.4: extracted from inline) -->
+    <!-- Shared Firebase config -->
     <script src="firebase-config.js"></script>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.2.4 */
+        /* Dashboard Display v1.3.0 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
+            --carolina-blue-sky: #8FC3E8;   /* v1.3.0: brighter dark-mode accent */
             --dark-grey: #1a1a1a;
+            --slate-bg: #111827;            /* v1.3.0: matches main app dark mode */
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+        html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--slate-bg); }
         
         .container { display: flex; width: 100%; height: 100%; }
         
@@ -37,7 +43,7 @@
         .clock-area { 
             height: 30%; 
             overflow: hidden;
-            background: linear-gradient(180deg, #000 0%, #1a1a1a 100%);
+            background: linear-gradient(180deg, var(--slate-bg) 0%, #1a1a1a 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -353,7 +359,7 @@
         </div>
         
         <div class="version-info">
-            Dashboard v1.2.4
+            Dashboard v1.3.0
             <br>
             <a href="index.html">← Back to Bell Schedule</a>
         </div>
@@ -396,7 +402,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.2.4
+        // Dashboard Display v1.3.0
         
         // v1.2.4: Firebase config comes from shared firebase-config.js (loaded
         // via <script src="firebase-config.js"> in <head>).
