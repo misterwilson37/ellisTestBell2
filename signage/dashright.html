@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Right v1.0.1</title>
-    <!-- Dashboard Right Display v1.0.1 -->
+    <title>Dashboard Right v1.0.2</title>
+    <!-- Dashboard Right Display v1.0.2 -->
+    <!-- v1.0.2: Crest size fix. v1.0.1's removal of max-height let the crest
+         grow too large in narrow frames (height: 90% of card = ~90% of 20vh is
+         huge when the iframe is 25% of a 4K TV). Added max-width: 30cqw to cap
+         the crest at 30% of the scoreboard's width, restoring the v1.0.0
+         proportions that Jake approved. -->
     <!-- v1.0.1: Text sizing fix for Yodeck narrow-frame deployment. v1.0.0 used
          vw/vh viewport units, which resolve against the iframe's viewport — i.e.
          the 25%-of-TV frame width. So a 4vw score was 1/4 the size intended.
@@ -29,7 +34,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="../firebase-config.js"></script>
     <style>
-        /* Dashboard Right Display v1.0.1 — visual match to dashboard.html's right column */
+        /* Dashboard Right Display v1.0.2 — visual match to dashboard.html's right column */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -150,6 +155,11 @@
         
         .house-crest {
             height: 90%;
+            /* v1.0.2: Cap the crest width so it doesn't dominate the card in narrow
+               iframes. 30cqw = 30% of scoreboard width. Below this, height: 90%
+               governs. Above, we top out. Restores the v1.0.0 proportions that Jake
+               liked. */
+            max-width: 30cqw;
             width: auto;
             object-fit: contain;
         }
@@ -254,10 +264,10 @@
             </div>
         </div>
     </div>
-    <div class="version-stamp">Dashboard Right v1.0.1</div>
+    <div class="version-stamp">Dashboard Right v1.0.2</div>
 
     <script>
-        // Dashboard Right Display v1.0.1
+        // Dashboard Right Display v1.0.2
         
         if (!window.firebaseConfig) {
             throw new Error("firebase-config.js failed to load. Check <script> tag order in <head>.");
