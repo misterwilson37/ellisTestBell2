@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.3.0</title>
-    <!-- Dashboard Display v1.3.0 -->
+    <title>Dashboard v1.3.1</title>
+    <!-- Dashboard Display v1.3.1 -->
+    <!-- v1.3.1: Bug fix — "Launch TV View" link in setup panel had no button
+         styling because the CSS selector matched only <button> elements.
+         Now includes .btn-primary / .btn-secondary <a> tags too. -->
     <!-- v1.3.0: Palette alignment with main app (Tier 2 of audit, sibling pass).
          - Body background #000 -> #111827 slate; gradient panel updated to match.
          - Added --carolina-blue-sky and --slate-bg variables.
@@ -206,13 +209,22 @@
             flex-wrap: wrap;
         }
         
-        .setup-actions button {
+        /* v1.3.1: Fix stray "Launch TV View" anchor — it's an <a> not a <button>,
+           so the old "button"-only selector skipped it and it rendered unstyled.
+           Target both and also any .btn-primary / .btn-secondary inside. */
+        .setup-actions > button,
+        .setup-actions > a.btn-primary,
+        .setup-actions > a.btn-secondary {
             padding: 12px 24px;
             border-radius: 8px;
             border: none;
             font-weight: 600;
             cursor: pointer;
             font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
         }
         
         .btn-primary {
@@ -359,7 +371,7 @@
         </div>
         
         <div class="version-info">
-            Dashboard v1.3.0
+            Dashboard v1.3.1
             <br>
             <a href="index.html">← Back to Bell Schedule</a>
         </div>
@@ -402,7 +414,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.3.0
+        // Dashboard Display v1.3.1
         
         // v1.2.4: Firebase config comes from shared firebase-config.js (loaded
         // via <script src="firebase-config.js"> in <head>).
