@@ -3,8 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bell Schedule Clock v1.3.2</title>
-    <!-- Clock Display v1.3.2 -->
+    <title>Bell Schedule Clock v1.4.0</title>
+    <!-- Clock Display v1.4.0 -->
+    <!-- v1.4.0: Palette alignment with main app (Tier 2 of audit, sibling pass).
+         - Body background #000 -> #111827 (slate). Aligns with main app dark-mode
+           background token; still reads as black at typical Yodeck TV viewing
+           distance; reduces LCD backlight bleed; OLED-safe. Consistent with
+           dashboard.html's new background.
+         - Added --carolina-blue-sky (#8FC3E8) variable for future dark-mode UI
+           that needs a brighter accent than Carolina proper.
+         - Auth section and setup-panel backgrounds adjusted for the lighter bg. -->
     <!-- v1.3.2: Audit pass — shared firebase-config.js; service worker registration; removed stale cross-refs to sibling versions; version in <title> -->
     <!-- v1.3.1: Fix grid overflow in narrow frames (minmax(0,1fr) + min-width:0 + wrappable labels) -->
     <!-- v1.3.0: Support up to 9 schedules with automatic grid layout -->
@@ -25,12 +33,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Clock Display v1.3.2 - School Colors: Black, White, Grey, Carolina Blue */
+        /* Clock Display v1.4.0 - School Colors: Black, White, Grey, Carolina Blue */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
+            --carolina-blue-sky: #8FC3E8;   /* v1.4.0: brighter variant for dark-mode accents */
             --dark-grey: #1a1a1a;
             --darker-grey: #111111;
+            --slate-bg: #111827;            /* v1.4.0: main app dark-bg token; used as body background */
         }
         
         * {
@@ -40,7 +50,7 @@
         }
         
         body {
-            background: #000;
+            background: var(--slate-bg);  /* v1.4.0: was #000; slate matches main app dark mode */
             color: #fff;
             font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
             min-height: 100vh;
@@ -598,7 +608,7 @@
         </div>
         
         <div class="version-info" style="margin-top: 16px; font-size: 11px; color: #666; text-align: center;">
-            Clock v1.3.2
+            Clock v1.4.0
             <br>
             <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
         </div>
@@ -663,7 +673,7 @@
     </div>
     
     <script>
-        // Clock Display v1.3.2 - Support up to 9 schedules with automatic grid layout
+        // Clock Display v1.4.0 - Support up to 9 schedules with automatic grid layout
         
         // v1.3.2: Firebase config now comes from shared firebase-config.js
         // (loaded via <script src="firebase-config.js"> before this block).
@@ -1706,7 +1716,7 @@
         
         // Initialize
         async function init() {
-            console.log('Clock Display v1.3.2 initializing...');
+            console.log('Clock Display v1.4.0 initializing...');
             
             // Check if user is already authenticated (e.g., from main app)
             let currentUser = null;
