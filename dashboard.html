@@ -3,8 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.3.1</title>
-    <!-- Dashboard Display v1.3.1 -->
+    <title>Dashboard v1.4.0</title>
+    <!-- Dashboard Display v1.4.0 -->
+    <!-- v1.4.0: Dashboard rewrite — replaces the 3-frame Yodeck setup (Canva +
+         Google Slides + clock.html) with a single-URL page. Left 75% is a Canva
+         iframe (only reloaded when the URL changes — doesn't interrupt the loop),
+         top-right 20% is the multi-schedule clock, bottom-right 80% is a four-card
+         house scoreboard fed by a published Google Sheet CSV.
+         Google Drive video playback and the old slidesUrl plumbing are retired.
+         School logo fallback (circular white disk on slate) displayed when no
+         Canva URL is configured. Refresh cadences: clock 1s, scores 5min, Canva
+         never (Yodeck handles whole-page refresh). -->
     <!-- v1.3.1: Bug fix — "Launch TV View" link in setup panel had no button
          styling because the CSS selector matched only <button> elements.
          Now includes .btn-primary / .btn-secondary <a> tags too. -->
@@ -26,7 +35,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.3.0 */
+        /* Dashboard Display v1.4.0 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -44,7 +53,7 @@
         .right { width: 25%; height: 100%; display: flex; flex-direction: column; }
         
         .clock-area { 
-            height: 30%; 
+            height: 20%;  /* v1.4.0: was 30% — right column split 20/80 per spec */
             overflow: hidden;
             background: linear-gradient(180deg, var(--slate-bg) 0%, #1a1a1a 100%);
             display: flex;
@@ -56,38 +65,114 @@
             font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
         }
         
-        .slides-area { height: 70%; overflow: hidden; }
+        /* v1.4.0: House scoreboard — four equal-height cards filling 80% of right column.
+           Each card is 25% of that 80% = 20% of full viewport height. Horizontal layout
+           inside each card: crest | name | score. */
+        .houses-area {
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            container-type: size;
+        }
         
-        iframe { border: none; width: 100%; height: 100%; }
+        .house-card {
+            flex: 1 1 0;   /* equal share of available height */
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 2cqw;
+            padding: 2cqh 3cqw;
+            min-height: 0;
+            font-family: 'Century Gothic', 'Urbanist', 'Questrial', serif;
+        }
         
-        video {
+        .house-crest {
+            height: 70%;
+            max-height: 80cqh;
+            max-width: 20cqw;
+            width: auto;
+            object-fit: contain;
+            /* Universal pale-tint panel behind each crest so the dark-background cards
+               don't lose the crests' dark elements. Subtle rounded rectangle. */
+            background: rgba(255,255,255,0.92);
+            border-radius: 8%;
+            padding: 3%;
+        }
+        
+        .house-name {
+            font-family: 'Century Gothic', Georgia, 'Times New Roman', serif;
+            font-weight: 700;
+            font-size: 3cqw;
+            font-variant-caps: small-caps;
+            text-transform: lowercase;
+            letter-spacing: 0.03em;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .house-score {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 700;
+            font-size: 6cqw;
+            line-height: 1;
+            text-align: right;
+            min-width: 4ch;
+        }
+        
+        /* Per-house palette. Foil color (name + score) picked for contrast on each bg.
+           Palette confirmed with Jake: Accomodore white, Callidus app-grey, Princeps
+           Carolina, Vevaios slate (matches main app dark bg). */
+        .house-accomodore { background: #ffffff; color: #111827; }
+        .house-callidus   { background: #d1d5db; color: #111827; }  /* matches --theme-border */
+        .house-princeps   { background: var(--carolina-blue); color: #111827; }
+        .house-vevaios    { background: var(--slate-bg); color: #ffffff; }
+        
+        /* v1.4.0: Canva iframe fills 100% of the .left zone when loaded. */
+        #canva-frame {
             width: 100%;
             height: 100%;
+            border: 0;
+        }
+        
+        /* v1.4.0: Fallback shown when Canva URL is empty. The school logo is designed
+           for a circular white canvas (same treatment as sortingwheel), so we put it
+           in a circular white disk sitting on the slate background. Logo's own white
+           canvas disappears cleanly into the disk; slate provides visual consistency
+           with the rest of the dashboard's dark chrome. */
+        .canva-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--slate-bg);
+        }
+        
+        .fallback-logo-disk {
+            width: min(75vh, 60%);
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            /* Subtle Carolina-edged glow so the disk reads as an intentional element,
+               not a visual accident. Very faint — just enough to feel designed. */
+            box-shadow: 0 0 0 4px rgba(75, 156, 211, 0.3),
+                        0 8px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .fallback-logo {
+            width: 92%;
+            height: 92%;
             object-fit: contain;
-            background: #000;
         }
         
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #666;
-            font-family: -apple-system, sans-serif;
-            font-size: 18px;
-            text-align: center;
-        }
-        
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s steps(3, end) infinite;
-        }
-        
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
-        }
+        iframe { border: none; width: 100%; height: 100%; }
         
         /* Clock Styles - using container queries */
         #main-clock {
@@ -365,13 +450,13 @@
         <div id="generated-url"></div>
         
         <div class="setup-note">
-            <strong>Tip:</strong> Customize your personal view using the options above. Video and slides are shared.
+            <strong>Tip:</strong> Customize your personal view using the options above. Canva content and house scores are shared across all TVs.
             <br><br>
             <strong>📺 Launch TV View</strong> opens the shared dashboard that's on the school TVs (configured by admin).
         </div>
         
         <div class="version-info">
-            Dashboard v1.3.1
+            Dashboard v1.4.0
             <br>
             <a href="index.html">← Back to Bell Schedule</a>
         </div>
@@ -382,10 +467,18 @@
         <div id="popup-icon" title="Open in popup window" onclick="openPopupWindow()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
         </div>
+
+        <!-- v1.4.0: LEFT 75% — Canva iframe (primary) with logo/tagline fallback. -->
         <div class="left">
-            <div class="loading" id="loading">Loading video</div>
-            <video id="video" loop muted autoplay style="display:none;"></video>
+            <iframe id="canva-frame" src="" allowfullscreen allow="fullscreen" style="display:none;"></iframe>
+            <div id="canva-fallback" class="canva-fallback">
+                <div class="fallback-logo-disk">
+                    <img src="school_logo.png" alt="Ellis — One School, 4 Houses, 1 Home" class="fallback-logo">
+                </div>
+            </div>
         </div>
+
+        <!-- v1.4.0: RIGHT 25% — clock (top 20%) + four house cards (80%). -->
         <div class="right">
             <div class="clock-area">
                 <div id="main-clock">--:--:-- --</div>
@@ -407,14 +500,35 @@
                     </div>
                 </div>
             </div>
-            <div class="slides-area">
-                <iframe id="slides" src="" allowfullscreen></iframe>
+
+            <!-- v1.4.0: House scoreboard — four stacked equal-height cards. -->
+            <div class="houses-area" id="houses-area">
+                <div class="house-card house-accomodore" data-house="accomodore">
+                    <img class="house-crest" src="accomodore.png" alt="Accomodore crest">
+                    <div class="house-name">Accomodore</div>
+                    <div class="house-score" id="score-accomodore">—</div>
+                </div>
+                <div class="house-card house-callidus" data-house="callidus">
+                    <img class="house-crest" src="callidus.png" alt="Callidus crest">
+                    <div class="house-name">Callidus</div>
+                    <div class="house-score" id="score-callidus">—</div>
+                </div>
+                <div class="house-card house-princeps" data-house="princeps">
+                    <img class="house-crest" src="princeps.png" alt="Princeps crest">
+                    <div class="house-name">Princeps</div>
+                    <div class="house-score" id="score-princeps">—</div>
+                </div>
+                <div class="house-card house-vevaios" data-house="vevaios">
+                    <img class="house-crest" src="vevaios.png" alt="Vevaios crest">
+                    <div class="house-name">Vevaios</div>
+                    <div class="house-score" id="score-vevaios">—</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Dashboard Display v1.3.1
+        // Dashboard Display v1.4.0
         
         // v1.2.4: Firebase config comes from shared firebase-config.js (loaded
         // via <script src="firebase-config.js"> in <head>).
@@ -428,12 +542,12 @@
         const db = firebase.firestore();
         
         const appId = firebaseConfig.appId;
-        const apiKey = "AIzaSyD5Y7uaZDz2qIJfkMkoP1ufX8t1PebfxOE";
+        // v1.4.0: Removed legacy Google Drive API key — video fetching retired in favor of Canva iframe.
         
-        let currentVideoId = null;
         let schedules = {};
-        let scheduleConfig = {}; // Schedule selection (from URL or Firestore)
-        let mediaConfig = {};    // Video/slides (always from Firestore)
+        let scheduleConfig = {};     // Schedule selection (from URL or Firestore)
+        let mediaConfig = {};        // v1.4.0: now holds canvaUrl, housesSheetCsvUrl (was: videoFolderId, slidesUrl)
+        let currentCanvaUrl = null;  // v1.4.0: tracks loaded iframe URL so we only reload on change
         
         const configRef = db.collection('artifacts').doc(appId)
             .collection('public').doc('data')
@@ -552,9 +666,8 @@
                 loadSchedules(scheduleConfig);
             }
             
-            // Start video check
-            checkForNewVideo();
-            setInterval(checkForNewVideo, 300000);
+            // v1.4.0: Video check removed — Canva iframe + house scores handled by updateMedia()
+            // which is already triggered via Firestore onSnapshot listener above.
             
             // Start clock updates
             setInterval(updateClock, 1000);
@@ -642,17 +755,104 @@
             }
         }
         
+        /**
+         * v1.4.0: Media config now means "Canva iframe URL + houses scoreboard CSV URL".
+         * Called on initial load and whenever the config doc changes in Firestore.
+         * Canva iframe is only reloaded when the URL actually changes (prevents
+         * interrupting the Canva loop with every unrelated config tweak).
+         */
         function updateMedia(config) {
-            // Update slides iframe
-            const slidesUrl = config.slidesUrl || 
-                'https://docs.google.com/presentation/d/e/2PACX-1vRGoECJPzxYQ4axmA2K0xy4idvI3m_N04OgWN_qpITDA0XCpT_ntcxLfp1tQvmf5Vn5jXeuHGhrC1A3/pub?start=true&loop=true&delayms=60000';
-            document.getElementById('slides').src = slidesUrl;
+            applyCanvaUrl(config.canvaUrl || '');
+            applyHousesSheetUrl(config.housesSheetCsvUrl || '');
+        }
+        
+        /**
+         * Sets the Canva iframe source if the URL has changed. Shows fallback when empty.
+         */
+        function applyCanvaUrl(url) {
+            const frame = document.getElementById('canva-frame');
+            const fallback = document.getElementById('canva-fallback');
+            const normalizedUrl = (url || '').trim();
             
-            // Update video folder
-            const newFolderId = config.videoFolderId || '1rhirAMiKrhkteVPk4wB7Giumi9agnP6N';
-            if (window.currentFolderId !== newFolderId) {
-                window.currentFolderId = newFolderId;
-                checkForNewVideo();
+            if (!normalizedUrl) {
+                // No URL configured — show the fallback (school logo + tagline).
+                frame.style.display = 'none';
+                fallback.style.display = 'flex';
+                if (currentCanvaUrl !== null) {
+                    frame.src = 'about:blank'; // release iframe resources
+                    currentCanvaUrl = null;
+                }
+                return;
+            }
+            
+            // Only reload the iframe if the URL actually changed. Reloading mid-loop
+            // interrupts the Canva animation, which is exactly what the old
+            // 3-frame Yodeck setup was doing (and why loads "ended up in the wrong
+            // places"). Preserving the iframe keeps Canva's internal playback intact.
+            if (normalizedUrl !== currentCanvaUrl) {
+                frame.src = normalizedUrl;
+                currentCanvaUrl = normalizedUrl;
+            }
+            frame.style.display = 'block';
+            fallback.style.display = 'none';
+        }
+        
+        /**
+         * Configures the house scoreboard fetch. On first call, fetches immediately
+         * and sets up a 5-minute interval. On subsequent calls with the same URL,
+         * does nothing (the interval is already running).
+         */
+        let housesFetchTimer = null;
+        let currentHousesUrl = null;
+        function applyHousesSheetUrl(url) {
+            const normalizedUrl = (url || '').trim();
+            if (normalizedUrl === currentHousesUrl) return; // No change
+            currentHousesUrl = normalizedUrl;
+            if (housesFetchTimer) {
+                clearInterval(housesFetchTimer);
+                housesFetchTimer = null;
+            }
+            if (!normalizedUrl) {
+                // No sheet configured — leave the placeholder "—" visible
+                return;
+            }
+            fetchHouseScores();
+            // Google Sheets CSV endpoint caches ~5 min server-side; matching that.
+            housesFetchTimer = setInterval(fetchHouseScores, 5 * 60 * 1000);
+        }
+        
+        /**
+         * Fetches the published-to-web CSV and updates the four house scores.
+         * Sheet structure (per Jake, 2026-04):
+         *   Row 1: headers (house names)
+         *   Row 2: scores (A=Accomodore, B=Callidus, C=Princeps, D=Vevaios)
+         * Defensive: logs but doesn't throw on parse failure; scoreboard just stays stale.
+         */
+        async function fetchHouseScores() {
+            if (!currentHousesUrl) return;
+            try {
+                const response = await fetch(currentHousesUrl, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const csvText = await response.text();
+                const rows = csvText.split(/\r?\n/).filter(r => r.length > 0);
+                if (rows.length < 2) {
+                    console.warn('[scores] CSV has fewer than 2 rows; expected header + scores');
+                    return;
+                }
+                // Row 2 (index 1) has the scores. Simple comma split — scores are
+                // numeric so no embedded commas / quoted fields to worry about.
+                const scores = rows[1].split(',').map(s => s.trim());
+                const houseOrder = ['accomodore', 'callidus', 'princeps', 'vevaios'];
+                houseOrder.forEach((house, i) => {
+                    const el = document.getElementById(`score-${house}`);
+                    if (el && scores[i] !== undefined && scores[i] !== '') {
+                        // Format with thousands separator for readability
+                        const n = parseInt(scores[i], 10);
+                        el.textContent = isNaN(n) ? scores[i] : n.toLocaleString();
+                    }
+                });
+            } catch (err) {
+                console.warn('[scores] fetch failed (will retry next interval):', err);
             }
         }
         
@@ -779,52 +979,10 @@
             }
         }
         
-        async function checkForNewVideo() {
-            const folderId = window.currentFolderId || '1rhirAMiKrhkteVPk4wB7Giumi9agnP6N';
-            
-            const query = `'${folderId}'+in+parents+and+mimeType+contains+'video'`;
-            const fields = 'files(id,name,modifiedTime)';
-            const url = `https://www.googleapis.com/drive/v3/files?q=${query}&key=${apiKey}&orderBy=modifiedTime+desc&fields=${fields}`;
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (data.files && data.files.length > 0) {
-                    const newestVideo = data.files[0];
-                    
-                    if (newestVideo.id !== currentVideoId) {
-                        console.log('Loading new video:', newestVideo.name);
-                        loadVideo(newestVideo.id, newestVideo.name);
-                    }
-                } else {
-                    document.getElementById('loading').textContent = 'No videos in folder';
-                }
-            } catch (error) {
-                console.error('Error checking for videos:', error);
-                document.getElementById('loading').textContent = 'Error loading video';
-            }
-        }
-        
-        function loadVideo(fileId, fileName) {
-            currentVideoId = fileId;
-            
-            const video = document.getElementById('video');
-            const loading = document.getElementById('loading');
-            
-            const videoUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
-            
-            video.src = videoUrl;
-            video.style.display = 'block';
-            loading.style.display = 'none';
-            
-            video.addEventListener('error', () => {
-                loading.textContent = 'Video playback error';
-                loading.style.display = 'block';
-            });
-            
-            video.play().catch(err => console.error('Play error:', err));
-        }
+        // v1.4.0: checkForNewVideo() + loadVideo() removed. The old Drive-video-playback
+        // path is replaced by the Canva iframe via applyCanvaUrl(). Google Drive API
+        // key also removed. If you need to resurrect the video path, the full
+        // implementation is preserved in dashboard.html v1.3.1 (git history).
         
         // Open in popup window - uses Document PiP API for always-on-top behavior
         async function openPopupWindow() {
