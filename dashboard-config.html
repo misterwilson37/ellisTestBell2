@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Config v1.0.0</title>
-    <!-- Dashboard Config v1.0.0 -->
-    <!-- v1.0.0: First explicit version. Audit pass — shared firebase-config.js; version in <title> and footer. Previously unversioned. -->
+    <title>Dashboard Config v1.1.0</title>
+    <!-- Dashboard Config v1.1.0 -->
+    <!-- v1.1.0: Palette alignment — body background to slate, added Carolina Sky variable. -->
+    <!-- v1.0.0: First explicit version. Audit pass — shared firebase-config.js; version in <title> and footer. -->
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -19,13 +20,15 @@
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
+            --carolina-blue-sky: #8FC3E8;   /* v1.1.0 */
             --dark-grey: #1a1a1a;
+            --slate-bg: #111827;            /* v1.1.0 */
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            background: #000;
+            background: var(--slate-bg);    /* v1.1.0: was #000 */
             color: #fff;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
@@ -376,14 +379,14 @@
             <div style="margin-top: 32px; text-align: center;">
                 <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
                 <div style="margin-top: 12px; font-size: 11px; color: #666;">
-                    Dashboard Config v1.0.0
+                    Dashboard Config v1.1.0
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Dashboard Config v1.0.0
+        // Dashboard Config v1.1.0
         
         // v1.0.0: Firebase config comes from shared firebase-config.js
         // (loaded via <script src="firebase-config.js"> in <head>).
