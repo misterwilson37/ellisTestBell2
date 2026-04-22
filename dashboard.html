@@ -3,8 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.4.1</title>
-    <!-- Dashboard Display v1.4.1 -->
+    <title>Dashboard v1.4.2</title>
+    <!-- Dashboard Display v1.4.2 -->
+    <!-- v1.4.2: Regression fix for v1.4.1. The house cards rendered as colored bars
+         with no visible content. Root cause: .houses-area had container-type:size,
+         and with flex:1 children (the cards), cq* units resolved against the parent
+         container in a way that effectively collapsed font-sizes and padding to
+         near-zero in some browsers. Switched to viewport units (vh/vw), which are
+         stable for a fullscreen dashboard — we own the whole window, no ambiguity
+         about what "the container" is. Also added min-width:0 and overflow:hidden
+         defensively on .house-card to prevent overflow from colored-bar regression. -->
     <!-- v1.4.1: House card layout tightened per Jake's feedback on v1.4.0:
          - Crests enlarged from 70% to 90% of card height.
          - Removed the white rounded-rectangle wrapper behind each crest — the
@@ -43,7 +51,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.4.1 */
+        /* Dashboard Display v1.4.2 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -75,50 +83,55 @@
         
         /* v1.4.0: House scoreboard — four equal-height cards filling 80% of right column.
            Each card is 25% of that 80% = 20% of full viewport height.
-           v1.4.1: Layout tightened per feedback. Crest is 90% of card height on the left;
-           name stacked over score on the right (bigger numbers, less wasted width).
-           Crests are transparent PNGs — no wrapper background needed. */
+           v1.4.2: Units changed from cqw/cqh to vh/vw. Root cause of v1.4.1 regression:
+           container queries need careful setup and with flex: 1 children of a 
+           container-type:size parent, cqh resolves against the parent (not the child),
+           which made card padding etc. compute oddly. Switching to viewport units is
+           simpler and more predictable for a fullscreen dashboard — we control the
+           whole window, so vh/vw are stable and correct. */
         .houses-area {
             height: 80%;
             display: flex;
             flex-direction: column;
-            container-type: size;
+            /* v1.4.2: removed container-type:size (was causing zero-dimension measurements in children) */
         }
         
         .house-card {
             flex: 1 1 0;   /* equal share of available height */
             display: grid;
-            grid-template-columns: auto 1fr;   /* crest | stacked name+score */
+            grid-template-columns: auto 1fr;   /* crest | name+score stack */
             align-items: center;
-            gap: 3cqw;
-            padding: 1cqh 3cqw;
+            gap: 1.5vw;
+            padding: 1vh 1.5vw;
             min-height: 0;
+            min-width: 0;
+            overflow: hidden;
             font-family: 'Century Gothic', 'Urbanist', 'Questrial', serif;
         }
         
         .house-crest {
-            height: 90%;           /* v1.4.1: 90% of card height per Jake's request */
-            max-height: 90cqh;
+            height: 90%;           /* 90% of card height per Jake */
+            max-height: 18vh;      /* 18vh ≈ 90% of 20vh card height — hard cap belts-and-suspenders */
             width: auto;
             object-fit: contain;
-            /* No background — PNGs are transparent, the card color shows through */
+            /* transparent PNGs — card color shows through */
         }
         
-        /* v1.4.1: Name-over-score stack. Both elements right-aligned so the scores
-           form a clean vertical column across the four cards. */
+        /* Name-over-score stack. Both right-aligned so scores form a clean vertical column. */
         .house-info {
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: flex-end;
             min-width: 0;
-            gap: 0.5cqh;
+            gap: 0.3vh;
+            height: 100%;
         }
         
         .house-name {
             font-family: 'Century Gothic', Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 4.5cqw;
+            font-size: 1.8vw;
             font-variant-caps: small-caps;
             text-transform: lowercase;
             letter-spacing: 0.05em;
@@ -129,7 +142,7 @@
         .house-score {
             font-family: Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 10cqw;
+            font-size: 4vw;
             line-height: 1;
             letter-spacing: -0.02em;
         }
@@ -468,7 +481,7 @@
         </div>
         
         <div class="version-info">
-            Dashboard v1.4.1
+            Dashboard v1.4.2
             <br>
             <a href="index.html">← Back to Bell Schedule</a>
         </div>
@@ -549,7 +562,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.4.1
+        // Dashboard Display v1.4.2
         
         // v1.2.4: Firebase config comes from shared firebase-config.js (loaded
         // via <script src="firebase-config.js"> in <head>).
