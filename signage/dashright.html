@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Right v1.0.0</title>
-    <!-- Dashboard Right Display v1.0.0 -->
+    <title>Dashboard Right v1.0.1</title>
+    <!-- Dashboard Right Display v1.0.1 -->
+    <!-- v1.0.1: Text sizing fix for Yodeck narrow-frame deployment. v1.0.0 used
+         vw/vh viewport units, which resolve against the iframe's viewport — i.e.
+         the 25%-of-TV frame width. So a 4vw score was 1/4 the size intended.
+         Switched .houses-area to container-type: inline-size + cqw units so
+         sizing is proportional to the scoreboard's own rendered width regardless
+         of viewport dimensions. inline-size (not size) avoids the flex-child
+         collapse bug that sunk v1.4.1's cq attempt elsewhere. -->
     <!-- v1.0.0: Full-screen clock-plus-scoreboard page. Lifts the right-column
          contents of dashboard.html into a standalone page that fills the viewport.
          20% clock on top, 80% four-card auto-sorted scoreboard below — identical
@@ -22,7 +29,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="../firebase-config.js"></script>
     <style>
-        /* Dashboard Right Display v1.0.0 — visual match to dashboard.html's right column */
+        /* Dashboard Right Display v1.0.1 — visual match to dashboard.html's right column */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -112,13 +119,20 @@
             margin-top: 1cqh;
         }
         
-        /* -- House scoreboard -- bit-for-bit equivalent of dashboard.html's houses-area.
-           Viewport units (vh/vw) for stability, matching the v1.4.2 fix that removed
-           problematic container-query sizing here. */
+        /* -- House scoreboard --
+           v1.0.1: Switched from vw/vh to cqw with container-type: inline-size.
+           Root cause of the tiny-text bug: vw scales to the iframe's viewport,
+           which is just 25% of the TV width inside Yodeck — so 4vw was 1/4
+           what it needed to be. inline-size containers measure the element's
+           actual rendered width (full iframe width), and cqw scales against
+           that. No flex-child sizing issues like the v1.4.1 disaster because
+           inline-size only measures the width axis, leaving block sizing alone.
+           Heights stay as % since we don't need to query height. */
         .houses-area {
             height: 80%;
             display: flex;
             flex-direction: column;
+            container-type: inline-size;
         }
         
         .house-card {
@@ -126,8 +140,8 @@
             display: grid;
             grid-template-columns: auto 1fr;
             align-items: center;
-            gap: 1.5vw;
-            padding: 1vh 1.5vw;
+            gap: 3cqw;
+            padding: 2% 3cqw;
             min-height: 0;
             min-width: 0;
             overflow: hidden;
@@ -136,7 +150,6 @@
         
         .house-crest {
             height: 90%;
-            max-height: 18vh;
             width: auto;
             object-fit: contain;
         }
@@ -147,14 +160,14 @@
             justify-content: center;
             align-items: flex-end;
             min-width: 0;
-            gap: 0.3vh;
+            gap: 1%;
             height: 100%;
         }
         
         .house-name {
             font-family: 'Century Gothic', Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 1.8vw;
+            font-size: 7cqw;
             font-variant-caps: small-caps;
             text-transform: lowercase;
             letter-spacing: 0.05em;
@@ -165,7 +178,7 @@
         .house-score {
             font-family: Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 4vw;
+            font-size: 16cqw;
             line-height: 1;
             letter-spacing: -0.02em;
         }
@@ -241,10 +254,10 @@
             </div>
         </div>
     </div>
-    <div class="version-stamp">Dashboard Right v1.0.0</div>
+    <div class="version-stamp">Dashboard Right v1.0.1</div>
 
     <script>
-        // Dashboard Right Display v1.0.0
+        // Dashboard Right Display v1.0.1
         
         if (!window.firebaseConfig) {
             throw new Error("firebase-config.js failed to load. Check <script> tag order in <head>.");
