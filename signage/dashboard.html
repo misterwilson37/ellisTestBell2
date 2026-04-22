@@ -3,8 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.5.2</title>
-    <!-- Dashboard Display v1.5.2 -->
+    <title>Dashboard v1.5.3</title>
+    <!-- Dashboard Display v1.5.3 -->
+    <!-- v1.5.3: Scoreboard text sizing rewrite. Same issue as dashright.html v1.0.1:
+         vw/vh units scale to the viewport, not the container. If dashboard.html
+         is ever rendered in a narrower iframe, text would shrink proportionally.
+         Switched .houses-area to container-type: inline-size, and card font sizes
+         to cqw units, so sizing is proportional to the scoreboard's own rendered
+         width regardless of how it's embedded. Uses only inline-size to avoid the
+         v1.4.1 flex-child collapse bug that plagued earlier attempts at container
+         queries here. -->
     <!-- v1.5.2: Setup-panel grid overflow fix. The schedule-picker rows were
          pushing their 120px label input boxes past the right edge of the card.
          Root cause: bare `1fr` in grid-template-columns defaults to
@@ -83,7 +91,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.5.2 */
+        /* Dashboard Display v1.5.3 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -115,17 +123,18 @@
         
         /* v1.4.0: House scoreboard — four equal-height cards filling 80% of right column.
            Each card is 25% of that 80% = 20% of full viewport height.
-           v1.4.2: Units changed from cqw/cqh to vh/vw. Root cause of v1.4.1 regression:
-           container queries need careful setup and with flex: 1 children of a 
-           container-type:size parent, cqh resolves against the parent (not the child),
-           which made card padding etc. compute oddly. Switching to viewport units is
-           simpler and more predictable for a fullscreen dashboard — we control the
-           whole window, so vh/vw are stable and correct. */
+           v1.5.3: Same tiny-text fix that was applied to dashright.html v1.0.1.
+           Switched back to container queries, but using container-type: inline-size
+           (not `size`, which was the v1.4.1 disaster). inline-size measures only the
+           width axis, so we query the scoreboard's own rendered width rather than
+           the viewport — which matters if dashboard.html ever renders in a frame
+           narrower than the full window. Heights stay as % (no cqh available with
+           inline-size, and we don't need it — % heights work fine for flex children). */
         .houses-area {
             height: 80%;
             display: flex;
             flex-direction: column;
-            /* v1.4.2: removed container-type:size (was causing zero-dimension measurements in children) */
+            container-type: inline-size;
         }
         
         .house-card {
@@ -133,8 +142,8 @@
             display: grid;
             grid-template-columns: auto 1fr;   /* crest | name+score stack */
             align-items: center;
-            gap: 1.5vw;
-            padding: 1vh 1.5vw;
+            gap: 3cqw;
+            padding: 2% 3cqw;
             min-height: 0;
             min-width: 0;
             overflow: hidden;
@@ -143,7 +152,6 @@
         
         .house-crest {
             height: 90%;           /* 90% of card height per Jake */
-            max-height: 18vh;      /* 18vh ≈ 90% of 20vh card height — hard cap belts-and-suspenders */
             width: auto;
             object-fit: contain;
             /* transparent PNGs — card color shows through */
@@ -156,14 +164,14 @@
             justify-content: center;
             align-items: flex-end;
             min-width: 0;
-            gap: 0.3vh;
+            gap: 1%;
             height: 100%;
         }
         
         .house-name {
             font-family: 'Century Gothic', Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 1.8vw;
+            font-size: 7cqw;
             font-variant-caps: small-caps;
             text-transform: lowercase;
             letter-spacing: 0.05em;
@@ -174,7 +182,7 @@
         .house-score {
             font-family: Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 4vw;
+            font-size: 16cqw;
             line-height: 1;
             letter-spacing: -0.02em;
         }
@@ -524,7 +532,7 @@
         </div>
         
         <div class="version-info">
-            Dashboard v1.5.2
+            Dashboard v1.5.3
             <br>
             <a href="../index.html">← Back to Bell Schedule</a>
         </div>
@@ -605,7 +613,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.5.2
+        // Dashboard Display v1.5.3
         
         // v1.4.3: Diagnostic — log any postMessage events from canva.com so we can
         // see whether Canva broadcasts slide-ended / playback-complete events we
