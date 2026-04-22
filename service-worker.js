@@ -1,11 +1,22 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.1.0
+ * Version: 1.2.0
  * 
  * Provides:
  * - Offline caching of core app files
  * - Background sync capabilities
  * - Install prompt support
+ *
+ * v1.2.0 changelog (2026-04):
+ * - Added /signage/ assets: dashboard.html, dashclock.html, dashright.html, and
+ *   the five PNG crests/logo. These are TV-facing pages on Yodeck kiosks where
+ *   cache-backed instant reload after network blips genuinely matters.
+ * - Bumped CACHE_NAME from v2 -> v3. Every existing client evicts the old cache
+ *   on next activate and re-fetches the full CORE_ASSETS list (old cache didn't
+ *   know about the signage/ files).
+ * - Legacy clock.html stays in the cache list — it's still live on the repo for
+ *   any Yodeck frame still pointing at it via URL params. Will remove from cache
+ *   in a future version once all frames have migrated to dashclock.html.
  *
  * v1.1.0 changelog (2026-04):
  * - Added clock.html and firebase-config.js to CORE_ASSETS — clock.html now
@@ -16,8 +27,8 @@
  *   to fetch them).
  */
 
-const CACHE_NAME = 'ellis-web-bell-v2';
-const CACHE_VERSION = '1.1.0';
+const CACHE_NAME = 'ellis-web-bell-v3';
+const CACHE_VERSION = '1.2.0';
 
 // Core files to cache for offline use
 const CORE_ASSETS = [
@@ -28,7 +39,18 @@ const CORE_ASSETS = [
   '/firebase-config.js',
   '/manifest.json',
   '/icon-192.png',
-  '/icon-512.png'
+  '/icon-512.png',
+  // v1.2.0: signage/ family — TV-facing kiosk pages.
+  // Note: dashboard-config.html is intentionally NOT cached. It's an admin tool;
+  // stale offline copies would be confusing, and it's not on Yodeck TVs anyway.
+  '/signage/dashboard.html',
+  '/signage/dashclock.html',
+  '/signage/dashright.html',
+  '/signage/accomodore.png',
+  '/signage/callidus.png',
+  '/signage/princeps.png',
+  '/signage/vevaios.png',
+  '/signage/school_logo.png'
 ];
 
 // External resources to cache
