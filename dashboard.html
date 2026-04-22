@@ -3,8 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.4.0</title>
-    <!-- Dashboard Display v1.4.0 -->
+    <title>Dashboard v1.4.1</title>
+    <!-- Dashboard Display v1.4.1 -->
+    <!-- v1.4.1: House card layout tightened per Jake's feedback on v1.4.0:
+         - Crests enlarged from 70% to 90% of card height.
+         - Removed the white rounded-rectangle wrapper behind each crest — the
+           PNGs are genuinely transparent (verified), so the wrapper was only
+           creating a visible white box on the colored cards for no benefit.
+         - House name + score stacked vertically (was: three columns of crest |
+           name | score, now: two of crest | name-over-score). Frees horizontal
+           space so both name and score can be substantially larger. -->
     <!-- v1.4.0: Dashboard rewrite — replaces the 3-frame Yodeck setup (Canva +
          Google Slides + clock.html) with a single-URL page. Left 75% is a Canva
          iframe (only reloaded when the URL changes — doesn't interrupt the loop),
@@ -35,7 +43,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.4.0 */
+        /* Dashboard Display v1.4.1 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -66,8 +74,10 @@
         }
         
         /* v1.4.0: House scoreboard — four equal-height cards filling 80% of right column.
-           Each card is 25% of that 80% = 20% of full viewport height. Horizontal layout
-           inside each card: crest | name | score. */
+           Each card is 25% of that 80% = 20% of full viewport height.
+           v1.4.1: Layout tightened per feedback. Crest is 90% of card height on the left;
+           name stacked over score on the right (bigger numbers, less wasted width).
+           Crests are transparent PNGs — no wrapper background needed. */
         .houses-area {
             height: 80%;
             display: flex;
@@ -78,48 +88,50 @@
         .house-card {
             flex: 1 1 0;   /* equal share of available height */
             display: grid;
-            grid-template-columns: auto 1fr auto;
+            grid-template-columns: auto 1fr;   /* crest | stacked name+score */
             align-items: center;
-            gap: 2cqw;
-            padding: 2cqh 3cqw;
+            gap: 3cqw;
+            padding: 1cqh 3cqw;
             min-height: 0;
             font-family: 'Century Gothic', 'Urbanist', 'Questrial', serif;
         }
         
         .house-crest {
-            height: 70%;
-            max-height: 80cqh;
-            max-width: 20cqw;
+            height: 90%;           /* v1.4.1: 90% of card height per Jake's request */
+            max-height: 90cqh;
             width: auto;
             object-fit: contain;
-            /* Universal pale-tint panel behind each crest so the dark-background cards
-               don't lose the crests' dark elements. Subtle rounded rectangle. */
-            background: rgba(255,255,255,0.92);
-            border-radius: 8%;
-            padding: 3%;
+            /* No background — PNGs are transparent, the card color shows through */
+        }
+        
+        /* v1.4.1: Name-over-score stack. Both elements right-aligned so the scores
+           form a clean vertical column across the four cards. */
+        .house-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            min-width: 0;
+            gap: 0.5cqh;
         }
         
         .house-name {
             font-family: 'Century Gothic', Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 3cqw;
+            font-size: 4.5cqw;
             font-variant-caps: small-caps;
             text-transform: lowercase;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.05em;
             line-height: 1;
-            text-align: center;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         
         .house-score {
             font-family: Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 6cqw;
+            font-size: 10cqw;
             line-height: 1;
-            text-align: right;
-            min-width: 4ch;
+            letter-spacing: -0.02em;
         }
         
         /* Per-house palette. Foil color (name + score) picked for contrast on each bg.
@@ -456,7 +468,7 @@
         </div>
         
         <div class="version-info">
-            Dashboard v1.4.0
+            Dashboard v1.4.1
             <br>
             <a href="index.html">← Back to Bell Schedule</a>
         </div>
@@ -501,34 +513,43 @@
                 </div>
             </div>
 
-            <!-- v1.4.0: House scoreboard — four stacked equal-height cards. -->
+            <!-- v1.4.0: House scoreboard — four stacked equal-height cards.
+                 v1.4.1: Name + score stacked in .house-info for better use of width. -->
             <div class="houses-area" id="houses-area">
                 <div class="house-card house-accomodore" data-house="accomodore">
                     <img class="house-crest" src="accomodore.png" alt="Accomodore crest">
-                    <div class="house-name">Accomodore</div>
-                    <div class="house-score" id="score-accomodore">—</div>
+                    <div class="house-info">
+                        <div class="house-name">Accomodore</div>
+                        <div class="house-score" id="score-accomodore">—</div>
+                    </div>
                 </div>
                 <div class="house-card house-callidus" data-house="callidus">
                     <img class="house-crest" src="callidus.png" alt="Callidus crest">
-                    <div class="house-name">Callidus</div>
-                    <div class="house-score" id="score-callidus">—</div>
+                    <div class="house-info">
+                        <div class="house-name">Callidus</div>
+                        <div class="house-score" id="score-callidus">—</div>
+                    </div>
                 </div>
                 <div class="house-card house-princeps" data-house="princeps">
                     <img class="house-crest" src="princeps.png" alt="Princeps crest">
-                    <div class="house-name">Princeps</div>
-                    <div class="house-score" id="score-princeps">—</div>
+                    <div class="house-info">
+                        <div class="house-name">Princeps</div>
+                        <div class="house-score" id="score-princeps">—</div>
+                    </div>
                 </div>
                 <div class="house-card house-vevaios" data-house="vevaios">
                     <img class="house-crest" src="vevaios.png" alt="Vevaios crest">
-                    <div class="house-name">Vevaios</div>
-                    <div class="house-score" id="score-vevaios">—</div>
+                    <div class="house-info">
+                        <div class="house-name">Vevaios</div>
+                        <div class="house-score" id="score-vevaios">—</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Dashboard Display v1.4.0
+        // Dashboard Display v1.4.1
         
         // v1.2.4: Firebase config comes from shared firebase-config.js (loaded
         // via <script src="firebase-config.js"> in <head>).
