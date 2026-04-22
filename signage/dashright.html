@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Right v1.0.2</title>
-    <!-- Dashboard Right Display v1.0.2 -->
+    <title>Dashboard Right v1.0.3</title>
+    <!-- Dashboard Right Display v1.0.3 -->
+    <!-- v1.0.3: House name bumped from 7cqw to 9cqw (~30% larger) per Jake's
+         eyeball test on live hardware. Score (16cqw) unchanged. -->
     <!-- v1.0.2: Crest size fix. v1.0.1's removal of max-height let the crest
          grow too large in narrow frames (height: 90% of card = ~90% of 20vh is
          huge when the iframe is 25% of a 4K TV). Added max-width: 30cqw to cap
@@ -34,7 +36,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="../firebase-config.js"></script>
     <style>
-        /* Dashboard Right Display v1.0.2 — visual match to dashboard.html's right column */
+        /* Dashboard Right Display v1.0.3 — visual match to dashboard.html's right column */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -177,7 +179,7 @@
         .house-name {
             font-family: 'Century Gothic', Georgia, 'Times New Roman', serif;
             font-weight: 700;
-            font-size: 7cqw;
+            font-size: 9cqw;
             font-variant-caps: small-caps;
             text-transform: lowercase;
             letter-spacing: 0.05em;
@@ -264,10 +266,10 @@
             </div>
         </div>
     </div>
-    <div class="version-stamp">Dashboard Right v1.0.2</div>
+    <div class="version-stamp">Dashboard Right v1.0.3</div>
 
     <script>
-        // Dashboard Right Display v1.0.2
+        // Dashboard Right Display v1.0.3
         
         if (!window.firebaseConfig) {
             throw new Error("firebase-config.js failed to load. Check <script> tag order in <head>.");
