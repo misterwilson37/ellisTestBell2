@@ -3,8 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.5.0</title>
-    <!-- Dashboard Display v1.5.0 -->
+    <title>Dashboard v1.5.2</title>
+    <!-- Dashboard Display v1.5.2 -->
+    <!-- v1.5.2: Setup-panel grid overflow fix. The schedule-picker rows were
+         pushing their 120px label input boxes past the right edge of the card.
+         Root cause: bare `1fr` in grid-template-columns defaults to
+         minmax(auto, 1fr), where `auto` = min-content floor. With long dropdown
+         text ("TCAP - 6th") the column refused to shrink, forcing the whole row
+         to overflow. Fixed with minmax(0, 1fr) + min-width:0 + width:100% on the
+         grid items — same pattern as the clock.html v1.4.0 narrow-frame fix. -->
+    <!-- v1.5.1: Canva autoplay regression fix. The iframe had allow="fullscreen"
+         but not autoplay, so modern browsers were refusing to autoplay Canva's
+         /watch content — falling back to a click-to-start state. Added
+         allow="autoplay; fullscreen; encrypted-media" which explicitly delegates
+         autoplay permission to the Canva iframe and grants DRM/video playback
+         permission for good measure. Fixes "Canva no longer autoplaying" that
+         appeared after the v1.5.0 folder move (though the true root cause was
+         always present; browsers just seem to have gotten stricter recently, or
+         Canva changed something that forced them to rely on the allow attribute
+         where previously they worked without it). -->
     <!-- v1.5.0: Relocated from repo root to /signage/ folder alongside new sibling
          pages dashclock.html and dashright.html. Path updates: firebase-config.js
          now loaded from ../firebase-config.js; "Back to Bell Schedule" link points
@@ -66,7 +83,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.5.0 */
+        /* Dashboard Display v1.5.2 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -306,7 +323,13 @@
         
         .setup-row {
             display: grid;
-            grid-template-columns: 80px 1fr 120px;
+            /* v1.5.2: minmax(0, 1fr) replaces bare 1fr. Bare 1fr defaults to
+               minmax(auto, 1fr) — auto = min-content floor — which with long
+               dropdown option text ("TCAP - 6th") prevents the column from
+               shrinking, so the whole row overflows the 650px setup panel
+               and pushes the 120px label input box past the card edge.
+               Same root cause as clock.html v1.4.0's narrow-frame fix. */
+            grid-template-columns: 80px minmax(0, 1fr) 120px;
             gap: 12px;
             margin-bottom: 16px;
             align-items: center;
@@ -319,6 +342,11 @@
         
         .setup-row select,
         .setup-row input[type="text"] {
+            /* v1.5.2: min-width:0 on the flex/grid items themselves — belt to
+               the minmax suspenders. Prevents the select's own content width
+               from preventing shrink even when the column track allows it. */
+            min-width: 0;
+            width: 100%;
             padding: 10px 12px;
             border-radius: 6px;
             border: 1px solid #333;
@@ -496,7 +524,7 @@
         </div>
         
         <div class="version-info">
-            Dashboard v1.5.0
+            Dashboard v1.5.2
             <br>
             <a href="../index.html">← Back to Bell Schedule</a>
         </div>
@@ -510,7 +538,7 @@
 
         <!-- v1.4.0: LEFT 75% — Canva iframe (primary) with logo/tagline fallback. -->
         <div class="left">
-            <iframe id="canva-frame" src="" allowfullscreen allow="fullscreen" style="display:none;"></iframe>
+            <iframe id="canva-frame" src="" allowfullscreen allow="autoplay; fullscreen; encrypted-media" style="display:none;"></iframe>
             <div id="canva-fallback" class="canva-fallback">
                 <div class="fallback-logo-disk">
                     <img src="school_logo.png" alt="Ellis — One School, 4 Houses, 1 Home" class="fallback-logo">
@@ -577,7 +605,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.5.0
+        // Dashboard Display v1.5.2
         
         // v1.4.3: Diagnostic — log any postMessage events from canva.com so we can
         // see whether Canva broadcasts slide-ended / playback-complete events we
