@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.5.3</title>
-    <!-- Dashboard Display v1.5.3 -->
+    <title>Dashboard v1.5.4</title>
+    <!-- Dashboard Display v1.5.4 -->
+    <!-- v1.5.4: Companion to dashright.html v1.0.2 — added max-width: 30cqw on
+         .house-crest so the crest doesn't balloon oversized when the scoreboard
+         renders in a narrow frame. Consistency with dashright. -->
     <!-- v1.5.3: Scoreboard text sizing rewrite. Same issue as dashright.html v1.0.1:
          vw/vh units scale to the viewport, not the container. If dashboard.html
          is ever rendered in a narrower iframe, text would shrink proportionally.
@@ -91,7 +94,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     
     <style>
-        /* Dashboard Display v1.5.3 */
+        /* Dashboard Display v1.5.4 */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -152,6 +155,7 @@
         
         .house-crest {
             height: 90%;           /* 90% of card height per Jake */
+            max-width: 30cqw;      /* v1.5.4: cap width so the crest doesn't balloon in narrow frames */
             width: auto;
             object-fit: contain;
             /* transparent PNGs — card color shows through */
@@ -532,7 +536,7 @@
         </div>
         
         <div class="version-info">
-            Dashboard v1.5.3
+            Dashboard v1.5.4
             <br>
             <a href="../index.html">← Back to Bell Schedule</a>
         </div>
@@ -613,7 +617,7 @@
     </div>
 
     <script>
-        // Dashboard Display v1.5.3
+        // Dashboard Display v1.5.4
         
         // v1.4.3: Diagnostic — log any postMessage events from canva.com so we can
         // see whether Canva broadcasts slide-ended / playback-complete events we
