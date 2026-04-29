@@ -1,5 +1,13 @@
-const APP_VERSION = "5.69.0"
-// V5.69.0: Carolina Blue palette — foundation pass (Tier 2 of audit, part 1 of ~3)
+const APP_VERSION = "5.69.4"
+// V5.69.4: PiP broadcast toggle fix
+// - Removed the broadcast toggle from the Picture-in-Picture popup. The toggle
+//   was being deep-cloned into the PiP from the main page's #quickBellControls,
+//   but the cloned button's inline onclick="toggleBroadcastMode()" referenced a
+//   function that doesn't exist in the PiP window's scope — silently no-op. Also
+//   created a duplicate-ID conflict with the main-page toggle.
+// - Broadcast sync still works as expected via the main-page toggle. The PiP is
+//   meant for at-a-glance bell display, not configuration.
+// V5.69.1: Carolina Blue palette — foundation pass (Tier 2 of audit, part 1 of ~3)
 // - Light/dark theme objects now use Carolina Blue hues instead of
 //   Tailwind blue-600/blue-400:
 //     Light accent: #38759E (Carolina Deep, WCAG AA-compliant on white at 4.99:1)
@@ -2551,7 +2559,7 @@ let customThemeColors = {
 };
 let visualCueEnabled = true;
 
-// Light theme defaults — v5.69.0: Carolina Blue palette
+// Light theme defaults — v5.69.1: Carolina Blue palette
 // School colors: Carolina Blue, black, grey, white.
 // Accent is AA-compliant Carolina ("Carolina Deep", #38759E) for text-level UI.
 // Bold accent is canonical Carolina (#4B9CD3) for buttons/headers/backgrounds.
@@ -2572,7 +2580,7 @@ const lightThemeColors = {
     buttonText: '#374151'
 };
 
-// Dark theme defaults — v5.69.0: Carolina Blue palette (lighter for dark bg contrast)
+// Dark theme defaults — v5.69.1: Carolina Blue palette (lighter for dark bg contrast)
 const darkThemeColors = {
     bgPrimary: '#111827',
     bgCard: '#1f2937',
@@ -2661,7 +2669,7 @@ function applyTheme() {
         root.style.setProperty('--theme-text-secondary', colors.textSecondary);
         root.style.setProperty('--theme-text-muted', colors.textMuted);
         root.style.setProperty('--theme-accent', colors.accent);
-        root.style.setProperty('--theme-accent-bold', colors.accentBold); // v5.69.0: Carolina Blue for large surfaces
+        root.style.setProperty('--theme-accent-bold', colors.accentBold); // v5.69.1: Carolina Blue for large surfaces
         root.style.setProperty('--theme-countdown', colors.countdown);
         root.style.setProperty('--theme-border', colors.border);
         root.style.setProperty('--theme-border-light', colors.borderLight);
@@ -2677,7 +2685,7 @@ function applyTheme() {
         root.style.setProperty('--theme-text-secondary', customThemeColors.textSecondary);
         root.style.setProperty('--theme-text-muted', customThemeColors.textMuted || customThemeColors.textSecondary);
         root.style.setProperty('--theme-accent', customThemeColors.accent);
-        // v5.69.0: If user hasn't set a custom accent-bold, fall back to canonical Carolina
+        // v5.69.1: If user hasn't set a custom accent-bold, fall back to canonical Carolina
         root.style.setProperty('--theme-accent-bold', customThemeColors.accentBold || '#4B9CD3');
         root.style.setProperty('--theme-countdown', customThemeColors.countdown);
         root.style.setProperty('--theme-border', customThemeColors.border || '#d1d5db');
@@ -3131,6 +3139,13 @@ async function togglePictureInPicture() {
         // V5.55.8: Remove Q button - queue modal can't work in PiP
         const oldQueueBtn = quickBellsClone.querySelector('#quick-bell-queue-btn');
         if (oldQueueBtn) oldQueueBtn.remove();
+        // V5.69.4: Remove broadcast toggle - cloned button's onclick references
+        // toggleBroadcastMode which doesn't exist in the PiP window's scope, so the
+        // cloned button is dead. Also creates duplicate-ID issues with the main-page
+        // toggle. Broadcast sync still works fine via the main-page toggle; the PiP
+        // is meant for at-a-glance bell display, not configuration.
+        const oldBroadcastToggle = quickBellsClone.querySelector('#quick-bell-broadcast-toggle');
+        if (oldBroadcastToggle) oldBroadcastToggle.remove();
         container.appendChild(quickBellsClone);
         
         pipDoc.body.appendChild(container);
