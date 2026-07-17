@@ -10,7 +10,7 @@
 // ║  Edits made here will be silently overwritten by the next build.       ║
 // ║  Full workflow (this + the Tailwind rule): build/README-BUILD.md       ║
 // ╚══════════════════════════════════════════════════════════════════════╝
-const APP_VERSION = "5.79.0"
+const APP_VERSION = "5.79.1"
 // Release history lives in CHANGELOG.md — add new version notes there, not here.
 // (Extracted 2026-07: ~280 lines of V3–V5.69 notes moved out of this file.)
 
@@ -6387,6 +6387,7 @@ function setActiveSchedule(prefixedId) {
 
     // Reset bell arrays (now period structures)
     activeSharedScheduleShift = null; // V5.74.0
+    { const t = document.getElementById('add-bell-target-name'); if (t) t.textContent = 'no shared schedule selected'; } // V5.79.1
     localSchedulePeriods = [];
     personalBellsPeriods = [];
     localSchedule = []; // Reset flat list
@@ -6482,6 +6483,8 @@ function setActiveSchedule(prefixedId) {
             if (docSnap.exists()) {
                 const scheduleData = docSnap.data();
                 activeSharedScheduleShift = scheduleData.temporaryShift || null; // V5.74.0
+                const addBellTarget = document.getElementById('add-bell-target-name'); // V5.79.1
+                if (addBellTarget) addBellTarget.textContent = scheduleData.name;
                 if (activePersonalScheduleId === null) { 
                     scheduleTitle.textContent = scheduleData.name;
                 }
@@ -6686,6 +6689,8 @@ function setActiveSchedule(prefixedId) {
                 if (docSnap.exists()) {
                     const scheduleData = docSnap.data();
                     activeSharedScheduleShift = scheduleData.temporaryShift || null; // V5.74.0
+                    const addBellTarget2 = document.getElementById('add-bell-target-name'); // V5.79.1
+                    if (addBellTarget2) addBellTarget2.textContent = scheduleData.name;
                     // V4.0 FINAL: Check for PERIODS structure first. If not found, use legacy BELLS structure.
                     if (scheduleData.periods && scheduleData.periods.length > 0) {
                         localSchedulePeriods = scheduleData.periods;
@@ -14099,27 +14104,29 @@ function updateClockDriftBanner(driftMs) {
     banner.classList.remove('hidden');
 }
 // ============================================================
-// V5.78.0: WEB NOTIFICATION BACKUP RING
+// V5.78.0 / fixed V5.79.1: WEB NOTIFICATION BACKUP RING
 // A permission-gated system notification that fires alongside the audio
-// bell — the second channel for when a tab is throttled in the background
-// or audio fails silently. Every ring path (scheduled bells, missed-bell
-// recovery, queue timers, quick bells) funnels through ringBell(), so one
-// hook in ringBell covers them all — and because callers check mutes
-// BEFORE calling ringBell, notifications automatically respect mutes.
+// bell when the tab is HIDDEN — the second channel for throttled background
+// tabs and silent audio failures. One hook in ringBell() covers every ring
+// path, and mutes are respected for free (callers gate before ringBell).
 //
-// Deliberate decisions (documented so nobody "improves" them blind):
-//  - OPT-IN, PER-DEVICE (localStorage), not cloud-synced. The original
-//    sketch said "persist via preferences cloud sync," but Notification
-//    permission is inherently per-browser-per-device — a synced ON that
-//    follows you to a device that never granted permission would just be
-//    a toggle that lies. Per-device keeps the toggle truthful.
-//  - Fires ONLY when the tab is hidden (document.hidden). When the tab is
-//    visible, the teacher already gets audio + the visual cue; an OS
-//    notification on top is noise. The backup channel exists for the
-//    backgrounded case.
-//  - Failures are silent (a backup channel must not create foreground
-//    noise); the toggle reflects reality (turns itself off if permission
-//    was revoked at the browser level).
+// V5.79.1 BUG FIX: the toggle could read "Off" even after the user granted
+// permission. Two causes addressed:
+//  1. Safari's legacy Notification.requestPermission() takes a CALLBACK and
+//     returns undefined instead of a Promise — `await` on it resolved
+//     immediately with undefined, so a real "granted" was read as a denial.
+//     Now shimmed to handle both forms, and Notification.permission itself
+//     (not the return value) is the source of truth afterward.
+//  2. Permission granted at the browser level (site settings) without our
+//     toggle knowing. The label now derives purely from
+//     (localStorage intent + live Notification.permission) on every
+//     refresh, refreshes on tab visibility changes and — where supported —
+//     live permission changes, and shows an explicit third state,
+//     "blocked", when the browser has permission denied.
+//
+// Design decisions (unchanged, see CHANGELOG v5.78.0): opt-in, per-device
+// localStorage (a cloud-synced toggle would lie on devices that never
+// granted permission); hidden-tab-only firing; silent failures.
 // ============================================================
 
 let bellNotificationsEnabled = false;
@@ -14131,19 +14138,41 @@ function notificationsSupported() {
     return typeof Notification !== 'undefined';
 }
 
+/** Promise/callback-compatible permission request (Safari legacy form). */
+function requestNotificationPermissionCompat() {
+    return new Promise((resolve) => {
+        try {
+            const maybePromise = Notification.requestPermission((result) => resolve(result));
+            if (maybePromise && typeof maybePromise.then === 'function') {
+                maybePromise.then(resolve);
+            }
+        } catch (e) {
+            resolve('denied');
+        }
+        // Whatever path resolves first wins; both report the same browser state.
+    });
+}
+
 function refreshNotificationToggleUi() {
     const btn = document.getElementById('bell-notifications-toggle');
     if (!btn) return;
     if (!notificationsSupported()) {
-        btn.textContent = '🔕 Notifications unsupported';
+        btn.textContent = '\ud83d\udd15 Notifications unsupported';
         btn.disabled = true;
         return;
     }
-    const effective = bellNotificationsEnabled && Notification.permission === 'granted';
-    btn.textContent = effective ? '🔔 Notifications: On' : '🔕 Notifications: Off';
-    btn.title = effective
-        ? 'System notifications fire when this tab is in the background. Click to turn off.'
-        : 'Also ring via a system notification when this tab is in the background. Click to enable.';
+    const perm = Notification.permission; // live browser truth
+    if (perm === 'denied') {
+        btn.textContent = '\ud83d\udd15 Notifications: blocked';
+        btn.title = 'Notifications are blocked for this site in your browser settings. Allow them there, then click to enable.';
+    } else if (bellNotificationsEnabled && perm === 'granted') {
+        btn.textContent = '\ud83d\udd14 Notifications: On';
+        btn.title = 'System notifications fire when this tab is in the background. Click to turn off.';
+    } else {
+        btn.textContent = '\ud83d\udd15 Notifications: Off';
+        btn.title = 'Also ring via a system notification when this tab is in the background. Click to enable.';
+    }
+    console.log(`[Notify] UI refreshed: intent=${bellNotificationsEnabled}, permission=${perm}`);
 }
 
 async function toggleBellNotifications() {
@@ -14151,11 +14180,13 @@ async function toggleBellNotifications() {
     try {
         if (bellNotificationsEnabled && Notification.permission === 'granted') {
             bellNotificationsEnabled = false;
+            console.log('[Notify] turned OFF by user');
         } else {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
+            await requestNotificationPermissionCompat();
+            // Source of truth is the live property, never the return value.
+            if (Notification.permission === 'granted') {
                 bellNotificationsEnabled = true;
-                // Immediate proof-of-life so the teacher knows what it looks like
+                console.log('[Notify] turned ON (permission granted)');
                 new Notification('Ellis Web Bell', {
                     body: 'Backup notifications are on. You\u2019ll get one like this when a bell rings while this tab is in the background.',
                     icon: '/icon-192.png',
@@ -14163,7 +14194,10 @@ async function toggleBellNotifications() {
                 });
             } else {
                 bellNotificationsEnabled = false;
-                showUserMessage('Notifications are blocked for this site in your browser settings. Allow them there, then try again.', 'Notifications');
+                console.log(`[Notify] enable failed: permission=${Notification.permission}`);
+                if (Notification.permission === 'denied') {
+                    showUserMessage('Notifications are blocked for this site in your browser settings. Allow them there, then try again.', 'Notifications');
+                }
             }
         }
         try { localStorage.setItem('bellNotificationsEnabled', String(bellNotificationsEnabled)); } catch (e) {}
@@ -14181,7 +14215,7 @@ function maybeNotifyBell(bell) {
     try {
         if (!bellNotificationsEnabled || !notificationsSupported()) return;
         if (Notification.permission !== 'granted') {
-            // Permission was revoked at the browser level — make the toggle truthful.
+            // Permission revoked at the browser level — make the toggle truthful.
             bellNotificationsEnabled = false;
             try { localStorage.setItem('bellNotificationsEnabled', 'false'); } catch (e) {}
             refreshNotificationToggleUi();
@@ -14191,7 +14225,7 @@ function maybeNotifyBell(bell) {
         new Notification(`\ud83d\udd14 ${bell.name}`, {
             body: bell.time ? `Scheduled for ${formatTime12Hour(bell.time, true)}` : 'Bell',
             icon: '/icon-192.png',
-            tag: 'ellis-bell-ring' // coalesce rapid-fire rings into one
+            tag: 'ellis-bell-ring'
         });
     } catch (e) {
         console.log('[Notify] skipped:', e.message);
@@ -14199,19 +14233,39 @@ function maybeNotifyBell(bell) {
 }
 
 document.getElementById('bell-notifications-toggle')?.addEventListener('click', toggleBellNotifications);
+
+// Keep the label truthful without a click: tab refocus and (where supported)
+// live permission-change events both re-derive the state.
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshNotificationToggleUi();
+});
+if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+    navigator.permissions.query({ name: 'notifications' })
+        .then((status) => { status.onchange = refreshNotificationToggleUi; })
+        .catch(() => { /* not supported — visibilitychange covers us */ });
+}
+
 refreshNotificationToggleUi();
 // ============================================================
-// V5.79.0: STATUS / HEALTH VIEW
-// The support script becomes: "open the app, tap the version number in the
-// footer, and read me the screen" (or hit Copy Report and paste it).
-// Everything a triage conversation needs, in one modal:
-//   app version · service worker version + cache (via the GET_VERSION
-//   message channel that has existed in service-worker.js since v1.0) ·
-//   connectivity + signed-in state · active schedule + any emergency shift
-//   · device clock drift (Stage 3's lastClockDriftMs) · notification state
-//   · schedule/bell counts.
+// V5.79.0 / extended V5.79.1: STATUS + FILE VERSIONS VIEW
+// Tap the version line in the footer to open the App Status modal:
+// live diagnostics (connectivity, schedule, shift, drift, notifications)
+// PLUS the version of EVERY file in the deployment — the local ones read
+// live, the sibling surfaces fetched on demand (served through the
+// network-first service worker, so a stale-cache TV shows up here as a
+// version mismatch). Copy Report puts the whole thing on the clipboard.
 // Read-only by design: this view diagnoses, it never mutates.
+//
+// Footer shows the three highest-priority versions at a glance (per the
+// owner's rule: no scrolling to identify what's live on a teacher's
+// screen): HTML (parsed from <title>), App (APP_VERSION), CSS
+// (--css-version). Everything else lives in the modal.
 // ============================================================
+
+function getHtmlPageVersion() {
+    const m = document.title.match(/(\d+(?:\.\d+)+)\s*$/);
+    return m ? m[1] : 'unknown';
+}
 
 async function getServiceWorkerVersion() {
     try {
@@ -14235,8 +14289,6 @@ async function buildStatusReport() {
     const lines = [];
     const push = (label, value) => lines.push([label, String(value)]);
 
-    push('App version', APP_VERSION);
-    push('Service worker', await getServiceWorkerVersion());
     push('Online', navigator.onLine ? 'yes' : 'NO \u2014 offline');
     push('Signed in', userId ? `${currentUserDisplayName || 'anonymous'} (${userId.slice(0, 8)}\u2026)` : 'NO');
     push('Admin mode', document.body.classList.contains('admin-mode') ? 'yes' : 'no');
@@ -14273,23 +14325,86 @@ async function buildStatusReport() {
     return lines;
 }
 
-async function openStatusModal() {
-    const modal = document.getElementById('status-modal');
-    const list = document.getElementById('status-list');
-    if (!modal || !list) return;
-    list.innerHTML = '<li class="text-sm text-gray-500 py-1">Gathering\u2026</li>';
-    modal.classList.remove('hidden');
-    const report = await buildStatusReport();
-    list.innerHTML = report.map(([label, value]) =>
-        `<li class="flex justify-between gap-4 py-1 border-b border-gray-100 text-sm">
-            <span class="text-gray-600">${escapeHtml(label)}</span>
-            <span class="font-medium text-right">${escapeHtml(value)}</span>
-        </li>`).join('');
-    // Stash a plain-text copy for the Copy Report button
-    modal.dataset.reportText = report.map(([l, v]) => `${l}: ${v}`).join('\n');
+// --- File versions (V5.79.1) -------------------------------------------
+// Local sources read live; sibling surfaces fetched and regexed. Fetches go
+// through the service worker (network-first), so what this reports is what
+// a fresh load of each page would actually get.
+
+const VERSION_FETCH_SOURCES = [
+    { label: 'clock.html',                  url: 'clock.html',                  regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'old.html (iPad clocks)',      url: 'old.html',                    regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'signage/dashboard.html',      url: 'signage/dashboard.html',      regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'signage/dashright.html',      url: 'signage/dashright.html',      regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'signage/dashclock.html',      url: 'signage/dashclock.html',      regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'signage/schedule-utils.js',   url: 'signage/schedule-utils.js',   regex: /Version:\s*(\d+(?:\.\d+)+)/ },
+    { label: 'firebase-config.js',          url: 'firebase-config.js',          regex: /Version:\s*(\d+(?:\.\d+)+)/ },
+];
+
+async function buildVersionsReport() {
+    const lines = [
+        ['index.html', getHtmlPageVersion()],
+        ['script.js (App)', APP_VERSION],
+        ['styles.css', (getComputedStyle(document.documentElement)
+            .getPropertyValue('--css-version') || 'unknown').replace(/"/g, '').trim()],
+        ['bell-engine.js', window.BellEngine.VERSION || 'pre-1.3.1'],
+        ['service-worker.js', await getServiceWorkerVersion()],
+        ['tailwind.css', 'generated (no version; rebuilt with app)'],
+    ];
+    const fetched = await Promise.all(VERSION_FETCH_SOURCES.map(async (src) => {
+        try {
+            const resp = await Promise.race([
+                fetch(src.url),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))
+            ]);
+            if (!resp.ok) return [src.label, `HTTP ${resp.status}`];
+            const text = await resp.text();
+            const m = text.match(src.regex);
+            return [src.label, m ? `v${m[1]}` : 'no version marker found'];
+        } catch (e) {
+            return [src.label, `unreachable (${e.message})`];
+        }
+    }));
+    return lines.concat(fetched);
 }
 
-document.getElementById('app-version-display')?.addEventListener('click', openStatusModal);
+// --- Modal --------------------------------------------------------------
+
+function renderStatusRows(rows) {
+    return rows.map(([label, value]) =>
+        `<li class="flex justify-between gap-4 py-1 border-b border-gray-100 text-sm">
+            <span class="text-gray-600">${escapeHtml(label)}</span>
+            <span class="font-medium text-right">${escapeHtml(String(value))}</span>
+        </li>`).join('');
+}
+
+async function openStatusModal() {
+    const modal = document.getElementById('status-modal');
+    const statusList = document.getElementById('status-list');
+    const versionsList = document.getElementById('status-versions-list');
+    if (!modal || !statusList) return;
+    statusList.innerHTML = '<li class="text-sm text-gray-500 py-1">Gathering\u2026</li>';
+    if (versionsList) versionsList.innerHTML = '<li class="text-sm text-gray-500 py-1">Checking every file\u2026</li>';
+    modal.classList.remove('hidden');
+
+    const status = await buildStatusReport();
+    statusList.innerHTML = renderStatusRows(status);
+
+    let versions = [];
+    if (versionsList) {
+        versions = await buildVersionsReport();
+        versionsList.innerHTML = renderStatusRows(versions);
+    }
+
+    modal.dataset.reportText =
+        '=== STATUS ===\n' + status.map(([l, v]) => `${l}: ${v}`).join('\n') +
+        '\n\n=== FILE VERSIONS ===\n' + versions.map(([l, v]) => `${l}: ${v}`).join('\n');
+}
+
+// Footer wiring: the whole version line opens the modal; the HTML version
+// span is populated here (App and CSS spans are set by existing code).
+document.getElementById('html-version-display')
+    && (document.getElementById('html-version-display').textContent = `v${getHtmlPageVersion()}`);
+document.getElementById('version-footer-line')?.addEventListener('click', openStatusModal);
 document.getElementById('status-close-btn')?.addEventListener('click', () =>
     document.getElementById('status-modal')?.classList.add('hidden'));
 document.getElementById('status-copy-btn')?.addEventListener('click', async () => {

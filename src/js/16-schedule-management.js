@@ -15,6 +15,7 @@ function setActiveSchedule(prefixedId) {
 
     // Reset bell arrays (now period structures)
     activeSharedScheduleShift = null; // V5.74.0
+    { const t = document.getElementById('add-bell-target-name'); if (t) t.textContent = 'no shared schedule selected'; } // V5.79.1
     localSchedulePeriods = [];
     personalBellsPeriods = [];
     localSchedule = []; // Reset flat list
@@ -110,6 +111,8 @@ function setActiveSchedule(prefixedId) {
             if (docSnap.exists()) {
                 const scheduleData = docSnap.data();
                 activeSharedScheduleShift = scheduleData.temporaryShift || null; // V5.74.0
+                const addBellTarget = document.getElementById('add-bell-target-name'); // V5.79.1
+                if (addBellTarget) addBellTarget.textContent = scheduleData.name;
                 if (activePersonalScheduleId === null) { 
                     scheduleTitle.textContent = scheduleData.name;
                 }
@@ -314,6 +317,8 @@ function setActiveSchedule(prefixedId) {
                 if (docSnap.exists()) {
                     const scheduleData = docSnap.data();
                     activeSharedScheduleShift = scheduleData.temporaryShift || null; // V5.74.0
+                    const addBellTarget2 = document.getElementById('add-bell-target-name'); // V5.79.1
+                    if (addBellTarget2) addBellTarget2.textContent = scheduleData.name;
                     // V4.0 FINAL: Check for PERIODS structure first. If not found, use legacy BELLS structure.
                     if (scheduleData.periods && scheduleData.periods.length > 0) {
                         localSchedulePeriods = scheduleData.periods;

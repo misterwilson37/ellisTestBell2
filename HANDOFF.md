@@ -2,7 +2,7 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **end of Stage 5 (status view) — the user's priority list 1-5 is COMPLETE. App version v5.79.0, 2026-07.**
+before writing any code. Last updated: **post-launch bug-fix pass v5.79.1, 2026-07. THE APP IS LIVE.**
 
 ---
 
@@ -30,12 +30,11 @@ Facts that shape design decisions — do not violate these:
 
 ## 2. CRITICAL: deployment state
 
-**NOTHING from v5.70–v5.79 has shipped yet — TEN releases are pending in
-one batch.** The user has explicitly accepted this risk ("we'll trust the
-bugs to the next iteration"). If you are the next iteration and the rollout
-has happened, your FIRST job is triage against ROLLOUT.md's smoke tests;
-the verification battery (§5) tells you whether a reported bug is in the
-code or in the deployment. The live site still runs the
+**THE ROLLOUT HAPPENED (2026-07): v5.79.0 is LIVE and ringing bells for
+~50 faculty.** Launch was clean; a same-week bug-fix pass (v5.79.1) fixed
+six cosmetic/UX quirks the owner found — see CHANGELOG. From here on you
+are maintaining PRODUCTION: verify whether a given fix has been deployed
+before assuming, and remember teachers are using it during school hours. The live site still runs the
 pre-engagement code (~v5.69.4). The user is accumulating everything into ONE
 batch rollout, executed via **ROLLOUT.md** (a living checklist — update it
 every stage). Consequences:
@@ -101,6 +100,15 @@ artifacts/{appId}/
 
 ## 4. Engineering invariants & conventions (earned, not arbitrary)
 
+0. **THE OWNER'S VERSIONING RULES (overarching, set post-launch):**
+   (a) Files version INDEPENDENTLY — bump only files actually edited in a
+   pass; never sweep-bump 40 files. (b) x.y.z semantics: z = bug fix or
+   usage clarification; y = new feature; x = major software shift — Claude
+   may propose an x, the owner has final say. (c) index.html carries its
+   version in THREE places that must always match: the <title> tag, the
+   visible <h1> banner, and the final comment line (a <head> comment
+   documents this). (d) The owner intends 7.0.0 for the stage-2 JS
+   modularization pass, likely with a new Claude iteration.
 1. **The Two Build Rules** (see `build/README-BUILD.md`): script.js and
    tailwind.css are generated; edit `src/js/` chunks / rerun the CSS build
    for never-before-used classes. `npm run check:js` detects drift.
@@ -157,6 +165,10 @@ arrows/template literals/const).
   across main app + clock.html + old.html. clock.html got 2-min data refresh
   (was load-once — TVs never saw mid-day edits!); old.html got 5-min
   auto-refresh.
+- **v5.79.1** — Post-launch bug-fix pass (versioning made consistent and
+  per-file from here on; notifications toggle Safari fix; dashboard link;
+  shift-row overflow; Create Schedule styling; add-bell target named; footer
+  shows HTML|App|CSS + all-files version modal). bell-engine 1.3.1.
 - **v5.79.0** — Status view: footer version number opens a diagnostics
   modal (SW version via GET_VERSION channel, drift, shift, schedule state,
   Copy Report). Chunk 25.
@@ -215,6 +227,14 @@ version number): APP_VERSION, SW cache version (GET_VERSION message channel
 already exists in service-worker.js), Firebase connectivity, active schedule
 + any active shift, clock drift (from Stage 3), schedule counts. Support
 script: "open the app, tap the version number, read me the screen."
+
+**Future features noted by the owner (post-launch, unscheduled):**
+- Emergency shift v2: much more customization — per-period shifts, finer
+  schedule selection, beyond the current per-schedule/all + whole-day model.
+- Admin broadcast layer: school-wide messages and/or admin-pushed countdown
+  quick bells ("2 minutes until announcements", tornado-drill notices) —
+  a redundancy layer on top of the PA, riding the same live-sync machinery
+  as the shift.
 
 **Stage 6 — Housekeeping.** Self-host Tone.js; template-generate the 49
 modals' shared chrome in index.html; automate CACHE_NAME bumping.

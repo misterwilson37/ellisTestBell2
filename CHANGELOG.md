@@ -2,6 +2,43 @@
 
 Release history for the main app (script.js / index.html). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## V5.79.1 — Post-launch bug-fix pass (per-file versions from here on)
+FROM THIS RELEASE FORWARD, files version independently — only files that
+were actually edited get bumps. This pass: index.html -> 5.79.1 (its own
+version now, in all THREE required places: <title>, the visible <h1>, and
+the final comment line — a maintenance comment in <head> documents the
+rule); script.js/App -> 5.79.1; bell-engine.js -> 1.3.1 (VERSION export
+only). Everything else untouched and unbumped. Semver semantics per the
+owner: z = fix/clarification, y = new feature, x = major shift with the
+owner's sign-off.
+
+Fixes:
+- Version display was inconsistent (title tag 5.79.0, visible header
+  5.69.2, final comment 5.69.2) — all three now match and must always.
+- Dashboard link in the header pointed at the repo root; the page lives at
+  signage/dashboard.html.
+- Notifications toggle could read "Off" after the user granted permission.
+  Root causes fixed: Safari's legacy callback-form requestPermission()
+  returns undefined, so awaiting it read a real grant as a denial (now
+  shimmed for both forms, with live Notification.permission as the source
+  of truth); and permission granted at the browser level was invisible to
+  the label (it now re-derives from live state on every refresh, on tab
+  refocus, and on permission-change events where supported, with an
+  explicit third "blocked" state).
+- Emergency shift row: Clear All overflowed the card (row now wraps;
+  button labels no longer break mid-word).
+- "Create New Schedule" was wearing modal styling (own shadowed card with
+  max-height) inside the Admin Zone card — restyled to match its sibling
+  forms.
+- "Add Bell to This Schedule" now names its target inline — the SHARED
+  base schedule it will edit — updating live with the active schedule and
+  reading "no shared schedule selected" when none is.
+- Footer now shows HTML | App | CSS versions at a glance; tapping the line
+  opens the status modal, which gains a File Versions section listing
+  EVERY file in the deployment (local ones read live, sibling surfaces
+  fetched and parsed — a stale-cached TV shows up here as a mismatch).
+  Copy Report includes both sections.
+
 ## V5.79.0 — Status / health view
 - Tap the version number in the footer (now dotted-underlined) to open the
   App Status modal: app version, service worker version (via the

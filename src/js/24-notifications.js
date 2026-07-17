@@ -1,25 +1,27 @@
 // ============================================================
-// V5.78.0: WEB NOTIFICATION BACKUP RING
+// V5.78.0 / fixed V5.79.1: WEB NOTIFICATION BACKUP RING
 // A permission-gated system notification that fires alongside the audio
-// bell — the second channel for when a tab is throttled in the background
-// or audio fails silently. Every ring path (scheduled bells, missed-bell
-// recovery, queue timers, quick bells) funnels through ringBell(), so one
-// hook in ringBell covers them all — and because callers check mutes
-// BEFORE calling ringBell, notifications automatically respect mutes.
+// bell when the tab is HIDDEN — the second channel for throttled background
+// tabs and silent audio failures. One hook in ringBell() covers every ring
+// path, and mutes are respected for free (callers gate before ringBell).
 //
-// Deliberate decisions (documented so nobody "improves" them blind):
-//  - OPT-IN, PER-DEVICE (localStorage), not cloud-synced. The original
-//    sketch said "persist via preferences cloud sync," but Notification
-//    permission is inherently per-browser-per-device — a synced ON that
-//    follows you to a device that never granted permission would just be
-//    a toggle that lies. Per-device keeps the toggle truthful.
-//  - Fires ONLY when the tab is hidden (document.hidden). When the tab is
-//    visible, the teacher already gets audio + the visual cue; an OS
-//    notification on top is noise. The backup channel exists for the
-//    backgrounded case.
-//  - Failures are silent (a backup channel must not create foreground
-//    noise); the toggle reflects reality (turns itself off if permission
-//    was revoked at the browser level).
+// V5.79.1 BUG FIX: the toggle could read "Off" even after the user granted
+// permission. Two causes addressed:
+//  1. Safari's legacy Notification.requestPermission() takes a CALLBACK and
+//     returns undefined instead of a Promise — `await` on it resolved
+//     immediately with undefined, so a real "granted" was read as a denial.
+//     Now shimmed to handle both forms, and Notification.permission itself
+//     (not the return value) is the source of truth afterward.
+//  2. Permission granted at the browser level (site settings) without our
+//     toggle knowing. The label now derives purely from
+//     (localStorage intent + live Notification.permission) on every
+//     refresh, refreshes on tab visibility changes and — where supported —
+//     live permission changes, and shows an explicit third state,
+//     "blocked", when the browser has permission denied.
+//
+// Design decisions (unchanged, see CHANGELOG v5.78.0): opt-in, per-device
+// localStorage (a cloud-synced toggle would lie on devices that never
+// granted permission); hidden-tab-only firing; silent failures.
 // ============================================================
 
 let bellNotificationsEnabled = false;
@@ -31,19 +33,41 @@ function notificationsSupported() {
     return typeof Notification !== 'undefined';
 }
 
+/** Promise/callback-compatible permission request (Safari legacy form). */
+function requestNotificationPermissionCompat() {
+    return new Promise((resolve) => {
+        try {
+            const maybePromise = Notification.requestPermission((result) => resolve(result));
+            if (maybePromise && typeof maybePromise.then === 'function') {
+                maybePromise.then(resolve);
+            }
+        } catch (e) {
+            resolve('denied');
+        }
+        // Whatever path resolves first wins; both report the same browser state.
+    });
+}
+
 function refreshNotificationToggleUi() {
     const btn = document.getElementById('bell-notifications-toggle');
     if (!btn) return;
     if (!notificationsSupported()) {
-        btn.textContent = '🔕 Notifications unsupported';
+        btn.textContent = '\ud83d\udd15 Notifications unsupported';
         btn.disabled = true;
         return;
     }
-    const effective = bellNotificationsEnabled && Notification.permission === 'granted';
-    btn.textContent = effective ? '🔔 Notifications: On' : '🔕 Notifications: Off';
-    btn.title = effective
-        ? 'System notifications fire when this tab is in the background. Click to turn off.'
-        : 'Also ring via a system notification when this tab is in the background. Click to enable.';
+    const perm = Notification.permission; // live browser truth
+    if (perm === 'denied') {
+        btn.textContent = '\ud83d\udd15 Notifications: blocked';
+        btn.title = 'Notifications are blocked for this site in your browser settings. Allow them there, then click to enable.';
+    } else if (bellNotificationsEnabled && perm === 'granted') {
+        btn.textContent = '\ud83d\udd14 Notifications: On';
+        btn.title = 'System notifications fire when this tab is in the background. Click to turn off.';
+    } else {
+        btn.textContent = '\ud83d\udd15 Notifications: Off';
+        btn.title = 'Also ring via a system notification when this tab is in the background. Click to enable.';
+    }
+    console.log(`[Notify] UI refreshed: intent=${bellNotificationsEnabled}, permission=${perm}`);
 }
 
 async function toggleBellNotifications() {
@@ -51,11 +75,13 @@ async function toggleBellNotifications() {
     try {
         if (bellNotificationsEnabled && Notification.permission === 'granted') {
             bellNotificationsEnabled = false;
+            console.log('[Notify] turned OFF by user');
         } else {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
+            await requestNotificationPermissionCompat();
+            // Source of truth is the live property, never the return value.
+            if (Notification.permission === 'granted') {
                 bellNotificationsEnabled = true;
-                // Immediate proof-of-life so the teacher knows what it looks like
+                console.log('[Notify] turned ON (permission granted)');
                 new Notification('Ellis Web Bell', {
                     body: 'Backup notifications are on. You\u2019ll get one like this when a bell rings while this tab is in the background.',
                     icon: '/icon-192.png',
@@ -63,7 +89,10 @@ async function toggleBellNotifications() {
                 });
             } else {
                 bellNotificationsEnabled = false;
-                showUserMessage('Notifications are blocked for this site in your browser settings. Allow them there, then try again.', 'Notifications');
+                console.log(`[Notify] enable failed: permission=${Notification.permission}`);
+                if (Notification.permission === 'denied') {
+                    showUserMessage('Notifications are blocked for this site in your browser settings. Allow them there, then try again.', 'Notifications');
+                }
             }
         }
         try { localStorage.setItem('bellNotificationsEnabled', String(bellNotificationsEnabled)); } catch (e) {}
@@ -81,7 +110,7 @@ function maybeNotifyBell(bell) {
     try {
         if (!bellNotificationsEnabled || !notificationsSupported()) return;
         if (Notification.permission !== 'granted') {
-            // Permission was revoked at the browser level — make the toggle truthful.
+            // Permission revoked at the browser level — make the toggle truthful.
             bellNotificationsEnabled = false;
             try { localStorage.setItem('bellNotificationsEnabled', 'false'); } catch (e) {}
             refreshNotificationToggleUi();
@@ -91,7 +120,7 @@ function maybeNotifyBell(bell) {
         new Notification(`\ud83d\udd14 ${bell.name}`, {
             body: bell.time ? `Scheduled for ${formatTime12Hour(bell.time, true)}` : 'Bell',
             icon: '/icon-192.png',
-            tag: 'ellis-bell-ring' // coalesce rapid-fire rings into one
+            tag: 'ellis-bell-ring'
         });
     } catch (e) {
         console.log('[Notify] skipped:', e.message);
@@ -99,4 +128,16 @@ function maybeNotifyBell(bell) {
 }
 
 document.getElementById('bell-notifications-toggle')?.addEventListener('click', toggleBellNotifications);
+
+// Keep the label truthful without a click: tab refocus and (where supported)
+// live permission-change events both re-derive the state.
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshNotificationToggleUi();
+});
+if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+    navigator.permissions.query({ name: 'notifications' })
+        .then((status) => { status.onchange = refreshNotificationToggleUi; })
+        .catch(() => { /* not supported — visibilitychange covers us */ });
+}
+
 refreshNotificationToggleUi();

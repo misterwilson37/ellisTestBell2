@@ -1,4 +1,23 @@
-# ROLLOUT.md — one-time deployment checklist for the v5.70–v5.73 batch
+# ROLLOUT.md
+
+## ✅ v5.79.0 batch: DEPLOYED 2026-07. The checklist below did its job.
+
+## LATEST — v5.79.1 bug-fix delta (deploy this now)
+Replace these files in the repo, push, hard-refresh. No build, no Firebase
+console, no rules change:
+- [ ] `index.html`  (v5.79.1 — version now consistent in all three places)
+- [ ] `script.js`   (App v5.79.1 — notifications fix + status/versions modal)
+- [ ] `bell-engine.js` (v1.3.1 — version export only)
+- [ ] `src/js/` folder (source for the above; keeps repo in sync with build)
+- [ ] Docs: `CHANGELOG.md`, `HANDOFF.md`, `README.md`, this file
+- [ ] Verify: hard-refresh -> header and title both say 5.79.1; footer shows
+      HTML | App | CSS; tapping it lists every file's version; notifications
+      toggle reflects reality (On / Off / blocked); dashboard link opens;
+      shift row fits; "Add Bell" names your base schedule.
+
+---
+
+# Original checklist — one-time deployment for the v5.70–v5.79 batch
 
 You're deploying four releases at once (security hardening, self-hosted
 Tailwind, the script.js split + shared engine, and the day-type calendar).

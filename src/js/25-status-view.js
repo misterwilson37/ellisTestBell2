@@ -1,15 +1,23 @@
 // ============================================================
-// V5.79.0: STATUS / HEALTH VIEW
-// The support script becomes: "open the app, tap the version number in the
-// footer, and read me the screen" (or hit Copy Report and paste it).
-// Everything a triage conversation needs, in one modal:
-//   app version · service worker version + cache (via the GET_VERSION
-//   message channel that has existed in service-worker.js since v1.0) ·
-//   connectivity + signed-in state · active schedule + any emergency shift
-//   · device clock drift (Stage 3's lastClockDriftMs) · notification state
-//   · schedule/bell counts.
+// V5.79.0 / extended V5.79.1: STATUS + FILE VERSIONS VIEW
+// Tap the version line in the footer to open the App Status modal:
+// live diagnostics (connectivity, schedule, shift, drift, notifications)
+// PLUS the version of EVERY file in the deployment — the local ones read
+// live, the sibling surfaces fetched on demand (served through the
+// network-first service worker, so a stale-cache TV shows up here as a
+// version mismatch). Copy Report puts the whole thing on the clipboard.
 // Read-only by design: this view diagnoses, it never mutates.
+//
+// Footer shows the three highest-priority versions at a glance (per the
+// owner's rule: no scrolling to identify what's live on a teacher's
+// screen): HTML (parsed from <title>), App (APP_VERSION), CSS
+// (--css-version). Everything else lives in the modal.
 // ============================================================
+
+function getHtmlPageVersion() {
+    const m = document.title.match(/(\d+(?:\.\d+)+)\s*$/);
+    return m ? m[1] : 'unknown';
+}
 
 async function getServiceWorkerVersion() {
     try {
@@ -33,8 +41,6 @@ async function buildStatusReport() {
     const lines = [];
     const push = (label, value) => lines.push([label, String(value)]);
 
-    push('App version', APP_VERSION);
-    push('Service worker', await getServiceWorkerVersion());
     push('Online', navigator.onLine ? 'yes' : 'NO \u2014 offline');
     push('Signed in', userId ? `${currentUserDisplayName || 'anonymous'} (${userId.slice(0, 8)}\u2026)` : 'NO');
     push('Admin mode', document.body.classList.contains('admin-mode') ? 'yes' : 'no');
@@ -71,23 +77,86 @@ async function buildStatusReport() {
     return lines;
 }
 
-async function openStatusModal() {
-    const modal = document.getElementById('status-modal');
-    const list = document.getElementById('status-list');
-    if (!modal || !list) return;
-    list.innerHTML = '<li class="text-sm text-gray-500 py-1">Gathering\u2026</li>';
-    modal.classList.remove('hidden');
-    const report = await buildStatusReport();
-    list.innerHTML = report.map(([label, value]) =>
-        `<li class="flex justify-between gap-4 py-1 border-b border-gray-100 text-sm">
-            <span class="text-gray-600">${escapeHtml(label)}</span>
-            <span class="font-medium text-right">${escapeHtml(value)}</span>
-        </li>`).join('');
-    // Stash a plain-text copy for the Copy Report button
-    modal.dataset.reportText = report.map(([l, v]) => `${l}: ${v}`).join('\n');
+// --- File versions (V5.79.1) -------------------------------------------
+// Local sources read live; sibling surfaces fetched and regexed. Fetches go
+// through the service worker (network-first), so what this reports is what
+// a fresh load of each page would actually get.
+
+const VERSION_FETCH_SOURCES = [
+    { label: 'clock.html',                  url: 'clock.html',                  regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'old.html (iPad clocks)',      url: 'old.html',                    regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'signage/dashboard.html',      url: 'signage/dashboard.html',      regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'signage/dashright.html',      url: 'signage/dashright.html',      regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'signage/dashclock.html',      url: 'signage/dashclock.html',      regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
+    { label: 'signage/schedule-utils.js',   url: 'signage/schedule-utils.js',   regex: /Version:\s*(\d+(?:\.\d+)+)/ },
+    { label: 'firebase-config.js',          url: 'firebase-config.js',          regex: /Version:\s*(\d+(?:\.\d+)+)/ },
+];
+
+async function buildVersionsReport() {
+    const lines = [
+        ['index.html', getHtmlPageVersion()],
+        ['script.js (App)', APP_VERSION],
+        ['styles.css', (getComputedStyle(document.documentElement)
+            .getPropertyValue('--css-version') || 'unknown').replace(/"/g, '').trim()],
+        ['bell-engine.js', window.BellEngine.VERSION || 'pre-1.3.1'],
+        ['service-worker.js', await getServiceWorkerVersion()],
+        ['tailwind.css', 'generated (no version; rebuilt with app)'],
+    ];
+    const fetched = await Promise.all(VERSION_FETCH_SOURCES.map(async (src) => {
+        try {
+            const resp = await Promise.race([
+                fetch(src.url),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))
+            ]);
+            if (!resp.ok) return [src.label, `HTTP ${resp.status}`];
+            const text = await resp.text();
+            const m = text.match(src.regex);
+            return [src.label, m ? `v${m[1]}` : 'no version marker found'];
+        } catch (e) {
+            return [src.label, `unreachable (${e.message})`];
+        }
+    }));
+    return lines.concat(fetched);
 }
 
-document.getElementById('app-version-display')?.addEventListener('click', openStatusModal);
+// --- Modal --------------------------------------------------------------
+
+function renderStatusRows(rows) {
+    return rows.map(([label, value]) =>
+        `<li class="flex justify-between gap-4 py-1 border-b border-gray-100 text-sm">
+            <span class="text-gray-600">${escapeHtml(label)}</span>
+            <span class="font-medium text-right">${escapeHtml(String(value))}</span>
+        </li>`).join('');
+}
+
+async function openStatusModal() {
+    const modal = document.getElementById('status-modal');
+    const statusList = document.getElementById('status-list');
+    const versionsList = document.getElementById('status-versions-list');
+    if (!modal || !statusList) return;
+    statusList.innerHTML = '<li class="text-sm text-gray-500 py-1">Gathering\u2026</li>';
+    if (versionsList) versionsList.innerHTML = '<li class="text-sm text-gray-500 py-1">Checking every file\u2026</li>';
+    modal.classList.remove('hidden');
+
+    const status = await buildStatusReport();
+    statusList.innerHTML = renderStatusRows(status);
+
+    let versions = [];
+    if (versionsList) {
+        versions = await buildVersionsReport();
+        versionsList.innerHTML = renderStatusRows(versions);
+    }
+
+    modal.dataset.reportText =
+        '=== STATUS ===\n' + status.map(([l, v]) => `${l}: ${v}`).join('\n') +
+        '\n\n=== FILE VERSIONS ===\n' + versions.map(([l, v]) => `${l}: ${v}`).join('\n');
+}
+
+// Footer wiring: the whole version line opens the modal; the HTML version
+// span is populated here (App and CSS spans are set by existing code).
+document.getElementById('html-version-display')
+    && (document.getElementById('html-version-display').textContent = `v${getHtmlPageVersion()}`);
+document.getElementById('version-footer-line')?.addEventListener('click', openStatusModal);
 document.getElementById('status-close-btn')?.addEventListener('click', () =>
     document.getElementById('status-modal')?.classList.add('hidden'));
 document.getElementById('status-copy-btn')?.addEventListener('click', async () => {

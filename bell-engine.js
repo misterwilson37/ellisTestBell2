@@ -1,6 +1,6 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.3.0
+ * Version: 1.3.1
  * (1.0.0: extracted from script.js v5.71.0 in app release v5.72.0;
  *  1.1.0: added toLocalDateString + resolveCalendarSchedule for the
  *  day-type calendar feature [feature parked in v5.74.0, resolver kept];
@@ -383,6 +383,7 @@
     }
 
     const BellEngine = {
+        VERSION: '1.3.1', // v1.3.1: exported so the status modal can report it
         escapeHtml,
         getBellId,
         formatTime12Hour,

@@ -10,7 +10,7 @@
 // ║  Edits made here will be silently overwritten by the next build.       ║
 // ║  Full workflow (this + the Tailwind rule): build/README-BUILD.md       ║
 // ╚══════════════════════════════════════════════════════════════════════╝
-const APP_VERSION = "5.79.0"
+const APP_VERSION = "5.79.1"
 // Release history lives in CHANGELOG.md — add new version notes there, not here.
 // (Extracted 2026-07: ~280 lines of V3–V5.69 notes moved out of this file.)
 

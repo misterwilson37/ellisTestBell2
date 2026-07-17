@@ -3,7 +3,11 @@
 <head>
 	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.79.0</title>
+    <!-- VERSIONING RULE: index.html's version appears in THREE places that must
+         always match — this <title>, the visible <h1> banner, and the comment on
+         the last line of this file. Update all three together. (z = fix/tweak,
+         y = new feature, x = major shift with the owner's sign-off.) -->
+    <title>Ellis Web Bell 5.79.1</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -1155,6 +1159,8 @@
             <h3 class="text-xl font-medium mb-2">App Status</h3>
             <p class="text-sm text-gray-600 mb-4">If something's misbehaving, send this whole report along with what you were doing.</p>
             <ul id="status-list" class="mb-4"></ul>
+            <h4 class="text-sm font-semibold text-gray-800 mb-1 border-t pt-3">File Versions (as a fresh load would get them)</h4>
+            <ul id="status-versions-list" class="mb-4"></ul>
             <div class="mt-4 flex justify-end gap-3">
                 <button type="button" id="status-copy-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Copy Report</button>
                 <button type="button" id="status-close-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Close</button>
@@ -1418,7 +1424,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.69.2</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 5.79.1</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -1426,7 +1432,7 @@
                     🕐 Clock Display
                 </a>
                 <span class="text-gray-400">•</span>
-                <a href="dashboard.html" target="_blank" class="text-gray-500 hover:text-blue-600 transition-colors" title="Open school dashboard with video and slides">
+                <a href="signage/dashboard.html" target="_blank" class="text-gray-500 hover:text-blue-600 transition-colors" title="Open school dashboard with video and slides">
                     📺 School Dashboard
                 </a>
             </div>
@@ -1699,20 +1705,20 @@
             <!-- V5.74.0: Emergency schedule shift (today only) -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Emergency Schedule Shift (today only)</label>
-                <div class="flex flex-col sm:flex-row gap-3 mb-2">
+                <div class="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-2">
                     <select id="emergency-shift-schedule" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
                         <option value="__ALL__">All shared schedules</option>
                     </select>
                     <input type="number" id="emergency-shift-minutes" placeholder="+/- minutes" step="1" class="w-full sm:w-36 px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
-                    <button type="button" id="emergency-shift-apply-btn" class="px-6 py-2 bg-orange-600 text-white font-medium rounded-lg shadow-md hover:bg-orange-700">Apply Shift</button>
-                    <button type="button" id="emergency-shift-clear-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Clear All</button>
+                    <button type="button" id="emergency-shift-apply-btn" class="whitespace-nowrap px-6 py-2 bg-orange-600 text-white font-medium rounded-lg shadow-md hover:bg-orange-700">Apply Shift</button>
+                    <button type="button" id="emergency-shift-clear-btn" class="whitespace-nowrap px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Clear All</button>
                 </div>
                 <div id="emergency-shift-status" class="text-sm mb-1"><span class="text-gray-500">No shifts active today.</span></div>
                 <p class="text-xs text-gray-500">Shifts every static bell on the base schedule; relative bells (including teachers' personal bells anchored to it) ripple automatically. Teachers' pinned personal times don't move. Expires by itself at midnight.</p>
             </div>
 
             <!-- Create New Schedule Form -->
-            <form id="create-schedule-form" class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <form id="create-schedule-form" class="border-t pt-6">
                 <label for="new-schedule-name" class="block text-sm font-medium text-gray-700 mb-1">Create New Schedule</label>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <input type="text" id="new-schedule-name" placeholder="New Schedule Name" required class="flex-grow w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1724,7 +1730,7 @@
 
             <!-- NEW: Add Bell to THIS Schedule Form -->
             <form id="add-shared-bell-form" class="border-t pt-6">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Add Bell to This Schedule</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Add Bell to This Schedule (<span id="add-bell-target-name" class="font-semibold">no shared schedule selected</span>)</label>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                     <div>
@@ -3076,11 +3082,14 @@
             <p>
                 <code id="userIdDisplay" class="bg-gray-200 px-2 py-1 rounded">...</code>
             </p>
-			<div class="text-center mt-2 text-xs text-gray-400">
-   		 		App Version: <span id="app-version-display" class="font-bold text-gray-600 cursor-pointer underline decoration-dotted" title="Tap for status &amp; diagnostics">Loading...</span>
-   		 		&nbsp;|&nbsp;
-   		 		CSS Version: <span id="css-version-display" class="font-bold text-gray-600">Loading...</span>
-			</div>
+			<div id="version-footer-line" class="text-center mt-2 text-xs text-gray-400 cursor-pointer" title="Tap for full status &amp; every file's version">
+                HTML: <span id="html-version-display" class="font-bold text-gray-600">...</span>
+                &nbsp;|&nbsp;
+                App: <span id="app-version-display" class="font-bold text-gray-600">Loading...</span>
+                &nbsp;|&nbsp;
+                CSS: <span id="css-version-display" class="font-bold text-gray-600">Loading...</span>
+                &nbsp;&mdash; <span class="underline decoration-dotted">status &amp; versions</span>
+            </div>
         </footer>
 
         <input type="file" id="restore-file-input" class="hidden" accept="application/json,.json">
@@ -3121,4 +3130,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 5.69.2 -->
+<!-- Version 5.79.1 -->
