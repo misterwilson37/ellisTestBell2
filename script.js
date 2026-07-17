@@ -1,287 +1,45 @@
-const APP_VERSION = "5.69.4"
-// V5.69.4: PiP broadcast toggle fix
-// - Removed the broadcast toggle from the Picture-in-Picture popup. The toggle
-//   was being deep-cloned into the PiP from the main page's #quickBellControls,
-//   but the cloned button's inline onclick="toggleBroadcastMode()" referenced a
-//   function that doesn't exist in the PiP window's scope — silently no-op. Also
-//   created a duplicate-ID conflict with the main-page toggle.
-// - Broadcast sync still works as expected via the main-page toggle. The PiP is
-//   meant for at-a-glance bell display, not configuration.
-// V5.69.1: Carolina Blue palette — foundation pass (Tier 2 of audit, part 1 of ~3)
-// - Light/dark theme objects now use Carolina Blue hues instead of
-//   Tailwind blue-600/blue-400:
-//     Light accent: #38759E (Carolina Deep, WCAG AA-compliant on white at 4.99:1)
-//     Dark accent:  #8FC3E8 (Carolina Sky, excellent contrast on dark at 9.41:1)
-//     Bold accent:  #4B9CD3 (canonical Carolina Blue, used for large surfaces)
-// - Added --theme-accent-bold custom property for buttons/headers/backgrounds
-//   where contrast requirements are relaxed (large text / non-text UI).
-//   Existing --theme-accent remains the text-safe variant.
-// - Visual cue default background: 18 instances of #4338CA (indigo) replaced
-//   with #4B9CD3 (Carolina). Audited in context; all were "default bg color
-//   for custom-text visual cues" — not semantic, just a leftover default.
-// NOTE: This is the *foundation* of Tier 2. Tailwind class replacements
-// (blue-500 → theme-accent-bold, etc.) and the other files (clock.html,
-// dashboard.html, old.html, manifest.json) come in 5.70.0 and 5.71.0.
-// V5.68.0: Inline rename button for discoverability
-// - Added a pencil-icon button next to the schedule title in the main view.
-//   The admin-rename capability already existed (in the Admin Zone since v4.91),
-//   but was undiscoverable. The new inline button dispatches to the existing
-//   handlers: openRenameSharedScheduleModal() for admins (handles both shared
-//   and personal schedules), handleRenamePersonalSchedule() for authenticated
-//   non-admins with a personal schedule selected.
-// - The inline button mirrors the enabled state of the existing two rename
-//   buttons — no new permission logic, just a more findable entry point.
-// - Hidden in kiosk mode via the existing .kiosk-hide class.
-// V5.67.0: Audit pass — versioning cleanup + shared config + dead code removal
-// - REMOVED: CLOCK_VERSION and DASHBOARD_VERSION constants (stale cross-references).
-//   Each sibling file (clock.html, dashboard.html, dashboard-config.html) now
-//   tracks and displays its own version. index.html footer updated to match.
-// - REMOVED: Inline firebaseConfig declaration. Now read from window.firebaseConfig
-//   (defined in shared firebase-config.js). Consumers: index.html loads it before
-//   script.js; clock/dashboard/dashboard-config load it before their init logic.
-// - REMOVED: Dead functions — checkQueueUntilBell (never called outside definition),
-//   findPeriodAnchorBell (same), plus already-commented-out flattenPeriodsToBells
-//   and handleRelativeTimeChange blocks.
-// V5.66.3: Time Format Fixes & Theme Improvements
-// - FIX: Schedules with HH:MM times (without seconds) now work correctly
-//   - Root cause: setHours() with undefined seconds created Invalid Date, breaking countdown
-//   - Fixed in: updateClock(), isSafeToCleanup(), getDateForBellTime()
-// - NEW: Auto-migration normalizes HH:MM -> HH:MM:SS on schedule load (admins fix shared, users fix personal)
-// - Fixed bell item hover in dark mode (white-on-white issue)
-// - Added --theme-bg-hover and --theme-border-light CSS variables
-// V5.66.2: Theme & Bell Editing Fixes
-// - Fixed dark mode: visual cue container now uses theme variable
-// - Fixed light mode contrast: darker secondary text colors for readability
-// - Fixed shared bell sound editing:
-//   - ALL users can now change sound (creates personal override, only affects their room)
-//   - Sound dropdown enabled by default for everyone
-//   - Admins see "Override for all users" checkbox to optionally push to shared bell
-//   - Non-admins don't see checkbox (their changes are always personal)
-// - Added CSS variables for visual background, button colors
-// V5.66.1: Broadcast Toggle Fix
-// - Added onclick fallback to broadcast toggle button
-// - Added pointer-events-none to SVG to prevent click interception
-// V5.66.0: Theme & Display Settings
-// - Added Theme & Display panel in Visual Manager section
-// - Light/Dark theme presets with one-click toggle
-// - Custom color pickers for: background, card, text, secondary text, accent, countdown
-// - Toggle to hide visual cue graphic
-// - Live preview panel showing how changes will look
-// - Theme persists to localStorage and syncs to cloud
-// - CSS variables applied to entire page for seamless theming
-// V5.65.3: Remove broadcast popup messages
-// - Removed "Broadcast sent" and "synced from another device" modals (too intrusive)
-// - Console logging remains for debugging if needed
-// V5.65.2: Broadcast Fix - Use correct user variable
-// - Fixed: Changed currentUser (undefined) to userId (correct variable)
-// - Added detailed console logging for debugging
-// - Added user-visible messages when broadcast sends/receives
-// - Increased stale broadcast threshold from 5s to 10s
-// V5.65.1: Broadcast Toggle Fix
-// - Fixed broadcast toggle button not responding to clicks (DOM timing issue)
-// - Removed disabled attribute from HTML, button now works for all users
-// V5.65.0: Quick Bell Broadcast Feature
-// - Added broadcast toggle button next to sound dropdown (syncs quick bells across all logged-in devices)
-// - Added "Always broadcast" checkbox to custom quick bells
-// - Broadcast-enabled custom bells show a signal icon in the corner
-// - Cancel syncs across devices when broadcast is enabled
-// - Uses Firestore real-time listener for instant sync
-// V5.64.3: PiP Kiosk Mode Fixes
-// - Fixed visual cue icon not loading in kiosk mode
-// - Fixed countdown centering issue when window is small (now stays left-aligned)
-// V5.64.0: Enhanced PiP Kiosk Mode + Text Wrapping Fix
-// - Enhanced PiP kiosk mode with responsive scaling (icon fills height, countdown scales with viewport)
-// - Kiosk mode now has dark background, properly hides quick bells and action buttons
-// - Fixed text wrapping issue in full pop-out where "are" would drop to second line
-// - Fixed warning settings modal scrolling on smaller screens
-// V5.63.3: Share code feature fixes
-// - Fixed: populateScheduleSelector() -> renderScheduleSelector() (function didn't exist)
-// - Fixed: Unfollow now switches to another schedule if viewing the unfollowed one
-// V5.63.2: Fixed custom quick bell visual and sound upload
-// - Visual upload: Set currentVisualSelectTarget when opening upload from custom bell manager
-// - Visual upload: Added custom bell manager dropdowns to updateVisualDropdowns()
-// - Visual upload: Upload completion now properly updates hidden inputs for custom bells
-// - Sound upload: Added handler for [UPLOAD] selection in custom bell sound dropdown
-// - Sound upload: Added custom bell sound selects to addNewAudioOption() and updateSoundDropdowns()
-// V5.63.1: Bug fixes
-// - Users can generate 6-character share codes for their personal schedules
-// - Colleagues can enter share codes to "follow" schedules (read-only access)
-// - Following schedules appear in schedule selector under "📥 Following" group
-// - Followers can duplicate shared schedules to their own account
-// - Share codes can be revoked by the owner
-// - Updated Firestore rules: personal schedules readable by all authenticated users
-// - Updated Storage rules: user sounds/visuals readable by all authenticated users
-// V5.62.0: Memory Management System
-// - Added automatic memory purge during safe windows (when no bells approaching)
-// - Audio players now auto-dispose after playback
-// - Tracks and cleans up Tone.Player instances to prevent accumulation
-// - Clears unused audio buffer cache periodically
-// - Added PRODUCTION_MODE flag to reduce console logging
-// - Safe memory window = 60s before next bell (no cleanup during critical times)
-// V5.61.2: Dashboard v1.2.2 - added Launch TV View button
-// - Added CLOCK_VERSION and DASHBOARD_VERSION constants (dynamically displayed in footer)
-// V5.61.0: Clock Display v1.1.7 + Dashboard link
-// V5.60.0: Clock Display page initial release
-// V5.59.1: Fixed Simplified View wiping schedule
-// - Removed renderCombinedList() call from toggleSimplifiedView()
-// - CSS handles all visibility changes, no re-render needed
-// V5.59.0: Simplified View Mode + Bulk Edit Select All
-// - Added Simplified View toggle button in Active Schedule section
-// - Simplified View hides all edit/add/delete buttons in schedule display
-// - Keeps Collapse/Expand/Mute/Unmute and Quick Bells visible
-// - Preference saved in localStorage (per-machine)
-// - Added master checkbox to select/deselect all bells in Bulk Edit mode
-// - Added period-level checkboxes to select/deselect all bells in a period
-// - Checkboxes show indeterminate state when partially selected
-// V5.58.9: Fixed relative bell detection to use correct property structure
-// - Relative bells use bell.relative object, not bell.relativeToAnchor
-// - Two anchor types: parentBellId (direct) or parentPeriodName+parentAnchorType (period anchor)
-// - Period anchor references (parentPeriodName) check if target period has matching anchor bell
-// - Properly copies bell.relative object instead of wrong properties
-// V5.58.8: Properly detect and exclude orphaned relative bells
-// - Relative bells whose anchors aren't in the import are now detected and excluded
-// - First pass collects all bellIds present in the import
-// - Bells with relativeToAnchor pointing to missing anchors are skipped
-// - Empty periods (all bells orphaned) are excluded from import
-// - Period and bell counts now reflect actual importable content
-// - Orphaned relative bells shown prominently in "Will Not Be Imported" section
-// - Console logs which bells/periods are being skipped for debugging
-// V5.58.7: Fixed syntax error (extra closing brace in showImportPreviewModal)
-// V5.58.6: Import improvements
-// - Added rename input to import preview modal (pre-filled with original name)
-// - Added warning banner for linked schedules (based on shared schedule)
-// - Better handling of empty periods (shows clear message instead of importing nothing)
-// - Added reconstructPeriodsFromLegacyBells to recover periods from older backup formats
-// - Added logging to debug import issues
-// - Shows warning when no periods/bells found in backup
-// V5.58.5: Import and dropdown fixes
-// - Fixed import error with undefined field values (Firestore doesn't accept undefined)
-// - Now properly copies relative bell properties (relativeToAnchor, relativeDirection, relativeOffset, anchorRole)
-// - Handles bells without static time (relative bells)
-// - Fixed sound dropdown overflow in multiple modals (added min-w-0)
-// V5.58.4: Smart Import Preview for Admin
-// - Detects personal schedule backups when importing as admin
-// - Shows preview modal with analysis of what can/will be imported
-// - Identifies sounds not in shared storage (replaces with default)
-// - Identifies visual cues not in shared storage (removes them)
-// - Shows what personal-only data will NOT be imported (quick bells, overrides, etc.)
-// - Checkboxes let admin choose what to include
-// - Admin exports now include exportedAt and exportedAs metadata
-// V5.58.3: Admin period creation improvements
-// - Pre-check the currently active schedule when opening period modal
-// - Added visual cue picker to period creation (applies to both Period Start and Period End bells)
-// - Improved error messages: now shows specific schedule names for conflicts
-// - "Period already exists" now lists which schedules were skipped
-// - Time conflicts now show the specific bell name, period name, and time
-// - Button text changed to "Add Period to Schedule(s)..."
-// V5.58.2: Period modal UX fixes
-// - Fixed sound dropdown overflow (added min-w-0 to prevent horizontal scrolling)
-// - Modal now closes on successful period creation
-// - Success message shown via showUserMessage() toast instead of modal status
-// V5.58.1: Null safety fixes for period modal
-// - Added guard clauses to prevent errors if modal elements don't exist
-// - Used optional chaining throughout period modal functions
-// - Prevents potential blocking issues from null element access
-// V5.58.0: Admin Period Creation
-// - Added "Add Period to Schedules" button in admin zone (purple, next to Add Bell)
-// - New modal allows creating periods with Period Start and Period End bells
-// - Can add period to multiple schedules at once via checkboxes
-// - Validates that end time is after start time
-// - Checks for time conflicts (within 59s) before adding
-// - Skips schedules where period name already exists
-// - Each bell gets unique bellId (no shared IDs across schedules)
-// V5.57.2: Bell proximity threshold and error messages
-// - Changed bell proximity threshold from 60 to 59 seconds (was blocking bells 60s apart)
-// - Enhanced error messages to include the period name of the blocking bell
-// - Error now shows: bell name, period name, and time (e.g., "Period Start" in "1st Period" at 8:00 AM)
-// V5.57.1: Fix personal period bells not editable
-// - BUG FIX: Personal period anchor bells (fluke bells) were showing "Only admin can change" message
-// - Root cause: handleEditBellClick had no else clause for custom bells, so time input stayed locked
-// - Added else clause to properly enable time editing for all custom bells (type !== 'shared')
-// - Users now have full control over their personal period anchor bells
-// V5.54.6: UX improvements
-// - Sound overrides now display nickname if available, instead of raw filename
-// - Fixed sound dropdown overflow in relative bell modal (added min-w-0)
-// V5.54.5: Bug fix - relative bells anchored to relative "Period Start" bells orphan
-// - Now clones entire quickBellControls from main page instead of recreating
-// - Copies main page stylesheets (Tailwind) for consistent styling
-// - Custom quick bells work by cloning already-rendered buttons
-// - Click handlers delegate to main page buttons for reliable behavior
-// V5.47.0: Picture-in-Picture Pop-Out Mode
-// - Added Document PiP support for always-on-top floating timer window
-// - Pop-out button appears on hover over the visual cue (top-right corner)
-// - Button is in a wrapper div so it doesn't get wiped when visual updates
-// V5.46.5: Fix Individual Edit Bell + Backup/Restore for bellOverrides
-// - BUG FIX: Non-admin Edit Bell was checking hidden checkbox for sound save - now checks if sound changed
-// - BUG FIX: Edit Bell modal now shows the CURRENT sound (including overrides) not originalSound
-// - BUG FIX: Added recalculateAndRenderAll() after non-admin shared bell save for immediate UI update
-// - Backup now includes bellOverrides (shared bell customizations)
-// - Restore now restores bellOverrides and shows count in confirmation
-// V5.46.4: Fix Shared Bell Sound Overrides to Sync Across Devices
-// - Sound overrides for shared bells now save to Firestore (bellOverrides) instead of localStorage
-// - Firestore overrides now take priority over localStorage during rendering
-// - This ensures changes to shared bell sounds sync across all your devices
-// V5.46.3: Fix ESC Key Handler Reference Error
-// - Fixed reference to deleted 'renamePeriodModal' that was causing JavaScript errors
-// - Changed to correct 'edit-period-details-modal' with proper form reset
-// V5.46.2: Three Important Fixes
-// - Fixed "Duplicate as Another Personal Schedule" to copy ALL data (periods, bellOverrides, passingPeriodVisual, isStandalone)
-// - Restore from backup now allows editing the schedule name (pre-filled with backup's name)
-// - Added global ESC key handler to close any open modal without saving
-// V5.46.1: Fix Shared Bell Visual Overrides Persistence
-// - Added personalBellOverrides variable to store shared bell customizations
-// - Load bellOverrides from Firestore when personal schedule loads
-// - Apply visual overrides, sound overrides, and nicknames to shared bells during rendering
-// - Visual overrides for shared bells now persist across page refreshes
-// V5.46.0: Bulk Edit for Audio and Visual Cues
-// - Added "Bulk Edit" button to schedule list controls (visible when personal schedule is active)
-// - Click to enter selection mode, checkboxes appear next to each bell
-// - Select bells, click button again to open bulk edit modal
-// - Change audio and/or visual cue for all selected bells at once
-// - Custom bells: Updated directly in Firestore periods
-// - Shared bells: Sound overrides saved to localStorage, visual overrides saved to bellOverrides
-// - Sky blue themed UI to distinguish from other edit modes
-// V5.45.4: Remove inconsistent "Override:" prefix from sound display
-// - The sound name alone is sufficient information
-// - Removes confusing inconsistency where some overridden bells showed it and others didn't
-// V5.45.3: Fix background color picker preview for [DEFAULT] SVGs
-// - getVisualHtmlWithBg now properly handles [DEFAULT] SVGs and empty values
-// - "New" preview now updates in real-time when changing the color
-// V5.45.2: Custom background colors for default SVGs (pedestrian, lunch, numbers)
-// - [BG:#hexcolor] prefix now works with [DEFAULT] SVGs, not just images
-// - Uses raw SVG content to avoid nested backgrounds
-// - Both full-size and icon previews support custom backgrounds
-// V5.45.1: Fix period visual override backup/restore
-// - Fixed key format: uses hyphen (-) not colon (:)
-// - Fixed ID: uses activePersonalScheduleId, not baseScheduleId
-// - Restore now remaps keys to current schedule ID (so backups work across schedules)
-// - Also checks baseScheduleId for linked schedule compatibility
-// V5.45.0: Comprehensive personal schedule backup/restore
-// - Backup now saves: periods (v4 structure), period visual overrides, custom quick bells
-// - Backup includes references to custom audio/visual files (URLs)
-// - Restore supports both v1 (legacy bells) and v2 (full) formats
-// - Restore prompts to optionally restore quick bells
-// - Backup filename now includes date
-// V5.44.11: Consistent icon/text sizing across all quick bell previews
-// - Modal previews, manager previews, and actual buttons now all use SVG text
-// - SVG text scales proportionally to container, ensuring consistent appearance
-// - Font sizes: 80/45 for full preview, 70/50 for button preview (short/long text)
-// V5.44.10: Fix custom text/color modal for quick bells
-// - Created setupCustomTextModalPreviews() helper function for consistent preview behavior
-// - Live preview now updates in real-time when editing custom text/colors for quick bells
-// - Icon preview shape is now a rounded square (matching button) instead of a circle
-// - Fixed hours field not loading from Firestore for custom quick bells
-// V5.44.0: Custom Standalone Schedules - create blank schedules unlinked from shared bells
-// - New "Create Custom Standalone Schedule" button and modal
-// - Standalone schedules have baseScheduleId: null, isStandalone: true
-// - Schedule selector now shows three groups: Personal, Standalone, Shared
-// - Standalone badge displays when viewing a standalone schedule
-// - Anchor dropdowns now show bells from ALL periods (for cross-period relative bells)
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  GENERATED FILE — DO NOT EDIT script.js DIRECTLY                       ║
+// ║                                                                        ║
+// ║  This file is BUILT by concatenating the files in src/js/ in the       ║
+// ║  order defined in build/build-js.mjs. Edit those files, then run:      ║
+// ║                                                                        ║
+// ║      cd build && npm run build:js                                      ║
+// ║                                                                        ║
+// ║  and commit BOTH your src/js/ change and the regenerated script.js.    ║
+// ║  Edits made here will be silently overwritten by the next build.       ║
+// ║  Full workflow (this + the Tailwind rule): build/README-BUILD.md       ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+const APP_VERSION = "5.79.0"
+// Release history lives in CHANGELOG.md — add new version notes there, not here.
+// (Extracted 2026-07: ~280 lines of V3–V5.69 notes moved out of this file.)
+
+// ============================================================
+// v5.72.0: SHARED BELL ENGINE
+// The pure time/schedule math (formatting, time<->seconds, bell lookup,
+// relative-bell resolution) lives in bell-engine.js, which index.html loads
+// via a plain <script> tag BEFORE this module (same pattern as
+// firebase-config.js). clock.html shares the SAME file — do not re-inline
+// any of these functions here or there.
+// Tests: `node --test tests/bell-engine.test.mjs` after any engine change.
+// ============================================================
+const {
+    escapeHtml,
+    getBellId,
+    formatTime12Hour,
+    timeToSeconds,
+    secondsToTime,
+    getDateForBellTime,
+    toLocalDateString,
+    shiftTimeString
+} = window.BellEngine;
+
+// (escapeHtml moved to bell-engine.js in v5.72.0)
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
 import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signOut, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, onSnapshot, setDoc, updateDoc, collection, getDocs, writeBatch, setLogLevel, deleteDoc, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, updateDoc, collection, getDocs, writeBatch, setLogLevel, deleteDoc, getDoc, addDoc, serverTimestamp, query, orderBy, limit, getDocFromServer } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 // MODIFIED: Removed refFromURL, which was causing the error.
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll, getMetadata, updateMetadata, getBytes } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
@@ -1131,19 +889,8 @@ let currentSoundSelectTarget = null; // NEW V4.76: Stores <select> for audio mod
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 
 // --- Mute Helper Functions ---
-function getBellId(bell) {
-if (!bell) return null;
-
-// CRITICAL FIX 5.17: Always prefer the database bell.bellId if it exists
-if (bell.bellId) {
-    return String(bell.bellId);
-}
-
-// Fallback for legacy or quick bells
-if (!bell.type || !bell.time || !bell.name) return null;
-const safeName = bell.name.replace(/"/g, '&quot;');
-return `${bell.type}-${bell.time}-${safeName}`;
-}
+// (getBellId moved to bell-engine.js in v5.72.0 — imported above)
+// Reminder: its quote-only escaping is intentional (identity strings, not HTML).
 
 function loadMutedBells() {
 try {
@@ -1668,72 +1415,28 @@ userPreferencesListenerUnsubscribe = onSnapshot(prefsDocRef, (docSnap) => {
 
 // NEW: Helper to format 24h time to 12h AM/PM
 // MODIFIED: v3.22 - Added omitSecondsIfZero parameter
-function formatTime12Hour(timeString, omitSecondsIfZero = false) {
-if (!timeString) return "--:--";
+// (formatTime12Hour moved to bell-engine.js in v5.72.0 — imported above)
 
-try {
-    const parts = timeString.split(':');
-    if (parts.length < 2) return timeString; // Not a valid time
-
-    let [hours, minutes, seconds] = parts;
-    hours = parseInt(hours, 10);
-
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    
-    hours = hours % 12;
-    hours = hours ? hours : 12; // '0' (midnight) should be '12'
-
-    // 'hours' is now a number (1-12), so no leading zero.
-    
-    // NEW: v3.22 - Logic to omit seconds
-    if (omitSecondsIfZero && seconds && parseInt(seconds, 10) === 0) {
-        seconds = null; // Don't display
-    }
-
-    if (seconds) {
-        return `${hours}:${minutes}:${seconds} ${ampm}`;
-    } else {
-        return `${hours}:${minutes} ${ampm}`;
-    }
-} catch (e) {
-    console.error("Error formatting time:", e);
-    return timeString; // Fallback to original
-}
-}
-
-// NEW V4.05: Encapsulate all initialization logic inside this function
-// to prevent "ReferenceError: variable is not defined" crashes.
-(function() {
+// v5.72.0: Removed the v4.05 IIFE wrapper that used to enclose everything
+// from here to init() near the bottom of the file. In an ES module the
+// wrapper added no isolation (module scope is already not global), and it
+// prevented splitting this file into parseable chunks. Verified before
+// removal: zero name collisions between the IIFE scope and module scope
+// (531 outer vs 241 inner declarations).
 
 /**
     * NEW in 4.18: Helper to convert "HH:MM:SS" to total seconds. (REFACTORED for scope)
     * @param {string} time - The time string (HH:MM:SS)
     * @returns {number} Total seconds from midnight
     */
-const timeToSeconds = (time) => { // MODIFIED in 4.18: Changed to const arrow function
-    try {
-        const [h, m, s] = time.split(':').map(Number);
-        return (h * 3600) + (m * 60) + (s || 0); // Handle "HH:MM" or "HH:MM:SS"
-    } catch (e) {
-        return NaN;
-    }
-};
+// (timeToSeconds moved to bell-engine.js in v5.72.0 — imported above)
 
 /**
     * NEW in 4.18: Converts total seconds to "HH:MM:SS" format. (REFACTORED for scope)
     * @param {number} totalSeconds - Total seconds from midnight.
     * @returns {string} Time in HH:MM:SS format.
     */
-const secondsToTime = (totalSeconds) => { // MODIFIED in 4.18: Changed to const arrow function
-    // Ensure time wraps around 24 hours (86400 seconds)
-    totalSeconds = (totalSeconds % 86400 + 86400) % 86400;
-
-    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-    const s = String(totalSeconds % 60).padStart(2, '0');
-
-    return `${h}:${m}:${s}`;
-};
+// (secondsToTime moved to bell-engine.js in v5.72.0 — imported above)
 
 /**
     * NEW in 4.18: Generates a unique, prefixed ID for a bell. (REFACTORED for scope)
@@ -2082,27 +1785,10 @@ async function playBell(soundName) {
 // --- Clock and Bell Logic ---
 
 function findNextBell(currentTimeHHMMSS) {
-    // MODIFIED: v3.03 - Merges base schedule and personal schedule bells
-    // MODIFIED: v5.47.9 - Skip over temporarily skipped bells
-    const allBells = [...localSchedule, ...personalBells];
-    if (allBells.length === 0) return null;
-    
-    // Filter to upcoming bells that aren't skipped
-    let upcomingBells = allBells.filter(bell => 
-        bell.time > currentTimeHHMMSS && !isBellSkipped(bell)
-    );
-    
-    let nextBell;
-    if (upcomingBells.length > 0) {
-        upcomingBells.sort((a, b) => a.time.localeCompare(b.time));
-        nextBell = upcomingBells[0];
-    } else {
-        // No upcoming bells today - find first bell (for tomorrow display)
-        // Don't filter by skipped here since skips are day-specific
-        allBells.sort((a, b) => a.time.localeCompare(b.time));
-        nextBell = allBells[0];
-    }
-    return nextBell;
+    // v5.72.0: Thin wrapper. Real logic: BellEngine.findNextBellIn.
+    // Merges live schedule state and injects this app's skip predicate.
+    return window.BellEngine.findNextBellIn(
+        [...localSchedule, ...personalBells], currentTimeHHMMSS, isBellSkipped);
 }
 
 // --- NEW: v3.22 - Find the bell that rings after a given bell ---
@@ -2113,21 +1799,8 @@ function findNextBell(currentTimeHHMMSS) {
     * @returns {object|null} The next bell object, or null if it's the last bell.
     */
 function findBellAfter(currentBell, allBells) {
-    if (!currentBell || allBells.length === 0) return null;
-    // Ensure list is sorted
-    const sortedBells = [...allBells].sort((a, b) => a.time.localeCompare(b.time));
-    
-    const currentIndex = sortedBells.findIndex(b => b.time === currentBell.time && b.name === currentBell.name);
-    
-    if (currentIndex === -1) return null; // Bell not found
-    
-    // V5.47.9: Find next bell that isn't skipped
-    for (let i = currentIndex + 1; i < sortedBells.length; i++) {
-        if (!isBellSkipped(sortedBells[i])) {
-            return sortedBells[i];
-        }
-    }
-    return null; // No unskipped bells after this one
+    // v5.72.0: Thin wrapper. Real logic: BellEngine.findBellAfter.
+    return window.BellEngine.findBellAfter(currentBell, allBells, isBellSkipped);
 }
 
 /**
@@ -2136,16 +1809,7 @@ function findBellAfter(currentBell, allBells) {
     * @param {Date} referenceDate - The "current" date object (from updateClock).
     * @returns {Date} A Date object for the bell on the reference day.
     */
-function getDateForBellTime(timeString, referenceDate) {
-    // V5.66.3: Handle both "HH:MM" and "HH:MM:SS" formats
-    const timeParts = timeString.split(':').map(Number);
-    const h = timeParts[0] || 0;
-    const m = timeParts[1] || 0;
-    const s = timeParts[2] || 0;
-    const bellDate = new Date(referenceDate);
-    bellDate.setHours(h, m, s, 0); // Set time, clear milliseconds
-    return bellDate;
-}
+// (getDateForBellTime moved to bell-engine.js in v5.72.0 — imported above)
 
 // ============================================
 // V5.52.0: COUNTDOWN WARNING FUNCTIONALITY
@@ -3556,6 +3220,8 @@ function updateClock() {
         lastClockCheckTimestamp = 0; // Force reset
         currentDay = newDay;
         clearOldSkippedBells(); // V5.47.9: Clear skipped bells from previous day
+        applyCalendarSchedule('day-change'); // V5.73.0 (parked: gated off inside)
+        recalculateAndRenderAll(); // V5.74.0: expire yesterday's emergency shift
     }
 
     // B. On first run, just set the timestamp and wait for the next second.
@@ -4339,9 +4005,10 @@ async function ringBell(bell) {
     console.log(`Ringing bell: "${bell.name} (${soundName})" | Scheduled: ${bell.time} | Actual: ${actualTimeHHMMSS}`);
     
     await playBell(bell.sound); // Now awaits the async playBell
+    maybeNotifyBell(bell); // V5.78.0: backup system notification when tab is hidden
     statusElement.textContent = `Ringing: ${bell.name}`;
-    const safeName = bell.name.replace(/"/g, '&quot;');
-    const bellElement = document.querySelector(`[data-time="${bell.time}"][data-name="${safeName}"]`);
+    const selectorName = bell.name.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const bellElement = document.querySelector(`[data-time="${bell.time}"][data-name="${selectorName}"]`);
     if (bellElement) {
         bellElement.classList.add('bg-blue-100');
         setTimeout(() => {
@@ -4584,26 +4251,26 @@ function renderCustomQuickBells() {
             if (visualCue.startsWith('http')) {
                 // It's an image URL
                 // Constantly updating in 5.25 to get the appearance right.
-                visualContent = `<img src="${visualCue}" alt="${bell.name}" class="absolute inset-0 w-full h-full object-contain p-1">`;
+                visualContent = `<img src="${visualCue}" alt="${escapeHtml(bell.name)}" class="absolute inset-0 w-full h-full object-contain p-1">`;
             } else if (visualCue.startsWith('[CUSTOM_TEXT]')) {
                 // V5.44.11: Use SVG text with absolute positioning to fill button (ignoring padding)
                 const parts = visualCue.replace('[CUSTOM_TEXT] ', '').split('|');
                 const text = parts[0] || bell.iconText || bell.id;
                 const fontSize = text.length > 2 ? 50 : 70;  // Match getCustomBellIconHtml
                 visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full p-1">
-                    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text>
+                    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(text)}</text>
                 </svg>`;
             } else if (visualCue.startsWith('[DEFAULT]')) {
                 // V5.44.11: Use SVG text for default fallback too
                 const fontSize = bell.iconText.length > 2 ? 50 : 70;
                 visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full p-1">
-                    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${bell.iconText}</text>
+                    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(bell.iconText)}</text>
                 </svg>`;
             } else {
                 // V5.44.11: Fallback with SVG text
                 const fontSize = bell.iconText.length > 2 ? 50 : 70;
                 visualContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full p-1">
-                    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${bell.iconText}</text>
+                    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(bell.iconText)}</text>
                 </svg>`;
             }
 
@@ -4622,8 +4289,8 @@ function renderCustomQuickBells() {
                     data-hours="${hours}"
                     data-minutes="${minutes}"
                     data-seconds="${seconds}"
-                    data-sound="${bell.sound}"
-                    data-name="${bell.name}"
+                    data-sound="${escapeHtml(bell.sound)}"
+                    data-name="${escapeHtml(bell.name)}"
                     data-broadcast="${bell.alwaysBroadcast ? 'true' : 'false'}"
                     class="custom-quick-launch-btn font-bold py-2 px-4 rounded-lg text-sm transition-all duration-150 shadow-md hover:shadow-lg transform active:scale-95 h-11 w-11 relative overflow-hidden group flex items-center justify-center"
                     style="background-color: ${bell.iconBgColor}; color: ${bell.iconFgColor};">
@@ -4846,7 +4513,7 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
 
     const firstBellTime = formatTime12Hour(bellsToRender[0].time, true);
     const lastBellTime = formatTime12Hour(bellsToRender[bellsToRender.length - 1].time, true);
-    const safePeriodName = period.name.replace(/"/g, '&quot;');
+    const safePeriodName = escapeHtml(period.name);
 
 
     // Start Period Header (Collapsible <details> tag)
@@ -4854,7 +4521,7 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
     const originalPeriodName = period.name;
     const overrideKey = getPeriodOverrideKey(activeBaseScheduleId, originalPeriodName);
     const displayPeriodName = periodNameOverrides[overrideKey] || originalPeriodName;
-    const titleAttr = displayPeriodName !== originalPeriodName ? `title="Original: ${originalPeriodName}"` : '';
+    const titleAttr = displayPeriodName !== originalPeriodName ? `title="Original: ${escapeHtml(originalPeriodName)}"` : '';
 
     // NEW in 4.44: Get Visual Cue for list icon
     const visualKey = getVisualOverrideKey(activeBaseScheduleId, originalPeriodName);
@@ -4872,7 +4539,7 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
                 <input type="checkbox" 
                     class="bulk-select-period h-5 w-5 text-sky-600 rounded focus:ring-sky-500 mr-3 flex-shrink-0 self-center ${bulkEditMode ? '' : 'hidden'}"
                     data-period-name="${safePeriodName}"
-                    title="Select/deselect all bells in ${displayPeriodName}">
+                    title="Select/deselect all bells in ${escapeHtml(displayPeriodName)}">
                     
                 <!-- NEW in 4.44: Small Visual Cue Icon -->
                 <!-- MODIFIED in 4.47: Changed back to rounded-full -->
@@ -4882,7 +4549,7 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
             
                 <div class="flex-grow flex flex-col sm:flex-row items-start sm:items-center justify-between">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 mb-2 sm:mb-0">
-                        <span class="text-xl font-bold text-gray-800" ${titleAttr}>${displayPeriodName}</span>
+                        <span class="text-xl font-bold text-gray-800" ${titleAttr}>${escapeHtml(displayPeriodName)}</span>
                         <!-- V5.44.8: Show badges based on context -->
                     ${(() => {
                         // Check if this is a standalone schedule (no shared bells anywhere)
@@ -4958,7 +4625,7 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
         // ... (Render Bells inside the Period) ...
         periodHtml += bellsToRender.map((bell, index) => {
             const isCustom = bell.type === 'custom';
-            const safeName = bell.name.replace(/"/g, '&quot;');
+            const safeName = escapeHtml(bell.name);
             // MODIFIED V4.88: Use the *unique* bellId for mutes
             const uniqueBellId = bell.bellId || getBellId(bell); // Fallback for any legacy
             // FIX 5.15: Checkbox is checked if Specifcally Muted OR Globally Muted
@@ -5059,11 +4726,11 @@ combinedBellListElement.innerHTML = renderablePeriods.map(period => {
             return `
                 <div class="bell-item flex items-center justify-between p-4 border-t border-gray-100 hover:bg-gray-50 transition-colors"
                     data-time="${bell.time}" data-name="${safeName}" 
-                    data-sound="${finalSound}" data-type="${bell.type}"
+                    data-sound="${escapeHtml(finalSound)}" data-type="${bell.type}"
                     data-bell-id="${bell.bellId || getBellId(bell)}"
-                    data-original-sound="${originalSound}" data-period-name="${period.name}"
+                    data-original-sound="${escapeHtml(originalSound)}" data-period-name="${safePeriodName}"
                     data-is-relative="${!!bell.relative}"
-                    data-visual-cue="${bell.visualCue || ''}"
+                    data-visual-cue="${escapeHtml(bell.visualCue || '')}"
                     data-visual-mode="${bell.visualMode || 'none'}">
                     
                     <!-- V5.46.0: Bulk Edit Checkbox (hidden by default) -->
@@ -5173,26 +4840,26 @@ function renderScheduleSelector() {
     
     let personalOptions = linkedPersonalSchedules.map(schedule => 
         `<option value="personal-${schedule.id}" ${`personal-${schedule.id}` === lastSelectedId ? 'selected' : ''}>
-            ${schedule.name} (Personal)
+            ${escapeHtml(schedule.name)} (Personal)
         </option>`
     ).join('');
     
     let standaloneOptions = standaloneSchedules.map(schedule => 
         `<option value="personal-${schedule.id}" ${`personal-${schedule.id}` === lastSelectedId ? 'selected' : ''}>
-            ${schedule.name}
+            ${escapeHtml(schedule.name)}
         </option>`
     ).join('');
 
     let sharedOptions = allSchedules.map(schedule => 
         `<option value="shared-${schedule.id}" ${`shared-${schedule.id}` === lastSelectedId ? 'selected' : ''}>
-            ${schedule.name}
+            ${escapeHtml(schedule.name)}
         </option>`
     ).join('');
     
     // V5.63.0: Following schedules
     let followingOptions = followingSchedules.map(f => 
         `<option value="following-${f.ownerId}-${f.scheduleId}" ${`following-${f.ownerId}-${f.scheduleId}` === lastSelectedId ? 'selected' : ''}>
-            ${f.scheduleName} (${f.ownerName || 'Unknown'})
+            ${escapeHtml(f.scheduleName)} (${escapeHtml(f.ownerName || 'Unknown')})
         </option>`
     ).join('');
 
@@ -5320,142 +4987,11 @@ function migrateLegacyBellsToPeriods(flatBells) {
     */
 // MODIFIED in 4.47: Added 'allPeriods' parameter
 function calculateRelativeBellTime(bell, bellMap, allPeriods, visited = new Set()) {
-    // 1. If the bell already has a static time, it's an anchor.
-    if (bell.time && !bell.relative) {
-        return bell.time;
-    }
-
-    // 2. If it's a relative bell (BY ID - the "old" way)
-    if (bell.relative && bell.relative.parentBellId) {
-        // 2a. Check for circular dependencies
-        if (visited.has(bell.bellId)) {
-            // MODIFIED V4.67: Make error log more explicit about the DATA being the problem.
-            console.error(`Circular dependency detected for bell "${bell.name}" (ID: ${bell.bellId}). This is a DATA error in your database, not a code bug. One of this bell's parents refers back to it, creating an infinite loop. The bell will be skipped.`);
-            // MODIFIED V4.70: Implement user's "Broken Bell" idea.
-            // Instead of returning null, return a "corrupt" object.
-            return { ...bell, isCorrupt: true, fallbackTime: "00:00:01" };
-        }
-        visited.add(bell.bellId);
-
-        // 2b. Find the parent bell
-        const parentBell = bellMap.get(bell.relative.parentBellId);
-        if (!parentBell) {
-            console.warn(`Could not find parent bell (ID: ${bell.relative.parentBellId}) for bell "${bell.name}". It may be orphaned.`);
-            
-            // NEW in 4.32: Find last known time to prevent defaulting to 00:00:00
-            const oldBellState = personalBells.find(b => b.bellId === bell.bellId);
-            const fallbackTime = oldBellState?.time || "00:00:00"; // Use old time or default
-            
-            return { ...bell, isOrphan: true, fallbackTime: fallbackTime };
-        }
-
-        // 2c. Recursively find the parent's time
-        // CRITICAL V4.65 FIX: Must pass the 'allPeriods' array to match the function definition, preventing circular dependency.
-        const parentTime = calculateRelativeBellTime(parentBell, bellMap, allPeriods, new Set(visited));
-        
-        // --- NEW V4.72 FIX: Propagate error objects up ---
-        // If the parentTime calculation failed (e.g., circular, orphan),
-        // return that error object immediately.
-        if (parentTime && typeof parentTime === 'object') {
-            return parentTime; // This is the isCorrupt or isOrphan object
-        }
-        // --- END V4.72 FIX ---
-
-        if (!parentTime) {
-            console.warn(`Could not calculate time for parent of "${bell.name}".`);
-            return null; // Parent calculation failed
-        }
-        
-        // 2d. Calculate this bell's time
-        const parentSeconds = timeToSeconds(parentTime);
-        const myTimeSeconds = parentSeconds + bell.relative.offsetSeconds;
-        const myTime = secondsToTime(myTimeSeconds);
-        
-        return myTime;
-    
-    // --- NEW in 4.47: Handle relative bells (BY ANCHOR TYPE) ---
-    } else if (bell.relative && bell.relative.parentPeriodName) {
-        const { parentPeriodName, parentAnchorType, offsetSeconds } = bell.relative;
-
-        // 2a. Check for circular dependencies
-        if (visited.has(bell.bellId)) {
-            console.error(`Circular dependency detected for bell "${bell.name}" (ID: ${bell.bellId}).`);
-            // MODIFIED V4.73: Return a "corrupt" object instead of null.
-            // This was the bug. This block (for 'BY ANCHOR') was returning
-            // null, while the 'BY ID' block correctly returned an object.
-            return { ...bell, isCorrupt: true, fallbackTime: "00:00:01" };
-        }
-        visited.add(bell.bellId);
-
-        // 2b. Find the parent *period*
-        const parentPeriod = allPeriods.find(p => p.name === parentPeriodName);
-        
-        if (!parentPeriod || !parentPeriod.bells || parentPeriod.bells.length === 0) {
-            console.warn(`Could not find parent period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
-            return { ...bell, isOrphan: true, fallbackTime: "00:00:00" };
-        }
-        
-        // 2c. Find the anchor bell (start or end) within that period.
-        // Note: We MUST recursively find the time for these, as they could also be relative.
-        let anchorBell;
-            
-        // --- MODIFIED V5.44.1: Use anchorRole for fluke periods, shared bells for linked periods ---
-        // Determine if this is a shared/linked period or a custom/fluke period
-        const sharedStaticBells = parentPeriod.bells.filter(b => 
-            !b.relative && b._originType === 'shared'
-        );
-        
-        if (sharedStaticBells.length > 0) {
-            // LINKED PERIOD: Use first/last shared static bell as anchor
-            if (parentAnchorType === 'period_start') {
-                anchorBell = sharedStaticBells[0];
-            } else {
-                anchorBell = sharedStaticBells[sharedStaticBells.length - 1];
-            }
-        } else {
-            // FLUKE/STANDALONE PERIOD: Find bells with explicit anchorRole
-            const targetRole = parentAnchorType === 'period_start' ? 'start' : 'end';
-            anchorBell = parentPeriod.bells.find(b => b.anchorRole === targetRole);
-            
-            // Legacy fallback: look for "Period Start" / "Period End" names
-            if (!anchorBell) {
-                const targetName = parentAnchorType === 'period_start' ? 'Period Start' : 'Period End';
-                anchorBell = parentPeriod.bells.find(b => b.name === targetName && !b.relative);
-            }
-        }
-        
-        if (!anchorBell) {
-            console.warn(`No anchor bell found in period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
-            return { ...bell, isOrphan: true, fallbackTime: "00:00:00" };
-        }
-        // --- END V5.44.1 FIX ---
-
-        // 2d. Recursively find the anchor bell's time
-        const anchorTime = calculateRelativeBellTime(anchorBell, bellMap, allPeriods, new Set(visited));
-        
-        // --- NEW V4.72 FIX: Propagate error objects up ---
-        if (anchorTime && typeof anchorTime === 'object') {
-            return anchorTime; // This is the isCorrupt or isOrphan object
-        }
-        // --- END V4.72 FIX ---
-        
-        if (!anchorTime) {
-            console.warn(`Could not calculate time for parent anchor of "${bell.name}".`);
-            return null; // Parent calculation failed
-        }
-
-        // 2e. Calculate this bell's time
-        const anchorSeconds = timeToSeconds(anchorTime);
-        const myTimeSeconds = anchorSeconds + offsetSeconds;
-        const myTime = secondsToTime(myTimeSeconds);
-        
-        return myTime;
-    }
-
-    // 3. Bell is invalid (no time and no relative prop)
-
-    console.warn(`Invalid bell object: "${bell.name}" has no time or relative data.`);
-    return null;
+    // v5.72.0: Thin wrapper. Real logic: BellEngine.calculateRelativeBellTime
+    // (canonical implementation, shared with clock.html). personalBells is
+    // injected for the orphan-bell last-known-time fallback.
+    return window.BellEngine.calculateRelativeBellTime(
+        bell, bellMap, allPeriods, visited, personalBells);
 }
 
 /**
@@ -5469,13 +5005,30 @@ function calculateRelativeBellTime(bell, bellMap, allPeriods, visited = new Set(
 function resolveAllBellTimes() {
     // MODIFIED in 4.29: MERGE shared and personal periods instead of just concatenating
     const mergedPeriodsMap = new Map();
-    
+
+    // V5.74.0: EMERGENCY SCHEDULE SHIFT. If the active shared schedule carries
+    // a temporaryShift stamped with TODAY's local date, shift its STATIC bells
+    // here — on the merged COPIES only, so localSchedulePeriods stays pristine
+    // and edit modals never read (or save back) shifted times. Relative bells,
+    // shared AND personal, resolve from the shifted parents automatically —
+    // that's the ripple. Personal static bells (pinned clock times) do not
+    // move. The date check runs on every recalculation, so the shift
+    // self-expires at the midnight recalc without any cleanup write.
+    const activeShiftSeconds = window.BellEngine.getActiveScheduleShiftSeconds(
+        activeSharedScheduleShift, new Date());
+
     // 1. Add all base shared periods
     localSchedulePeriods.forEach(period => {
         mergedPeriodsMap.set(period.name, { 
             ...period, 
             // MODIFIED in 4.37: Tag bells with their origin
-            bells: period.bells.map(b => ({ ...b, _originType: 'shared' })),
+            bells: period.bells.map(b => {
+                const copy = { ...b, _originType: 'shared' };
+                if (activeShiftSeconds && copy.time && !copy.relative) {
+                    copy.time = shiftTimeString(copy.time, activeShiftSeconds);
+                }
+                return copy;
+            }),
             origin: 'shared' // Mark origin
         });
     });
@@ -5750,7 +5303,7 @@ function getCustomBellIconHtml(visualCue, iconText, bgColor, fgColor) {
     return `
         <div class="w-full h-full flex items-center justify-center relative">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
-                <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text>
+                <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(text)}</text>
             </svg>
             <span class="absolute right-1 bottom-1 text-xs text-black/50">&#9998;</span> <!-- Pencil Icon -->
         </div>
@@ -5800,7 +5353,7 @@ function setupCustomTextModalPreviews(isQuickBell = false) {
         if (livePreview) {
             livePreview.innerHTML = `<div class="w-full h-full p-8 flex items-center justify-center" style="background-color: ${bgColor};">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
-                    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fullFontSize}" font-weight="bold" fill="${fgColor}" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text>
+                    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${fullFontSize}" font-weight="bold" fill="${fgColor}" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(text)}</text>
                 </svg>
             </div>`;
         }
@@ -5810,7 +5363,7 @@ function setupCustomTextModalPreviews(isQuickBell = false) {
         if (iconInnerEl) {
             iconInnerEl.style.backgroundColor = bgColor;
             iconInnerEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
-                <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${iconFontSize}" font-weight="bold" fill="${fgColor}" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text>
+                <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${iconFontSize}" font-weight="bold" fill="${fgColor}" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(text)}</text>
             </svg>`;
         }
     }
@@ -6054,7 +5607,9 @@ function closeAllConflictModals() {
     internalConflictWarningModal.classList.add('hidden');
     internalConflictConfirmModal.classList.add('hidden');
     externalConflictModal.classList.add('hidden');
-    linkedEditModal.classList.add('hidden');
+    // v5.72.0 FIX: was `linkedEditModal` — a variable that never existed
+    // (latent ReferenceError that left the state resets below unreached).
+    confirmLinkedEditModal.classList.add('hidden');
     
     // Reset state
     pendingSharedBell = null;
@@ -6092,8 +5647,11 @@ async function executeAddPersonalBell() {
             await updateDoc(personalScheduleRef, { bells: updatedBells });
         }
         
-        addPersonalBellForm.reset();
-        personalSoundInput.value = 'ellisBell.mp3';
+        // v5.72.0 FIX: removed `addPersonalBellForm.reset()` and
+        // `personalSoundInput.value = ...` — those elements no longer exist,
+        // and the ReferenceError they threw was being swallowed by this catch,
+        // logging a bogus "Error adding pending personal bell" on every
+        // successful add.
     } catch (error) {
         console.error("Error adding pending personal bell:", error);
     } finally {
@@ -6342,6 +5900,7 @@ async function initFirebase() {
 
                 console.log("User is signed in:", user.uid);
                 userId = user.uid;
+                startClockDriftMonitor(); // V5.77.0: idempotent; needs a uid
                 isUserAnonymous = user.isAnonymous; // NEW: Track anonymous state
                 welcomeOverlay.classList.add('hidden'); 
                 
@@ -6383,6 +5942,7 @@ async function initFirebase() {
                     userIdElement.textContent = `User ID: ${user.uid}`;
                     // NEW: Set header display name
                     const displayName = user.displayName || user.email;
+                    currentUserDisplayName = displayName; // V5.75.0: for the edit audit log
                     userDisplayNameElement.textContent = `Signed in as: ${displayName}`;
                 }
 
@@ -6600,6 +6160,11 @@ function listenForPersonalSchedules(userId) {
         const activeScheduleExists = allPersonalSchedules.some(s => `personal-${s.id}` === currentSelectedValue);
 
         renderScheduleSelector(); // This re-renders the list
+        // V5.73.0: reapply the day-type calendar AFTER this callback's own
+        // selector-restoration logic below has finished (deferred to the next
+        // tick so the two can't fight over scheduleSelector.value).
+        setTimeout(() => applyCalendarSchedule('schedules-updated'), 0);
+        setTimeout(() => renderEmergencyShiftPanel(), 0); // V5.74.0
         
         // If the currently selected schedule was a personal one and it still exists, keep it.
         // If it was deleted, renderScheduleSelector's logic will pick a default.
@@ -6632,6 +6197,7 @@ async function listenForSharedSchedules() {
     }
 
     console.log("Listening for real-time shared schedule updates...");
+    listenForScheduleCalendar(); // V5.73.0: day-type calendar rides alongside
 
     sharedSchedulesListenerUnsubscribe = onSnapshot(schedulesCollectionRef, (querySnapshot) => {
         // MODIFIED V4.88: Read the 'periods' array, not the legacy 'bells' array.
@@ -6675,7 +6241,8 @@ async function listenForSharedSchedules() {
                 id: doc.id,
                 name: scheduleData.name || "Unnamed Schedule",
                 periods: periodsToUse, // Use the migrated periods
-                bells: scheduleData.bells || [] // Keep legacy for migrate check
+                bells: scheduleData.bells || [], // Keep legacy for migrate check
+                temporaryShift: scheduleData.temporaryShift || null // V5.74.0
             };
         });
         allSchedules.sort((a, b) => a.name.localeCompare(b.name));
@@ -6689,6 +6256,11 @@ async function listenForSharedSchedules() {
         const activeScheduleExists = allSchedules.some(s => `shared-${s.id}` === currentSelectedValue);
 
         renderScheduleSelector(); // This re-renders the list
+        // V5.73.0: reapply the day-type calendar AFTER this callback's own
+        // selector-restoration logic below has finished (deferred to the next
+        // tick so the two can't fight over scheduleSelector.value).
+        setTimeout(() => applyCalendarSchedule('schedules-updated'), 0);
+        setTimeout(() => renderEmergencyShiftPanel(), 0); // V5.74.0
         
         // If the currently selected schedule was a shared one and it still exists, keep it.
         if (currentSelectedValue.startsWith('shared-') && activeScheduleExists) {
@@ -6814,6 +6386,7 @@ function setActiveSchedule(prefixedId) {
     }
 
     // Reset bell arrays (now period structures)
+    activeSharedScheduleShift = null; // V5.74.0
     localSchedulePeriods = [];
     personalBellsPeriods = [];
     localSchedule = []; // Reset flat list
@@ -6908,6 +6481,7 @@ function setActiveSchedule(prefixedId) {
             
             if (docSnap.exists()) {
                 const scheduleData = docSnap.data();
+                activeSharedScheduleShift = scheduleData.temporaryShift || null; // V5.74.0
                 if (activePersonalScheduleId === null) { 
                     scheduleTitle.textContent = scheduleData.name;
                 }
@@ -7111,6 +6685,7 @@ function setActiveSchedule(prefixedId) {
 
                 if (docSnap.exists()) {
                     const scheduleData = docSnap.data();
+                    activeSharedScheduleShift = scheduleData.temporaryShift || null; // V5.74.0
                     // V4.0 FINAL: Check for PERIODS structure first. If not found, use legacy BELLS structure.
                     if (scheduleData.periods && scheduleData.periods.length > 0) {
                         localSchedulePeriods = scheduleData.periods;
@@ -7381,6 +6956,7 @@ async function handleCreateSchedule(e) {
             periods: [] // Use the new structure
         });
         
+        logScheduleEdit(newDocRef.id, 'create-schedule', { name: name }); // V5.75.0
         console.log("Schedule created with ID:", newDocRef.id);
         newScheduleNameInput.value = '';
         // MODIFIED: v3.24 - Removed loadSharedSchedules()
@@ -7458,6 +7034,7 @@ async function handleRenameSharedScheduleSubmit(e) {
         
         try {
             await updateDoc(docRef, { name: newName });
+            if (type === 'shared') logScheduleEdit(schedule.id, 'rename-schedule', { before: schedule.name, after: newName }); // V5.75.0
             console.log(`${type} schedule renamed to: ${newName}`);
             // The onSnapshot listener will handle the UI update.
             
@@ -7590,6 +7167,7 @@ async function confirmDeleteBell() {
             const legacyBells = flattenPeriodsToLegacyBells(updatedPeriods);
 
             await updateDoc(scheduleRef, { periods: updatedPeriods, bells: legacyBells });
+            logScheduleEdit(activeBaseScheduleId, 'delete-bell', { bell: name, childBellsDeleted: (children || []).length }); // V5.75.0
             console.log(`Shared bell deleted: ${name} from schedule ${activeBaseScheduleId}.`);
 
         } else if (type === 'custom' && activePersonalScheduleId) {
@@ -8374,6 +7952,10 @@ async function handleEditBellSubmit(e) {
             // NEW: v4.11 - Create legacy bells array
             const legacyBells = flattenPeriodsToLegacyBells(updatedPeriods);
             await updateDoc(scheduleRef, { periods: updatedPeriods, bells: legacyBells });
+            logScheduleEdit(activeBaseScheduleId, 'edit-bell', { // V5.75.0
+                before: { name: oldBell.name, time: oldBell.time, sound: oldBell.sound },
+                after: { name: newBell.name, time: newBell.time, sound: newBell.sound }
+            });
 
         // --- Case 2: Editing a Custom/Personal Bell (User) ---
         } else if (oldBell.type === 'custom') {
@@ -8507,6 +8089,11 @@ async function handleLinkedEdit(applyToAll) {
         }
         
         await batch.commit();
+        logScheduleEdit(activeBaseScheduleId, 'edit-bell-linked', { // V5.75.0
+            before: { name: linkedEditData.oldBell.name, time: linkedEditData.oldBell.time },
+            after: { name: linkedEditData.newBell.name, time: linkedEditData.newBell.time },
+            appliedToLinkedSchedules: applyToAll === true
+        });
 
         linkedEditStatus.textContent = "Updates complete.";
         setTimeout(() => {
@@ -8600,9 +8187,11 @@ async function confirmDeleteSchedule() {
     if (!activeBaseScheduleId) return;
     
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', activeBaseScheduleId);
+    const deletedName = (allSchedules.find(s => s.id === activeBaseScheduleId) || {}).name || activeBaseScheduleId; // V5.75.0
     try {
         await deleteDoc(docRef);
-        console.log("Schedule deleted:", activeBaseScheduleId);
+        logScheduleEdit(activeBaseScheduleId, 'delete-schedule', { name: deletedName }); // V5.75.0 (ghost-parent entry)
+        console.log("Schedule deleted:", activeBaseScheduleId, `("${deletedName}")`);
         
         // The listener will handle the UI update and selection change.
     } catch (error) {
@@ -8850,6 +8439,7 @@ async function handleMultiAddPeriodSubmit(e) {
     try {
         if (added > 0) {
             await batch.commit();
+            logScheduleEdit(activeBaseScheduleId, 'add-period-multi', { schedulesTouched: added, summary: 'one period added to each checked schedule' }); // V5.75.0
         }
         
         // V5.58.3: Build detailed status message
@@ -9894,6 +9484,7 @@ async function addPendingBellToCurrentSchedule() {
 
         // Save the entire updated periods array
         await updateDoc(scheduleRef, { periods: updatedPeriods, bells: legacyBells });
+        logScheduleEdit(activeBaseScheduleId, 'add-bell', { bell: newBell.name, time: newBell.time, period: periodName }); // V5.75.0
 
         addSharedStatus.textContent = "Bell added successfully!";
         addSharedBellForm.reset();
@@ -9992,6 +9583,7 @@ async function handleExternalConflictResolution(resolution) {
         }
 
         await batch.commit();
+        logScheduleEdit(activeBaseScheduleId, 'resolve-conflicts', { summary: 'external bell conflicts resolved across schedules' }); // V5.75.0
         externalConflictStatus.textContent = "Actions complete!";
         
         addSharedBellForm.reset();
@@ -10277,13 +9869,25 @@ async function handleRelativeBellSubmit(e) {
     const visualCue = document.getElementById('relative-bell-visual')?.value || '';
         
     if (isEditing && convertToStatic) {
+        // v5.72.0 FIX: `calculatedTime` was never defined here — converting a
+        // relative bell to static threw a ReferenceError every time. Resolve
+        // the time the same way the engine does: anchor's resolved time plus
+        // the entered offset.
+        const anchorForStatic = [...localSchedule, ...personalBells]
+            .find(b => String(b.bellId) === String(parentBellId));
+        if (!anchorForStatic?.time) {
+            relativeBellStatus.textContent = "Could not resolve the anchor bell's time for conversion.";
+            relativeBellStatus.classList.remove('hidden');
+            return;
+        }
+        const staticTime = secondsToTime(timeToSeconds(anchorForStatic.time) + totalOffsetSeconds);
         finalBell = {
             name: bellName,
             sound: bellSound,
             visualMode,
             visualCue,
             bellId: currentEditingBell.bellId,
-            time: calculatedTime
+            time: staticTime
         };
     } else {
         finalBell = {
@@ -10513,7 +10117,7 @@ function openMultiAddRelativeModal() {
             multiAddRelativePeriodList.innerHTML = `<p class="text-gray-500">No personal or merged periods found in this schedule.</p>`;
     } else {
         multiAddRelativePeriodList.innerHTML = periodsToRender.map(period => {
-            const safePeriodName = period.name.replace(/"/g, '&quot;');
+            const safePeriodName = escapeHtml(period.name);
             return `
             <div class="flex items-center">
                 <input type="checkbox" id="multi-add-check-${period.name}" value="${safePeriodName}" class="multi-add-period-check h-4 w-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500">
@@ -10857,18 +10461,18 @@ function renderVisualFileManager() {
         myVisualFilesList.innerHTML = userVisualFiles.map(file => {
             const isShared = sharedVisualFiles.some(sharedFile => sharedFile.name === file.name);
             // NEW V5.34: Display nickname or name
-            const displayName = file.nickname || file.name;
-            const title = file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name;
+            const displayName = escapeHtml(file.nickname || file.name);
+            const title = escapeHtml(file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name);
             return `
             <div class="relative group border rounded-lg overflow-hidden shadow-sm">
                 <!-- MODIFIED in 4.46: Changed h-24 to aspect-square for a square preview -->
-                <img src="${file.url}" alt="${file.name}" class="w-full aspect-square object-contain bg-gray-100" loading="lazy">
+                <img src="${escapeHtml(file.url)}" alt="${escapeHtml(file.name)}" class="w-full aspect-square object-contain bg-gray-100" loading="lazy">
                 <p class="text-xs text-gray-700 p-2 truncate" title="${title}">${displayName}</p>
                 <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-2">
-                    ${!isShared && isAdmin ? `<button class="make-visual-public-btn text-xs px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 w-full" data-path="${file.path}" data-name="${file.name}">Make Public</button>` : ''}
+                    ${!isShared && isAdmin ? `<button class="make-visual-public-btn text-xs px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 w-full" data-path="${escapeHtml(file.path)}" data-name="${escapeHtml(file.name)}">Make Public</button>` : ''}
                     ${isShared ? `<span class="text-xs font-medium text-white">(Published)</span>` : ''}
-                    <button class="rename-visual-btn text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 w-full" data-path="${file.path}" data-name="${file.name}" data-nickname="${file.nickname || ''}">Rename</button>
-                    <button class="delete-visual-btn text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 w-full" data-path="${file.path}" data-url="${file.url}">Delete</button>
+                    <button class="rename-visual-btn text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 w-full" data-path="${escapeHtml(file.path)}" data-name="${escapeHtml(file.name)}" data-nickname="${escapeHtml(file.nickname || '')}">Rename</button>
+                    <button class="delete-visual-btn text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 w-full" data-path="${escapeHtml(file.path)}" data-url="${escapeHtml(file.url)}">Delete</button>
                 </div>
             </div>`;
         }).join('');
@@ -10880,17 +10484,17 @@ function renderVisualFileManager() {
     } else {
         sharedVisualFilesList.innerHTML = sharedVisualFiles.map(file => {
             // NEW V5.34: Display nickname or name
-            const displayName = file.nickname || file.name;
-            const title = file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name;
+            const displayName = escapeHtml(file.nickname || file.name);
+            const title = escapeHtml(file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name);
             return `
             <div class="relative group border rounded-lg overflow-hidden shadow-sm">
                 <!-- MODIFIED in 4.46: Changed h-24 to aspect-square for a square preview -->
-                <img src="${file.url}" alt="${file.name}" class="w-full aspect-square object-contain bg-gray-100" loading="lazy">
+                <img src="${escapeHtml(file.url)}" alt="${escapeHtml(file.name)}" class="w-full aspect-square object-contain bg-gray-100" loading="lazy">
                 <p class="text-xs text-gray-700 p-2 truncate" title="${title}">${displayName}</p>
-                <p class="text-xs text-gray-500 px-2 pb-2 truncate" title="Owner: ${file.owner}">(by ${file.owner})</p>
+                <p class="text-xs text-gray-500 px-2 pb-2 truncate" title="Owner: ${escapeHtml(file.owner)}">(by ${escapeHtml(file.owner)})</p>
                 <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-2">
-                    ${isAdmin ? `<button class="rename-visual-btn text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 w-full" data-path="${file.path}" data-name="${file.name}" data-nickname="${file.nickname || ''}">Rename</button>` : ''}
-                    ${isAdmin ? `<button class="delete-visual-btn text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 w-full" data-path="${file.path}" data-url="${file.url}">Delete</button>` : ''}
+                    ${isAdmin ? `<button class="rename-visual-btn text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 w-full" data-path="${escapeHtml(file.path)}" data-name="${escapeHtml(file.name)}" data-nickname="${escapeHtml(file.nickname || '')}">Rename</button>` : ''}
+                    ${isAdmin ? `<button class="delete-visual-btn text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 w-full" data-path="${escapeHtml(file.path)}" data-url="${escapeHtml(file.url)}">Delete</button>` : ''}
                 </div>
             </div>
         `}).join('');
@@ -11328,6 +10932,7 @@ async function handleDeletePeriod(periodName, origin = 'custom') {
             updatedPeriods.splice(periodIndex, 1);
 
             await updateDoc(scheduleRef, { periods: updatedPeriods });
+            logScheduleEdit(activeBaseScheduleId, 'delete-period', { period: periodName }); // V5.75.0
         }
 
         showUserMessage(`${periodType.charAt(0).toUpperCase() + periodType.slice(1)} period "${periodName}" deleted successfully.`);
@@ -11413,7 +11018,7 @@ function getDefaultVisualCue(periodName) {
             text = (match[1] || match[2]).toUpperCase();
         }
         // MODIFIED V4.98 (FIX): This was the bug. It should create the SVG, not wrap an empty var.
-        svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text></svg>`;
+        svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(text)}</text></svg>`;
     }
     
     // MODIFIED V5.43.0: Use centralized config with matching colors
@@ -11566,7 +11171,7 @@ function getVisualHtml(value, periodName, _skipOverrideLookup = false) {
             VISUAL_CONFIG.full.customTextFontSize.long : 
             VISUAL_CONFIG.full.customTextFontSize.short;
         const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full">
-            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${customText}</text>
+            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(customText)}</text>
         </svg>`;
         // Custom text has its own bg, don't apply custom bg
         return `<div class="w-full h-full ${VISUAL_CONFIG.full.padding} flex items-center justify-center" style="background-color:${bgColor}; color:${fgColor};">
@@ -11641,7 +11246,7 @@ function getRawDefaultVisualCueSvg(periodName) {
         if (match) {
             text = (match[1] || match[2]).toUpperCase();
         }
-        svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${text}</text></svg>`;
+        svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="60" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(text)}</text></svg>`;
     }
     
     // MODIFIED V4.74: Return *only* the SVG content string.
@@ -11683,7 +11288,7 @@ function getVisualIconHtml(value, periodName) {
             VISUAL_CONFIG.icon.customTextFontSize.long : 
             VISUAL_CONFIG.icon.customTextFontSize.short;
         const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${customText}</text>
+            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="${svgFontSize}" font-weight="bold" fill="currentColor" font-family="'Century Gothic', 'Questrial', sans-serif">${escapeHtml(customText)}</text>
         </svg>`;
         return `<div class="${sharedClasses} flex items-center justify-center" style="background-color:${bgColor}; color:${fgColor};">
             ${svgContent}
@@ -12519,6 +12124,7 @@ async function handleMultiAddSubmit(e) {
 
     try {
         await batch.commit();
+        logScheduleEdit(activeBaseScheduleId, 'add-bell-multi', { bell: newBell.name, time: newBell.time, schedulesTouched: checkedScheduleIds.length - errors - skipped }); // V5.75.0
         let statusMsg = `Successfully added bell to ${checkedScheduleIds.length - errors - skipped} schedule(s).`;
         if (skipped > 0) {
             statusMsg += ` Skipped ${skipped} due to nearby bells.`;
@@ -12720,6 +12326,7 @@ async function handleFileInputChange(e) {
                 }
             }
             await batch.commit();
+            if (activeBaseScheduleId) logScheduleEdit(activeBaseScheduleId, 'import-merge', { schedulesAdded: newCount, schedulesUpdated: updatedCount }); // V5.75.0
             importStatus.textContent = `Import complete! Added: ${newCount}, Updated: ${updatedCount}.`;
             // MODIFIED: v3.24 - Removed loadSharedSchedules()
         } catch (error) {
@@ -13306,6 +12913,7 @@ async function executeImportWithOptions() {
             name: newName, 
             periods: periodsToImport 
         });
+        logScheduleEdit(activeBaseScheduleId, 'import-replace', { name: newName, periods: periodsToImport.length }); // V5.75.0
         
         // Success - close modal
         importPreviewModal?.classList.add('hidden');
@@ -13687,8 +13295,8 @@ function renderAudioFileManager() {
             // Check if this file has already been shared
             const isShared = sharedAudioFiles.some(sharedFile => sharedFile.name === file.name);
             // NEW V4.97: Display nickname or name
-            const displayName = file.nickname || file.name;
-            const title = file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name;
+            const displayName = escapeHtml(file.nickname || file.name);
+            const title = escapeHtml(file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name);
             return `
             <div class="flex flex-col sm:flex-row justify-between sm:items-center p-2 rounded-lg hover:bg-gray-100">
                 <span class="text-gray-800 truncate" title="${title}">${displayName}</span>
@@ -13698,16 +13306,16 @@ function renderAudioFileManager() {
                         '<span class="text-xs font-medium text-green-600 w-20 text-center">(Published)</span>' : 
                         `<button 
                             class="make-public-btn admin-only text-xs px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 w-20" 
-                            data-path="${file.path}" 
-                            data-name="${file.name}">
+                            data-path="${escapeHtml(file.path)}" 
+                            data-name="${escapeHtml(file.name)}">
                             Make Public
                             </button>`
                     }
                     <!-- MODIFIED: v3.27 - Adjusted padding and text size -->
-                    <button class="preview-audio-btn px-3 py-1 text-sm bg-gray-200 rounded-lg hover:bg-gray-300" data-url="${file.url}" aria-label="Play">&#9654;</button>
+                    <button class="preview-audio-btn px-3 py-1 text-sm bg-gray-200 rounded-lg hover:bg-gray-300" data-url="${escapeHtml(file.url)}" aria-label="Play">&#9654;</button>
                     <!-- NEW V4.97: Rename Button -->
-                    <button class="rename-audio-btn text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600" data-path="${file.path}" data-name="${file.name}" data-nickname="${file.nickname || ''}">Rename</button>
-                    <button class="delete-audio-btn text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600" data-path="${file.path}" data-url="${file.url}">Delete</button>
+                    <button class="rename-audio-btn text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600" data-path="${escapeHtml(file.path)}" data-name="${escapeHtml(file.name)}" data-nickname="${escapeHtml(file.nickname || '')}">Rename</button>
+                    <button class="delete-audio-btn text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600" data-path="${escapeHtml(file.path)}" data-url="${escapeHtml(file.url)}">Delete</button>
                 </div>
             </div>
             `;
@@ -13720,21 +13328,21 @@ function renderAudioFileManager() {
     } else {
         sharedAudioFilesList.innerHTML = sharedAudioFiles.map(file => {
             // NEW V4.97: Display nickname or name
-            const displayName = file.nickname || file.name;
-            const title = file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name;
+            const displayName = escapeHtml(file.nickname || file.name);
+            const title = escapeHtml(file.nickname ? `Nickname: ${file.nickname}\nFilename: ${file.name}` : file.name);
             return `
             <div class="flex flex-col sm:flex-row justify-between sm:items-center p-2 rounded-lg hover:bg-gray-100">
                 <div>
                     <span class="text-gray-800 truncate" title="${title}">${displayName}</span>
-                    <span class="text-xs text-gray-500 ml-2">(by ${file.owner})</span>
+                    <span class="text-xs text-gray-500 ml-2">(by ${escapeHtml(file.owner)})</span>
                 </div>
                 <div class="flex-shrink-0 flex items-center space-x-2 mt-2 sm:mt-0">
                     <!-- MODIFIED: v3.27 - Adjusted padding and text size -->
-                    <button class="preview-audio-btn px-3 py-1 text-sm bg-gray-200 rounded-lg hover:bg-gray-300" data-url="${file.url}" aria-label="Play">&#9654;</button>
+                    <button class="preview-audio-btn px-3 py-1 text-sm bg-gray-200 rounded-lg hover:bg-gray-300" data-url="${escapeHtml(file.url)}" aria-label="Play">&#9654;</button>
                     <!-- NEW V4.97: Rename Button (Admin only) -->
-                    <button class="rename-audio-btn admin-only text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600" data-path="${file.path}" data-name="${file.name}" data-nickname="${file.nickname || ''}">Rename</button>
+                    <button class="rename-audio-btn admin-only text-xs px-2 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600" data-path="${escapeHtml(file.path)}" data-name="${escapeHtml(file.name)}" data-nickname="${escapeHtml(file.nickname || '')}">Rename</button>
                     <!-- Admins can delete public files -->
-                    <button class="delete-audio-btn admin-only text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600" data-path="${file.path}" data-url="${file.url}">Delete</button>
+                    <button class="delete-audio-btn admin-only text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600" data-path="${escapeHtml(file.path)}" data-url="${escapeHtml(file.url)}">Delete</button>
                 </div>
             </div>
         `}).join('');
@@ -13924,6 +13532,7 @@ async function updateBellsUsingSound(url) {
     if (schedulesToUpdate > 0) {
         console.log(`Updating ${schedulesToUpdate} shared schedules...`);
         await batch.commit();
+        if (activeBaseScheduleId) logScheduleEdit(activeBaseScheduleId, 'reassign-sound', { deletedSound: url, replacedWith: defaultSound, schedulesTouched: schedulesToUpdate }); // V5.75.0
         // MODIFIED: v3.24 - Removed loadSharedSchedules()
     } else {
         console.log("No shared schedules needed updating.");
@@ -13966,7 +13575,7 @@ async function handleAudioListClick(e) {
         
         if (affectedBells.length > 0) {
             confirmDeleteAudioText.textContent = "This audio file is used in the following bells. Deleting it will reset them to 'Ellis Bell'. Are you sure?";
-            confirmDeleteAudioList.innerHTML = affectedBells.map(b => `<li class="text-sm"><b>${b.scheduleName}:</b> ${b.bellName}</li>`).join('');
+            confirmDeleteAudioList.innerHTML = affectedBells.map(b => `<li class="text-sm"><b>${escapeHtml(b.scheduleName)}:</b> ${escapeHtml(b.bellName)}</li>`).join('');
             confirmDeleteAudioList.classList.remove('hidden');
         } else {
             confirmDeleteAudioText.textContent = "Are you sure you want to delete this audio file? This cannot be undone.";
@@ -14087,6 +13696,612 @@ async function confirmDeleteAudio() {
 
 
 // --- Init and Event Listeners ---
+// ============================================================
+// V5.73.0 (PARKED in V5.74.0): DAY-TYPE SCHEDULE CALENDAR
+//
+// STATUS: PARKED — auto-switching is hard-gated OFF and the admin UI was
+// removed from index.html before this ever shipped. Why: the school runs
+// SIX different schedules simultaneously across 50 teachers (two teachers
+// run ~9 on classroom grids), so a single school-wide "today is Schedule B"
+// designation is the wrong model — it would fight half the faculty every
+// morning.
+//
+// TO REVIVE, the feature needs a per-teacher assignment model first:
+//   - teacher groups (grade level / role), managed by admins
+//   - group -> schedule mapping per day type, not one global schedule
+//   - each client resolves ITS OWN designated schedule from its group
+// The pure resolver (resolveCalendarSchedule in bell-engine.js) and its unit
+// tests are kept — they'll be the core of that design. The auto-switch below
+// additionally requires `enabled: true` on the config doc, which nothing
+// can currently set, so even a hand-created doc cannot trigger switching.
+//
+// What REMAINS ACTIVE from this chunk: MANUAL_SCHEDULE_CHOICE_KEY (the
+// selector listener in the init chunk stamps it; harmless, and the revived
+// feature will want it).
+// ============================================================
+
+let scheduleCalendar = null;                    // live copy of the config doc
+let scheduleCalendarListenerUnsubscribe = null;
+let calendarPendingExceptions = {};             // modal working copy
+
+const MANUAL_SCHEDULE_CHOICE_KEY = 'manualScheduleChoiceDate';
+
+function listenForScheduleCalendar() {
+    if (scheduleCalendarListenerUnsubscribe) {
+        scheduleCalendarListenerUnsubscribe();
+        scheduleCalendarListenerUnsubscribe = null;
+    }
+    if (!db) return;
+    const calRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'schedule_calendar');
+    scheduleCalendarListenerUnsubscribe = onSnapshot(calRef, (docSnap) => {
+        scheduleCalendar = docSnap.exists() ? docSnap.data() : null;
+        applyCalendarSchedule('calendar-updated');
+    }, (error) => {
+        console.error('Error listening to schedule calendar:', error);
+    });
+}
+
+/**
+ * Switch to the calendar-designated schedule if the rules above allow it.
+ * Safe to call any time; every guard fails closed (no switch).
+ */
+function applyCalendarSchedule(trigger) {
+    try {
+        // PARKED (v5.74.0): requires an explicit enabled flag nothing can set yet.
+        if (!scheduleCalendar || scheduleCalendar.enabled !== true) return;
+        if (!allSchedules || allSchedules.length === 0) return;
+
+        const today = new Date();
+        const designatedId = window.BellEngine.resolveCalendarSchedule(scheduleCalendar, today);
+        if (!designatedId) return;
+
+        // Rule 2: designated schedule must still exist
+        if (!allSchedules.some(s => s.id === designatedId)) {
+            console.warn(`Calendar designates schedule "${designatedId}" which no longer exists — ignoring.`);
+            return;
+        }
+
+        // Rule 3: manual choice today wins
+        if (localStorage.getItem(MANUAL_SCHEDULE_CHOICE_KEY) === toLocalDateString(today)) return;
+
+        // Rules 4+5: read the selector as the source of truth for what's active
+        const currentPrefixed = scheduleSelector ? scheduleSelector.value : '';
+        if (currentPrefixed.startsWith('personal-')) return;
+        const targetPrefixed = `shared-${designatedId}`;
+        if (currentPrefixed === targetPrefixed) return;
+
+        console.log(`[Calendar] Auto-switching to "${designatedId}" (trigger: ${trigger}).`);
+        if (scheduleSelector) scheduleSelector.value = targetPrefixed;
+        setActiveSchedule(targetPrefixed);
+    } catch (e) {
+        console.error('applyCalendarSchedule failed:', e);
+    }
+}
+// ============================================================
+// V5.74.0: EMERGENCY SCHEDULE SHIFT (admin, today only)
+// "Assembly ran long — push everything 10 minutes."
+//
+// An admin picks a base schedule (or all shared schedules) and a +/- minute
+// offset. This writes ONE field to the schedule doc(s):
+//     temporaryShift: { seconds, date: "YYYY-MM-DD" (local), setAt }
+// Nothing else in the stored schedule changes. Every client's active-schedule
+// listener picks it up live, and resolveAllBellTimes shifts the shared STATIC
+// bells on its merged copies — so every relative bell built on them (shared
+// or personal, on this device or any teacher's) ripples automatically, while
+// personal static bells (deliberately pinned clock times) stay put. Because
+// the shift is date-stamped and checked at every recalculation, it expires
+// by itself at the midnight recalc — no one has to remember to un-shift.
+//
+// Display surfaces: clock.html applies the same engine check (v1.6.0).
+// old.html (ES5 iPads) — see ROLLOUT.md for its status.
+// ============================================================
+
+let activeSharedScheduleShift = null; // shift meta of the ACTIVE schedule (set by its snapshot listener)
+
+const SHIFT_LIMIT_MINUTES = 180; // sanity ceiling either direction
+
+function renderEmergencyShiftPanel() {
+    const select = document.getElementById('emergency-shift-schedule');
+    const statusEl = document.getElementById('emergency-shift-status');
+    if (!select || !statusEl) return;
+
+    const previous = select.value;
+    select.innerHTML = '<option value="__ALL__">All shared schedules</option>' +
+        allSchedules.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`).join('');
+    if ([...select.options].some(o => o.value === previous)) select.value = previous;
+
+    const today = toLocalDateString(new Date());
+    const active = allSchedules.filter(s =>
+        window.BellEngine.getActiveScheduleShiftSeconds(s.temporaryShift, new Date()) !== 0);
+    if (active.length === 0) {
+        statusEl.innerHTML = '<span class="text-gray-500">No shifts active today.</span>';
+        return;
+    }
+    statusEl.innerHTML = active.map(s => {
+        const mins = Math.round(s.temporaryShift.seconds / 60);
+        const sign = mins > 0 ? '+' : '';
+        return `<div class="text-orange-700 font-medium">${escapeHtml(s.name)}: ${sign}${mins} min (today, ${escapeHtml(today)})</div>`;
+    }).join('');
+}
+
+async function applyEmergencyShift() {
+    const select = document.getElementById('emergency-shift-schedule');
+    const minutesInput = document.getElementById('emergency-shift-minutes');
+    const statusEl = document.getElementById('emergency-shift-status');
+    if (!select || !minutesInput) return;
+
+    const minutes = parseInt(minutesInput.value, 10);
+    if (!Number.isFinite(minutes) || minutes === 0 || Math.abs(minutes) > SHIFT_LIMIT_MINUTES) {
+        if (statusEl) statusEl.innerHTML = `<span class="text-red-600">Enter a non-zero shift between -${SHIFT_LIMIT_MINUTES} and +${SHIFT_LIMIT_MINUTES} minutes.</span>`;
+        return;
+    }
+
+    const targets = select.value === '__ALL__'
+        ? allSchedules.map(s => s.id)
+        : [select.value];
+    const shift = {
+        seconds: minutes * 60,
+        date: toLocalDateString(new Date()),
+        setAt: new Date().toISOString()
+    };
+    try {
+        for (const id of targets) {
+            const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', id);
+            await updateDoc(scheduleRef, { temporaryShift: shift });
+            logScheduleEdit(id, 'shift-apply', { minutes: minutes, date: shift.date }); // V5.75.0
+        }
+        console.log(`[Shift] Applied ${minutes} min to ${targets.length} schedule(s).`);
+        // Status re-renders when the schedules snapshot arrives; do it eagerly too:
+        if (statusEl) statusEl.innerHTML = '<span class="text-green-700">Shift applied — syncing to everyone now.</span>';
+    } catch (error) {
+        console.error('Error applying emergency shift:', error);
+        if (statusEl) statusEl.innerHTML = '<span class="text-red-600">Failed — are you signed in as an admin?</span>';
+    }
+}
+
+async function clearAllEmergencyShifts() {
+    const statusEl = document.getElementById('emergency-shift-status');
+    try {
+        const shifted = allSchedules.filter(s => s.temporaryShift);
+        for (const s of shifted) {
+            const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', s.id);
+            await updateDoc(scheduleRef, { temporaryShift: null });
+            logScheduleEdit(s.id, 'shift-clear', { hadMinutes: Math.round((s.temporaryShift.seconds || 0) / 60) }); // V5.75.0
+        }
+        console.log(`[Shift] Cleared shifts on ${shifted.length} schedule(s).`);
+        if (statusEl) statusEl.innerHTML = '<span class="text-green-700">All shifts cleared.</span>';
+    } catch (error) {
+        console.error('Error clearing shifts:', error);
+        if (statusEl) statusEl.innerHTML = '<span class="text-red-600">Failed — are you signed in as an admin?</span>';
+    }
+}
+
+document.getElementById('emergency-shift-apply-btn')?.addEventListener('click', applyEmergencyShift);
+document.getElementById('emergency-shift-clear-btn')?.addEventListener('click', clearAllEmergencyShifts);
+// ============================================================
+// V5.75.0: EDIT AUDIT LOG (shared schedules)
+// Answers "who moved 4th period?" definitively.
+//
+// Every meaningful admin mutation of a SHARED schedule also appends an
+// immutable entry to that schedule's edit_log subcollection:
+//     artifacts/{appId}/public/data/schedules/{id}/edit_log/{autoId}
+//     { at: serverTimestamp, byUid, byName, action, detail }
+// Logging is FIRE-AND-FORGET: a logging failure must never block or fail
+// the edit itself, so call sites do NOT await logScheduleEdit.
+//
+// Personal-schedule edits are deliberately NOT logged (owner-only data;
+// the audit exists for the shared resource 50 people depend on).
+//
+// Batch operations that touch many schedules at once (multi-add, conflict
+// resolution, sound reassignment, linked edits, import-merge) write ONE
+// summary entry to the active schedule's log rather than one per target —
+// documented trade-off; per-target batch logging is a future refinement
+// (see HANDOFF.md). Deleting a schedule logs to the deleted schedule's own
+// subcollection, which Firestore keeps under the ghost parent — those
+// entries are only reachable if the viewer's schedule list retains the id,
+// so deletions are ALSO summarized to the console.
+//
+// Rules (firestore.rules): read = any authenticated user; create = admins
+// (matching who can edit schedules at all); update/delete = nobody. The log
+// is append-only by rule, not just by convention.
+//
+// Entry detail carries before/after where the call site trivially has both
+// (bell edits, renames, shifts) — enough to build one-click undo later.
+// ============================================================
+
+let currentUserDisplayName = null; // set by the auth listener in chunk 15
+
+function logScheduleEdit(scheduleId, action, detail) {
+    try {
+        if (!db || !scheduleId || !action) return;
+        const logRef = collection(db, 'artifacts', appId, 'public', 'data',
+            'schedules', scheduleId, 'edit_log');
+        addDoc(logRef, {
+            at: serverTimestamp(),
+            byUid: userId || null,
+            byName: currentUserDisplayName || null,
+            action: action,
+            detail: detail || null
+        }).catch((err) => console.warn('[Audit] log write failed (edit itself succeeded):', err));
+    } catch (err) {
+        console.warn('[Audit] log skipped:', err);
+    }
+}
+
+// --- Admin viewer -----------------------------------------------------
+
+function describeAuditDetail(detail) {
+    if (!detail) return '';
+    const parts = [];
+    if (detail.before !== undefined || detail.after !== undefined) {
+        const fmt = (v) => typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
+        parts.push(`${fmt(detail.before)} \u2192 ${fmt(detail.after)}`);
+    }
+    for (const [k, v] of Object.entries(detail)) {
+        if (k === 'before' || k === 'after') continue;
+        parts.push(`${k}: ${typeof v === 'object' && v !== null ? JSON.stringify(v) : v}`);
+    }
+    return parts.join(' \u00b7 ');
+}
+
+async function loadEditHistory(scheduleId) {
+    const list = document.getElementById('edit-history-list');
+    if (!list) return;
+    list.innerHTML = '<li class="text-sm text-gray-500">Loading\u2026</li>';
+    try {
+        const logRef = collection(db, 'artifacts', appId, 'public', 'data',
+            'schedules', scheduleId, 'edit_log');
+        const snap = await getDocs(query(logRef, orderBy('at', 'desc'), limit(50)));
+        if (snap.empty) {
+            list.innerHTML = '<li class="text-sm text-gray-500">No logged edits yet for this schedule. (Logging began in v5.75.0 \u2014 older edits predate the log.)</li>';
+            return;
+        }
+        list.innerHTML = snap.docs.map(d => {
+            const e = d.data();
+            const when = e.at && e.at.toDate ? e.at.toDate().toLocaleString() : 'pending\u2026';
+            const who = e.byName || e.byUid || 'unknown';
+            return `<li class="py-2 border-b border-gray-100 text-sm">
+                <div class="flex justify-between gap-2">
+                    <span class="font-medium">${escapeHtml(e.action || '?')}</span>
+                    <span class="text-gray-500 whitespace-nowrap">${escapeHtml(when)}</span>
+                </div>
+                <div class="text-gray-600">${escapeHtml(describeAuditDetail(e.detail))}</div>
+                <div class="text-xs text-gray-400">by ${escapeHtml(who)}</div>
+            </li>`;
+        }).join('');
+    } catch (error) {
+        console.error('[Audit] failed to load history:', error);
+        list.innerHTML = '<li class="text-sm text-red-600">Could not load history \u2014 are you signed in?</li>';
+    }
+}
+
+function openEditHistoryModal() {
+    const modal = document.getElementById('edit-history-modal');
+    const select = document.getElementById('edit-history-schedule');
+    if (!modal || !select) return;
+    select.innerHTML = allSchedules.map(s =>
+        `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`).join('');
+    // Default to the active schedule when it's a shared one
+    if (activeBaseScheduleId && [...select.options].some(o => o.value === activeBaseScheduleId)) {
+        select.value = activeBaseScheduleId;
+    }
+    modal.classList.remove('hidden');
+    if (select.value) loadEditHistory(select.value);
+}
+
+document.getElementById('open-edit-history-btn')?.addEventListener('click', openEditHistoryModal);
+document.getElementById('edit-history-close-btn')?.addEventListener('click', () =>
+    document.getElementById('edit-history-modal')?.classList.add('hidden'));
+document.getElementById('edit-history-schedule')?.addEventListener('change', (e) =>
+    loadEditHistory(e.target.value));
+// ============================================================
+// V5.77.0: DEVICE CLOCK DRIFT WARNING
+// Bells ring on each device's LOCAL clock. A Chromebook running four
+// minutes slow rings four minutes late, and the teacher blames the app.
+// This monitor measures the device's offset against Firestore server time
+// and shows a dismissible banner when it exceeds the threshold.
+//
+// How: write { ts: serverTimestamp() } to the signed-in user's own
+// diagnostics doc (owner-only path, covered by existing rules), read it
+// back FROM THE SERVER, and estimate drift as serverTime minus the local
+// midpoint of the write round trip (BellEngine.estimateClockDriftMs — the
+// NTP-style estimate, tested). Uncertainty is half the round trip, which is
+// noise against the 45-second threshold.
+//
+// Deliberate decisions:
+//  - WARN ONLY, never auto-correct bell times by the offset. Correcting
+//    would fight the OS clock (and any later fix of it) and make "what time
+//    does the app think it is" unanswerable. The fix belongs in the
+//    device's Settings, and the banner says so.
+//  - Dismissal lasts for the SESSION. If the clock is still wrong tomorrow,
+//    the morning page load re-warns. Hourly re-measures do NOT re-nag
+//    within a session unless drift has never been acknowledged.
+//  - All failures (offline, timeout, rules) are silent: a diagnostics
+//    feature must never generate support noise of its own. A 15s timeout
+//    guards the round trip.
+//
+// The latest measurement is kept in lastClockDriftMs / lastClockDriftAt
+// for the Stage 5 status view.
+// ============================================================
+
+let lastClockDriftMs = null;   // most recent measurement (ms; +ve = device slow)
+let lastClockDriftAt = null;   // Date of that measurement
+let clockDriftMonitorStarted = false;
+let clockDriftBannerDismissed = false;
+
+const CLOCK_DRIFT_WARN_MS = 45000;       // 45 seconds
+const CLOCK_DRIFT_INTERVAL_MS = 3600000; // re-measure hourly
+
+function startClockDriftMonitor() {
+    if (clockDriftMonitorStarted) return;
+    clockDriftMonitorStarted = true;
+    // First measurement shortly after auth settles; then hourly.
+    setTimeout(measureClockDrift, 5000);
+    setInterval(measureClockDrift, CLOCK_DRIFT_INTERVAL_MS);
+
+    document.getElementById('clock-drift-dismiss')?.addEventListener('click', () => {
+        clockDriftBannerDismissed = true;
+        document.getElementById('clock-drift-banner')?.classList.add('hidden');
+    });
+}
+
+async function measureClockDrift() {
+    try {
+        if (!db || !userId) return;
+        const probeRef = doc(db, 'artifacts', appId, 'users', userId, 'diagnostics', 'clock_drift');
+
+        const withTimeout = (p) => Promise.race([
+            p,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('drift probe timeout')), 15000))
+        ]);
+
+        const before = Date.now();
+        await withTimeout(setDoc(probeRef, { ts: serverTimestamp() }));
+        const after = Date.now();
+        const snap = await withTimeout(getDocFromServer(probeRef));
+        const ts = snap.get('ts');
+        if (!ts || typeof ts.toMillis !== 'function') return;
+
+        const drift = window.BellEngine.estimateClockDriftMs(before, after, ts.toMillis());
+        if (drift === null) return;
+
+        lastClockDriftMs = drift;
+        lastClockDriftAt = new Date();
+        console.log(`[Drift] Device clock offset ~${Math.round(drift / 1000)}s ` +
+            `(uncertainty ±${Math.round((after - before) / 2 / 1000)}s; +ve = device slow).`);
+
+        updateClockDriftBanner(drift);
+    } catch (e) {
+        // Silent by design — see header. Log at debug level only.
+        console.log('[Drift] measurement skipped:', e.message);
+    }
+}
+
+function updateClockDriftBanner(driftMs) {
+    const banner = document.getElementById('clock-drift-banner');
+    const text = document.getElementById('clock-drift-text');
+    if (!banner || !text) return;
+
+    if (Math.abs(driftMs) < CLOCK_DRIFT_WARN_MS) {
+        banner.classList.add('hidden');
+        return;
+    }
+    if (clockDriftBannerDismissed) return;
+
+    const totalSeconds = Math.round(Math.abs(driftMs) / 1000);
+    const human = totalSeconds >= 90
+        ? `about ${Math.round(totalSeconds / 60)} minutes`
+        : `about ${totalSeconds} seconds`;
+    const direction = driftMs > 0 ? 'behind' : 'ahead';
+    text.textContent = `This device's clock is ${human} ${direction}. ` +
+        `Bells will ring off-schedule on this device until it's corrected ` +
+        `(system Settings \u2192 Date & Time \u2192 set automatically).`;
+    banner.classList.remove('hidden');
+}
+// ============================================================
+// V5.78.0: WEB NOTIFICATION BACKUP RING
+// A permission-gated system notification that fires alongside the audio
+// bell — the second channel for when a tab is throttled in the background
+// or audio fails silently. Every ring path (scheduled bells, missed-bell
+// recovery, queue timers, quick bells) funnels through ringBell(), so one
+// hook in ringBell covers them all — and because callers check mutes
+// BEFORE calling ringBell, notifications automatically respect mutes.
+//
+// Deliberate decisions (documented so nobody "improves" them blind):
+//  - OPT-IN, PER-DEVICE (localStorage), not cloud-synced. The original
+//    sketch said "persist via preferences cloud sync," but Notification
+//    permission is inherently per-browser-per-device — a synced ON that
+//    follows you to a device that never granted permission would just be
+//    a toggle that lies. Per-device keeps the toggle truthful.
+//  - Fires ONLY when the tab is hidden (document.hidden). When the tab is
+//    visible, the teacher already gets audio + the visual cue; an OS
+//    notification on top is noise. The backup channel exists for the
+//    backgrounded case.
+//  - Failures are silent (a backup channel must not create foreground
+//    noise); the toggle reflects reality (turns itself off if permission
+//    was revoked at the browser level).
+// ============================================================
+
+let bellNotificationsEnabled = false;
+try {
+    bellNotificationsEnabled = localStorage.getItem('bellNotificationsEnabled') === 'true';
+} catch (e) { /* storage unavailable — stays off */ }
+
+function notificationsSupported() {
+    return typeof Notification !== 'undefined';
+}
+
+function refreshNotificationToggleUi() {
+    const btn = document.getElementById('bell-notifications-toggle');
+    if (!btn) return;
+    if (!notificationsSupported()) {
+        btn.textContent = '🔕 Notifications unsupported';
+        btn.disabled = true;
+        return;
+    }
+    const effective = bellNotificationsEnabled && Notification.permission === 'granted';
+    btn.textContent = effective ? '🔔 Notifications: On' : '🔕 Notifications: Off';
+    btn.title = effective
+        ? 'System notifications fire when this tab is in the background. Click to turn off.'
+        : 'Also ring via a system notification when this tab is in the background. Click to enable.';
+}
+
+async function toggleBellNotifications() {
+    if (!notificationsSupported()) return;
+    try {
+        if (bellNotificationsEnabled && Notification.permission === 'granted') {
+            bellNotificationsEnabled = false;
+        } else {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                bellNotificationsEnabled = true;
+                // Immediate proof-of-life so the teacher knows what it looks like
+                new Notification('Ellis Web Bell', {
+                    body: 'Backup notifications are on. You\u2019ll get one like this when a bell rings while this tab is in the background.',
+                    icon: '/icon-192.png',
+                    tag: 'ellis-bell-test'
+                });
+            } else {
+                bellNotificationsEnabled = false;
+                showUserMessage('Notifications are blocked for this site in your browser settings. Allow them there, then try again.', 'Notifications');
+            }
+        }
+        try { localStorage.setItem('bellNotificationsEnabled', String(bellNotificationsEnabled)); } catch (e) {}
+    } catch (e) {
+        console.warn('[Notify] toggle failed:', e);
+    }
+    refreshNotificationToggleUi();
+}
+
+/**
+ * Called from ringBell() for every bell that actually rings.
+ * Silent no-op unless: enabled + permission granted + tab hidden.
+ */
+function maybeNotifyBell(bell) {
+    try {
+        if (!bellNotificationsEnabled || !notificationsSupported()) return;
+        if (Notification.permission !== 'granted') {
+            // Permission was revoked at the browser level — make the toggle truthful.
+            bellNotificationsEnabled = false;
+            try { localStorage.setItem('bellNotificationsEnabled', 'false'); } catch (e) {}
+            refreshNotificationToggleUi();
+            return;
+        }
+        if (!document.hidden) return; // visible tab already has audio + visuals
+        new Notification(`\ud83d\udd14 ${bell.name}`, {
+            body: bell.time ? `Scheduled for ${formatTime12Hour(bell.time, true)}` : 'Bell',
+            icon: '/icon-192.png',
+            tag: 'ellis-bell-ring' // coalesce rapid-fire rings into one
+        });
+    } catch (e) {
+        console.log('[Notify] skipped:', e.message);
+    }
+}
+
+document.getElementById('bell-notifications-toggle')?.addEventListener('click', toggleBellNotifications);
+refreshNotificationToggleUi();
+// ============================================================
+// V5.79.0: STATUS / HEALTH VIEW
+// The support script becomes: "open the app, tap the version number in the
+// footer, and read me the screen" (or hit Copy Report and paste it).
+// Everything a triage conversation needs, in one modal:
+//   app version · service worker version + cache (via the GET_VERSION
+//   message channel that has existed in service-worker.js since v1.0) ·
+//   connectivity + signed-in state · active schedule + any emergency shift
+//   · device clock drift (Stage 3's lastClockDriftMs) · notification state
+//   · schedule/bell counts.
+// Read-only by design: this view diagnoses, it never mutates.
+// ============================================================
+
+async function getServiceWorkerVersion() {
+    try {
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+            return 'not controlling this page';
+        }
+        return await Promise.race([
+            new Promise((resolve) => {
+                const channel = new MessageChannel();
+                channel.port1.onmessage = (event) => resolve(event.data?.version || 'unknown');
+                navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+            }),
+            new Promise((resolve) => setTimeout(() => resolve('no response (2s)'), 2000))
+        ]);
+    } catch (e) {
+        return `error: ${e.message}`;
+    }
+}
+
+async function buildStatusReport() {
+    const lines = [];
+    const push = (label, value) => lines.push([label, String(value)]);
+
+    push('App version', APP_VERSION);
+    push('Service worker', await getServiceWorkerVersion());
+    push('Online', navigator.onLine ? 'yes' : 'NO \u2014 offline');
+    push('Signed in', userId ? `${currentUserDisplayName || 'anonymous'} (${userId.slice(0, 8)}\u2026)` : 'NO');
+    push('Admin mode', document.body.classList.contains('admin-mode') ? 'yes' : 'no');
+
+    const activeShared = allSchedules.find(s => s.id === activeBaseScheduleId);
+    push('Active schedule', activePersonalScheduleId
+        ? `personal (${activePersonalScheduleId.slice(0, 8)}\u2026)`
+        : (activeShared ? activeShared.name : 'none'));
+    push('Shared schedules loaded', allSchedules.length);
+
+    const shiftSecs = window.BellEngine.getActiveScheduleShiftSeconds(activeSharedScheduleShift, new Date());
+    push('Emergency shift (active schedule)', shiftSecs
+        ? `${shiftSecs > 0 ? '+' : ''}${Math.round(shiftSecs / 60)} min (today)`
+        : 'none');
+
+    if (lastClockDriftMs === null) {
+        push('Device clock drift', 'not measured yet');
+    } else {
+        const s = Math.round(Math.abs(lastClockDriftMs) / 1000);
+        push('Device clock drift',
+            s < 5 ? `in sync (\u00b1${s}s)` :
+            `${s}s ${lastClockDriftMs > 0 ? 'behind' : 'ahead'} (measured ${lastClockDriftAt.toLocaleTimeString()})`);
+    }
+
+    if (typeof Notification === 'undefined') {
+        push('Bell notifications', 'unsupported on this browser');
+    } else {
+        push('Bell notifications', bellNotificationsEnabled && Notification.permission === 'granted'
+            ? 'on' : `off (permission: ${Notification.permission})`);
+    }
+
+    push('Bells in view', (localSchedule?.length || 0) + (personalBells?.length || 0));
+    push('Report time', new Date().toLocaleString());
+    return lines;
+}
+
+async function openStatusModal() {
+    const modal = document.getElementById('status-modal');
+    const list = document.getElementById('status-list');
+    if (!modal || !list) return;
+    list.innerHTML = '<li class="text-sm text-gray-500 py-1">Gathering\u2026</li>';
+    modal.classList.remove('hidden');
+    const report = await buildStatusReport();
+    list.innerHTML = report.map(([label, value]) =>
+        `<li class="flex justify-between gap-4 py-1 border-b border-gray-100 text-sm">
+            <span class="text-gray-600">${escapeHtml(label)}</span>
+            <span class="font-medium text-right">${escapeHtml(value)}</span>
+        </li>`).join('');
+    // Stash a plain-text copy for the Copy Report button
+    modal.dataset.reportText = report.map(([l, v]) => `${l}: ${v}`).join('\n');
+}
+
+document.getElementById('app-version-display')?.addEventListener('click', openStatusModal);
+document.getElementById('status-close-btn')?.addEventListener('click', () =>
+    document.getElementById('status-modal')?.classList.add('hidden'));
+document.getElementById('status-copy-btn')?.addEventListener('click', async () => {
+    const modal = document.getElementById('status-modal');
+    const btn = document.getElementById('status-copy-btn');
+    try {
+        await navigator.clipboard.writeText(modal?.dataset.reportText || '');
+        if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Report'; }, 2000); }
+    } catch (e) {
+        if (btn) btn.textContent = 'Copy failed \u2014 select & copy manually';
+    }
+});
 function init() {
     initFirebase();
     
@@ -14179,7 +14394,12 @@ function init() {
         });
     }
 
-    scheduleSelector.addEventListener('change', () => setActiveSchedule(scheduleSelector.value));
+    scheduleSelector.addEventListener('change', () => {
+        // V5.73.0: a manual pick wins over the day-type calendar for the rest
+        // of today on this device (cleared implicitly when the date changes).
+        localStorage.setItem(MANUAL_SCHEDULE_CHOICE_KEY, toLocalDateString(new Date()));
+        setActiveSchedule(scheduleSelector.value);
+    });
     adminToggleBtn.addEventListener('click', toggleAdminMode);
     
     // V5.59.0: Simplified View Toggle
@@ -15063,8 +15283,11 @@ function init() {
         if (multiPeriodEndSoundInput) playBell(multiPeriodEndSoundInput.value);
     });
     // V5.58.3: Visual preview update listeners for period modal
-    document.getElementById('multi-period-visual')?.addEventListener('change', (e) => {
-        handleVisualSelectChange(e.target, 'multi-period-visual-preview', multiPeriodNameInput?.value || 'Preview');
+    document.getElementById('multi-period-visual')?.addEventListener('change', () => {
+        // v5.72.0 FIX: was `handleVisualSelectChange(...)`, which never
+        // existed. updatePeriodVisualPreview() reads the same elements and is
+        // what the visual-mode radios below already call.
+        updatePeriodVisualPreview();
     });
     document.querySelectorAll('input[name="multi-period-visual-mode"]').forEach(radio => {
         radio.addEventListener('change', updatePeriodVisualPreview);
@@ -16319,8 +16542,12 @@ function init() {
         
         // Handle custom text selection
         if (val === '[CUSTOM_TEXT]') {
-            // Open custom text modal, then return value
-            openCustomTextModal('bulk');
+            // v5.72.0 FIX: was `openCustomTextModal('bulk')`, which never
+            // existed (latent ReferenceError). Follow the same pattern as the
+            // generic visual-select handler: remember which <select> opened
+            // the modal so its save handler writes the value back, then show.
+            currentVisualSelectTarget = bulkEditVisual;
+            customTextVisualModal.classList.remove('hidden');
         }
     });
 
@@ -16512,6 +16739,7 @@ function init() {
                         // Save to Firestore
                         const legacyBells = flattenPeriodsToLegacyBells(updatedSharedPeriods);
                         await updateDoc(scheduleRef, { periods: updatedSharedPeriods, bells: legacyBells });
+                        logScheduleEdit(activeBaseScheduleId, 'bulk-edit', { bellsChanged: adminSharedTimeShiftCount }); // V5.75.0
                         
                         // Update local state
                         localSchedulePeriods = updatedSharedPeriods;
@@ -16603,6 +16831,7 @@ function init() {
                         
                         const legacyBells = flattenPeriodsToLegacyBells(updatedSharedPeriods);
                         await updateDoc(scheduleRef, { periods: updatedSharedPeriods, bells: legacyBells });
+                        logScheduleEdit(activeBaseScheduleId, 'bulk-edit', { bellsChanged: adminSharedTimeShiftCount }); // V5.75.0
                         localSchedulePeriods = updatedSharedPeriods;
                     }
                 }
@@ -16923,9 +17152,6 @@ async function handleMakeOrphansIndependent() {
 
 // --- Start the App ---
 init();
-
-// NEW V4.05: Close the initialization wrapper
-})();
 
 // --- NEW in 3.46: App Cleanup Listener (Fix for Safari CORS/Fetch Errors on Refresh) ---
 window.addEventListener('beforeunload', () => {

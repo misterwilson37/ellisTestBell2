@@ -1,0 +1,81 @@
+// ============================================================
+// V5.73.0 (PARKED in V5.74.0): DAY-TYPE SCHEDULE CALENDAR
+//
+// STATUS: PARKED — auto-switching is hard-gated OFF and the admin UI was
+// removed from index.html before this ever shipped. Why: the school runs
+// SIX different schedules simultaneously across 50 teachers (two teachers
+// run ~9 on classroom grids), so a single school-wide "today is Schedule B"
+// designation is the wrong model — it would fight half the faculty every
+// morning.
+//
+// TO REVIVE, the feature needs a per-teacher assignment model first:
+//   - teacher groups (grade level / role), managed by admins
+//   - group -> schedule mapping per day type, not one global schedule
+//   - each client resolves ITS OWN designated schedule from its group
+// The pure resolver (resolveCalendarSchedule in bell-engine.js) and its unit
+// tests are kept — they'll be the core of that design. The auto-switch below
+// additionally requires `enabled: true` on the config doc, which nothing
+// can currently set, so even a hand-created doc cannot trigger switching.
+//
+// What REMAINS ACTIVE from this chunk: MANUAL_SCHEDULE_CHOICE_KEY (the
+// selector listener in the init chunk stamps it; harmless, and the revived
+// feature will want it).
+// ============================================================
+
+let scheduleCalendar = null;                    // live copy of the config doc
+let scheduleCalendarListenerUnsubscribe = null;
+let calendarPendingExceptions = {};             // modal working copy
+
+const MANUAL_SCHEDULE_CHOICE_KEY = 'manualScheduleChoiceDate';
+
+function listenForScheduleCalendar() {
+    if (scheduleCalendarListenerUnsubscribe) {
+        scheduleCalendarListenerUnsubscribe();
+        scheduleCalendarListenerUnsubscribe = null;
+    }
+    if (!db) return;
+    const calRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'schedule_calendar');
+    scheduleCalendarListenerUnsubscribe = onSnapshot(calRef, (docSnap) => {
+        scheduleCalendar = docSnap.exists() ? docSnap.data() : null;
+        applyCalendarSchedule('calendar-updated');
+    }, (error) => {
+        console.error('Error listening to schedule calendar:', error);
+    });
+}
+
+/**
+ * Switch to the calendar-designated schedule if the rules above allow it.
+ * Safe to call any time; every guard fails closed (no switch).
+ */
+function applyCalendarSchedule(trigger) {
+    try {
+        // PARKED (v5.74.0): requires an explicit enabled flag nothing can set yet.
+        if (!scheduleCalendar || scheduleCalendar.enabled !== true) return;
+        if (!allSchedules || allSchedules.length === 0) return;
+
+        const today = new Date();
+        const designatedId = window.BellEngine.resolveCalendarSchedule(scheduleCalendar, today);
+        if (!designatedId) return;
+
+        // Rule 2: designated schedule must still exist
+        if (!allSchedules.some(s => s.id === designatedId)) {
+            console.warn(`Calendar designates schedule "${designatedId}" which no longer exists — ignoring.`);
+            return;
+        }
+
+        // Rule 3: manual choice today wins
+        if (localStorage.getItem(MANUAL_SCHEDULE_CHOICE_KEY) === toLocalDateString(today)) return;
+
+        // Rules 4+5: read the selector as the source of truth for what's active
+        const currentPrefixed = scheduleSelector ? scheduleSelector.value : '';
+        if (currentPrefixed.startsWith('personal-')) return;
+        const targetPrefixed = `shared-${designatedId}`;
+        if (currentPrefixed === targetPrefixed) return;
+
+        console.log(`[Calendar] Auto-switching to "${designatedId}" (trigger: ${trigger}).`);
+        if (scheduleSelector) scheduleSelector.value = targetPrefixed;
+        setActiveSchedule(targetPrefixed);
+    } catch (e) {
+        console.error('applyCalendarSchedule failed:', e);
+    }
+}

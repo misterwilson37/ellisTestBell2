@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ellis Web Bell 5.69.2</title>
+    <title>Ellis Web Bell 5.79.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -22,22 +22,14 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
     
-    <!-- Using Tailwind CSS for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- v5.71.0: Compiled, self-hosted Tailwind (replaces the Play CDN runtime
+         JIT). Rebuild with build/README-BUILD.md workflow whenever you use a
+         Tailwind class that has never appeared in index.html/script.js before.
+         The old inline tailwind.config (fontFamily) now lives in
+         build/tailwind.config.js. -->
+    <link rel="stylesheet" href="tailwind.css">
     <!-- Using Tone.js for web audio -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        // Use Century Gothic, with Urbanist and Questrial as web-safe fallbacks
-                        sans: ['Century Gothic', 'Urbanist', 'Questrial', 'sans-serif'],
-                    },
-                },
-            },
-        }
-    </script>
     <!-- V5.49.3: Added Urbanist as Century Gothic fallback (before Questrial) -->
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
 
@@ -253,6 +245,13 @@
 
 </head>
 <body class="bg-gray-100 text-gray-900 font-sans"> <!-- Added font-sans to apply tailwind default -->
+
+    <!-- V5.77.0: Device clock drift warning (shown only when this device's
+         clock is >45s off Firestore server time; measurement in chunk 23) -->
+    <div id="clock-drift-banner" class="hidden kiosk-hide bg-amber-100 border-b border-amber-300 text-amber-900 px-4 py-2 text-sm flex items-center justify-between gap-4">
+        <span id="clock-drift-text" class="flex-grow"></span>
+        <button type="button" id="clock-drift-dismiss" class="px-2 py-1 text-amber-900 hover:bg-amber-200 rounded-lg font-bold" title="Dismiss for this session">&times;</button>
+    </div>
 
 
     <div id="welcome-overlay" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
@@ -1136,6 +1135,33 @@
         </div>
     </div>
 
+
+    <!-- V5.75.0: Edit History Modal (admin) -->
+    <div id="edit-history-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-medium mb-2">Edit History</h3>
+            <p class="text-sm text-gray-600 mb-4">The last 50 logged changes to the selected shared schedule. Entries are append-only &mdash; nobody, including admins, can alter or remove them.</p>
+            <select id="edit-history-schedule" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm mb-3"></select>
+            <ul id="edit-history-list" class="mb-4 max-h-96 overflow-y-auto"></ul>
+            <div class="mt-4 flex justify-end">
+                <button type="button" id="edit-history-close-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- V5.79.0: Status / diagnostics modal (opened by tapping the footer version) -->
+    <div id="status-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-medium mb-2">App Status</h3>
+            <p class="text-sm text-gray-600 mb-4">If something's misbehaving, send this whole report along with what you were doing.</p>
+            <ul id="status-list" class="mb-4"></ul>
+            <div class="mt-4 flex justify-end gap-3">
+                <button type="button" id="status-copy-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Copy Report</button>
+                <button type="button" id="status-close-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div id="confirm-restore-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
             <h3 class="text-xl font-medium mb-4">Restore Personal Schedule</h3>
@@ -1594,6 +1620,8 @@
                      <button id="expand-all-btn" class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Expand All</button>
                      <!-- End Collapse/Expand -->
                      <button id="mute-all-list-btn" class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Mute All</button>
+                     <!-- V5.78.0: backup notification toggle (per-device) -->
+                     <button id="bell-notifications-toggle" class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 kiosk-hide">🔕 Notifications: Off</button>
                      <button id="unmute-all-list-btn" class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Unmute All</button>
                      <!-- V5.47.3: Bulk Edit Toggle -->
                      <button id="bulk-edit-toggle-btn" class="px-3 py-1 text-sm bg-sky-100 text-sky-700 rounded-lg hover:bg-sky-200 hidden">Bulk Edit</button>
@@ -1658,6 +1686,30 @@
         <!-- V5.49: Hidden in kiosk mode -->
         <div class="admin-control bg-white p-6 rounded-xl shadow-md mb-8 space-y-6 kiosk-hide">
             <h3 class="text-xl font-semibold text-gray-800 border-b pb-2">Admin Zone</h3>
+
+            <!-- V5.75.0: Edit history viewer -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Edit History</label>
+                <button type="button" id="open-edit-history-btn" class="px-6 py-2 bg-gray-700 text-white font-medium rounded-lg shadow-md hover:bg-gray-800">
+                    View Edit History
+                </button>
+                <p class="text-xs text-gray-500 mt-1">Who changed what, on which shared schedule, and when. Logging began in v5.75.0.</p>
+            </div>
+
+            <!-- V5.74.0: Emergency schedule shift (today only) -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Emergency Schedule Shift (today only)</label>
+                <div class="flex flex-col sm:flex-row gap-3 mb-2">
+                    <select id="emergency-shift-schedule" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                        <option value="__ALL__">All shared schedules</option>
+                    </select>
+                    <input type="number" id="emergency-shift-minutes" placeholder="+/- minutes" step="1" class="w-full sm:w-36 px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                    <button type="button" id="emergency-shift-apply-btn" class="px-6 py-2 bg-orange-600 text-white font-medium rounded-lg shadow-md hover:bg-orange-700">Apply Shift</button>
+                    <button type="button" id="emergency-shift-clear-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Clear All</button>
+                </div>
+                <div id="emergency-shift-status" class="text-sm mb-1"><span class="text-gray-500">No shifts active today.</span></div>
+                <p class="text-xs text-gray-500">Shifts every static bell on the base schedule; relative bells (including teachers' personal bells anchored to it) ripple automatically. Teachers' pinned personal times don't move. Expires by itself at midnight.</p>
+            </div>
 
             <!-- Create New Schedule Form -->
             <form id="create-schedule-form" class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -3025,7 +3077,7 @@
                 <code id="userIdDisplay" class="bg-gray-200 px-2 py-1 rounded">...</code>
             </p>
 			<div class="text-center mt-2 text-xs text-gray-400">
-   		 		App Version: <span id="app-version-display" class="font-bold text-gray-600">Loading...</span>
+   		 		App Version: <span id="app-version-display" class="font-bold text-gray-600 cursor-pointer underline decoration-dotted" title="Tap for status &amp; diagnostics">Loading...</span>
    		 		&nbsp;|&nbsp;
    		 		CSS Version: <span id="css-version-display" class="font-bold text-gray-600">Loading...</span>
 			</div>
@@ -3038,6 +3090,10 @@
        	<!-- 5.06 Moving JS out -->
         <!-- v5.67.0: firebase-config.js must load BEFORE script.js so window.firebaseConfig is populated when the module initializes -->
         <script src="firebase-config.js"></script>
+        <!-- v5.72.0: Shared bell engine — MUST load before script.js (the
+             module destructures window.BellEngine at its top). Same file is
+             used by clock.html. Tests: node --test tests/ -->
+        <script src="bell-engine.js"></script>
 		<script type="module" src="script.js"></script>
 </body>
 </html>
