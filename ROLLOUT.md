@@ -2,7 +2,33 @@
 
 ## ✅ v5.79.0 batch: DEPLOYED 2026-07. The checklist below did its job.
 
-## LATEST — v5.79.1 bug-fix delta (deploy this now)
+## ✅ v5.79.1 delta: DEPLOYED 2026-07 (alpha repo).
+
+## LATEST — v7.0.0 native ES modules (deploy this next)
+Biggest structural change since the v5.72 split, but the deploy is still
+just files: no build, no Firebase console, no rules change, no data change.
+- [ ] DELETE `script.js` from the repo (it no longer exists; index.html no
+      longer references it)
+- [ ] Replace: `index.html` (7.0.0), `service-worker.js` (1.7.0, cache v8),
+      the whole `src/js/` folder (29 modules incl. new `state.js`, `main.js`),
+      `bell-engine.js` (1.3.2) `firebase-config.js` (1.0.1) `clock.html`
+      (1.6.1) — all three comment-only z-bumps, no code change —
+      `tailwind.css` (byte-identical; push for hygiene)
+- [ ] Replace `build/` folder (new verifier + retired builder) and docs:
+      `CHANGELOG.md`, `README.md`, `HANDOFF.md`, this file
+- [ ] Verify after push + hard-refresh:
+      - header/title say 7.0.0; footer version tap still lists files
+      - DevTools Network tab shows src/js/*.js modules loading (200s)
+      - DevTools Console: no red errors on load
+      - a bell rings (set a quick bell 1 min out); schedule list renders;
+        open/close a bell edit modal; toggle a theme
+      - Application > Service Workers: new SW activates; cache storage shows
+        ellis-web-bell-v8 with src/js entries
+      - offline check: DevTools offline mode + reload -> app still loads
+- [ ] School repo: do NOT ship 7.0.0 there until it has soaked on alpha
+      through at least one full school day of your own use
+
+## ✅ Prior delta (v5.79.1) — kept for reference
 Replace these files in the repo, push, hard-refresh. No build, no Firebase
 console, no rules change:
 - [ ] `index.html`  (v5.79.1 — version now consistent in all three places)

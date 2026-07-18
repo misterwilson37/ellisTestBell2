@@ -1,6 +1,9 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.3.1
+ * Version: 1.3.2
+ *
+ * v1.3.2 (2026-07, app 7.0.0): comment-only — load-order note updated to
+ * reference src/js/main.js (script.js retired). No code change.
  * (1.0.0: extracted from script.js v5.71.0 in app release v5.72.0;
  *  1.1.0: added toLocalDateString + resolveCalendarSchedule for the
  *  day-type calendar feature [feature parked in v5.74.0, resolver kept];
@@ -17,7 +20,7 @@
  *
  * Loaded as a plain (non-module) script, same pattern as firebase-config.js,
  * so it works in the module-based main app AND the compat/classic surfaces:
- *   index.html:  <script src="bell-engine.js"></script>  (before script.js)
+ *   index.html:  <script src="bell-engine.js"></script>  (before src/js/main.js)
  *   clock.html:  <script src="bell-engine.js"></script>  (before its logic)
  * It also exports for Node so tests/bell-engine.test.mjs can run against it.
  *
@@ -383,7 +386,7 @@
     }
 
     const BellEngine = {
-        VERSION: '1.3.1', // v1.3.1: exported so the status modal can report it
+        VERSION: '1.3.2', // v1.3.1: exported so the status modal can report it
         escapeHtml,
         getBellId,
         formatTime12Hour,

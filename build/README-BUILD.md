@@ -1,60 +1,53 @@
-# Build workflow — READ THIS BEFORE EDITING
+# Build & verification workflow — READ THIS BEFORE EDITING
 
 > **Deploying, not editing? You don't need this file at all.** The repo (and
-> every release zip) ships `script.js` and `tailwind.css` already built and
-> verified — pushing them to GitHub Pages requires no build, no terminal, no
-> npm. Everything below applies only when you want to CHANGE the app.
+> every release zip) ships everything ready to serve — `src/js/` IS the
+> production JavaScript and `tailwind.css` is pre-compiled. Pushing to GitHub
+> Pages requires no build, no terminal, no npm. Everything below applies only
+> when you want to CHANGE the app.
 
+## The 7.0.0 world in one paragraph
 
-The repo has **two generated files**. Editing them directly is the #1 way to
-lose work or ship a broken page:
+As of 7.0.0 the main app is **native ES modules**: `index.html` loads
+`src/js/main.js` with `<script type="module">` and the browser resolves the
+import graph. There is **no `script.js` and no JS build step** — the old
+"generated file" (and its `build:js` / `check:js` ceremony) is retired.
+Exactly one generated file remains: `tailwind.css`.
 
-| Generated file | Built from | Rebuild command (from `build/`) |
-|---|---|---|
-| `script.js` | `src/js/*.js` (in `build-js.mjs` manifest order) | `npm run build:js` |
-| `tailwind.css` | Tailwind classes found in `index.html` + `script.js` | `npm run build:css` |
+## Editing JavaScript (src/js/)
 
-Everything else (`index.html`, `clock.html`, `old.html`, `styles.css`,
-`bell-engine.js`, `firestore.rules`, ...) is edited directly, no build needed.
+Edit the module that owns your feature (map at the bottom), then run the
+battery (below). Rules that keep the module graph healthy:
 
-## One-time setup (needs Node.js 18+)
+- **Cross-module imports/exports are maintained by hand.** Use a new name
+  from another module → add it to that module's `export { ... }` block and
+  your module's import block. `npm run lint` (per-module no-undef) fails on
+  any name you forgot to import; `npm run check:esm` fails on any import the
+  other module doesn't actually export.
+- **Shared mutable state lives in `src/js/state.js`** (`state.foo`). If a
+  variable needs to be *assigned* from more than one module, it must live
+  there — ES module imports are read-only bindings, and `check:esm` errors on
+  any write to an imported name. Variables written only by their own module
+  stay in that module and are exported as live (read-only to others) bindings.
+- **Adding a new module?** Three places: create it in `src/js/`, import it in
+  `src/js/main.js` (position = execution order), and add it to `CORE_ASSETS`
+  in `service-worker.js` + bump `CACHE_NAME` (or offline loads will miss it).
+- **Logging:** use `safeLog.log(...)` (import from `03-memory-management.js`),
+  not raw `console.log` — debug logs are gated by `PRODUCTION_MODE` there.
+  `console.warn`/`console.error` are fine as-is.
 
-    cd build
-    npm install
-
-## RULE 1 — script.js is generated. Edit src/js/, then rebuild.
-
-`script.js` is the concatenation of the 27 files in `src/js/`. Edit the
-chunk that owns your feature (the filenames say what lives where), then:
-
-    cd build && npm run build:js
-
-Commit **both** the `src/js/` change and the regenerated `script.js`
-(GitHub Pages serves `script.js`; the `src/js/` files are for humans).
-
-- Symptom of editing `script.js` directly: your change works until the next
-  build silently erases it. Run `npm run check:js` any time to detect drift —
-  it fails loudly if `script.js` doesn't match the `src/js/` build.
-- The build aborts (leaving the old `script.js` intact) if any chunk has a
-  syntax error.
-- Adding a new chunk? Create the file in `src/js/` AND add it to `MANIFEST`
-  in `build-js.mjs` in the position its code must execute.
-
-## RULE 2 — tailwind.css is generated. New class? Rebuild.
+## RULE — tailwind.css is generated. New class? Rebuild.
 
 Any time you use a Tailwind class that has **never appeared before** in
-`index.html` or `script.js`:
+`index.html` or any `src/js/` module:
 
     cd build && npm run build:css
-
-(If you changed `src/js/`, run `build:js` first — the CSS scanner reads the
-built `script.js`.) `npm run build` does both in the right order.
 
 - Symptom of forgetting: the new element renders completely unstyled while
   everything else looks fine.
 - You do NOT need a CSS rebuild for: JS logic changes, `styles.css` changes,
   theme color changes (CSS variables), or reusing classes that already appear
-  somewhere in the two files.
+  somewhere in index.html/src/js.
 - The scanner reads whole files, so class names in JS string literals
   (ternaries, `VISUAL_CONFIG`, `classList.add('...')`) are found automatically.
   It cannot see a class assembled from pieces at runtime, e.g. `bg-${c}-500`.
@@ -65,28 +58,37 @@ built `script.js`.) `npm run build` does both in the right order.
 ## After any change to bell-engine.js: run the tests
 
 `bell-engine.js` is the shared time/schedule math used by BOTH the main app
-and clock.html (the TVs). It is hand-edited (not generated), but it is the
+and clock.html (the TVs). It is hand-edited, loaded as a plain `<script>`
+(NOT an ES module — clock.html needs it that way), and it is the
 highest-consequence code in the repo, so:
 
-    cd build && npm test        # 30 unit tests, node:test, no packages needed
+    cd build && npm test        # engine + schedule-utils suites, no packages needed
 
 Keep the engine pure — no DOM, no Firebase, no app globals. Dependencies come
 in as parameters (`previousBells`, `isBellSkipped`). That purity is what makes
 it testable and shareable; see the header comment in the file.
 
-## Recommended before every push
+## The verification battery (run before every push)
 
     cd build
-    npm run build       # rebuild both generated files
-    npm run check:js    # confirm no script.js drift
-    npm run lint        # no-undef only — this caught 14 real latent
-                        #   ReferenceErrors during the v5.72.0 refactor
-    npm test            # bell-engine unit tests
+    npm run check:esm   # linker: every import resolves & is exported;
+                        #   no writes to imported bindings; TDZ audit
+    npm run lint        # per-module no-undef — catches any missing import
+    npm test            # bell-engine + schedule-utils unit tests
+    npm run check:css   # tailwind.css non-empty + sentinel classes
+    npm run build:css   # only if you added a never-before-used Tailwind class
 
-## Map: which src/js/ chunk owns what
+(`check:esm`'s one standing TDZ warning — `02-dom-elements.js` eval-time use
+of `state` — is reviewed-safe: state.js imports nothing, so it always
+evaluates first.)
 
-00 header/version · 01 firebase imports · 02 DOM element consts ·
-03 memory management · 04 app state, mute/skip · 05 preferences cloud sync ·
+## Map: which src/js/ module owns what
+
+state (shared mutable state — every cross-module-written variable) ·
+main (entry point; import order = old concatenation order) ·
+00 header/version + engine bindings · 01 firebase imports (re-exported) ·
+02 DOM element consts · 03 memory management + safeLog ·
+04 app state, mute/skip · 05 preferences cloud sync ·
 06 countdown warning effects · 07 kiosk mode · 08 theme & display ·
 09 picture-in-picture · 10 clock loop & countdown · 11 quick bell broadcast ·
 12 quick bell queue · 13 schedule resolution & ringing · 14 schedule list
@@ -97,7 +99,8 @@ schedule shift · 22 edit audit log · 23 clock drift warning ·
 24 notification backup ring · 25 status/health view ·
 99 init() & event listeners (numbered 99 so future insertions never rename it)
 
-These are stage-1 chunks (shared module scope via concatenation), not yet
-true ES modules. Stage 2 — converting chunks to real modules one at a time,
-starting with the ones that touch the fewest globals — can happen
-incrementally without another big-bang refactor.
+Historical note: before 7.0.0 these were "chunks" concatenated into a
+generated script.js by `build-js.mjs` (now a tombstone that exits 1 and
+points here). The conversion tooling (`convert-esm-pass[123].mjs`,
+`analyze-deps.mjs`) is kept for archaeology; it should never need to run
+again.

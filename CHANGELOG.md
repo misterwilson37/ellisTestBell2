@@ -1,6 +1,40 @@
 # Ellis Web Bell — Changelog
 
-Release history for the main app (script.js / index.html). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
+Release history for the main app (src/js / index.html; script.js before 7.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
+
+## V7.0.0 — Native ES modules (stage-2 modularization; owner-approved major)
+The app's JavaScript is now real ES modules served directly from `src/js/`:
+index.html loads `src/js/main.js` and the browser resolves the import graph.
+**script.js is retired** — there is no generated JS file and no JS build
+step; what you edit is what ships, and DevTools errors point at real files.
+
+- 27 feature modules + new `src/js/state.js` + new `src/js/main.js` (29 total).
+- `state.js`: the 103 variables that were assigned from more than one chunk
+  now live on one exported `state` object (ES module imports are read-only
+  bindings, so cross-module writes must go through a shared object). 1,543
+  references rewritten `foo` -> `state.foo`, located by scope analysis, never
+  regex. Everything else stays in its module, exported as live bindings.
+  (`state.localSchedulePeriods` is the §4.6 pristine copy — relocated,
+  semantics unchanged.)
+- Import/export blocks were machine-generated from the resolved reference
+  graph during conversion (tools kept in `build/`); they're maintained by
+  hand from here on, enforced by the new battery.
+- 239 raw `console.log` calls migrated to `safeLog.log` (debug logging now
+  gated by PRODUCTION_MODE in 03-memory-management.js). warn/error untouched.
+- New verification: `npm run check:esm` (import/export linker, read-only
+  import enforcement, TDZ audit) replaces `check:js`; lint is now per-module
+  no-undef, which catches any missing import. `build:js`/`check:js` retired
+  (build-js.mjs is a tombstone). Tailwind content scan repointed at
+  `src/js/**/*.js` — the rebuilt tailwind.css came out byte-identical,
+  proving no class strings were touched by the conversion.
+- index.html -> 7.0.0 (all three places); service-worker 1.7.0 (CORE_ASSETS:
+  script.js out, all 29 modules in; CACHE_NAME v7 -> v8). bell-engine.js is
+  UNCHANGED and still a plain script shared with clock.html. No Firestore,
+  rules, or data-shape changes. Sibling surfaces untouched.
+- Also fixed: `npm run lint` had become a silent no-op under ESLint >= 9.14
+  (targets outside the config's base path are ignored with exit 0); it now
+  runs from the repo root and was canary-tested to prove it fails on a real
+  no-undef.
 
 ## V5.79.1 — Post-launch bug-fix pass (per-file versions from here on)
 FROM THIS RELEASE FORWARD, files version independently — only files that

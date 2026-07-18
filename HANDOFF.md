@@ -2,7 +2,7 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **post-launch bug-fix pass v5.79.1, 2026-07. THE APP IS LIVE.**
+before writing any code. Last updated: **7.0.0 native-ES-modules pass, 2026-07 (round 2 of the Fable engagement).**
 
 ---
 
@@ -30,17 +30,18 @@ Facts that shape design decisions — do not violate these:
 
 ## 2. CRITICAL: deployment state
 
-**THE ROLLOUT HAPPENED (2026-07): v5.79.0 is LIVE and ringing bells for
-~50 faculty.** Launch was clean; a same-week bug-fix pass (v5.79.1) fixed
-six cosmetic/UX quirks the owner found — see CHANGELOG. From here on you
-are maintaining PRODUCTION: verify whether a given fix has been deployed
-before assuming, and remember teachers are using it during school hours. The live site still runs the
-pre-engagement code (~v5.69.4). The user is accumulating everything into ONE
-batch rollout, executed via **ROLLOUT.md** (a living checklist — update it
-every stage). Consequences:
-- There are no live users on the new code; breaking changes between stages
-  are still cheap. After the rollout happens, they are not — check with the
-  user whether the rollout has occurred before assuming.
+**THREE REPOSITORIES exist (learned 2026-07, round 2):** this codebase is
+the **alpha repo** — deployed, but the owner is its only user. The school's
+production runs a much earlier version from a separate repo, and it's summer
+break (no live users anywhere until school resumes). Consequences:
+- On the alpha repo, breaking changes are cheap right now — which is exactly
+  why the 7.0.0 modularization happened here. That window closes when school
+  resumes; re-verify the calendar and which repo you're touching each round.
+- v5.79.0 launched cleanly for ~50 faculty in spring 2026; v5.79.1 (six
+  cosmetic/UX fixes) is deployed on alpha. 7.0.0 is built and verified but
+  NOT yet pushed — ROLLOUT.md has its checklist. Do not ship 7.0.0 to the
+  school repo until it has soaked on alpha.
+- ROLLOUT.md is a living checklist — update it every stage.
 - The **source of truth is the user's copy of the project** — kept as
   `ellis-bell-vX.Y.Z-complete.zip` (the full site with directory structure;
   only the five signage/*.png crests are absent, since they were never
@@ -53,19 +54,19 @@ every stage). Consequences:
   GitHub rollout happens, the repo is the durable copy; ask the user for a
   fresh zip of it rather than fetching files piecemeal.
 
-## 3. Architecture (current, v5.74.0)
+## 3. Architecture (current, 7.0.0)
 
 Surfaces:
 | File | What | Notes |
 |---|---|---|
-| `index.html` + `script.js` | Main teacher app (Firebase v11 ES modules) | **script.js is GENERATED** from `src/js/` (27 chunks; init chunk is numbered 99 so insertions never rename it) |
-| `clock.html` v1.6.0 | 3x3 grid clock for Yodeck TVs (v9 compat) | Uses shared engine; refreshes data every 2 min |
+| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 7.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 29 modules (27 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). script.js no longer exists |
+| `clock.html` v1.6.1 | 3x3 grid clock for Yodeck TVs (v9 compat) | Uses shared engine; refreshes data every 2 min |
 | `old.html` v2 | ES5 iPad wall clock (unauthenticated REST) | Shift support + 5-min auto-refresh added |
 | `dashboard-config.html` | Admin tool for signage config | Untouched by this engagement |
 | `signage/` pages: dashboard v1.6.0, dashright v1.1.0, dashclock v1.1.0 | TV dashboard pages (v9 compat, live onSnapshot) | Share `signage/schedule-utils.js` (+ engine): relative bells resolved, shifts honored. dashboard's 3 config listeners are intentional branches |
 
 Shared infrastructure:
-- **`bell-engine.js` v1.2.0** — THE single implementation of pure
+- **`bell-engine.js` v1.3.2** — THE single implementation of pure
   time/schedule math (escapeHtml, timeToSeconds/secondsToTime,
   formatTime12Hour, getDateForBellTime, getBellId, findNextBellIn,
   findBellAfter, calculateRelativeBellTime, toLocalDateString,
@@ -76,12 +77,17 @@ Shared infrastructure:
 - **`tests/`** — 51 node:test tests, zero deps (`bell-engine.test.mjs` +
   `schedule-utils.test.mjs`). `cd build && npm test`. Run after any change
   to bell-engine.js or signage/schedule-utils.js.
-- **`build/`** — npm project. Scripts: `build` (css+js), `build:js`,
-  `build:css` (self-verifying via verify-css.mjs), `check:js` (drift
-  detection), `lint` (eslint no-undef only — it found 14 real bugs), `test`.
+- **`build/`** — npm project (tooling only; nothing is built for deploy
+  except CSS). Scripts: `build`/`build:css` (Tailwind, self-verifying),
+  `check:esm` (import/export linker + read-only-import + TDZ audit —
+  replaced `check:js`), `lint` (PER-MODULE no-undef — catches missing
+  imports), `test`. `build-js.mjs` is a tombstone (exits 1). The one-time
+  conversion tools (`analyze-deps.mjs`, `convert-esm-pass[123].mjs`) are
+  kept for archaeology.
 - **`firestore.rules`** — deploy manually via Firebase console (ROLLOUT §2).
-- **service-worker.js v1.5.0**, cache `ellis-web-bell-v6`. Bump CACHE_NAME
-  whenever CORE_ASSETS changes.
+- **service-worker.js v1.7.0**, cache `ellis-web-bell-v8`. CORE_ASSETS now
+  lists all 29 src/js modules. Bump CACHE_NAME whenever CORE_ASSETS changes;
+  a NEW MODULE means three touches: src/js file + main.js import + SW entry.
 
 Firestore data model:
 ```
@@ -109,27 +115,33 @@ artifacts/{appId}/
    visible <h1> banner, and the final comment line (a <head> comment
    documents this). (d) The owner intends 7.0.0 for the stage-2 JS
    modularization pass, likely with a new Claude iteration.
-1. **The Two Build Rules** (see `build/README-BUILD.md`): script.js and
-   tailwind.css are generated; edit `src/js/` chunks / rerun the CSS build
-   for never-before-used classes. `npm run check:js` detects drift.
+1. **The Build Rule** (see `build/README-BUILD.md`): only tailwind.css is
+   generated now — rerun the CSS build for never-before-used classes (the
+   scanner reads index.html + src/js/**). JS has NO build step since 7.0.0.
+1b. **The state.js rule (7.0.0):** a variable assigned from more than one
+   module MUST live on the `state` object in `src/js/state.js` (imports are
+   read-only bindings; `check:esm` errors on foreign writes). Single-module
+   variables stay put, exported as live bindings. Import/export blocks are
+   maintained by hand; lint catches omissions.
 2. **escapeHtml everything user-controlled going into innerHTML** (bell,
    period, schedule names; file names/nicknames; custom text). escapeHtml
-   comes from the engine, destructured at the top of chunk 00.
+   comes from the engine, destructured in 00-header.js and imported from there.
 3. **getBellId's quote-only escaping is intentional** (identity strings, not
    HTML). Changing it breaks stored mute/skip IDs. A unit test pins it.
-4. **Blind-refactor discipline** (no browser here, 50 daily users there):
+4. **Blind-refactor discipline** (no browser here, real users there):
    every text edit via exact-match replacement with occurrence-count
-   assertions; every chunk parse-checked; concatenation byte-verified;
-   lint + tests after every stage; verify generated-file health (the CSS
-   once came out EMPTY from a wrong-CWD build — that's why verify-css.mjs
-   exists).
+   assertions; every module parse-checked; large mechanical rewrites done by
+   AST/scope analysis, never regex; lint + tests + check:esm after every
+   stage; verify generated-file health (the CSS once came out EMPTY from a
+   wrong-CWD build — that's why verify-css.mjs exists).
 5. **Additive & backward-compatible**: features are dormant until an admin
    acts (shift: no temporaryShift field = no behavior change). Never change
    stored data shapes without a migration story.
 6. **Emergency shift data-safety**: shifts apply to merged COPIES in
-   resolveAllBellTimes; `localSchedulePeriods` stays pristine so edit modals
+   resolveAllBellTimes; `state.localSchedulePeriods` (relocated in 7.0.0,
+   semantics unchanged) stays pristine so edit modals
    never see (or save back) shifted times. Preserve this in any new surface.
-7. **Version discipline**: every stage bumps APP_VERSION (chunk 00) +
+7. **Version discipline**: every stage bumps APP_VERSION (00-header.js) +
    index.html `<title>`, adds a CHANGELOG.md entry (newest first, after the
    4-line header), updates ROLLOUT.md, and updates THIS FILE (§8 protocol).
 
@@ -137,11 +149,16 @@ artifacts/{appId}/
 
 ```
 cd build && npm install        # once per fresh environment
-node build-js.mjs --check      # script.js matches src/js/ build
-node verify-css.mjs            # tailwind.css non-empty + sentinel classes
-npm run lint                   # no-undef on script.js + bell-engine.js
-npm test                       # 39+ engine tests
-node --input-type=module --check < ../script.js
+npm run check:esm              # linker: imports resolve & are exported;
+                               #   no writes to imports; TDZ audit (its one
+                               #   standing WARN — 02:state — is reviewed-safe)
+npm run lint                   # per-module no-undef (src/js + bell-engine);
+                               #   CANARY-TEST it in a fresh env: append a
+                               #   bogus call, confirm it FAILS, revert (see
+                               #   §9 — lint once no-op'd silently)
+npm test                       # 51 tests, two suites
+npm run check:css              # tailwind.css non-empty + sentinel classes
+for f in ../src/js/*.js; do node --input-type=module --check < "$f"; done
 ```
 Also parse-check inline scripts of any edited HTML surface (extract
 `<script>` bodies, `node --check` each; old.html must stay ES5 — eyeball for
@@ -149,6 +166,12 @@ arrows/template literals/const).
 
 ## 6. What's been done (details in CHANGELOG.md)
 
+- **v7.0.0** — Native ES modules: script.js retired, src/js/ IS production
+  (29 modules; new state.js holds the 103 cross-module-written variables;
+  1,543 refs rewritten by scope analysis); 239 console.log -> safeLog;
+  check:esm + per-module lint replace the drift check; Tailwind scan
+  repointed (rebuild came out byte-identical — regression proof); SW 1.7.0 /
+  cache v8; conversion tooling kept in build/.
 - **v5.70.0** — Security: real escapeHtml at ~60 innerHTML sites; tightened
   firestore.rules (scoped world-read to personal_schedules only; share codes
   owner-locked). Offline: SW precaches CDN assets. Changelog extracted.
@@ -192,41 +215,12 @@ arrows/template literals/const).
 
 ## 7. Roadmap (user's priority order, set 2026-07)
 
-**Stage 1 — Edit audit log. DONE (v5.75.0).** Built as designed. Follow-up
-ideas parked in the chunk header: per-target logging for batch ops; a
-central collection-group log (would make deleted-schedule entries reachable
-and enable cross-schedule queries, but needs a collection-group rule +
-index); one-click undo from before/after payloads. Note for undo: the
-'edit-bell' entries capture name/time/sound but not visual/relative fields —
-extend capture before building undo.
-
-**Stage 2 — Signage pages. DONE (v5.76.0).** Built as designed:
-schedule-utils.js (makeScheduleRecord / getEffectivePeriods memoized on
-date|shift / getScheduleStatus + formatters), all three pages converted,
-10 tests. Notable: dashright's "bit-for-bit identical" helper had already
-drifted (cosmetic only — verified by normalized diff before centralizing);
-the three dashboard config listeners are intentional mutually-exclusive
-branches. Pages keep their historical isEnabled-period filter inside
-makeScheduleRecord.
-
-**Stage 3 — Clock drift warning. DONE (v5.77.0).** Built as designed;
-warn-only (never auto-correct — documented in chunk 23's header), session
-dismissal, silent failures with 15s timeout. `lastClockDriftMs` /
-`lastClockDriftAt` globals are ready for Stage 5's status view. Probe doc:
-users/{uid}/diagnostics/clock_drift (existing owner-only rules cover it).
-
-**Stage 4 — Notification backup ring. DONE (v5.78.0).** DEVIATED from this
-sketch on purpose: per-device localStorage instead of cloud-synced prefs
-(Notification permission is per-browser; a synced toggle would lie), and
-hidden-tab-only firing. One hook in ringBell() covers all ring paths; mutes
-respected for free since callers gate before ringBell. Chunk 24's header
-carries the full rationale.
-
-**Stage 5 — Status/health view (v5.79.0).** In-app modal (tap the footer
-version number): APP_VERSION, SW cache version (GET_VERSION message channel
-already exists in service-worker.js), Firebase connectivity, active schedule
-+ any active shift, clock drift (from Stage 3), schedule counts. Support
-script: "open the app, tap the version number, read me the screen."
+**Stages 1–5 — DONE (v5.75–v5.79).** Audit log, signage full-depth, clock
+drift warning, notification backup ring, status view. Each module's header
+carries its design rationale, deliberate deviations, and parked follow-ups
+(notably: audit-log undo needs wider field capture first — see 22's header;
+Stage 4 deliberately used per-device localStorage, not cloud sync). Details:
+CHANGELOG.md + §6.
 
 **Future features noted by the owner (post-launch, unscheduled):**
 - Emergency shift v2: much more customization — per-period shifts, finer
@@ -239,10 +233,16 @@ script: "open the app, tap the version number, read me the screen."
 **Stage 6 — Housekeeping.** Self-host Tone.js; template-generate the 49
 modals' shared chrome in index.html; automate CACHE_NAME bumping.
 
-**Stage 7 — Stage-2 modularization.** Convert src/js chunks to true ES
-modules one at a time (least-coupled first: 03-memory, 06-warnings,
-07-kiosk); migrate raw console.log → safeLog per converted chunk. Background
-work; never a big bang.
+**Stage 7 — Stage-2 modularization. DONE (7.0.0).** DEVIATED from the
+"one at a time, never a big bang" sketch on purpose: that advice was written
+when 50 faculty were live; with the alpha repo isolated and school out for
+summer, the whole graph was converted in one verified pass (analysis script
+-> state extraction -> generated imports/exports -> safeLog migration, each
+step gated by the §5 battery; git history in the session shows the stages).
+Ship format decision (owner-approved): NATIVE modules, no bundler —
+src/js/ is production, eliminating the generated-file drift problem class
+entirely. Follow-ups parked: chunk 02 is still "DOM consts + misc" and could
+split; import blocks could be alphabetized/pruned over time.
 
 **Stage 27 (deliberately last) — Calendar v2.** Un-park the day-type
 calendar with per-teacher groups (grade/role; the two grid teachers as
@@ -277,3 +277,15 @@ map, not the territory; CHANGELOG.md carries detail.
   deployment requirement. Generated files always ship PRE-BUILT; deploy
   docs must say "no build needed" in bold before anything mentions npm.
   Keep the deploy path terminal-free.
+- LESSON (7.0.0 pass): `npm run lint` had silently become a NO-OP —
+  ESLint >= 9.14 ignores files outside the config's base path with a warning
+  and exit 0, so "lint passed" meant nothing. A fresh `npm install` off the
+  `^9` range pulled the new behavior. Fix: run eslint from the repo root.
+  Standing rule: in any fresh environment, CANARY-TEST the lint (introduce a
+  bogus undefined call, confirm failure, revert) before trusting it.
+- LESSON (7.0.0 pass): for mechanical rewrites at scale (1,543 references),
+  regex is not an option — espree + eslint-scope (both ship inside ESLint,
+  no new deps) give exact reference positions that respect shadowing,
+  strings, and comments. The byte-identical tailwind.css rebuild doubled as
+  a free no-regression proof that template-literal class strings were
+  untouched.

@@ -5,7 +5,7 @@
  * moved here verbatim.
  *
  * REBUILD WORKFLOW: any time you add a Tailwind class that has never been
- * used before (in index.html OR in a template string in script.js), rerun:
+ * used before (in index.html OR in a template string in any src/js/ module), rerun:
  *
  *     npx tailwindcss -c tailwind.config.js -i tailwind.input.css -o tailwind.css --minify
  *
@@ -28,7 +28,8 @@ module.exports = {
   // with zero utility classes. Absolute paths make that impossible.)
   content: [
     path.resolve(__dirname, '../index.html'),
-    path.resolve(__dirname, '../script.js'),
+    // v7.0.0: script.js retired — the modules in src/js/ ARE production.
+    path.resolve(__dirname, '../src/js') + '/**/*.js',
   ],
   theme: {
     extend: {

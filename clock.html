@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bell Schedule Clock v1.6.0</title>
-    <!-- Clock Display v1.6.0 -->
+    <title>Bell Schedule Clock v1.6.1</title>
+    <!-- Clock Display v1.6.1 -->
+    <!-- v1.6.1 (2026-07, app 7.0.0): comment-only — engine-sharing note updated
+         (main app is now src/js/ modules; script.js retired). No code change. -->
     <!-- v1.6.0: Emergency schedule shift support (temporaryShift on shared
          schedule docs, applied via the shared engine) + 2-minute schedule
          data refresh so mid-day edits and shifts reach TVs without a page
@@ -12,7 +14,7 @@
     <!-- v1.5.0: Shared bell engine. The local calculateRelativeBellTime copy is
          gone — it had silently diverged from the main app (missing V5.44.1
          anchor-selection logic). Relative-bell math now comes from
-         bell-engine.js, shared with index.html/script.js and covered by
+         bell-engine.js, shared with the main app (src/js/) and covered by
          tests/bell-engine.test.mjs. -->
     <!-- v1.4.0: Palette alignment with main app (Tier 2 of audit, sibling pass).
          - Body background #000 -> #111827 (slate). Aligns with main app dark-mode

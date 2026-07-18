@@ -1,6 +1,13 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.6.0
+ * Version: 1.7.0
+ *
+ * v1.7.0 changelog (2026-07, app 7.0.0):
+ * - script.js retired: the app is now native ES modules served from src/js/.
+ *   Removed /script.js from CORE_ASSETS; added all 29 /src/js/*.js modules.
+ *   RULE: any new module in src/js/ must be added to CORE_ASSETS AND
+ *   CACHE_NAME must be bumped, or offline loads will miss it.
+ * - Bumped CACHE_NAME v7 -> v8.
  *
  * v1.6.0 changelog (2026-07):
  * - Added /signage/schedule-utils.js to CORE_ASSETS (new shared logic for
@@ -60,7 +67,7 @@
  *   to fetch them).
  */
 
-const CACHE_NAME = 'ellis-web-bell-v7';
+const CACHE_NAME = 'ellis-web-bell-v8';
 const CACHE_VERSION = '1.6.0';
 
 // Core files to cache for offline use
@@ -69,7 +76,37 @@ const CORE_ASSETS = [
   '/clock.html',
   '/styles.css',
   '/tailwind.css',
-  '/script.js',
+  // v1.7.0 (app 7.0.0): script.js retired; src/js/ modules ARE production.
+  // Keep this list in sync with src/js/ — adding a module = add it here + bump CACHE_NAME.
+  '/src/js/00-header.js',
+  '/src/js/01-firebase-imports.js',
+  '/src/js/02-dom-elements.js',
+  '/src/js/03-memory-management.js',
+  '/src/js/04-app-state-and-bells.js',
+  '/src/js/05-preferences-cloud-sync.js',
+  '/src/js/06-warning-effects.js',
+  '/src/js/07-kiosk-mode.js',
+  '/src/js/08-theme-and-display.js',
+  '/src/js/09-picture-in-picture.js',
+  '/src/js/10-clock-engine.js',
+  '/src/js/11-quick-bell-broadcast.js',
+  '/src/js/12-quick-bell-queue.js',
+  '/src/js/13-schedule-resolution-and-ringing.js',
+  '/src/js/14-render-schedule-list.js',
+  '/src/js/15-firebase-init.js',
+  '/src/js/16-schedule-management.js',
+  '/src/js/17-share-codes.js',
+  '/src/js/18-bell-crud-and-modals.js',
+  '/src/js/19-visual-cues-and-files.js',
+  '/src/js/20-schedule-calendar.js',
+  '/src/js/21-emergency-shift.js',
+  '/src/js/22-audit-log.js',
+  '/src/js/23-clock-drift.js',
+  '/src/js/24-notifications.js',
+  '/src/js/25-status-view.js',
+  '/src/js/99-init-and-listeners.js',
+  '/src/js/main.js',
+  '/src/js/state.js',
   '/firebase-config.js',
   '/bell-engine.js',
   '/manifest.json',
