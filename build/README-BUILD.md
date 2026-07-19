@@ -71,16 +71,28 @@ it testable and shareable; see the header comment in the file.
 ## The verification battery (run before every push)
 
     cd build
+    npm run check:all   # 6.1.0: the whole battery in one command, or piecewise:
+
     npm run check:esm   # linker: every import resolves & is exported;
                         #   no writes to imported bindings; TDZ audit
+                        #   (reviewed-safe cases whitelisted in-script);
+                        #   UNUSED imports are ERRORS since 6.1.0
+    npm run check:sw    # 6.1.0: service-worker CORE_ASSETS vs filesystem;
+                        #   every module cached; version constants agree;
+                        #   CACHE_NAME derived from CACHE_VERSION
     npm run lint        # per-module no-undef — catches any missing import
     npm test            # bell-engine + schedule-utils unit tests
     npm run check:css   # tailwind.css non-empty + sentinel classes
     npm run build:css   # only if you added a never-before-used Tailwind class
 
-(`check:esm`'s one standing TDZ warning — `02-dom-elements.js` eval-time use
-of `state` — is reviewed-safe: state.js imports nothing, so it always
-evaluates first.)
+A clean battery prints ZERO warnings. If check:esm warns about a TDZ case
+you have reviewed and confirmed safe, add it to TDZ_WHITELIST inside
+verify-esm.mjs with a comment saying WHY it is safe.
+
+Tone.js is self-hosted since 6.1.0 (`/tone.min.js`, from the npm `tone`
+package's minified UMD build, version pinned at 14.8.49). To upgrade it:
+`npm pack tone@<version>`, copy `package/build/Tone.js` over `tone.min.js`,
+ship the license file, test a bell ring, bump SW CACHE_VERSION.
 
 ## Map: which src/js/ module owns what
 

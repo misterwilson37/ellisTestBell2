@@ -1,6 +1,20 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.7.1
+ * Version: 1.8.0
+ *
+ * v1.8.0 changelog (2026-07, app 6.1.0):
+ * - Tone.js is now SELF-HOSTED (/tone.min.js, added to CORE_ASSETS) instead
+ *   of cdnjs. Last CDN runtime dependency gone (gstatic Firebase SDKs remain
+ *   by design — they're not cacheable app assets). Offline mode is now
+ *   honest: the bell sound engine loads with no network at all.
+ * - CACHE_NAME is now DERIVED from CACHE_VERSION ('ellis-web-bell-' +
+ *   CACHE_VERSION). One bump instead of two: any SW release automatically
+ *   busts the cache. The activate handler already evicts every cache whose
+ *   name differs, so the old 'ellis-web-bell-v8' is cleaned up on first
+ *   activation.
+ * - `npm run check:sw` (build/verify-sw.mjs) now verifies CORE_ASSETS
+ *   against the filesystem: every listed asset exists, every src/js module
+ *   is listed. Run it whenever this file or src/js/ contents change.
  *
  * v1.7.1 changelog (2026-07, app 6.0.1):
  * - Version-number correction: the modularization release was mislabeled
@@ -75,8 +89,10 @@
  *   to fetch them).
  */
 
-const CACHE_NAME = 'ellis-web-bell-v8';
-const CACHE_VERSION = '1.7.1';
+const CACHE_VERSION = '1.8.0';
+// v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
+// activate handler evicts every cache whose name differs from this one.
+const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;
 
 // Core files to cache for offline use
 const CORE_ASSETS = [
@@ -84,8 +100,10 @@ const CORE_ASSETS = [
   '/clock.html',
   '/styles.css',
   '/tailwind.css',
+  '/tone.min.js', // v1.8.0: self-hosted (was cdnjs)
   // v1.7.0 (app 6.0.0): script.js retired; src/js/ modules ARE production.
-  // Keep this list in sync with src/js/ — adding a module = add it here + bump CACHE_NAME.
+  // Keep this list in sync with src/js/ — adding a module = add it here +
+  // bump CACHE_VERSION (CACHE_NAME derives from it). `npm run check:sw` verifies.
   '/src/js/00-header.js',
   '/src/js/01-firebase-imports.js',
   '/src/js/02-dom-elements.js',
@@ -110,6 +128,7 @@ const CORE_ASSETS = [
   '/src/js/21-emergency-shift.js',
   '/src/js/22-audit-log.js',
   '/src/js/23-clock-drift.js',
+
   '/src/js/24-notifications.js',
   '/src/js/25-status-view.js',
   '/src/js/99-init-and-listeners.js',

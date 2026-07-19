@@ -7,7 +7,7 @@
          always match — this <title>, the visible <h1> banner, and the comment on
          the last line of this file. Update all three together. (z = fix/tweak,
          y = new feature, x = major shift with the owner's sign-off.) -->
-    <title>Ellis Web Bell 6.0.2</title>
+    <title>Ellis Web Bell 6.1.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -32,8 +32,11 @@
          The old inline tailwind.config (fontFamily) now lives in
          build/tailwind.config.js. -->
     <link rel="stylesheet" href="tailwind.css">
-    <!-- Using Tone.js for web audio -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <!-- Using Tone.js for web audio. v6.1.0: SELF-HOSTED (was cdnjs) —
+         same 14.8.49 minified UMD build, from the npm `tone` package.
+         License: tone.min.js.LICENSE.txt (MIT). Cached by the SW, so the
+         bell engine now loads fully offline. -->
+    <script src="tone.min.js"></script>
     <!-- V5.49.3: Added Urbanist as Century Gothic fallback (before Questrial) -->
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
 
@@ -1424,7 +1427,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.0.2</h1>
+            <h1 class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.1.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -3132,4 +3135,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 6.0.2 -->
+<!-- Version 6.1.0 -->

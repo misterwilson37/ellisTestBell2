@@ -1,5 +1,5 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
-// ║  ELLIS WEB BELL 6.0.2 — NATIVE ES MODULES                              ║
+// ║  ELLIS WEB BELL 6.1.0 — NATIVE ES MODULES                              ║
 // ║                                                                        ║
 // ║  As of 6.0.0 the files in src/js/ ARE production: index.html loads    ║
 // ║  src/js/main.js directly and the browser resolves the import graph.   ║
@@ -10,7 +10,7 @@
 // ║  Import/export blocks marked "6.0.0" were machine-generated during    ║
 // ║  the conversion; maintain them by hand from here on (lint enforces).  ║
 // ╚══════════════════════════════════════════════════════════════════════╝
-const APP_VERSION = "6.0.2"
+const APP_VERSION = "6.1.0"
 // Release history lives in CHANGELOG.md — add new version notes there, not here.
 // (Extracted 2026-07: ~280 lines of V3–V5.69 notes moved out of this file.)
 

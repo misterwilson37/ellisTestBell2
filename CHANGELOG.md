@@ -2,6 +2,31 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## V6.1.0 — Stage 6a housekeeping: self-hosted Tone.js + verifier hardening
+(Shipped together with 6.0.2 on alpha; structural, no feature changes.)
+
+- **Tone.js 14.8.49 self-hosted** as `/tone.min.js` (+ its MIT license file)
+  — same minified UMD build as the cdnjs URL, sourced from the npm `tone`
+  package. Last CDN runtime dependency removed; the SW caches it, so the
+  bell sound engine now loads fully offline.
+- **service-worker.js -> 1.8.0**: CACHE_NAME is now DERIVED from
+  CACHE_VERSION — one bump busts the cache; the hardcoded-name footgun is
+  gone. `/tone.min.js` added to CORE_ASSETS.
+- **New verifier `npm run check:sw`** (build/verify-sw.mjs): CORE_ASSETS
+  entries all exist on disk, every src/js module is cached, header version
+  == CACHE_VERSION, CACHE_NAME is derived. Canary-tested.
+- **verify-esm hardened**: unused import specifiers are now ERRORS (scan
+  proved the 6.0.0 generator left zero; this keeps hand-maintained imports
+  at that standard), and the TDZ audit gained an in-script reviewed-safe
+  whitelist — the long-standing 02:state warning was reviewed (state.js
+  imports nothing; no cycle possible) and whitelisted. Battery is now
+  fully clean, zero warnings.
+- **`npm run check:all`** runs the entire battery in one command.
+- Module 02 split REVIEWED and re-parked: the file is 370 uniform DOM
+  consts + export list, not a functional grab-bag; splitting would churn
+  every module's imports for cosmetic gain, and Stage 6b (modal
+  templating) will reshape it anyway. Do 6b first.
+
 ## V6.0.2 — Firefox sign-in fix (the popup must open from the click)
 Google sign-in failed in Firefox since launch with the auth handler's
 "missing initial state" error. Contrary to that message's usual diagnosis,

@@ -2,7 +2,7 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.0.2 Firefox sign-in fix + SETUP.md, 2026-07 (round 3, "Quasimodo" — see §10).**
+before writing any code. Last updated: **6.1.0 Stage 6a housekeeping, 2026-07 (round 3, "Quasimodo" — see §10).**
 
 ---
 
@@ -37,12 +37,13 @@ break (no live users anywhere until school resumes). Consequences:
 - On the alpha repo, breaking changes are cheap right now — which is exactly
   why the 6.0.0 modularization happened here. That window closes when school
   resumes; re-verify the calendar and which repo you're touching each round.
-- v5.79.0 launched cleanly for ~50 faculty in spring 2026; v5.79.1 (six
-  cosmetic/UX fixes) is deployed on alpha. **6.0.2 is built and verified but
-  NOT yet pushed** — ROLLOUT.md has its checklist and DEPLOY-6.0.2.md has
-  the owner-facing step-by-step (including the one deletion: script.js).
-  Do not ship 6.0.2 to the school repo until it has soaked on alpha.
-  6.0.1 (version correction) was folded into this same pending deploy.
+- v5.79.0 launched cleanly for ~50 faculty in spring 2026. **6.0.2 is
+  DEPLOYED on alpha (2026-07-18) and owner-verified: Firefox sign-in works,
+  bells ring.** 6.1.0 (Stage 6a housekeeping) is built and verified but not
+  yet pushed — DEPLOY-6.1.0.md has the step-by-step. The school repo is
+  still on the 5.79.x line; when the 6.x line ships there it goes as one
+  cumulative deploy (incl. deleting script.js, which the school repo still
+  has).
 - NUMBERING NOTE: the round-2 session mislabeled the modularization release
   as "7.0.0." The owner's numbering is: modularization = **6.0.0**, this
   correction pass = **6.0.1** (Firefox fix = 6.0.2); 7.x is reserved for a future major, some time
@@ -61,7 +62,7 @@ break (no live users anywhere until school resumes). Consequences:
   GitHub rollout happens, the repo is the durable copy; ask the user for a
   fresh zip of it rather than fetching files piecemeal.
 
-## 3. Architecture (current, 6.0.2)
+## 3. Architecture (current, 6.1.0)
 
 Surfaces:
 | File | What | Notes |
@@ -92,7 +93,12 @@ Shared infrastructure:
   conversion tools (`analyze-deps.mjs`, `convert-esm-pass[123].mjs`) are
   kept for archaeology.
 - **`firestore.rules`** — deploy manually via Firebase console (ROLLOUT §2).
-- **service-worker.js v1.7.1**, cache `ellis-web-bell-v8`. Header version and the CACHE_VERSION constant MUST bump together (a 6.0.1 lesson). CORE_ASSETS now
+- **service-worker.js v1.8.0**, cache name DERIVED: 'ellis-web-bell-' +
+  CACHE_VERSION (6.1.0 — one bump busts the cache; the old two-constant
+  footgun is dead, and `npm run check:sw` enforces header==constant and
+  CORE_ASSETS==filesystem). Tone.js is SELF-HOSTED since 6.1.0
+  (/tone.min.js, pinned 14.8.49; upgrade path in README-BUILD.md);
+  gstatic Firebase SDKs remain CDN by design. CORE_ASSETS
   lists all 29 src/js modules. Bump CACHE_NAME whenever CORE_ASSETS changes;
   a NEW MODULE means three touches: src/js file + main.js import + SW entry.
 
@@ -158,14 +164,18 @@ artifacts/{appId}/
 ```
 cd build && npm install        # once per fresh environment
 npm run check:esm              # linker: imports resolve & are exported;
-                               #   no writes to imports; TDZ audit (its one
-                               #   standing WARN — 02:state — is reviewed-safe)
+                               #   no writes to imports; TDZ audit (reviewed
+                               #   cases whitelisted in-script since 6.1.0);
+                               #   UNUSED imports are errors since 6.1.0
 npm run lint                   # per-module no-undef (src/js + bell-engine);
                                #   CANARY-TEST it in a fresh env: append a
                                #   bogus call, confirm it FAILS, revert (see
                                #   §9 — lint once no-op'd silently)
 npm test                       # 51 tests, two suites
 npm run check:css              # tailwind.css non-empty + sentinel classes
+npm run check:sw               # NEW 6.1.0: CORE_ASSETS vs filesystem; SW
+                               #   version constants agree; CACHE_NAME derived
+npm run check:all              # NEW 6.1.0: all of the above in one command
 for f in ../src/js/*.js; do node --input-type=module --check < "$f"; done
 ```
 Also parse-check inline scripts of any edited HTML surface (extract
@@ -174,6 +184,11 @@ arrows/template literals/const).
 
 ## 6. What's been done (details in CHANGELOG.md)
 
+- **v6.1.0** — Stage 6a: Tone.js self-hosted (last CDN runtime dep gone;
+  offline now includes sound); SW 1.8.0 with derived cache name; new
+  check:sw verifier; verify-esm hardened (unused imports = errors, TDZ
+  whitelist); check:all one-shot battery; module-02 split reviewed and
+  re-parked (see §7).
 - **v6.0.2** — Firefox sign-in fixed. NOT the redirect-flow bug the error
   message implies (there is no signInWithRedirect in this codebase):
   signInWithGoogle() awaited startAudio() + possibly initFirebase() BEFORE
@@ -256,8 +271,18 @@ CHANGELOG.md + §6.
   a redundancy layer on top of the PA, riding the same live-sync machinery
   as the shift.
 
-**Stage 6 — Housekeeping.** Self-host Tone.js; template-generate the 49
-modals' shared chrome in index.html; automate CACHE_NAME bumping.
+**Stage 6 — Housekeeping. PARTIAL (6a done in 6.1.0):** Tone.js
+self-hosted; CACHE_NAME bumping automated (derived + check:sw); verify-esm
+hardened (unused-import errors, TDZ whitelist); check:all added.
+**Remaining — 6b: template-generate the 49 modals' shared chrome in
+index.html.** This is the big index.html shrink; owner clicks through
+modals afterward as the test. NOTE: the module-02 split (parked at 6.0.0)
+was REVIEWED in 6.1.0 and re-parked deliberately — 02 is 370 uniform DOM
+consts + export list, not a grab-bag; splitting now would churn every
+module's imports for cosmetic gain, and 6b will reshape which elements
+exist anyway. Revisit only after 6b, if at all. Import pruning is DONE
+forever: the scan found zero unused, and check:esm now errors on any that
+appear.
 
 **Stage 7 — Stage-2 modularization. DONE (6.0.0).** DEVIATED from the
 "one at a time, never a big bang" sketch on purpose: that advice was written
@@ -356,7 +381,9 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   same session, the 6.0.2 Firefox sign-in fix (guided by a diagnosis doc
   from the owner's Tentacalendar Claudes; their redirect-flow theory was
   wrong for this codebase but their "trap #1" was exactly right) and
-  SETUP.md for other schools. Round 4 is planned to be an Opus instance;
-  the owner will hand over the 6.0.2 zip plus this file loose, per §2.
-  (The owner explicitly endorsed the naming rule: "May it live on
-  forever.")
+  SETUP.md for other schools. Owner deployed 6.0.2 to alpha and confirmed
+  the Firefox fix live; the session then delivered Stage 6a as 6.1.0
+  (self-hosted Tone, derived cache name, check:sw, verifier hardening).
+  Round 4 is planned to be an Opus instance; the owner will hand over the
+  current zip plus this file loose, per §2. (The owner explicitly endorsed
+  the naming rule: "May it live on forever.")

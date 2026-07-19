@@ -1,7 +1,7 @@
 {
   "name": "ellis-web-bell-build",
   "private": true,
-  "description": "Build tooling for the compiled Tailwind stylesheet. See README-BUILD.md.",
+  "description": "Build + verification tooling. See README-BUILD.md.",
   "scripts": {
     "build": "npm run build:css",
     "build:css": "tailwindcss -c tailwind.config.js -i tailwind.input.css -o ../tailwind.css --minify && node verify-css.mjs",
@@ -9,7 +9,9 @@
     "lint": "cd .. && eslint -c build/eslint.config.mjs src/js bell-engine.js",
     "test": "node --test ../tests/bell-engine.test.mjs ../tests/schedule-utils.test.mjs",
     "check:css": "node verify-css.mjs",
-    "check:esm": "node verify-esm.mjs"
+    "check:esm": "node verify-esm.mjs",
+    "check:sw": "node verify-sw.mjs",
+    "check:all": "npm run check:esm && npm run check:sw && npm run check:css && npm run lint && npm test"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.19",

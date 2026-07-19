@@ -11,6 +11,12 @@
  *   4. TDZ AUDIT: references at module-evaluation time (outside any function)
  *      to imported non-function bindings are listed — if the two modules are
  *      in an import cycle these can throw ReferenceError; review any listed.
+ *      Reviewed-safe cases live in TDZ_WHITELIST below.
+ *   5. UNUSED IMPORTS (added 6.1.0): any imported specifier with zero
+ *      references is an ERROR. The 6.0.0 generator produced exact imports
+ *      (verified: zero unused); this check keeps hand-maintained imports at
+ *      that standard. If you remove a function's last call site, remove the
+ *      import too.
  *
  * Exit 0 = clean.   cd build && node verify-esm.mjs
  */
@@ -26,6 +32,14 @@ const files = readdirSync(srcDir).filter(f => f.endsWith('.js')).sort();
 
 let errors = [];
 let warnings = [];
+
+// TDZ audit findings reviewed and deemed safe. Format: 'file:line:name'.
+// 02: `window.customQuickBells = state.customQuickBells` (v5.30 console
+// debugging hook) runs at eval time, but state.js imports NOTHING, so no
+// import cycle with 02 is possible — the binding is always initialized.
+const TDZ_WHITELIST = new Set([
+  '02-dom-elements.js:573:state',
+]);
 
 const mods = new Map();
 for (const f of files) {
@@ -118,8 +132,26 @@ for (const [f, m] of mods) {
     if (!info || !info.from.endsWith('.js') || info.from.startsWith('http')) continue;
     for (const ref of v.references) {
       if (!inFn(ref.identifier.range)) {
-        warnings.push(`${f}:${ref.identifier.loc.start.line}: eval-time use of imported '${v.name}' from ${info.from} — verify not in an import cycle with a let/const binding`);
+        const key = `${f}:${ref.identifier.loc.start.line}:${v.name}`;
+        if (!TDZ_WHITELIST.has(key)) {
+          warnings.push(`${f}:${ref.identifier.loc.start.line}: eval-time use of imported '${v.name}' from ${info.from} — verify not in an import cycle with a let/const binding (or add '${key}' to TDZ_WHITELIST after review)`);
+        }
       }
+    }
+  }
+
+  // 5. UNUSED IMPORTS (6.1.0): imported specifiers with zero references.
+  // Re-exports (import X ... export { X }) count as uses via references,
+  // but guard explicitly against export-specifier-only usage patterns.
+  for (const v of m.moduleScope.variables) {
+    if (!v.defs.some(d => d.type === 'ImportBinding')) continue;
+    if (v.references.length > 0) continue;
+    const reExported = m.ast.body.some(n =>
+      n.type === 'ExportNamedDeclaration' &&
+      (n.specifiers || []).some(sp => sp.local && sp.local.name === v.name));
+    if (!reExported) {
+      const line = v.defs[0].node.loc.start.line;
+      errors.push(`${f}:${line}: UNUSED import '${v.name}' — remove it (imports are hand-maintained since 6.0.0)`);
     }
   }
 }

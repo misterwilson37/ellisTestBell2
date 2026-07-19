@@ -4,7 +4,30 @@
 
 ## ✅ v5.79.1 delta: DEPLOYED 2026-07 (alpha repo).
 
-## LATEST — v6.0.2 native ES modules + Firefox sign-in fix (deploy this next)
+## LATEST — v6.1.0 Stage 6a housekeeping (deploy this next)
+Small files-only delta on top of the deployed 6.0.2. Step-by-step in
+DEPLOY-6.1.0.md (which also has you delete DEPLOY-6.0.2.md from the repo).
+- [ ] ADD `tone.min.js` + `tone.min.js.LICENSE.txt` (self-hosted Tone 14.8.49)
+- [ ] Replace: `index.html` (6.1.0 — script tag now local),
+      `service-worker.js` (1.8.0, cache name now derived from version)
+- [ ] Replace `build/` folder (new verify-sw.mjs, hardened verify-esm.mjs,
+      new npm scripts) and docs: `CHANGELOG.md`, `HANDOFF.md`,
+      `DEPLOY-6.1.0.md`, `build/README-BUILD.md`, this file
+- [ ] DELETE `DEPLOY-6.0.2.md` from the repo (superseded)
+- [ ] Verify after push + hard-refresh:
+      - header/title say 6.1.0; footer status modal: service-worker 1.8.0
+      - DevTools Network: `tone.min.js` loads from YOUR domain (not cdnjs)
+      - a quick bell rings (proves self-hosted Tone actually drives audio)
+      - Application > Cache Storage: cache named `ellis-web-bell-1.8.0`;
+        old `ellis-web-bell-v8` gone; `tone.min.js` inside
+      - offline check: DevTools offline mode + reload -> app loads AND a
+        quick bell still rings (the new honest-offline guarantee)
+
+## ✅ Deployed to alpha 2026-07-18 — v6.0.2 (Firefox sign-in fix)
+Owner confirmed on alpha: Firefox sign-in works, bell rang, smoke tests
+passed. Not yet shipped to the school repo — soak per policy below.
+Original checklist follows for reference.
+
 (This release was briefly mislabeled 7.0.0 by a confused session; the
 modularization is 6.0.0; 6.0.1 was the correction pass and 6.0.2 adds the
 Firefox sign-in fix. Nothing labeled
