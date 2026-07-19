@@ -4,7 +4,26 @@
 
 ## ✅ v5.79.1 delta: DEPLOYED 2026-07 (alpha repo).
 
-## LATEST — v6.1.0 Stage 6a housekeeping (deploy this next)
+## LATEST — v6.3.0 (CUMULATIVE: 6.2.0 modal chrome + 6.3.0 schoolification — deploy this next)
+
+DEPLOY-6.3.0.md is the single source; it covers BOTH releases and has you
+delete DEPLOY-6.1.0.md. The 6.2.0 section below is folded in, kept for the
+record.
+
+### was: v6.2.0 Stage 6b modal chrome
+
+DEPLOY-6.2.0.md (which also has you delete DEPLOY-6.1.0.md from the repo).
+
+- [ ] Replace: `index.html` (6.2.0), `src/js/main.js`, `src/js/00-header.js`,
+      `service-worker.js` (1.9.0)
+- [ ] ADD: `src/js/26-modal-chrome.js`, `build/transform-modals.mjs`
+- [ ] Docs: `CHANGELOG.md`, `HANDOFF.md`, `DEPLOY-6.2.0.md`, this file
+- [ ] tailwind.css UNCHANGED (byte-identical) — no re-upload needed
+- [ ] Smoke: header/title say 6.2.0; footer status modal: service-worker
+      1.9.0; then the modal click-through in DEPLOY-6.2.0.md
+      (every modal must look EXACTLY as before — dark backdrop, white card)
+
+## ✅ Deployed to alpha 2026-07 — v6.1.0 Stage 6a housekeeping
 Small files-only delta on top of the deployed 6.0.2. Step-by-step in
 DEPLOY-6.1.0.md (which also has you delete DEPLOY-6.0.2.md from the repo).
 - [ ] ADD `tone.min.js` + `tone.min.js.LICENSE.txt` (self-hosted Tone 14.8.49)

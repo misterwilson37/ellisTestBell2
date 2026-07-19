@@ -1,6 +1,12 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.8.0
+ * Version: 1.10.0
+ *
+ * v1.10.0 changelog (2026-07, app 6.3.0): + school-config.js +
+ *   27-school-branding.js (schoolification pass).
+ *
+ * v1.9.0 changelog (2026-07, app 6.2.0): + 26-modal-chrome.js (Stage 6b
+ *   shared modal chrome); cache bump busts 6.1.0 caches.
  *
  * v1.8.0 changelog (2026-07, app 6.1.0):
  * - Tone.js is now SELF-HOSTED (/tone.min.js, added to CORE_ASSETS) instead
@@ -89,7 +95,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.8.0';
+const CACHE_VERSION = '1.10.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;
@@ -131,10 +137,13 @@ const CORE_ASSETS = [
 
   '/src/js/24-notifications.js',
   '/src/js/25-status-view.js',
+  '/src/js/26-modal-chrome.js', // v1.9.0 (app 6.2.0, Stage 6b)
+  '/src/js/27-school-branding.js', // v1.10.0 (app 6.3.0, schoolification)
   '/src/js/99-init-and-listeners.js',
   '/src/js/main.js',
   '/src/js/state.js',
   '/firebase-config.js',
+  '/school-config.js', // v1.10.0 (app 6.3.0, schoolification)
   '/bell-engine.js',
   '/manifest.json',
   '/ellisBell.mp3',

@@ -2,6 +2,60 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## V6.3.0 — Schoolification pass: one-file branding
+(Additive; zero visible change for Ellis — jsdom-verified no-op.)
+
+- **NEW `/school-config.js`** (plain script, firebase-config.js pattern):
+  appName, welcomeHeading, defaultSoundLabel, themeColor. Every value
+  optional with Ellis defaults; heavily commented, including everything
+  that deliberately STAYS manual (manifest.json is static JSON; replace
+  ellisBell.mp3 but keep the filename — it's in the SW precache and saved
+  preferences).
+- **NEW `src/js/27-school-branding.js`** applies it at startup: tab
+  title + banner (APP_VERSION appended, so the three-places version
+  convention still greps the static HTML), welcome heading, theme
+  preview, meta theme-color, all 8 default-sound dropdown labels, and
+  exports APP_NAME (now used by desktop notifications). Text/attribute
+  writes only — same safety pattern as 26.
+- index.html: three branding targets got ids; loads school-config.js
+  before the app module.
+- **service-worker.js -> 1.10.0**: caches both new files.
+- **old.html -> 1.7.1**: comment at PROJECT_ID pointing other schools at
+  firebase-config.js's projectId (the page itself stays SDK-free REST).
+- SETUP.md Step 8 rewritten around the one file.
+- Verification: jsdom harness ran school-config.js + the branding module
+  against index.html — title/h1/welcome/preview/meta + 8 labels all
+  byte-equal to the static HTML with stock config. tailwind.css still
+  byte-identical to 6.1.0.
+
+## V6.2.0 — Stage 6b: template-generated modal chrome
+(Structural, zero visual/behavioral change — proven, see below.)
+
+- **index.html shrinks by ~7.2KB of repeated class strings.** The 45 modal
+  backdrop wrappers, 42 standard white panels, and 66 standard buttons
+  (40 gray cancel / 19 blue primary / 7 red danger) now carry data
+  attributes (`data-modal`, `data-modal-panel`, `data-btn`) instead of
+  repeated literal Tailwind chrome.
+- **NEW `src/js/26-modal-chrome.js`** expands those attributes at startup —
+  CLASS ADDITION ONLY (no elements created/moved/removed, so every
+  getElementById reference and listener stays valid). Variants:
+  `data-modal-align="start"`, `data-modal-z="<literal z class>"` or
+  `"none"`. All deviations (three p-6 panels, buttons with text-sm /
+  disabled: / hidden / w-full extras) were deliberately left bespoke.
+- **Restyling all modals is now a one-place edit** (schoolification hook).
+- **service-worker.js -> 1.9.0**: 26-modal-chrome.js added to CORE_ASSETS;
+  cache bump busts 6.1.0 caches.
+- **Verification**: transform done by `build/transform-modals.mjs` (kept
+  for archaeology) with assertions — inline scripts byte-identical, id
+  inventory identical, exact expected counts. tailwind.css rebuild came
+  out BYTE-IDENTICAL to 6.1.0 (no class lost moving to JS strings). A
+  jsdom harness executed the real module against the transformed DOM and
+  compared class SETS on 1,629 elements vs pre-transform: zero
+  differences.
+- Pre-existing quirk preserved on purpose: bare `z-60`/`z-70` on three
+  modals generate no CSS in stock Tailwind (they stack by DOM order);
+  documented in the module header, not silently "fixed."
+
 ## V6.1.0 — Stage 6a housekeeping: self-hosted Tone.js + verifier hardening
 (Shipped together with 6.0.2 on alpha; structural, no feature changes.)
 

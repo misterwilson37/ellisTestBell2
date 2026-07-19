@@ -136,12 +136,21 @@ Without this, Google sign-in is refused.
 
 All optional; the app runs fine without any of it.
 
+**Start with `school-config.js`** — one file, four values, heavily
+commented. It controls the app name everywhere it appears in the main app
+(tab title, page banner, sign-in welcome, theme preview, notifications),
+what the sound dropdowns call the default bell, and the browser toolbar
+tint. The version number is appended to the title/banner automatically.
+
+What still lives outside that file:
+
 | What | Where |
 |---|---|
-| App name in installs/bookmarks | `manifest.json` (`name`, `short_name`, `theme_color`) |
-| Page title & banner | `index.html` — the `<title>` tag and the `<h1>` (keep the version number; the app's docs rely on it) |
-| Default bell sound | Replace `ellisBell.mp3` (keep the filename, or also update references to it) |
+| App name & colors for the INSTALLED app | `manifest.json` (`name`, `short_name`, `theme_color`) — static JSON, browsers read it directly |
+| Default bell sound | Replace `ellisBell.mp3` and KEEP THE FILENAME (it's baked into the offline cache and saved user preferences). `school-config.js` controls its display name. |
 | App icons | `icon-192.png`, `icon-512.png` |
+| clock.html's sound label | one `"Ellis Bell (Default)"` dropdown option |
+| Legacy iOS 9 page | `old.html` — set `PROJECT_ID` near the top of its script to your `projectId` from `firebase-config.js` (a comment there points the way) |
 | Signage branding | `signage/*.png` are Ellis's house crests + logo — swap for your own, or skip the `signage/` pages entirely |
 
 ## Step 9 — Smoke test

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ellis Bell - Legacy v1.7.0 (iOS 9+)</title>
+    <title>Ellis Bell - Legacy v1.7.1 (iOS 9+)</title>
     <!-- Ellis Bell Legacy v1.7.0 -->
     <!-- v1.7.0: Palette unification with main app (Tier 2 of audit, sibling pass).
          Collapsed 23 distinct blue/indigo/violet values down to 4 Carolina-based
@@ -868,7 +868,7 @@
             <div id="last-refresh" class="last-refresh"></div>
         </div>
         
-        <div class="version">Ellis Bell Legacy v1.7.0 (iOS 9+)</div>
+        <div class="version">Ellis Bell Legacy v1.7.1 (iOS 9+)</div>
     </div>
     
     <!-- Invisible tap zone to exit kiosk mode (top-right corner) -->
@@ -990,6 +990,10 @@
         // === CONFIGURATION ===
         // ===========================================
         
+        // v1.7.1: for OTHER SCHOOLS — this is the one hardcoded Firebase project
+        // id in this file. Set it to the projectId value in /firebase-config.js
+        // (this ES5 page reads Firestore over plain REST and does not load the
+        // Firebase SDK or that config file). See SETUP.md.
         var PROJECT_ID = 'ellisbell-c185c';
         var APP_ID = '1:441560045695:web:94e51a006663404b8f474a';
         var FIRESTORE_BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID + '/databases/(default)/documents';

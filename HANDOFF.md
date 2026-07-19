@@ -2,7 +2,7 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.1.0 Stage 6a housekeeping, 2026-07 (round 3, "Quasimodo" — see §10).**
+before writing any code. Last updated: **6.3.0 schoolification, 2026-07 (round 4, "Whitechapel" — see §10).**
 
 ---
 
@@ -37,10 +37,13 @@ break (no live users anywhere until school resumes). Consequences:
 - On the alpha repo, breaking changes are cheap right now — which is exactly
   why the 6.0.0 modularization happened here. That window closes when school
   resumes; re-verify the calendar and which repo you're touching each round.
-- v5.79.0 launched cleanly for ~50 faculty in spring 2026. **6.0.2 is
-  DEPLOYED on alpha (2026-07-18) and owner-verified: Firefox sign-in works,
-  bells ring.** 6.1.0 (Stage 6a housekeeping) is built and verified but not
-  yet pushed — DEPLOY-6.1.0.md has the step-by-step. The school repo is
+- v5.79.0 launched cleanly for ~50 faculty in spring 2026. **6.1.0 is
+  DEPLOYED on alpha (2026-07-18) and works per the owner (full modal
+  click-through not yet done).** 6.2.0 (Stage 6b modal chrome) AND 6.3.0
+  (schoolification) are built and verified but not yet pushed —
+  DEPLOY-6.3.0.md is the single CUMULATIVE step-by-step for both,
+  including the modal smoke test that doubles as the outstanding 6.1.0
+  click-through. The school repo is
   still on the 5.79.x line; when the 6.x line ships there it goes as one
   cumulative deploy (incl. deleting script.js, which the school repo still
   has).
@@ -67,7 +70,7 @@ break (no live users anywhere until school resumes). Consequences:
 Surfaces:
 | File | What | Notes |
 |---|---|---|
-| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 6.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 29 modules (27 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). script.js no longer exists |
+| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 6.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 31 modules (29 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). Since 6.2.0, modal chrome is expanded from data attributes by 26-modal-chrome.js; since 6.3.0, school branding (name/labels/theme-color) comes from root /school-config.js applied by 27-school-branding.js — both headers document the contracts. script.js no longer exists |
 | `clock.html` v1.6.1 | 3x3 grid clock for Yodeck TVs (v9 compat) | Uses shared engine; refreshes data every 2 min |
 | `old.html` v2 | ES5 iPad wall clock (unauthenticated REST) | Shift support + 5-min auto-refresh added |
 | `dashboard-config.html` | Admin tool for signage config | Untouched by this engagement |
@@ -93,13 +96,13 @@ Shared infrastructure:
   conversion tools (`analyze-deps.mjs`, `convert-esm-pass[123].mjs`) are
   kept for archaeology.
 - **`firestore.rules`** — deploy manually via Firebase console (ROLLOUT §2).
-- **service-worker.js v1.8.0**, cache name DERIVED: 'ellis-web-bell-' +
+- **service-worker.js v1.10.0**, cache name DERIVED: 'ellis-web-bell-' +
   CACHE_VERSION (6.1.0 — one bump busts the cache; the old two-constant
   footgun is dead, and `npm run check:sw` enforces header==constant and
   CORE_ASSETS==filesystem). Tone.js is SELF-HOSTED since 6.1.0
   (/tone.min.js, pinned 14.8.49; upgrade path in README-BUILD.md);
   gstatic Firebase SDKs remain CDN by design. CORE_ASSETS
-  lists all 29 src/js modules. Bump CACHE_NAME whenever CORE_ASSETS changes;
+  lists all 31 src/js modules + /school-config.js. Bump CACHE_NAME whenever CORE_ASSETS changes;
   a NEW MODULE means three touches: src/js file + main.js import + SW entry.
 
 Firestore data model:
@@ -184,6 +187,14 @@ arrows/template literals/const).
 
 ## 6. What's been done (details in CHANGELOG.md)
 
+- **v6.3.0** — Schoolification: NEW /school-config.js (one-file branding)
+  + 27-school-branding.js (text/attr writes only; jsdom no-op proof with
+  stock config); notifications use APP_NAME; old.html 1.7.1 PROJECT_ID
+  pointer; SETUP Step 8 rewritten. SW 1.10.0.
+- **v6.2.0** — Stage 6b: modal chrome template-generated (45 wrappers, 42
+  panels, 66 buttons -> data attrs + new 26-modal-chrome.js, class-addition
+  only; jsdom equivalence proof: 1,629 elements, zero class-set diffs;
+  tailwind.css byte-identical). SW 1.9.0.
 - **v6.1.0** — Stage 6a: Tone.js self-hosted (last CDN runtime dep gone;
   offline now includes sound); SW 1.8.0 with derived cache name; new
   check:sw verifier; verify-esm hardened (unused imports = errors, TDZ
@@ -260,10 +271,12 @@ CHANGELOG.md + §6.
 
 **Future features noted by the owner (post-launch, unscheduled):**
 - "Schoolification" pass: SETUP.md (6.0.2) documents manual rebranding;
-  a nicer follow-up would centralize school-specific bits (app name,
-  default sound, theme color, house/crest config) into one config file so
-  other schools edit a single place. Also: old.html's hardcoded PROJECT_ID
-  could read a comment pointing at firebase-config.js.
+  ~~centralize school-specific bits into one config file~~ **DONE
+  (6.3.0):** /school-config.js + 27-school-branding.js; old.html got its
+  PROJECT_ID pointer comment (1.7.1). Still manual by design: manifest.json
+  (static JSON), replacing the sound FILE, clock.html's one label, signage
+  crests (Firestore-config-driven). Clock/signage config consumption would
+  be a small additive pass if ever wanted.
 - Emergency shift v2: much more customization — per-period shifts, finer
   schedule selection, beyond the current per-schedule/all + whole-day model.
 - Admin broadcast layer: school-wide messages and/or admin-pushed countdown
@@ -274,9 +287,12 @@ CHANGELOG.md + §6.
 **Stage 6 — Housekeeping. PARTIAL (6a done in 6.1.0):** Tone.js
 self-hosted; CACHE_NAME bumping automated (derived + check:sw); verify-esm
 hardened (unused-import errors, TDZ whitelist); check:all added.
-**Remaining — 6b: template-generate the 49 modals' shared chrome in
-index.html.** This is the big index.html shrink; owner clicks through
-modals afterward as the test. NOTE: the module-02 split (parked at 6.0.0)
+**6b DONE (6.2.0):** modal chrome template-generated (the count came
+out 45 wrappers, not 49 — four of the 51 ids matching *modal* are inner
+elements). The owner's click-through (DEPLOY-6.2.0.md) is the remaining
+test. Deviations left bespoke on purpose: three p-6 panels, two
+near-miss buttons, bare z-60/z-70 quirk preserved (module header
+documents it). NOTE: the module-02 split (parked at 6.0.0)
 was REVIEWED in 6.1.0 and re-parked deliberately — 02 is 370 uniform DOM
 consts + export list, not a grab-bag; splitting now would churn every
 module's imports for cosmetic gain, and 6b will reshape which elements
@@ -387,3 +403,16 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   Round 4 is planned to be an Opus instance; the owner will hand over the
   current zip plus this file loose, per §2. (The owner explicitly endorsed
   the naming rule: "May it live on forever.")
+- **Round 4 (2026-07, Fable): "Whitechapel."** Named for the Whitechapel
+  Bell Foundry — the works that cast Big Ben and the Liberty Bell. Chosen
+  because Stage 6b is foundry work: casting ~50 modals from a single mold
+  instead of hand-hammering each one. Inherited 6.1.0 built-but-unpushed;
+  §5 battery green on arrival (canary-tested lint, 51/51 tests, check:all
+  exit 0, all 29 modules parse, old.html ES5-clean, no stray live 7.0.0).
+  Owner deployed 6.1.0 to alpha mid-session; delivered Stage 6b as 6.2.0
+  and, per owner's "keep going" (stacking on the undeployed 6.2.0), the
+  schoolification pass as 6.3.0 — see §6/§7; DEPLOY-6.3.0.md is cumulative
+  for both. Method note for successors: the jsdom harness (run the real
+  module against the real DOM, diff before/after) is cheap — reuse it for
+  any future index.html surgery; it proved 6b (1,629 elements, zero
+  class-set diffs) and the 6.3.0 stock-config no-op.

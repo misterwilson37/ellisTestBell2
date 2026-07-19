@@ -30,4 +30,6 @@ import './22-audit-log.js';
 import './23-clock-drift.js';
 import './24-notifications.js';
 import './25-status-view.js';
+import './26-modal-chrome.js'; // 6.2.0: expand shared modal chrome BEFORE init wiring
+import './27-school-branding.js'; // 6.3.0: apply school-config.js branding
 import './99-init-and-listeners.js';
