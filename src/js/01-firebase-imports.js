@@ -6,7 +6,7 @@ import { getFirestore, doc, onSnapshot, setDoc, updateDoc, collection, getDocs, 
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll, getMetadata, updateMetadata, getBytes } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
 
-// ===== module exports (7.0.0) =====
+// ===== module exports (6.0.0) =====
 export {
     GoogleAuthProvider,
     addDoc,

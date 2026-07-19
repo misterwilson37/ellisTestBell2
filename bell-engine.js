@@ -1,8 +1,10 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.3.2
+ * Version: 1.3.3
  *
- * v1.3.2 (2026-07, app 7.0.0): comment-only — load-order note updated to
+ * v1.3.3 (2026-07, app 6.0.1): comment-only — version-number correction:
+ * the modularization release was mislabeled 7.0.0; it is 6.0.0. No code change.
+ * v1.3.2 (2026-07, app 6.0.0): comment-only — load-order note updated to
  * reference src/js/main.js (script.js retired). No code change.
  * (1.0.0: extracted from script.js v5.71.0 in app release v5.72.0;
  *  1.1.0: added toLocalDateString + resolveCalendarSchedule for the
@@ -386,7 +388,7 @@
     }
 
     const BellEngine = {
-        VERSION: '1.3.2', // v1.3.1: exported so the status modal can report it
+        VERSION: '1.3.3', // v1.3.1: exported so the status modal can report it
         escapeHtml,
         getBellId,
         formatTime12Hour,

@@ -4,20 +4,31 @@
 
 ## ✅ v5.79.1 delta: DEPLOYED 2026-07 (alpha repo).
 
-## LATEST — v7.0.0 native ES modules (deploy this next)
+## LATEST — v6.0.2 native ES modules + Firefox sign-in fix (deploy this next)
+(This release was briefly mislabeled 7.0.0 by a confused session; the
+modularization is 6.0.0; 6.0.1 was the correction pass and 6.0.2 adds the
+Firefox sign-in fix. Nothing labeled
+7.0.0 was ever pushed anywhere.)
 Biggest structural change since the v5.72 split, but the deploy is still
-just files: no build, no Firebase console, no rules change, no data change.
-- [ ] DELETE `script.js` from the repo (it no longer exists; index.html no
-      longer references it)
-- [ ] Replace: `index.html` (7.0.0), `service-worker.js` (1.7.0, cache v8),
+just files: **no build, no Firebase console, no rules change, no data
+change.** Full step-by-step in DEPLOY-6.0.2.md.
+- [ ] DELETE `script.js` from the repo (retired; index.html no longer
+      references it — this is the only deletion)
+- [ ] Replace: `index.html` (6.0.2), `service-worker.js` (1.7.1, cache v8),
       the whole `src/js/` folder (29 modules incl. new `state.js`, `main.js`),
-      `bell-engine.js` (1.3.2) `firebase-config.js` (1.0.1) `clock.html`
-      (1.6.1) — all three comment-only z-bumps, no code change —
+      `bell-engine.js` (1.3.3) `firebase-config.js` (1.0.2) `clock.html`
+      (1.6.2) — comment-only z-bumps except the SW, which also fixes its
+      stale CACHE_VERSION constant —
       `tailwind.css` (byte-identical; push for hygiene)
 - [ ] Replace `build/` folder (new verifier + retired builder) and docs:
-      `CHANGELOG.md`, `README.md`, `HANDOFF.md`, this file
+      `CHANGELOG.md`, `README.md`, `HANDOFF.md`, `DEPLOY-6.0.2.md`, `SETUP.md`
+      (new: guide for other schools), this file
 - [ ] Verify after push + hard-refresh:
-      - header/title say 7.0.0; footer version tap still lists files
+      - header/title say 6.0.2; footer version tap lists files; the App line
+        reads "App (src/js modules)" and service-worker.js reads 1.7.1
+      - FIREFOX (default settings AND with Enhanced Tracking Protection set
+        to Strict): click Sign In -> Google popup opens -> account picked ->
+        popup closes, signed in. No "missing initial state" error
       - DevTools Network tab shows src/js/*.js modules loading (200s)
       - DevTools Console: no red errors on load
       - a bell rings (set a quick bell 1 min out); schedule list renders;
@@ -25,7 +36,8 @@ just files: no build, no Firebase console, no rules change, no data change.
       - Application > Service Workers: new SW activates; cache storage shows
         ellis-web-bell-v8 with src/js entries
       - offline check: DevTools offline mode + reload -> app still loads
-- [ ] School repo: do NOT ship 7.0.0 there until it has soaked on alpha
+      - https://<site>/script.js returns 404 (proof the deletion took)
+- [ ] School repo: do NOT ship 6.0.2 there until it has soaked on alpha
       through at least one full school day of your own use
 
 ## ✅ Prior delta (v5.79.1) — kept for reference

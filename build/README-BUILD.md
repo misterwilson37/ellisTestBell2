@@ -6,9 +6,9 @@
 > Pages requires no build, no terminal, no npm. Everything below applies only
 > when you want to CHANGE the app.
 
-## The 7.0.0 world in one paragraph
+## The 6.0.0 world in one paragraph
 
-As of 7.0.0 the main app is **native ES modules**: `index.html` loads
+As of 6.0.0 the main app is **native ES modules**: `index.html` loads
 `src/js/main.js` with `<script type="module">` and the browser resolves the
 import graph. There is **no `script.js` and no JS build step** — the old
 "generated file" (and its `build:js` / `check:js` ceremony) is retired.
@@ -99,7 +99,7 @@ schedule shift · 22 edit audit log · 23 clock drift warning ·
 24 notification backup ring · 25 status/health view ·
 99 init() & event listeners (numbered 99 so future insertions never rename it)
 
-Historical note: before 7.0.0 these were "chunks" concatenated into a
+Historical note: before 6.0.0 these were "chunks" concatenated into a
 generated script.js by `build-js.mjs` (now a tombstone that exits 1 and
 points here). The conversion tooling (`convert-esm-pass[123].mjs`,
 `analyze-deps.mjs`) is kept for archaeology; it should never need to run

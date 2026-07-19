@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ellis Web Bell 7.0.0 converter — PASS 1: state extraction
+ * Ellis Web Bell 6.0.0 converter — PASS 1: state extraction
  *
  * Moves every cross-chunk-written module variable into src/js/state.js
  * (export const state = {...}) and rewrites all references — reads and
@@ -169,7 +169,7 @@ for (const e of stateEntries) {
   byOwner.get(e.owner).push(e);
 }
 let out = `// ============================================================
-// v7.0.0: SHARED MUTABLE STATE
+// v6.0.0: SHARED MUTABLE STATE
 // Every variable in this object is WRITTEN by more than one module.
 // ES module import bindings are read-only, so cross-module writes must
 // go through a shared object — this one. Read/write as state.foo.

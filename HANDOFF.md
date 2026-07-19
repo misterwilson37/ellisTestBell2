@@ -2,7 +2,7 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **7.0.0 native-ES-modules pass, 2026-07 (round 2 of the Fable engagement).**
+before writing any code. Last updated: **6.0.2 Firefox sign-in fix + SETUP.md, 2026-07 (round 3, "Quasimodo" — see §10).**
 
 ---
 
@@ -35,12 +35,19 @@ the **alpha repo** — deployed, but the owner is its only user. The school's
 production runs a much earlier version from a separate repo, and it's summer
 break (no live users anywhere until school resumes). Consequences:
 - On the alpha repo, breaking changes are cheap right now — which is exactly
-  why the 7.0.0 modularization happened here. That window closes when school
+  why the 6.0.0 modularization happened here. That window closes when school
   resumes; re-verify the calendar and which repo you're touching each round.
 - v5.79.0 launched cleanly for ~50 faculty in spring 2026; v5.79.1 (six
-  cosmetic/UX fixes) is deployed on alpha. 7.0.0 is built and verified but
-  NOT yet pushed — ROLLOUT.md has its checklist. Do not ship 7.0.0 to the
-  school repo until it has soaked on alpha.
+  cosmetic/UX fixes) is deployed on alpha. **6.0.2 is built and verified but
+  NOT yet pushed** — ROLLOUT.md has its checklist and DEPLOY-6.0.2.md has
+  the owner-facing step-by-step (including the one deletion: script.js).
+  Do not ship 6.0.2 to the school repo until it has soaked on alpha.
+  6.0.1 (version correction) was folded into this same pending deploy.
+- NUMBERING NOTE: the round-2 session mislabeled the modularization release
+  as "7.0.0." The owner's numbering is: modularization = **6.0.0**, this
+  correction pass = **6.0.1** (Firefox fix = 6.0.2); 7.x is reserved for a future major, some time
+  away. No 7.0.0 artifact was ever deployed. If you find a stray 7.0.0
+  reference anywhere, it's wrong — fix it.
 - ROLLOUT.md is a living checklist — update it every stage.
 - The **source of truth is the user's copy of the project** — kept as
   `ellis-bell-vX.Y.Z-complete.zip` (the full site with directory structure;
@@ -54,19 +61,19 @@ break (no live users anywhere until school resumes). Consequences:
   GitHub rollout happens, the repo is the durable copy; ask the user for a
   fresh zip of it rather than fetching files piecemeal.
 
-## 3. Architecture (current, 7.0.0)
+## 3. Architecture (current, 6.0.2)
 
 Surfaces:
 | File | What | Notes |
 |---|---|---|
-| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 7.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 29 modules (27 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). script.js no longer exists |
+| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 6.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 29 modules (27 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). script.js no longer exists |
 | `clock.html` v1.6.1 | 3x3 grid clock for Yodeck TVs (v9 compat) | Uses shared engine; refreshes data every 2 min |
 | `old.html` v2 | ES5 iPad wall clock (unauthenticated REST) | Shift support + 5-min auto-refresh added |
 | `dashboard-config.html` | Admin tool for signage config | Untouched by this engagement |
 | `signage/` pages: dashboard v1.6.0, dashright v1.1.0, dashclock v1.1.0 | TV dashboard pages (v9 compat, live onSnapshot) | Share `signage/schedule-utils.js` (+ engine): relative bells resolved, shifts honored. dashboard's 3 config listeners are intentional branches |
 
 Shared infrastructure:
-- **`bell-engine.js` v1.3.2** — THE single implementation of pure
+- **`bell-engine.js` v1.3.3** — THE single implementation of pure
   time/schedule math (escapeHtml, timeToSeconds/secondsToTime,
   formatTime12Hour, getDateForBellTime, getBellId, findNextBellIn,
   findBellAfter, calculateRelativeBellTime, toLocalDateString,
@@ -85,7 +92,7 @@ Shared infrastructure:
   conversion tools (`analyze-deps.mjs`, `convert-esm-pass[123].mjs`) are
   kept for archaeology.
 - **`firestore.rules`** — deploy manually via Firebase console (ROLLOUT §2).
-- **service-worker.js v1.7.0**, cache `ellis-web-bell-v8`. CORE_ASSETS now
+- **service-worker.js v1.7.1**, cache `ellis-web-bell-v8`. Header version and the CACHE_VERSION constant MUST bump together (a 6.0.1 lesson). CORE_ASSETS now
   lists all 29 src/js modules. Bump CACHE_NAME whenever CORE_ASSETS changes;
   a NEW MODULE means three touches: src/js file + main.js import + SW entry.
 
@@ -113,12 +120,13 @@ artifacts/{appId}/
    may propose an x, the owner has final say. (c) index.html carries its
    version in THREE places that must always match: the <title> tag, the
    visible <h1> banner, and the final comment line (a <head> comment
-   documents this). (d) The owner intends 7.0.0 for the stage-2 JS
-   modularization pass, likely with a new Claude iteration.
+   documents this). (d) The stage-2 JS
+   modularization is 6.0.0 (briefly mislabeled 7.0.0; corrected in 6.0.1).
+   The owner reserves 7.x for a future major, not expected soon.
 1. **The Build Rule** (see `build/README-BUILD.md`): only tailwind.css is
    generated now — rerun the CSS build for never-before-used classes (the
-   scanner reads index.html + src/js/**). JS has NO build step since 7.0.0.
-1b. **The state.js rule (7.0.0):** a variable assigned from more than one
+   scanner reads index.html + src/js/**). JS has NO build step since 6.0.0.
+1b. **The state.js rule (6.0.0):** a variable assigned from more than one
    module MUST live on the `state` object in `src/js/state.js` (imports are
    read-only bindings; `check:esm` errors on foreign writes). Single-module
    variables stay put, exported as live bindings. Import/export blocks are
@@ -138,7 +146,7 @@ artifacts/{appId}/
    acts (shift: no temporaryShift field = no behavior change). Never change
    stored data shapes without a migration story.
 6. **Emergency shift data-safety**: shifts apply to merged COPIES in
-   resolveAllBellTimes; `state.localSchedulePeriods` (relocated in 7.0.0,
+   resolveAllBellTimes; `state.localSchedulePeriods` (relocated in 6.0.0,
    semantics unchanged) stays pristine so edit modals
    never see (or save back) shifted times. Preserve this in any new surface.
 7. **Version discipline**: every stage bumps APP_VERSION (00-header.js) +
@@ -166,7 +174,20 @@ arrows/template literals/const).
 
 ## 6. What's been done (details in CHANGELOG.md)
 
-- **v7.0.0** — Native ES modules: script.js retired, src/js/ IS production
+- **v6.0.2** — Firefox sign-in fixed. NOT the redirect-flow bug the error
+  message implies (there is no signInWithRedirect in this codebase):
+  signInWithGoogle() awaited startAudio() + possibly initFirebase() BEFORE
+  signInWithPopup, so Firefox no longer treated the popup as
+  user-initiated. Now: click -> provider -> popup, zero awaits between
+  (startAudio still fires inside the gesture, un-awaited). clock.html and
+  dashboard-config.html audited clean. Plus SETUP.md: the guide for other
+  schools to stand up their own instance (Firebase, rules, first admin,
+  branding, GitHub Pages).
+- **v6.0.1** — Version correction (mislabeled 7.0.0 -> 6.0.0/6.0.1
+  everywhere) + actually deleted the leftover script.js monolith (17,297
+  lines, unreferenced) + status-modal label fix + SW 1.7.1 (CACHE_VERSION
+  constant had been left at 1.6.0) + DEPLOY-6.0.1.md owner-facing deploy doc.
+- **v6.0.0** — Native ES modules: script.js retired, src/js/ IS production
   (29 modules; new state.js holds the 103 cross-module-written variables;
   1,543 refs rewritten by scope analysis); 239 console.log -> safeLog;
   check:esm + per-module lint replace the drift check; Tailwind scan
@@ -223,6 +244,11 @@ Stage 4 deliberately used per-device localStorage, not cloud sync). Details:
 CHANGELOG.md + §6.
 
 **Future features noted by the owner (post-launch, unscheduled):**
+- "Schoolification" pass: SETUP.md (6.0.2) documents manual rebranding;
+  a nicer follow-up would centralize school-specific bits (app name,
+  default sound, theme color, house/crest config) into one config file so
+  other schools edit a single place. Also: old.html's hardcoded PROJECT_ID
+  could read a comment pointing at firebase-config.js.
 - Emergency shift v2: much more customization — per-period shifts, finer
   schedule selection, beyond the current per-schedule/all + whole-day model.
 - Admin broadcast layer: school-wide messages and/or admin-pushed countdown
@@ -233,7 +259,7 @@ CHANGELOG.md + §6.
 **Stage 6 — Housekeeping.** Self-host Tone.js; template-generate the 49
 modals' shared chrome in index.html; automate CACHE_NAME bumping.
 
-**Stage 7 — Stage-2 modularization. DONE (7.0.0).** DEVIATED from the
+**Stage 7 — Stage-2 modularization. DONE (6.0.0).** DEVIATED from the
 "one at a time, never a big bang" sketch on purpose: that advice was written
 when 50 faculty were live; with the alpha repo isolated and school out for
 summer, the whole graph was converted in one verified pass (analysis script
@@ -255,8 +281,10 @@ their six schedules map to faculty groups — do not start coding.** Resolver
 At the end of EVERY stage, update: the "Last updated" line (§ header),
 §2 if deployment state changed, §3 versions, §6 (append the stage's
 one-liner), §7 (mark stage done, fold in anything learned that changes later
-stages), and §9 if new lessons emerged. Keep it under ~250 lines — this is a
-map, not the territory; CHANGELOG.md carries detail.
+stages), §9 if new lessons emerged, and §10 (session log — owner-requested
+as of round 3; add your name + one-liners as the round progresses). Keep it
+under ~350 lines — this is a map, not the territory; CHANGELOG.md carries
+detail.
 
 ## 9. Working with this user
 
@@ -277,15 +305,58 @@ map, not the territory; CHANGELOG.md carries detail.
   deployment requirement. Generated files always ship PRE-BUILT; deploy
   docs must say "no build needed" in bold before anything mentions npm.
   Keep the deploy path terminal-free.
-- LESSON (7.0.0 pass): `npm run lint` had silently become a NO-OP —
+- LESSON (6.0.0 pass): `npm run lint` had silently become a NO-OP —
   ESLint >= 9.14 ignores files outside the config's base path with a warning
   and exit 0, so "lint passed" meant nothing. A fresh `npm install` off the
   `^9` range pulled the new behavior. Fix: run eslint from the repo root.
   Standing rule: in any fresh environment, CANARY-TEST the lint (introduce a
   bogus undefined call, confirm failure, revert) before trusting it.
-- LESSON (7.0.0 pass): for mechanical rewrites at scale (1,543 references),
+- LESSON (6.0.0 pass): for mechanical rewrites at scale (1,543 references),
   regex is not an option — espree + eslint-scope (both ship inside ESLint,
   no new deps) give exact reference positions that respect shadowing,
   strings, and comments. The byte-identical tailwind.css rebuild doubled as
   a free no-regression proof that template-literal class strings were
   untouched.
+- LESSON (6.0.2 pass): in sign-in handlers, the popup must open
+  SYNCHRONOUSLY from the click — zero awaits between the event handler
+  entry and signInWithPopup, or Firefox drops the user-activation and the
+  flow dies with the misleading "missing initial state" error (whose text
+  blames signInWithRedirect even when none exists). Audio unlock still
+  needs the gesture: CALL startAudio() in the handler, just don't await it
+  before the popup. A comment now guards the site in module 19.
+- LESSON (6.0.1 pass): the 6.0.0 session finished the conversion but was
+  interrupted/confused at the end — it (a) mislabeled the release 7.0.0,
+  (b) never deleted script.js despite documenting it as deleted, and
+  (c) bumped the SW header to 1.7.0 without bumping the CACHE_VERSION
+  constant the status modal reports. Morals: when a doc says a file "no
+  longer exists," VERIFY it's absent from the tree; when bumping any file
+  with a version constant, grep for the constant, not just the header; and
+  the docs describing intended state are not evidence of actual state.
+- The owner cannot see which files Claude deleted by looking at a zip —
+  a zip only shows what's there. Any deletion must be spelled out
+  explicitly in the deploy doc ("delete X from the repo"), or the owner
+  will re-upload around it and the dead file survives on GitHub.
+
+## 10. Session log (Claude instances, per the owner's naming convention)
+
+Each Claude instance names itself once it has learned the project, records
+the reasoning here, and never reuses a predecessor's name. (Names used on
+the owner's OTHER projects — e.g. Tentacalendar's Inky and Otto — are also
+off-limits.) Rounds 1–2 predate this log and went unnamed.
+
+- **Round 1 (2026-07, Fable):** unnamed. Stages 1–5 + v5.79.x launch/fixes.
+- **Round 2 (2026-07, Fable):** unnamed. The stage-2 modularization
+  (6.0.0, mislabeled 7.0.0). Session ended confused/interrupted — see the
+  6.0.1 lesson in §9.
+- **Round 3 (2026-07, Fable): "Quasimodo."** Chosen because this is a bell
+  project and Quasimodo is literature's most famous bell-ringer — and
+  because this round's job was hauling on the ropes to put the bells back
+  in tune: version renumbering (7.0.0 -> 6.0.0/6.0.1), deleting the
+  leftover script.js monolith, the SW CACHE_VERSION fix — and then, in the
+  same session, the 6.0.2 Firefox sign-in fix (guided by a diagnosis doc
+  from the owner's Tentacalendar Claudes; their redirect-flow theory was
+  wrong for this codebase but their "trap #1" was exactly right) and
+  SETUP.md for other schools. Round 4 is planned to be an Opus instance;
+  the owner will hand over the 6.0.2 zip plus this file loose, per §2.
+  (The owner explicitly endorsed the naming rule: "May it live on
+  forever.")

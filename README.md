@@ -6,7 +6,7 @@ A real-time, synchronized school bell schedule and timer system. Built for a sch
 
 | File | What it is | Firebase SDK | Notes |
 |---|---|---|---|
-| `index.html` + `src/js/` | The main teacher-facing app: countdown, schedule editing, quick bells, queues, themes, PiP, broadcast, share codes | v11 modular (ES modules) | Native ES modules since 7.0.0 — src/js/ IS production, entry point `src/js/main.js` |
+| `index.html` + `src/js/` | The main teacher-facing app: countdown, schedule editing, quick bells, queues, themes, PiP, broadcast, share codes | v11 modular (ES modules) | Native ES modules since 6.0.0 — src/js/ IS production, entry point `src/js/main.js` |
 | `clock.html` | Multi-schedule grid clock (up to 3x3) for Yodeck TV kiosks | v9 compat | Relative-bell math comes from the shared `bell-engine.js` as of v1.5.0 (its old local copy had silently diverged) |
 | `old.html` | Legacy self-contained clock for old iPads / Kindle Fires (iOS 9-era browsers) | None — raw Firestore REST API, **unauthenticated** | ES5 only, no modules. This is why `personal_schedules` must stay publicly readable in firestore.rules |
 | `dashboard-config.html` | Admin tool for the signage dashboard config | v9 compat | Intentionally not cached by the service worker |
@@ -14,7 +14,7 @@ A real-time, synchronized school bell schedule and timer system. Built for a sch
 
 ## ⚠️ The Build Rule (the one people forget)
 
-As of **7.0.0** the app is native ES modules: `index.html` loads
+As of **6.0.0** the app is native ES modules: `index.html` loads
 `src/js/main.js` and the browser resolves the import graph. **`src/js/ IS
 production — there is no `script.js` and no JS build step.** Edit a module,
 run the verification battery (`cd build && npm run check:esm && npm run lint
@@ -69,7 +69,7 @@ artifacts/{appId}/
 1. ~~Changelog extraction, escapeHtml, service-worker offline fix, rules tightening~~ (done, v5.70.0)
 2. ~~Self-host a compiled Tailwind CSS~~ (done, v5.71.0 — see `build/README-BUILD.md` for the rebuild workflow; Tone.js self-hosting still open)
 3. ~~Split script.js; extract shared `bell-engine.js` + unit tests~~ (done, v5.72.0 — script.js is now built from 21 chunks in `src/js/`; the engine is shared with clock.html and covered by 30 tests; the 15,000-line v4.05 IIFE is gone; six latent ReferenceErrors found by lint were fixed)
-4. ~~Stage-2 modularization~~ (done, **7.0.0** — src/js/ converted to 29 native ES modules; script.js retired, no JS build step; 103 cross-module-written variables moved to `src/js/state.js`; 239 raw `console.log` calls migrated to `safeLog`; per-module lint + `npm run check:esm` linker/TDZ verification replace the old drift check)
+4. ~~Stage-2 modularization~~ (done, **6.0.0** — src/js/ converted to 29 native ES modules; script.js retired, no JS build step; 103 cross-module-written variables moved to `src/js/state.js`; 239 raw `console.log` calls migrated to `safeLog`; per-module lint + `npm run check:esm` linker/TDZ verification replace the old drift check)
 5. Day-type calendar — PARKED (v5.74.0). One global schedule/day is the wrong model for a school running six schedules at once; the revival needs teacher groups (grade/role) with per-group day-type mapping. Design sketch in `src/js/20-schedule-calendar.js`; the pure resolver + tests are kept.
 6. ~~Emergency schedule shift~~ (done, v5.74.0 — admin shifts a base schedule ±minutes for today only; ripples through all relative bells everywhere; self-expires at midnight; all three display surfaces apply it)
 7. ~~Edit audit log~~ (done, v5.75.0 — append-only by rule; admin viewer; 16 instrumented sites)

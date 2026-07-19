@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ellis Web Bell — src/js dependency analyzer (7.0.0 modularization tool)
+ * Ellis Web Bell — src/js dependency analyzer (6.0.0 modularization tool)
  *
  * Parses every chunk in src/js/ (espree + eslint-scope, both shipped inside
  * ESLint — no new dependencies) and reports, per chunk:

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ellis Web Bell 7.0.0 converter — PASS 3: console.log -> safeLog.log
+ * Ellis Web Bell 6.0.0 converter — PASS 3: console.log -> safeLog.log
  *
  * Rewrites every `console.log(...)` call to `safeLog.log(...)` in src/js/,
  * EXCEPT inside safeLog's own definition (03-memory-management.js declarator).

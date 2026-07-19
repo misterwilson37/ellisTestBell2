@@ -1,8 +1,47 @@
 # Ellis Web Bell — Changelog
 
-Release history for the main app (src/js / index.html; script.js before 7.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
+Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
-## V7.0.0 — Native ES modules (stage-2 modularization; owner-approved major)
+## V6.0.2 — Firefox sign-in fix (the popup must open from the click)
+Google sign-in failed in Firefox since launch with the auth handler's
+"missing initial state" error. Contrary to that message's usual diagnosis,
+the codebase has NO `signInWithRedirect` anywhere — the cause was
+`signInWithGoogle()` awaiting `startAudio()` (a Tone.js AudioContext
+resume) and potentially `initFirebase()` **before** `signInWithPopup`. By
+the time the popup opened, Firefox no longer treated it as user-initiated,
+and under storage partitioning the degraded flow died in the auth handler.
+
+- `signInWithGoogle()` (module 19) rewritten: click -> provider -> popup
+  with **zero awaits in between** (the pattern proven on Tentacalendar's
+  store.js v0.15.0, same stack). `startAudio()` is still *called* inside
+  the click gesture — audio unlock needs that — but is no longer awaited
+  before the popup. Cold-boot fallback (auth missing) now re-inits and asks
+  for a second click instead of opening a popup outside the gesture.
+- clock.html and dashboard-config.html audited: both already open the popup
+  synchronously from the click. No change needed.
+- Acceptance test (Firefox, default settings AND with Enhanced Tracking
+  Protection set to Strict): click Sign In -> Google popup opens -> pick
+  account -> popup closes, app signed in. No "missing initial state."
+
+## V6.0.1 — Version correction + monolith removal (housekeeping)
+The stage-2 modularization release was mislabeled **7.0.0** by a confused
+session; the owner's numbering puts it at **6.0.0** (7.x is reserved for a
+future major). Neither number was ever deployed, so no client saw 7.0.0.
+
+- Every 7.0.0 reference corrected to 6.0.0 across code comments, module
+  markers, HTML version spots, and docs. Current app version is 6.0.1.
+- **`script.js` DELETED.** The 17,297-line generated monolith (pre-6.0.0
+  concatenation output) was left in the tree when the conversion session was
+  interrupted. Nothing referenced it; it duplicated every function in
+  `src/js/`. Must also be deleted from the GitHub repo — see ROLLOUT.md.
+- Status modal: `'script.js (App)'` label -> `'App (src/js modules)'`.
+- service-worker.js -> 1.7.1: **bug fix** — `CACHE_VERSION` (what the status
+  modal reports) was left at '1.6.0' when the header went to 1.7.0; the two
+  must now be bumped together. CACHE_NAME stays v8 (CORE_ASSETS unchanged).
+- Comment-only z-bumps for the corrected app references: bell-engine 1.3.3,
+  firebase-config 1.0.2, clock.html 1.6.2.
+
+## V6.0.0 — Native ES modules (stage-2 modularization; owner-approved major)
 The app's JavaScript is now real ES modules served directly from `src/js/`:
 index.html loads `src/js/main.js` and the browser resolves the import graph.
 **script.js is retired** — there is no generated JS file and no JS build
@@ -27,7 +66,7 @@ step; what you edit is what ships, and DevTools errors point at real files.
   (build-js.mjs is a tombstone). Tailwind content scan repointed at
   `src/js/**/*.js` — the rebuilt tailwind.css came out byte-identical,
   proving no class strings were touched by the conversion.
-- index.html -> 7.0.0 (all three places); service-worker 1.7.0 (CORE_ASSETS:
+- index.html -> 6.0.0 (all three places); service-worker 1.7.0 (CORE_ASSETS:
   script.js out, all 29 modules in; CACHE_NAME v7 -> v8). bell-engine.js is
   UNCHANGED and still a plain script shared with clock.html. No Firestore,
   rules, or data-shape changes. Sibling surfaces untouched.

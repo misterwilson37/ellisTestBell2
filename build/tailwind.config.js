@@ -28,7 +28,7 @@ module.exports = {
   // with zero utility classes. Absolute paths make that impossible.)
   content: [
     path.resolve(__dirname, '../index.html'),
-    // v7.0.0: script.js retired — the modules in src/js/ ARE production.
+    // v6.0.0: script.js retired — the modules in src/js/ ARE production.
     path.resolve(__dirname, '../src/js') + '/**/*.js',
   ],
   theme: {

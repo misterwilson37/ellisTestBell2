@@ -1,8 +1,16 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.7.0
+ * Version: 1.7.1
  *
- * v1.7.0 changelog (2026-07, app 7.0.0):
+ * v1.7.1 changelog (2026-07, app 6.0.1):
+ * - Version-number correction: the modularization release was mislabeled
+ *   7.0.0; it is 6.0.0.
+ * - BUG FIX: CACHE_VERSION (what GET_VERSION reports to the status modal)
+ *   was left at '1.6.0' when the header went to 1.7.0. Now matches the
+ *   header, and must be bumped together with it from here on.
+ * - CACHE_NAME stays v8 (CORE_ASSETS unchanged).
+ *
+ * v1.7.0 changelog (2026-07, app 6.0.0):
  * - script.js retired: the app is now native ES modules served from src/js/.
  *   Removed /script.js from CORE_ASSETS; added all 29 /src/js/*.js modules.
  *   RULE: any new module in src/js/ must be added to CORE_ASSETS AND
@@ -68,7 +76,7 @@
  */
 
 const CACHE_NAME = 'ellis-web-bell-v8';
-const CACHE_VERSION = '1.6.0';
+const CACHE_VERSION = '1.7.1';
 
 // Core files to cache for offline use
 const CORE_ASSETS = [
@@ -76,7 +84,7 @@ const CORE_ASSETS = [
   '/clock.html',
   '/styles.css',
   '/tailwind.css',
-  // v1.7.0 (app 7.0.0): script.js retired; src/js/ modules ARE production.
+  // v1.7.0 (app 6.0.0): script.js retired; src/js/ modules ARE production.
   // Keep this list in sync with src/js/ — adding a module = add it here + bump CACHE_NAME.
   '/src/js/00-header.js',
   '/src/js/01-firebase-imports.js',

@@ -1,4 +1,4 @@
-// Ellis Web Bell 7.0.0 — module entry point.
+// Ellis Web Bell 6.0.0 — module entry point.
 // index.html loads THIS file (<script type="module" src="src/js/main.js">).
 // Import order preserves the pre-7.0 concatenation order of script.js;
 // modules also import each other directly, so evaluation order is the
