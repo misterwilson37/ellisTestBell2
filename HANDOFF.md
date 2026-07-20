@@ -2,7 +2,7 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.4.0 presence dashboard, 2026-07 (round 4, "Whitechapel" — see §10).**
+before writing any code. Last updated: **6.10.0 The Calendar Wakes (Layer 4 Verb A), 2026-07 (round 5, "Bourdon" — see §10). NOTE: the cumulative 6.5–6.10 deploy REQUIRES one firestore.rules publish (introduced by 6.9.0).**
 
 ---
 
@@ -39,11 +39,11 @@ break (no live users anywhere until school resumes). Consequences:
   resumes; re-verify the calendar and which repo you're touching each round.
 - v5.79.0 launched cleanly for ~50 faculty in spring 2026. **6.1.0 is
   DEPLOYED on alpha (2026-07-18) and works per the owner (full modal
-  click-through not yet done).** 6.2.0 (modal chrome), 6.3.0
-  (schoolification) AND 6.4.0 (presence dashboard) are built and
-  verified but not yet pushed — DEPLOY-6.4.0.md is the single CUMULATIVE
-  step-by-step for all three (NOTE: 6.4.0 requires publishing the
-  updated firestore.rules in the console — additive, live-school-safe),
+  click-through not yet done).** **DEPLOYED 2026-07-19 (owner confirmed): 6.4.0 is live on BOTH alpha
+  and beta; the building channel (bells domain) runs the 5.69.5
+  presence backport.** DEPLOY-6.4.0.md documented the batch (verify the
+  firestore.rules presence block was published — dashboard rows
+  appearing IS that verification),
   including the modal smoke test that doubles as the outstanding 6.1.0
   click-through. The school repo is
   still on the 5.79.x line; when the 6.x line ships there it goes as one
@@ -67,27 +67,28 @@ break (no live users anywhere until school resumes). Consequences:
   GitHub rollout happens, the repo is the durable copy; ask the user for a
   fresh zip of it rather than fetching files piecemeal.
 
-## 3. Architecture (current, 6.1.0)
+## 3. Architecture (current, 6.10.0)
 
 Surfaces:
 | File | What | Notes |
 |---|---|---|
-| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 6.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 33 modules (31 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). Since 6.2.0, modal chrome is expanded from data attributes by 26-modal-chrome.js; since 6.3.0, school branding (name/labels/theme-color) comes from root /school-config.js applied by 27-school-branding.js — both headers document the contracts. script.js no longer exists |
-| `clock.html` v1.6.1 | 3x3 grid clock for Yodeck TVs (v9 compat) | Uses shared engine; refreshes data every 2 min |
+| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 6.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 38 modules (36 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). Since 6.2.0, modal chrome is expanded from data attributes by 26-modal-chrome.js; since 6.3.0, school branding (name/labels/theme-color) comes from root /school-config.js applied by 27-school-branding.js — both headers document the contracts; since 6.5.0, Building Bells (30-building-bells.js) makes the six intercom moments first-class anchors — see §7. script.js no longer exists |
+| `clock.html` v1.7.0 | 3x3 grid clock for Yodeck TVs (v9 compat) | Uses shared engine; refreshes data every 2 min; since 1.7.0 reports presence (anonymous sessions only — see file header) |
 | `old.html` v2 | ES5 iPad wall clock (unauthenticated REST) | Shift support + 5-min auto-refresh added |
 | `dashboard-config.html` | Admin tool for signage config | Untouched by this engagement |
 | `signage/` pages: dashboard v1.6.0, dashright v1.1.0, dashclock v1.1.0 | TV dashboard pages (v9 compat, live onSnapshot) | Share `signage/schedule-utils.js` (+ engine): relative bells resolved, shifts honored. dashboard's 3 config listeners are intentional branches |
 
 Shared infrastructure:
-- **`bell-engine.js` v1.3.3** — THE single implementation of pure
+- **`bell-engine.js` v1.7.0** — THE single implementation of pure
   time/schedule math (escapeHtml, timeToSeconds/secondsToTime,
   formatTime12Hour, getDateForBellTime, getBellId, findNextBellIn,
   findBellAfter, calculateRelativeBellTime, toLocalDateString,
-  resolveCalendarSchedule, shiftTimeString, getActiveScheduleShiftSeconds).
+  resolveCalendarSchedule, shiftTimeString, getActiveScheduleShiftSeconds,
+  applyBuildingBellTimeToPeriods).
   Loaded as a plain `<script>` by index.html and clock.html (pattern:
   firebase-config.js). Exports for Node. **Keep it pure** — no DOM, no
   Firebase, no app globals; dependencies come in as parameters.
-- **`tests/`** — 51 node:test tests, zero deps (`bell-engine.test.mjs` +
+- **`tests/`** — 60 node:test tests, zero deps (`bell-engine.test.mjs` +
   `schedule-utils.test.mjs`). `cd build && npm test`. Run after any change
   to bell-engine.js or signage/schedule-utils.js.
 - **`build/`** — npm project (tooling only; nothing is built for deploy
@@ -98,13 +99,13 @@ Shared infrastructure:
   conversion tools (`analyze-deps.mjs`, `convert-esm-pass[123].mjs`) are
   kept for archaeology.
 - **`firestore.rules`** — deploy manually via Firebase console (ROLLOUT §2).
-- **service-worker.js v1.11.0**, cache name DERIVED: 'ellis-web-bell-' +
+- **service-worker.js v1.16.0**, cache name DERIVED: 'ellis-web-bell-' +
   CACHE_VERSION (6.1.0 — one bump busts the cache; the old two-constant
   footgun is dead, and `npm run check:sw` enforces header==constant and
   CORE_ASSETS==filesystem). Tone.js is SELF-HOSTED since 6.1.0
   (/tone.min.js, pinned 14.8.49; upgrade path in README-BUILD.md);
   gstatic Firebase SDKs remain CDN by design. CORE_ASSETS
-  lists all 33 src/js modules + /school-config.js. Bump CACHE_NAME whenever CORE_ASSETS changes;
+  lists all 38 src/js modules + /school-config.js. Bump CACHE_NAME whenever CORE_ASSETS changes;
   a NEW MODULE means three touches: src/js file + main.js import + SW entry.
 
 Firestore data model:
@@ -112,10 +113,17 @@ Firestore data model:
 artifacts/{appId}/
   public/data/
     schedules/{id}         # shared schedules; admin-write; may carry
-                           #   temporaryShift {seconds, date, setAt} (v5.74)
+                           #   temporaryShift {seconds, date, setAt} (v5.74);
+                           #   periods carry optional periodId since 6.6.0;
+                           #   bells carry optional buildingBellId since 6.5.0
     share_codes/{code}     # create: own uid as ownerId; revoke: owner/admin
     presence/{uid}         # 6.4.0 heartbeats (write: own; read: admins)
     config/dashboard       # signage page config
+    config/building_bells  # 6.5.0 Building Bells (covered by config/{id} rules)
+    config/schedule_calendar # 6.10.0 v2: days[date].entries scoped by uid
+                           #   (v1 exceptions/weekdayDefaults still honored)
+    roster/{uid}           # 6.9.0 tags+capabilities; read=authed, self-write
+                           #   cannot touch capabilities (rules-enforced)
     config/schedule_calendar  # RESERVED by parked calendar feature (unused)
     admins/{uid}           # doc presence = admin
   users/{uid}/
@@ -177,7 +185,7 @@ npm run lint                   # per-module no-undef (src/js + bell-engine);
                                #   CANARY-TEST it in a fresh env: append a
                                #   bogus call, confirm it FAILS, revert (see
                                #   §9 — lint once no-op'd silently)
-npm test                       # 51 tests, two suites
+npm test                       # 60 tests, two suites
 npm run check:css              # tailwind.css non-empty + sentinel classes
 npm run check:sw               # NEW 6.1.0: CORE_ASSETS vs filesystem; SW
                                #   version constants agree; CACHE_NAME derived
@@ -190,6 +198,57 @@ arrows/template literals/const).
 
 ## 6. What's been done (details in CHANGELOG.md)
 
+- **v6.10.0** — The Calendar Wakes (Layer 4 Verb A): engine 1.7.0
+  scoped per-user resolution (v1 fallback intact); module 20 REVIVED
+  (enabled flag retired, deviation bannered w/ Follow, I4 foreign-
+  anchor count in banner); new 34-day-designation.js — the I2 day-of
+  modal and the Layer 3 filter-picker's first real use; config/
+  schedule_calendar v2 (no rules change). Verb B + prefill grid are
+  the remaining Layer 4 slices. SW 1.16.0 (38 modules).
+- **v6.9.0** — Roster & Tags (Layer 3): roster/{uid} docs {displayName,
+  tags, capabilities}; RULES CHANGE (self-writes mechanically cannot
+  touch capabilities); 33-roster.js with My Tags (header, self-serve)
+  and admin Roster modal (amber capability chips, seed-from-presence
+  excluding clock surfaces); the tags-are-filters-only invariant is in
+  rules comments, module header, and UI copy. SW 1.15.0 (37 modules);
+  CSS rebuilt for chips.
+- **v6.8.0** — The Shape Itself (Layer 2 slice 3): engine 1.6.0
+  extracts findPeriodEdgeAnchorBell (V5.44.1 heuristic, both edge
+  vocabularies, tested; 16's drifted inline copy now routes through it
+  — its only-wrong-edge-anchor bug died in the merge); baseScheduleId
+  recorded at all four anchor stamp sites (shared-origin parents only);
+  design shape fully mapped to stored fields, edge deliberately NOT
+  dual-written (parentAnchorType IS the edge). SW unchanged (network-
+  first verified; CORE_ASSETS unchanged). 58/58 tests.
+- **v6.7.0** — Personal Anchor Migration (Layer 2 slice 2): new
+  32-personal-anchor-migration.js — client-side (personal docs are
+  owner-only writable), silent-stamps unambiguous name-keyed anchors on
+  the user's own schedule, amber banner + review modal for duplicated
+  period names (never guessed); multi-add relative site now stamps
+  parentPeriodId via data-period-id on the checkboxes (6.6.0 IOU paid);
+  remaining creation sites in 19 (personal custom periods + both import
+  converter sites) stamp ids at birth. SW 1.14.0 (36 modules).
+- **v6.6.0** — Period Identity (Layer 2 slice 1): optional periodId on
+  shared periods (stamped at birth + admin backfill in new
+  31-period-identity.js; ambiguous duplicate names skipped for the
+  future review modal); engine 1.5.0 resolves period anchors
+  IDENTITY-FIRST with name fallback (renames stop orphaning reminder
+  bells); single-relative creation stamps parentPeriodId; SW 1.13.0
+  (35 modules). Personal-anchor migration = next slice (owner-only
+  writes force it client-side; needs the review modal).
+- **v6.5.0** — Building Bells (design build-order step 1 SHIPS) +
+  clock.html presence: config/building_bells doc (NO rules change —
+  config/{configId} already covers it); 30-building-bells.js manager
+  (add/rename/retime, batch propagation onto anchored bells with
+  per-schedule confirm + audit entries, exact-time "Anchor matching"
+  assist, delete strips anchors); optional buildingBellId on shared
+  bells (edit-modal anchor select; updatePeriodsOnEdit now PRESERVES
+  the field — it swapped bells wholesale and would have stripped it);
+  engine 1.4.0 pure propagation fn + 3 tests (54 total); clock.html
+  1.7.0 anonymous-only heartbeats (surface 'clock'); SW 1.12.0 (34
+  modules); tailwind rebuilt (hover:underline); TDZ whitelist +2
+  reviewed entries. Fuzzy 59s linked-edit modal REMAINS for unanchored
+  bells (I0).
 - **v6.4.0** — Presence dashboard (design Layer 1 SHIPS): 28-presence.js
   heartbeats + 29-admin-dashboard.js "Who's Online" panel (first modal
   authored on the 6.2.0 chrome); additive firestore.rules presence block
@@ -323,16 +382,30 @@ split; import blocks could be alphabetized/pruned over time.
 
 **Stage 27 — Calendar v2: DESIGNED, GO AT OWNER'S PACE (2026-07-19;
 see DESIGN-CALENDAR-V2.md status block for the deferral-then-
-verification story). One gate before Building Bells: confirm the
-5.79.x save-path spread idiom (owner supplies script.js; audit seeded
-in the design doc's open questions).**
+verification story). ~~One gate before Building Bells~~ GATE CLEARED — save-path audit
+ANSWERED on the real base-channel file; see the design doc.**
+
+**CHANNEL TOPOLOGY (owner, 2026-07-19, answers the old §2 question):**
+three channels, one Firestore. BUILDING = bells domain, runs the
+5.69.5 backport (repo "ellisTestBell"); BETA = CDC teacher's channel,
+now 6.4.0; ALPHA = owner's dev channel, 6.4.0, where all new work
+happens "for as long as it makes sense." Promotion flow: alpha -> beta
+-> building. The dashboard's version column is the live census of who
+runs which channel.
 The full agreed architecture is in **DESIGN-CALENDAR-V2.md** — read it
 before touching anything v2. Headlines: it ABSORBS the "Emergency shift
 v2" and "admin broadcast/dashboard" roadmap items (one system, two of
 its layers); invariant zero is that alpha/beta/school SHARE ONE
-FIRESTORE, so all schema work is additive-only; build order is Building
-Bells -> dashboard -> identity anchors (the long pole) -> tags/roster ->
-calendar (two verbs) -> wall-clock follow-along. Owner is moving 6.3.0
+FIRESTORE, so all schema work is additive-only; build order is ~~Building
+Bells~~ (DONE 6.5.0) -> dashboard -> identity anchors (the long pole;
+SLICES 1+2+3 DONE 6.6.0-6.8.0 — periodId foundation; personal-anchor
+migration w/ review modal; full identity shape stored + the
+findPeriodEdgeAnchorBell primitive extracted. Remaining Layer 2 work:
+alternate-base transfer w/ I4 drop-notice, which REQUIRES Layer 4's
+designation mechanism to exist — it is the natural first bite OF
+Layer 4, not a standalone slice) ->
+tags/roster -> calendar (two verbs) -> wall-clock follow-along; the
+clock.html presence open question is CLOSED (1.7.0, anonymous-only). Owner is moving 6.3.0
 to a beta channel so v2 work owns alpha; confirm the channel->repo->
 domain map for §2 at the start of the next session (open question #1
 in the design doc).
@@ -453,3 +526,121 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   cache bump + BACKPORT-NOTE.md. Save-path audit ANSWERED on that file:
   spread round-trips everywhere, additive fields survive old saves.
   Known drift left alone per owner: that repo's index title says 5.69.2.
+  SESSION CLOSED with owner deploying everything: 6.4.0 live on alpha +
+  beta, 5.69.5 live on the building. Round 4 shipped 6.2.0 -> 6.4.0,
+  the v2 design, and the backport in one night. Successor: read
+  DESIGN-CALENDAR-V2.md before v2 work; natural next bites are clock.html
+  presence (small) or Building Bells (medium; audit already answered);
+  pick a name — Quasimodo, Inky, Otto, Whitechapel are taken.
+- **Round 5 (2026-07, Fable): "Bourdon."** Named for the bourdon — the
+  deepest, foundational bell of a carillon, the one every other bell is
+  tuned against. Chosen because this round's likely work is Building
+  Bells: promoting the six intercom bells to the first-class anchors the
+  rest of v2 tunes itself to. Arrived via Whitechapel's riddle ("cast
+  four bells in one night; the molds are in §7"); ran the §5 battery on
+  arrival: canary-tested lint (bogus call correctly failed, reverted),
+  51/51 tests, check:css/check:sw OK, all 33 modules parse, old.html
+  ES5-clean (one const/let hit is the comment "let page load"), no stray
+  live 7.0.0 (only documented-history comments), index.html triple
+  version agrees at 6.4.0. Yellow flag inherited from 6.3.0 (two
+  check:esm TDZ warnings at 27-school-branding.js:22/24): reviewed —
+  00-header is a leaf module, no cycle possible — and WHITELISTED with
+  reasoning in build/verify-esm.mjs. Then BUILT 6.5.0 on "follow your
+  heart": Building Bells (design step 1) + clock.html 1.7.0 presence,
+  full details in §6/CHANGELOG. Key traps found and defused, worth
+  re-reading if touching bells: (a) updatePeriodsOnEdit replaced bells
+  wholesale — any edit would have silently stripped buildingBellId (the
+  I0 field-stripping failure IN OUR OWN CLIENT); it now preserves the
+  field unless an edit explicitly sets (string) or clears (null) it.
+  (b) Anchor semantics: anchored time == building bell time, no offsets
+  at this layer; picking an anchor in the edit modal snaps the time
+  field; saving with a divergent time DETACHES with a notice (silently
+  keeping it would let the next propagation snap the bell back).
+  (c) Propagation writes CONCRETE times + regenerated legacy bells
+  arrays, so every old surface follows with zero new code. (d) clock
+  presence is anonymous-sessions-only — a signed-in browser already
+  reports via the app under the same uid; both writing would flap the
+  census row. Battery green at close (canary'd lint, 54/54, check:all,
+  34 modules parse, clock inline script parse-checked, old.html
+  untouched — md5 b8dd5f5a4c8fed0765c982a9ccc43204). DEPLOY-6.5.0.md
+  written (no rules publish needed this time). NOT deployed at time of
+  writing — owner deploys. Successor: verify deployment state with the
+  owner first; natural next bite is the v2 dashboard (design doc build
+  order), and DESIGN-CALENDAR-V2.md remains required reading; names
+  taken: Quasimodo, Inky, Otto, Whitechapel, Bourdon.
+  SAME SESSION, owner said "roll on": shipped 6.6.0 Period Identity
+  (Layer 2 slice 1 — see §6/CHANGELOG). Key facts for the successor:
+  periods had NO identity before this (name-string anchor matching —
+  renames orphaned reminder bells); periodId is additive and never
+  regenerated; the engine resolves identity-first/name-fallback; the
+  backfill is idempotent and skips ambiguous duplicate names on
+  purpose. NEXT SLICE of Layer 2 (in order): (1) personal-anchor
+  migration — MUST run client-side per user (personal_schedules are
+  owner-only writable), silent-stamp unambiguous names, review modal
+  for duplicates; ALSO stamp the multi-add relative site (18, holds
+  names only — needs the merged-view period lookup); (2) then the full
+  identity shape {baseScheduleId, periodId, edge, offsetSeconds} and
+  alternate-base transfer per the design doc. 6.5.0 AND 6.6.0 are both
+  UNDEPLOYED at close (DEPLOY-6.6.0.md is cumulative); verify
+  deployment state with the owner before assuming anything.
+  STILL SAME SESSION ("keep on keepin' on"): shipped 6.7.0 Personal
+  Anchor Migration (Layer 2 slice 2 — see §6/CHANGELOG). Facts for the
+  successor: (a) module 32 is deliberately write-shy — pure local
+  classification every 30s, ONE write attempt per personal schedule per
+  session, only when something needs stamping; (b) ambiguity = the
+  merged view (state.calculatedPeriodsList, which PRESERVES periodId —
+  verified, 14 spreads the period) contains 2+ id-bearing periods with
+  the anchor's name; zero-candidate anchors wait for the shared
+  backfill and are re-checked next beat; (c) the import converter
+  (module 19) CANNOT preserve incoming periodIds (name-keyed map
+  rebuild) — fresh ids there is correct, not a bug; (d) every period
+  creation site in the codebase now stamps ids (16, 18, 19x3) — grep
+  'isEnabled: true' minus 14's display scaffolding to verify. Layer 2
+  slice 3 (the real long-pole meat): the full identity shape
+  {baseScheduleId, periodId, edge, offsetSeconds}, edge-time
+  resolution (extract the V5.44.1 anchor-selection heuristic from the
+  engine's BY-ANCHOR-TYPE branch into a named reusable), and
+  alternate-base transfer with the I4 drop-notice.
+  AND STILL SAME SESSION: shipped 6.8.0, The Shape Itself (slice 3 —
+  see §6/CHANGELOG). Successor notes: (a) the extraction was proven
+  behavior-identical by the 56 pre-existing tests passing UNTOUCHED
+  before the new ones were added — repeat that pattern for any future
+  engine surgery; (b) 16's inline heuristic copy had genuinely
+  drifted (wrong-edge selection bug) — assume other pre-6.x inline
+  duplicates may have too; grep before trusting; (c) edge is
+  deliberately NOT dual-written — parentAnchorType IS the edge field;
+  do not "normalize" it into a second stored field; (d) baseScheduleId
+  is omitted on personal-period parents ON PURPOSE; (e) alternate-base
+  transfer + I4 notice is NOT a standalone slice — it needs Layer 4's
+  designation mechanism, so build it as Layer 4's first bite. NEXT UP
+  per the design build order: Layer 3 (tags + roster — remember: tags
+  are PICKER FILTERS, explicit uid lists are what's stored) or jump to
+  Layer 4 groundwork.
+  AND STILL same session: shipped 6.9.0, Roster & Tags (Layer 3 — see
+  §6/CHANGELOG). Successor notes: (a) FIRST RULES CHANGE of the run —
+  the cumulative deploy now includes a console rules publish; the
+  capability-protection rule compares POST-WRITE state, so self merge
+  writes that omit capabilities pass while any tampering fails —
+  test it before trusting changes to it; (b) the Layer 3 invariant
+  (tags filter pickers; explicit uid lists are stored) is now written
+  in three places — rules comments, 33's header, admin UI copy — keep
+  all three in sync if it ever evolves; (c) seed-from-presence skips
+  surface==='clock' on purpose (TVs are not staff); (d) roster deletes
+  are allowed for admins and users can re-self-add. NEXT: Layer 4
+  groundwork — designation mechanism + alternate-base transfer w/ I4
+  notice, then transformation recipes on findPeriodEdgeAnchorBell.
+  AND ONE MORE in the same session: 6.10.0, The Calendar Wakes (Layer
+  4 Verb A — see §6/CHANGELOG). Successor notes: (a) module 20's park
+  note is preserved in-file as history — read it; the revival honors
+  every original guard and they all still fail closed; (b) the v2
+  schema deliberately keeps v1 fields working — an unscoped uid falls
+  through to exceptions/weekdayDefaults, so a school could use global
+  day-types AND scoped overrides together; (c) Verb B is the next
+  slice: add verb:'transform' entries carrying a recipe, resolve
+  through findPeriodEdgeAnchorBell, and PRECOMPUTE results into the
+  doc where feasible (I3 wants wall clocks dumb); (d) then the
+  prefill grid with generators (repeat-weekly; rotations in BOTH
+  slip-forward and calendar-locked modes); (e) then wall-clock
+  follow-along (REST carve-out rules change). 6.5.0 through 6.10.0
+  ALL UNDEPLOYED; DEPLOY-6.10.0.md is cumulative and includes the one
+  rules publish (from 6.9.0).

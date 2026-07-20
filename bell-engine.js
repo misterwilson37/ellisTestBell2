@@ -1,7 +1,30 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.3.3
+ * Version: 1.7.0
  *
+ * v1.7.0 (2026-07, app 6.10.0): resolveCalendarSchedule extended for the
+ * Layer 4 v2 schema — per-date SCOPED entries ({scope:[uids], verb:'base',
+ * scheduleId}) resolved per user, first scope hit wins. The v1 shape
+ * (exceptions / weekdayDefaults) remains the fallback and still works
+ * untouched without a uid (I0). Flat, dumb, ES5-portable (I3).
+ *
+ * v1.6.0 (2026-07, app 6.8.0): the V5.44.1 period-edge anchor-selection
+ * heuristic (shared static first/last, else anchorRole, else legacy
+ * "Period Start"/"Period End" names) is EXTRACTED into the named, exported
+ * findPeriodEdgeAnchorBell(period, edge) — the reusable "period edge"
+ * primitive that Layer 4 transformation recipes will operate on. Accepts
+ * edge as 'start'/'end' (design vocabulary) or 'period_start'/'period_end'
+ * (stored vocabulary). calculateRelativeBellTime now calls it; behavior
+ * identical.
+ *
+ * v1.5.0 (2026-07, app 6.6.0): period-anchored relative bells resolve by
+ * parentPeriodId FIRST (falling back to the historical parentPeriodName
+ * string match) — Layer 2 "identity anchors" foundation: renamed periods
+ * no longer orphan their relative bells once ids are stamped.
+ *
+ * v1.4.0 (2026-07, app 6.5.0): added applyBuildingBellTimeToPeriods for
+ * the Building Bells feature (DESIGN-CALENDAR-V2.md shared concept):
+ * pure propagation of a building bell's new time onto anchored bells.
  * v1.3.3 (2026-07, app 6.0.1): comment-only — version-number correction:
  * the modularization release was mislabeled 7.0.0; it is 6.0.0. No code change.
  * v1.3.2 (2026-07, app 6.0.0): comment-only — load-order note updated to
@@ -168,6 +191,36 @@
         return null; // No unskipped bells after this one
     }
 
+    /**
+     * v1.6.0 (app 6.8.0): THE period-edge primitive. Given a period and an
+     * edge ('start'|'end', or the stored 'period_start'|'period_end'),
+     * return the bell that DEFINES that edge, or null:
+     *   1. LINKED period (has shared static bells): first/last shared
+     *      static bell (V5.44.1 rule).
+     *   2. FLUKE/standalone period: the bell with anchorRole 'start'/'end'.
+     *   3. Legacy fallback: a non-relative bell literally named
+     *      "Period Start"/"Period End".
+     * Pure and defensive; never throws on junk shapes.
+     */
+    function findPeriodEdgeAnchorBell(period, edge) {
+        if (!period || !Array.isArray(period.bells)) return null;
+        const wantStart = edge === 'start' || edge === 'period_start';
+        const sharedStaticBells = period.bells.filter(b =>
+            b && !b.relative && b._originType === 'shared'
+        );
+        if (sharedStaticBells.length > 0) {
+            return wantStart ? sharedStaticBells[0]
+                             : sharedStaticBells[sharedStaticBells.length - 1];
+        }
+        const targetRole = wantStart ? 'start' : 'end';
+        let anchorBell = period.bells.find(b => b && b.anchorRole === targetRole);
+        if (!anchorBell) {
+            const targetName = wantStart ? 'Period Start' : 'Period End';
+            anchorBell = period.bells.find(b => b && b.name === targetName && !b.relative);
+        }
+        return anchorBell || null;
+    }
+
     function calculateRelativeBellTime(bell, bellMap, allPeriods, visited = new Set(), previousBells = []) {
         // 1. If the bell already has a static time, it's an anchor.
         if (bell.time && !bell.relative) {
@@ -236,8 +289,14 @@
             }
             visited.add(bell.bellId);
 
-            // 2b. Find the parent *period*
-            const parentPeriod = allPeriods.find(p => p.name === parentPeriodName);
+            // 2b. Find the parent *period*.
+            // v1.5.0 (Layer 2): IDENTITY FIRST — if the anchor carries a
+            // parentPeriodId and a period with that id exists, it wins;
+            // otherwise fall back to the historical name match (old data,
+            // old clients, and unstamped periods keep working — I0).
+            const parentPeriod = (bell.relative.parentPeriodId
+                    && allPeriods.find(p => p.periodId === bell.relative.parentPeriodId))
+                || allPeriods.find(p => p.name === parentPeriodName);
         
             if (!parentPeriod || !parentPeriod.bells || parentPeriod.bells.length === 0) {
                 console.warn(`Could not find parent period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
@@ -245,34 +304,11 @@
             }
         
             // 2c. Find the anchor bell (start or end) within that period.
-            // Note: We MUST recursively find the time for these, as they could also be relative.
-            let anchorBell;
-            
-            // --- MODIFIED V5.44.1: Use anchorRole for fluke periods, shared bells for linked periods ---
-            // Determine if this is a shared/linked period or a custom/fluke period
-            const sharedStaticBells = parentPeriod.bells.filter(b => 
-                !b.relative && b._originType === 'shared'
-            );
-        
-            if (sharedStaticBells.length > 0) {
-                // LINKED PERIOD: Use first/last shared static bell as anchor
-                if (parentAnchorType === 'period_start') {
-                    anchorBell = sharedStaticBells[0];
-                } else {
-                    anchorBell = sharedStaticBells[sharedStaticBells.length - 1];
-                }
-            } else {
-                // FLUKE/STANDALONE PERIOD: Find bells with explicit anchorRole
-                const targetRole = parentAnchorType === 'period_start' ? 'start' : 'end';
-                anchorBell = parentPeriod.bells.find(b => b.anchorRole === targetRole);
-            
-                // Legacy fallback: look for "Period Start" / "Period End" names
-                if (!anchorBell) {
-                    const targetName = parentAnchorType === 'period_start' ? 'Period Start' : 'Period End';
-                    anchorBell = parentPeriod.bells.find(b => b.name === targetName && !b.relative);
-                }
-            }
-        
+            // v1.6.0: heuristic extracted to findPeriodEdgeAnchorBell above —
+            // one implementation for resolution here, the edit-modal prefill
+            // (module 16), and future Layer 4 recipes. Behavior unchanged.
+            const anchorBell = findPeriodEdgeAnchorBell(parentPeriod, parentAnchorType);
+
             if (!anchorBell) {
                 console.warn(`No anchor bell found in period "${parentPeriodName}" for bell "${bell.name}". It may be orphaned.`);
                 return { ...bell, isOrphan: true, fallbackTime: "00:00:00" };
@@ -333,9 +369,25 @@
      * value ("") means "no designation that day" and suppresses the weekday
      * default (e.g. a holiday). Returns a scheduleId string or null.
      */
-    function resolveCalendarSchedule(calendar, date) {
+    function resolveCalendarSchedule(calendar, date, uid) {
         if (!calendar || !date) return null;
         const dateStr = toLocalDateString(date);
+        // v1.7.0 (Layer 4, v2 schema): per-date scoped entries win when the
+        // caller identifies itself. Scopes are EXPLICIT uid lists (Layer 3
+        // invariant: tags filter pickers; uids are what is stored/resolved).
+        if (uid && calendar.days &&
+            Object.prototype.hasOwnProperty.call(calendar.days, dateStr)) {
+            const entries = calendar.days[dateStr] && calendar.days[dateStr].entries;
+            if (Array.isArray(entries)) {
+                for (let i = 0; i < entries.length; i++) {
+                    const e = entries[i];
+                    if (e && e.verb === 'base' && Array.isArray(e.scope)
+                            && e.scope.indexOf(uid) !== -1 && e.scheduleId) {
+                        return e.scheduleId;
+                    }
+                }
+            }
+        }
         if (calendar.exceptions &&
             Object.prototype.hasOwnProperty.call(calendar.exceptions, dateStr)) {
             return calendar.exceptions[dateStr] || null;
@@ -387,8 +439,44 @@
         return serverMs - (localBeforeMs + localAfterMs) / 2;
     }
 
+    /**
+     * v1.4.0 (app 6.5.0, Building Bells): Given a schedule's periods array,
+     * return a new periods array in which every STATIC bell carrying the
+     * given buildingBellId anchor has its time replaced with newTime.
+     *
+     * Pure and defensive: the input is never mutated; untouched periods and
+     * bells are returned by reference (cheap no-op detection for callers);
+     * bells without a string `time` (relative bells) are never touched even
+     * if they somehow carry the anchor — writing a time onto a relative
+     * bell would corrupt it. Returns { periods, changed } where `changed`
+     * is the number of bells actually rewritten, so callers can skip
+     * no-op Firestore writes entirely (changed === 0 → same reference back).
+     */
+    function applyBuildingBellTimeToPeriods(periods, buildingBellId, newTime) {
+        if (!Array.isArray(periods) || !buildingBellId || typeof newTime !== 'string') {
+            return { periods: periods, changed: 0 };
+        }
+        let changed = 0;
+        const out = periods.map(function (period) {
+            const bells = period && Array.isArray(period.bells) ? period.bells : null;
+            if (!bells) return period;
+            let touched = false;
+            const newBells = bells.map(function (bell) {
+                if (bell && bell.buildingBellId === buildingBellId
+                        && typeof bell.time === 'string' && bell.time !== newTime) {
+                    touched = true;
+                    changed++;
+                    return Object.assign({}, bell, { time: newTime });
+                }
+                return bell;
+            });
+            return touched ? Object.assign({}, period, { bells: newBells }) : period;
+        });
+        return { periods: changed ? out : periods, changed: changed };
+    }
+
     const BellEngine = {
-        VERSION: '1.3.3', // v1.3.1: exported so the status modal can report it
+        VERSION: '1.7.0', // v1.3.1: exported so the status modal can report it
         escapeHtml,
         getBellId,
         formatTime12Hour,
@@ -402,7 +490,9 @@
         resolveCalendarSchedule,
         shiftTimeString,
         getActiveScheduleShiftSeconds,
-        estimateClockDriftMs
+        estimateClockDriftMs,
+        applyBuildingBellTimeToPeriods,
+        findPeriodEdgeAnchorBell
     };
 
     global.BellEngine = BellEngine;
