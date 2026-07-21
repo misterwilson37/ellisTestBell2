@@ -1,7 +1,11 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.17.0
+ * Version: 1.18.0
  *
+ * v1.18.0 changelog (2026-07, app 6.12.0): no new modules — cache bump
+ *   to ship Verb B wiring (edited 14/20/34 + state.js + index.html):
+ *   calendar transformation recipes now resolve at runtime and transform
+ *   the active base's bells. CORE_ASSETS unchanged.
  * v1.17.0 changelog (2026-07, app 6.11.0): no new modules — cache bump
  *   to ship edited 28/29/30/16/34 + bell-engine 1.8.0 (anchor-strip fix,
  *   designation dedup, firstSeen, dormant Verb B engine, UI notes).
@@ -111,7 +115,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.17.0';
+const CACHE_VERSION = '1.18.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;

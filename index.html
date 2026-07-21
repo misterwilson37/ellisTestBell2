@@ -7,7 +7,7 @@
          always match — this <title>, the visible <h1> banner, and the comment on
          the last line of this file. Update all three together. (z = fix/tweak,
          y = new feature, x = major shift with the owner's sign-off.) -->
-    <title>Ellis Web Bell 6.11.0</title>
+    <title>Ellis Web Bell 6.12.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -1058,7 +1058,46 @@
             <p class="text-sm text-gray-500 mb-4">Filter by tag or name, eyeball the list, check the people you mean. What's saved is the checked list — never the tag.</p>
             <div class="flex flex-col sm:flex-row gap-3 mb-4">
                 <input type="date" id="designation-date" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
-                <select id="designation-schedule" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select>
+                <select id="designation-mode" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                    <option value="base">Designate a base schedule</option>
+                    <option value="transform">Apply a transformation (Verb B)</option>
+                </select>
+            </div>
+            <!-- v6.12.0: base-schedule group (Verb A) -->
+            <div id="designation-base-group" class="mb-4">
+                <select id="designation-schedule" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></select>
+            </div>
+            <!-- v6.12.0: transformation recipe builder (Verb B) -->
+            <div id="designation-transform-group" class="hidden mb-4 space-y-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <select id="designation-recipe-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                    <option value="shift">Shift a time range earlier or later</option>
+                    <option value="shorten">Shorten periods to extend another</option>
+                </select>
+                <div id="designation-shift-fields" class="space-y-2">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="number" id="designation-shift-mins" min="1" placeholder="Minutes" class="w-full sm:w-28 px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                        <select id="designation-shift-dir" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                            <option value="later">later</option>
+                            <option value="earlier">earlier</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <label class="text-sm text-gray-600 flex-1">From (optional)<input type="time" id="designation-shift-from" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></label>
+                        <label class="text-sm text-gray-600 flex-1">Until (optional)<input type="time" id="designation-shift-until" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></label>
+                    </div>
+                    <p class="text-xs text-gray-500">Leave both blank to move every bell. Only shared bells move; personal reminder bells follow automatically.</p>
+                </div>
+                <div id="designation-shorten-fields" class="hidden space-y-2">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <label class="text-sm text-gray-600 flex-1">Shorten periods after<input type="time" id="designation-shorten-after" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></label>
+                        <label class="text-sm text-gray-600 flex-1">By (minutes each)<input type="number" id="designation-shorten-mins" min="1" placeholder="e.g. 10" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"></label>
+                    </div>
+                    <label class="text-sm text-gray-600 block">Extend this period (by name, optional)
+                        <input type="text" id="designation-shorten-extend" list="designation-period-names" placeholder="e.g. FLEX" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                    </label>
+                    <datalist id="designation-period-names"></datalist>
+                    <p class="text-xs text-gray-500">Reclaimed minutes cascade forward; the extend period grows by the total. Any schedule with a like-named period follows one recipe.</p>
+                </div>
             </div>
             <div id="designation-entries" class="mb-4"></div>
             <input type="text" id="designation-filter" placeholder="Filter people by tag or name (e.g. 8th, CDC)" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm mb-2">
@@ -1597,7 +1636,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.11.0</h1>
+            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.12.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -3357,4 +3396,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 6.11.0 -->
+<!-- Version 6.12.0 -->

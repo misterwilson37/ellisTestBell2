@@ -128,6 +128,13 @@ export const state = {
     // ---- originally declared in 21-emergency-shift.js ----
     activeSharedScheduleShift: null,
 
+    // ---- v6.12.0: Layer 4 Verb B — the day's transformation recipes for
+    //   THIS user, resolved from config/schedule_calendar by module 20 and
+    //   applied to base-period COPIES in module 14's resolveAllBellTimes
+    //   (same pristine-copy discipline as activeSharedScheduleShift above).
+    //   Array of recipe objects, composed in order; [] = no transform today.
+    activeCalendarTransforms: [],
+
     // ---- originally declared in 22-audit-log.js ----
     currentUserDisplayName: null,
 };

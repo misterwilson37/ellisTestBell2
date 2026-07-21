@@ -4,6 +4,7 @@ import { escapeHtml, toLocalDateString } from './00-header.js';
 import { doc, onSnapshot } from './01-firebase-imports.js';
 import { scheduleSelector } from './02-dom-elements.js';
 import { setActiveSchedule } from './16-schedule-management.js';
+import { recalculateAndRenderAll } from './18-bell-crud-and-modals.js';
 import { state } from './state.js';
 
 // ============================================================
@@ -57,14 +58,23 @@ function listenForScheduleCalendar() {
  */
 function applyCalendarSchedule(trigger) {
     try {
-        if (!scheduleCalendar) return;
+        // V6.12.0 (Verb B): transformation recipes are INDEPENDENT of base
+        // designation — a teacher on their normal base can still have the
+        // day's bells transformed. Refresh them first, on every trigger,
+        // before any base-switch guard can return early. (No calendar =>
+        // resolves to [], which self-clears any stale set.)
+        refreshActiveTransforms();
+
+        if (!scheduleCalendar) { syncDesignationBanner(null); return; }
         if (!state.allSchedules || state.allSchedules.length === 0) return;
 
         const today = new Date();
         // V6.10.0: per-user scoped resolution (engine 1.7.0)
         const designatedId = window.BellEngine.resolveCalendarSchedule(
             scheduleCalendar, today, state.userId || undefined);
-        if (!designatedId) { hideDesignationBanner(); return; }
+        // No base designation today: the banner may still show a
+        // transform-only note (syncDesignationBanner reads the summary).
+        if (!designatedId) { syncDesignationBanner(null); return; }
 
         // Rule 2: designated schedule must still exist
         if (!state.allSchedules.some(s => s.id === designatedId)) {
@@ -77,23 +87,74 @@ function applyCalendarSchedule(trigger) {
 
         // Rule 3: manual choice today wins — but deviation is bannered (I1)
         if (localStorage.getItem(MANUAL_SCHEDULE_CHOICE_KEY) === toLocalDateString(today)) {
-            if (currentPrefixed !== targetPrefixed) showDesignationBanner(designatedId, targetPrefixed);
-            else hideDesignationBanner();
+            syncDesignationBanner(currentPrefixed !== targetPrefixed
+                ? { designatedId, targetPrefixed } : null);
             return;
         }
 
         // Rules 4+5: read the selector as the source of truth for what's active
-        if (currentPrefixed.startsWith('personal-')) return;
-        if (currentPrefixed === targetPrefixed) { hideDesignationBanner(); return; }
+        if (currentPrefixed.startsWith('personal-')) { syncDesignationBanner(null); return; }
+        if (currentPrefixed === targetPrefixed) { syncDesignationBanner(null); return; }
 
         safeLog.log(`[Calendar] Auto-switching to "${designatedId}" (trigger: ${trigger}).`);
         if (scheduleSelector) scheduleSelector.value = targetPrefixed;
         setActiveSchedule(targetPrefixed);
-        hideDesignationBanner();
+        syncDesignationBanner(null);
         noteForeignAnchors(designatedId); // I4 (logged; banner covers deviation case)
     } catch (e) {
         console.error('applyCalendarSchedule failed:', e);
     }
+}
+
+// ===== V6.12.0: Verb B — resolve today's transformation recipes =====
+// Mirrors how module 16 stamps state.activeSharedScheduleShift: this stores
+// the resolved recipe list on state for module 14's resolveAllBellTimes to
+// apply to base-period copies. Also builds a human summary for the I1 banner.
+let activeTransformSummary = ''; // '' when no transform applies today
+
+function refreshActiveTransforms() {
+    const recipes = window.BellEngine.resolveCalendarTransforms(
+        scheduleCalendar, new Date(), state.userId || undefined) || [];
+    activeTransformSummary = describeTransforms(recipes);
+    const prev = JSON.stringify(state.activeCalendarTransforms || []);
+    const next = JSON.stringify(recipes);
+    if (prev !== next) {
+        state.activeCalendarTransforms = recipes;
+        safeLog.log('[Calendar] Verb B: ' + recipes.length + ' transform recipe(s) active today.');
+        recalculateAndRenderAll(); // re-derive bell times with the new recipe set
+    }
+}
+
+function fmtTime(t) {
+    return (typeof t === 'string' && t)
+        ? window.BellEngine.formatTime12Hour(t, true) : '';
+}
+
+function describeRecipe(r) {
+    if (!r || typeof r !== 'object') return '';
+    if (r.type === 'shift') {
+        const secs = Math.trunc(Number(r.offsetSeconds)) || 0;
+        if (!secs) return '';
+        const mins = Math.round(Math.abs(secs) / 60);
+        let s = 'bells ' + mins + ' min ' + (secs > 0 ? 'later' : 'earlier');
+        if (r.from && r.until) s += ' between ' + fmtTime(r.from) + ' and ' + fmtTime(r.until);
+        else if (r.from) s += ' from ' + fmtTime(r.from) + ' on';
+        else if (r.until) s += ' up to ' + fmtTime(r.until);
+        return s;
+    }
+    if (r.type === 'shorten') {
+        const per = Math.round((Math.trunc(Number(r.perPeriodSeconds)) || 0) / 60);
+        if (per <= 0 || !r.after) return '';
+        let s = 'periods after ' + fmtTime(r.after) + ' shortened ' + per + ' min';
+        if (r.extendPeriodName) s += ' to extend ' + r.extendPeriodName;
+        return s;
+    }
+    return '';
+}
+
+function describeTransforms(recipes) {
+    if (!Array.isArray(recipes) || !recipes.length) return '';
+    return recipes.map(describeRecipe).filter(Boolean).join('; ');
 }
 
 // ===== V6.10.0: designation banner (I1) + foreign-anchor note (I4) =====
@@ -115,18 +176,41 @@ function noteForeignAnchors(designatedId) {
     if (n) safeLog.log('[Calendar] I4: ' + n + ' personal reminder bell(s) were anchored to a different base and may not apply today.');
 }
 
-function showDesignationBanner(designatedId, targetPrefixed) {
-    if (designationBannerDismissed) return;
+/**
+ * V6.12.0: single driver for the I1 banner. Composes two independent facts:
+ *   - base deviation (arg `deviation` = { designatedId, targetPrefixed } when
+ *     the user is NOT on their designated base; null otherwise) — carries the
+ *     Follow button and the I4 foreign-anchor count;
+ *   - active transforms (module-level activeTransformSummary) — surfaced so a
+ *     teacher understands WHY today's bells moved even with no base deviation.
+ * The Follow button only makes sense for base deviation, so it is hidden in
+ * transform-only mode. If neither fact is present, the banner hides.
+ */
+function syncDesignationBanner(deviation) {
     const banner = document.getElementById('designation-banner');
     const text = document.getElementById('designation-text');
-    if (!banner || !text) return;
-    const sched = state.allSchedules.find(s => s.id === designatedId);
-    const n = foreignAnchorCount(designatedId);
-    text.innerHTML = 'Today you are designated to <span class="font-medium">'
-        + escapeHtml(sched ? sched.name : designatedId) + '</span>.'
-        + (n ? ' <span class="text-xs">(' + n + ' of your reminder bells may not apply there.)</span>' : '');
     const followBtn = document.getElementById('designation-follow');
-    if (followBtn) followBtn.dataset.target = targetPrefixed;
+    if (!banner || !text) return;
+    if (designationBannerDismissed) { banner.classList.add('hidden'); return; }
+
+    let html = '';
+    if (deviation && deviation.designatedId) {
+        const sched = state.allSchedules.find(s => s.id === deviation.designatedId);
+        const n = foreignAnchorCount(deviation.designatedId);
+        html = 'Today you are designated to <span class="font-medium">'
+            + escapeHtml(sched ? sched.name : deviation.designatedId) + '</span>.'
+            + (n ? ' <span class="text-xs">(' + n + ' of your reminder bells may not apply there.)</span>' : '');
+        if (followBtn) { followBtn.dataset.target = deviation.targetPrefixed; followBtn.classList.remove('hidden'); }
+    } else if (followBtn) {
+        followBtn.classList.add('hidden');
+    }
+    if (activeTransformSummary) {
+        html += html
+            ? ' <span class="text-xs">Also today: ' + escapeHtml(activeTransformSummary) + '.</span>'
+            : "Today's bells are adjusted: " + escapeHtml(activeTransformSummary) + '.';
+    }
+    if (!html) { banner.classList.add('hidden'); return; }
+    text.innerHTML = html;
     banner.classList.remove('hidden');
 }
 
@@ -151,9 +235,11 @@ function hideDesignationBanner() {
     });
 })();
 
-// ===== module exports (6.0.0; +6.10.0 revival) =====
+// ===== module exports (6.0.0; +6.10.0 revival; +6.12.0 describeRecipe) =====
 export {
     MANUAL_SCHEDULE_CHOICE_KEY,
     applyCalendarSchedule,
     listenForScheduleCalendar,
+    describeRecipe, // v6.12.0: shared label text so module 34's entry list
+                    //   and this banner never drift
 };

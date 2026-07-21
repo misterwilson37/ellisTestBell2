@@ -597,8 +597,33 @@ function resolveAllBellTimes() {
     const activeShiftSeconds = window.BellEngine.getActiveScheduleShiftSeconds(
         state.activeSharedScheduleShift, new Date());
 
+    // V6.12.0: LAYER 4 VERB B — transformation recipes. If the school
+    // calendar transforms this user's base TODAY (resolved into
+    // state.activeCalendarTransforms by module 20), apply the recipe(s) to
+    // COPIES of the base periods HERE, before the merge — the same
+    // pristine-copy discipline as the shift above, so localSchedulePeriods
+    // stays untouched and edit modals never see (or save back) transformed
+    // times. Recipes compose in resolution order; each is a pure
+    // period->period transform touching shared-side STATIC bells only.
+    // Relative bells (shared AND personal) re-derive from the moved parents
+    // downstream — that ripple is how Layer 2 overlays survive for free. The
+    // emergency shift then rides on top of the transformed static times
+    // (recipe = planned structure; shift = day-of blanket nudge). On these
+    // pristine base periods bells carry no _originType, so the engine's
+    // recipeEligible treats them as shared (its documented pre-merge case).
+    let basePeriods = state.localSchedulePeriods;
+    const activeTransforms = Array.isArray(state.activeCalendarTransforms)
+        ? state.activeCalendarTransforms : [];
+    for (let i = 0; i < activeTransforms.length; i++) {
+        // applyRecipeToPeriods is immutable and returns the SAME array
+        // reference when a recipe changes nothing (changed === 0), so a
+        // no-op transform costs nothing and the pristine base is preserved.
+        basePeriods = window.BellEngine.applyRecipeToPeriods(
+            basePeriods, activeTransforms[i]).periods;
+    }
+
     // 1. Add all base shared periods
-    state.localSchedulePeriods.forEach(period => {
+    basePeriods.forEach(period => {
         mergedPeriodsMap.set(period.name, { 
             ...period, 
             // MODIFIED in 4.37: Tag bells with their origin
