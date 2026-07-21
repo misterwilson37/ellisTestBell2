@@ -136,8 +136,24 @@ async function addEntry() {
         calDoc.days[dateStr] = calDoc.days[dateStr] || {};
         const entries = Array.isArray(calDoc.days[dateStr].entries)
             ? calDoc.days[dateStr].entries : [];
-        entries.push({ scope, verb: 'base', scheduleId });
-        calDoc.days[dateStr].entries = entries;
+        // V6.11.0: per-person last-write-wins. The resolver is first-hit,
+        // so a stale earlier entry would keep winning after a re-designation
+        // ("change my mind" silently broke). Strip each newly-designated uid
+        // from every existing BASE entry first, drop any entry whose scope
+        // empties, THEN append. Transform entries are untouched — a person
+        // can be base-designated AND carry a transform the same day.
+        const scopeSet = new Set(scope);
+        const deduped = [];
+        for (const e of entries) {
+            if (e && e.verb === 'base' && Array.isArray(e.scope)) {
+                const kept = e.scope.filter((u) => !scopeSet.has(u));
+                if (kept.length === 0) continue;        // whole entry emptied
+                if (kept.length !== e.scope.length) { deduped.push({ ...e, scope: kept }); continue; }
+            }
+            deduped.push(e);
+        }
+        deduped.push({ scope, verb: 'base', scheduleId });
+        calDoc.days[dateStr].entries = deduped;
         await setDoc(calRef(), { days: calDoc.days }, { merge: true });
         safeLog.log('[Designation] ' + dateStr + ': ' + scope.length + ' user(s) -> ' + scheduleId);
         setStatus('Saved — ' + scope.length + ' person/people designated. Their apps follow at day change (or now, unless they chose manually today — then they see the banner).');

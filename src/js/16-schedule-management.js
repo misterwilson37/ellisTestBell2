@@ -46,7 +46,8 @@ import {
 // V6.5.0: Building Bells anchor select (functions are hoisted declarations,
 // called only inside handlers — cycle-safe like the existing 14<->16 pattern)
 import {
-    hideEditBellAnchorSelect, populateEditBellAnchorSelect, resolveEditBellAnchorForSave,
+    anchorNameForBell, hideEditBellAnchorSelect, populateEditBellAnchorSelect,
+    resolveEditBellAnchorForSave, setAnchorNote,
 } from './30-building-bells.js';
 import { logScheduleEdit } from './22-audit-log.js';
 import { state } from './state.js';
@@ -1177,20 +1178,26 @@ function handleEditBellClick(bell) {
         // FIX V5.66.2: All users can set personal sound override; admin checkbox escalates to shared
         if (bell.type === 'shared') {
             const isAdmin = document.body.classList.contains('admin-mode');
-                
+
+            // V6.11.0: the note container is ALWAYS shown for shared bells;
+            // exactly one state span is revealed. The anchor-name span is set
+            // by populate (admin) or anchorNameForBell (non-admin) below.
+            const lockMsgDiv = document.getElementById('edit-time-lock-message');
+            const lockedSpan = document.getElementById('edit-time-note-locked');
+            const adminSpan = document.getElementById('edit-time-note-admin');
+            if (lockMsgDiv) lockMsgDiv.classList.remove('hidden');
+            if (lockedSpan) lockedSpan.classList.toggle('hidden', isAdmin);
+            if (adminSpan) adminSpan.classList.toggle('hidden', !isAdmin);
+
             // Lock time for non-admins
             if (isAdmin) {
                 editBellTimeInput.disabled = false;
                 editBellTimeInput.style.opacity = '1';
                 editBellTimeInput.style.cursor = 'text';
-                const lockMsgDiv = document.getElementById('edit-time-lock-message');
-                if (lockMsgDiv) lockMsgDiv.classList.add('hidden');
             } else {
                 editBellTimeInput.disabled = true;
                 editBellTimeInput.style.opacity = '0.5';
                 editBellTimeInput.style.cursor = 'not-allowed';
-                const lockMsgDiv = document.getElementById('edit-time-lock-message');
-                if (lockMsgDiv) lockMsgDiv.classList.remove('hidden');
             }
             
             // Sound is ALWAYS editable (personal override)
@@ -1210,6 +1217,10 @@ function handleEditBellClick(bell) {
                 editBellOverrideContainer.classList.add('hidden');
                 document.getElementById('edit-bell-visual-override-container')?.classList.add('hidden');
                 hideEditBellAnchorSelect(); // V6.5.0
+                // V6.11.0: no select for non-admins, but still name the anchor
+                // in the note (async; resolves from pristine state).
+                setAnchorNote(null);
+                anchorNameForBell(bell).then((name) => { if (name) setAnchorNote(name); });
             }
         } else {
             // FIX V5.57.1: Custom bells (including personal period anchor/fluke bells)

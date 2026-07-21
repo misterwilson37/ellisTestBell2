@@ -165,7 +165,9 @@ function render() {
         const anchorInfo = n
             ? n + ' anchored bell' + (n === 1 ? '' : 's') + ' across ' + schedules
                 + ' schedule' + (schedules === 1 ? '' : 's')
-            : 'no anchored bells yet';
+            // V6.11.0: zero-anchor rows nudge toward the matching assist —
+            // editing this bell's time would move nothing until it's anchored.
+            : '<span class="text-amber-600">0 anchored — use “Anchor matching…” →</span>';
         return '<tr class="border-b">'
             + '<td class="py-2 pr-4 font-medium">' + escapeHtml(bb.name) + '</td>'
             + '<td class="py-2 pr-4 whitespace-nowrap font-mono text-xs">'
@@ -455,12 +457,26 @@ async function handleDelete(bbId) {
 // Fills + shows the anchor select for a shared bell being edited by an admin.
 // Async fill is fire-and-forget by design: the modal opens instantly and the
 // options appear when the (cached-after-first-open, one-doc) read returns.
+// V6.11.0 FIX: the bell object arriving here is RECONSTRUCTED from list DOM
+// data attributes (99-init), which never carried buildingBellId — so the
+// select always showed "Not anchored", and the save path then read that as
+// an EXPLICIT unanchor: any admin all-users edit of an anchored bell
+// silently stripped its anchor (the I0 field-stripping class, reintroduced
+// upstream of the 6.5.0 updatePeriodsOnEdit fix). The select is the save
+// path's source of truth, so it must be filled from the PRISTINE schedule
+// state by bellId, not from the DOM round-trip.
 async function populateEditBellAnchorSelect(bell) {
     if (!anchorContainer || !anchorSelect) return;
     anchorContainer.classList.remove('hidden');
     anchorSelect.innerHTML = '<option value="">(loading…)</option>';
     if (!loaded) await loadBells();
-    const current = bell && bell.buildingBellId ? bell.buildingBellId : '';
+    let current = bell && bell.buildingBellId ? bell.buildingBellId : '';
+    if (bell && bell.bellId) {
+        for (const p of (state.localSchedulePeriods || [])) {
+            const real = (p.bells || []).find(b => b && b.bellId === bell.bellId);
+            if (real) { current = real.buildingBellId || ''; break; }
+        }
+    }
     anchorSelect.innerHTML = '<option value="">Not anchored</option>' + bells.map(bb =>
         '<option value="' + bb.id + '"' + (bb.id === current ? ' selected' : '') + '>'
         + escapeHtml(bb.name) + ' (' + escapeHtml(formatTime12Hour(bb.time, true)) + ')</option>').join('');
@@ -468,6 +484,40 @@ async function populateEditBellAnchorSelect(bell) {
         // Anchor points at a deleted building bell — surface it rather than hide it
         anchorSelect.innerHTML += '<option value="" selected>(previous anchor no longer exists)</option>';
     }
+    // V6.11.0: drive the anchor-name note beneath the time input (admin view).
+    const bb = current ? bells.find(b => b.id === current) : null;
+    setAnchorNote(bb ? bb.name : null);
+}
+
+// V6.11.0: the anchor-name note span under the time input. Shared across the
+// admin (populate) and non-admin (16-schedule-management) open paths so the
+// name shows for everyone, even though only admins see the select itself.
+function setAnchorNote(anchorName) {
+    const span = document.getElementById('edit-time-note-anchor');
+    if (!span) return;
+    if (anchorName) {
+        span.textContent = ' · Anchored to “' + anchorName + '” — editing that building bell moves this one automatically.';
+        span.classList.remove('hidden');
+    } else {
+        span.textContent = '';
+        span.classList.add('hidden');
+    }
+}
+
+// V6.11.0: resolve a shared bell's anchor NAME from pristine state, for the
+// non-admin note (which has no select to populate). Returns null if unanchored
+// or the building bell isn't loaded yet.
+async function anchorNameForBell(bell) {
+    if (!bell || !bell.bellId) return null;
+    let id = bell.buildingBellId || '';
+    for (const p of (state.localSchedulePeriods || [])) {
+        const real = (p.bells || []).find(b => b && b.bellId === bell.bellId);
+        if (real) { id = real.buildingBellId || ''; break; }
+    }
+    if (!id) return null;
+    if (!loaded) { try { await loadBells(); } catch (e) { return null; } }
+    const bb = bells.find(b => b.id === id);
+    return bb ? bb.name : null;
 }
 
 function hideEditBellAnchorSelect() {
@@ -525,7 +575,9 @@ if (listEl) listEl.addEventListener('click', (e) => {
 
 // ===== module exports (6.5.0) =====
 export {
+    anchorNameForBell,
     hideEditBellAnchorSelect,
     populateEditBellAnchorSelect,
     resolveEditBellAnchorForSave,
+    setAnchorNote,
 };
