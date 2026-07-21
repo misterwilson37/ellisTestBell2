@@ -28,7 +28,7 @@ import { loadAllVisualFiles } from './18-bell-crud-and-modals.js';
 import {
     loadAllAudioFiles, renderAudioFileManager, updateSoundDropdowns,
 } from './19-visual-cues-and-files.js';
-import { applyCalendarSchedule, listenForScheduleCalendar } from './20-schedule-calendar.js';
+import { applyCalendarSchedule, listenForScheduleCalendar, listenForHomeSchedule } from './20-schedule-calendar.js';
 import { renderEmergencyShiftPanel } from './21-emergency-shift.js';
 import { startClockDriftMonitor } from './23-clock-drift.js';
 import { state } from './state.js';
@@ -396,6 +396,7 @@ async function listenForSharedSchedules() {
 
     safeLog.log("Listening for real-time shared schedule updates...");
     listenForScheduleCalendar(); // V5.73.0: day-type calendar rides alongside
+    listenForHomeSchedule();     // V6.14.0: per-teacher home (default) schedule
 
     state.sharedSchedulesListenerUnsubscribe = onSnapshot(state.schedulesCollectionRef, (querySnapshot) => {
         // MODIFIED V4.88: Read the 'periods' array, not the legacy 'bells' array.

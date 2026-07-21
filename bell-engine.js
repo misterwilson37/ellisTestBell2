@@ -1,6 +1,16 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.8.0
+ * Version: 1.10.0
+ *
+ * v1.10.0 (2026-07, app 6.14.0): + resolveScopedDesignation (the scoped
+ *   per-date designation split out of resolveCalendarSchedule, so callers
+ *   can distinguish a mandate from the school-wide/home fallback). Behavior
+ *   of resolveCalendarSchedule is unchanged (it now calls the extraction).
+ *
+ * v1.9.0 (2026-07, app 6.13.0, Layer 4 prefill grid): + mergeCalendarEntry
+ *   — the base-dedup / transform-append rule extracted from module 34 into
+ *   one pure, tested place; the day-of modal and the grid copy-forward share
+ *   it. No behavior change to existing callers.
  *
  * v1.8.0 (2026-07, app 6.11.0): Layer 4 VERB B (transformation recipes).
  * Two new pure functions:
@@ -394,24 +404,40 @@
      * value ("") means "no designation that day" and suppresses the weekday
      * default (e.g. a holiday). Returns a scheduleId string or null.
      */
+    /**
+     * v1.10.0 (app 6.14.0): the SCOPED per-date designation only — the first
+     * verb:'base' entry whose explicit uid scope contains this user on this
+     * date. Returns a scheduleId or null. This is the "mandate" half of
+     * resolveCalendarSchedule, split out so callers (module 20) can tell a
+     * scoped designation (building wins — bannered) apart from the school-wide
+     * exception/weekday fallback and the per-teacher home default (silent).
+     * Layer 3 invariant intact: scopes are EXPLICIT uid lists; no tag math.
+     */
+    function resolveScopedDesignation(calendar, date, uid) {
+        if (!calendar || !date || !uid || !calendar.days) return null;
+        const dateStr = toLocalDateString(date);
+        if (!Object.prototype.hasOwnProperty.call(calendar.days, dateStr)) return null;
+        const entries = calendar.days[dateStr] && calendar.days[dateStr].entries;
+        if (!Array.isArray(entries)) return null;
+        for (let i = 0; i < entries.length; i++) {
+            const e = entries[i];
+            if (e && e.verb === 'base' && Array.isArray(e.scope)
+                    && e.scope.indexOf(uid) !== -1 && e.scheduleId) {
+                return e.scheduleId;
+            }
+        }
+        return null;
+    }
+
     function resolveCalendarSchedule(calendar, date, uid) {
         if (!calendar || !date) return null;
         const dateStr = toLocalDateString(date);
         // v1.7.0 (Layer 4, v2 schema): per-date scoped entries win when the
         // caller identifies itself. Scopes are EXPLICIT uid lists (Layer 3
-        // invariant: tags filter pickers; uids are what is stored/resolved).
-        if (uid && calendar.days &&
-            Object.prototype.hasOwnProperty.call(calendar.days, dateStr)) {
-            const entries = calendar.days[dateStr] && calendar.days[dateStr].entries;
-            if (Array.isArray(entries)) {
-                for (let i = 0; i < entries.length; i++) {
-                    const e = entries[i];
-                    if (e && e.verb === 'base' && Array.isArray(e.scope)
-                            && e.scope.indexOf(uid) !== -1 && e.scheduleId) {
-                        return e.scheduleId;
-                    }
-                }
-            }
+        // invariant). v1.10.0: the scoped walk is now resolveScopedDesignation.
+        if (uid) {
+            const scoped = resolveScopedDesignation(calendar, date, uid);
+            if (scoped) return scoped;
         }
         if (calendar.exceptions &&
             Object.prototype.hasOwnProperty.call(calendar.exceptions, dateStr)) {
@@ -701,6 +727,42 @@
         return { periods: periods, changed: 0 };
     }
 
+    /**
+     * v1.9.0 (app 6.13.0, Layer 4 prefill grid): merge ONE calendar entry into
+     * a date's entries array, applying the standing designation rules in ONE
+     * place (previously inline in module 34, untested):
+     *   - verb 'base': per-person last-write-wins. The resolver is first-hit,
+     *     so strip each incoming uid from every existing base entry first
+     *     (dropping any entry whose scope empties), THEN append the new one.
+     *   - verb 'transform' (and anything else): append — transforms compose,
+     *     and a base entry can coexist with a person's transforms.
+     * Pure; never mutates its input; returns a NEW array. Both the day-of
+     * modal (module 34) and the prefill grid's copy-forward (module 35) route
+     * through this, so the dedup rule can never drift between the two.
+     */
+    function mergeCalendarEntry(entries, entry) {
+        const base = Array.isArray(entries) ? entries : [];
+        if (!entry || typeof entry !== 'object') return base.slice();
+        if (entry.verb === 'base' && Array.isArray(entry.scope)) {
+            const incoming = entry.scope;
+            const out = [];
+            for (let i = 0; i < base.length; i++) {
+                const e = base[i];
+                if (e && e.verb === 'base' && Array.isArray(e.scope)) {
+                    const kept = e.scope.filter(function (u) { return incoming.indexOf(u) === -1; });
+                    if (kept.length === 0) continue;               // whole entry emptied
+                    if (kept.length !== e.scope.length) { out.push(Object.assign({}, e, { scope: kept })); continue; }
+                }
+                out.push(e);
+            }
+            out.push(entry);
+            return out;
+        }
+        const out2 = base.slice();
+        out2.push(entry);
+        return out2;
+    }
+
     const BellEngine = {
         VERSION: '1.8.0', // v1.3.1: exported so the status modal can report it
         escapeHtml,
@@ -714,13 +776,15 @@
         calculateRelativeBellTime,
         toLocalDateString,
         resolveCalendarSchedule,
+        resolveScopedDesignation,
         shiftTimeString,
         getActiveScheduleShiftSeconds,
         estimateClockDriftMs,
         applyBuildingBellTimeToPeriods,
         findPeriodEdgeAnchorBell,
         resolveCalendarTransforms,
-        applyRecipeToPeriods
+        applyRecipeToPeriods,
+        mergeCalendarEntry
     };
 
     global.BellEngine = BellEngine;

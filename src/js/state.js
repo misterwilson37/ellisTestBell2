@@ -135,6 +135,14 @@ export const state = {
     //   Array of recipe objects, composed in order; [] = no transform today.
     activeCalendarTransforms: [],
 
+    // ---- v6.14.0: Layer 4 home schedule (per-teacher standing default) ----
+    //   The teacher's normal shared schedule, read from their own
+    //   roster/{uid}.defaultScheduleId by module 20's home listener. Applied
+    //   SILENTLY (no banner) when no scoped calendar designation and no
+    //   same-day manual choice override it, and never over a personal
+    //   schedule. null = no home set (behaves exactly as pre-6.14.0).
+    homeScheduleId: null,
+
     // ---- originally declared in 22-audit-log.js ----
     currentUserDisplayName: null,
 };

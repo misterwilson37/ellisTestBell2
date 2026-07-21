@@ -1,6 +1,13 @@
 // ===== 33-roster.js (NEW in 6.9.0 — DESIGN-CALENDAR-V2.md Layer 3) =====
 // Roster & Tags: one doc per user at public/data/roster/{uid} —
-// { displayName, tags: [...], capabilities: [...] }.
+// { displayName, tags: [...], capabilities: [...], defaultScheduleId? }.
+//
+// v6.14.0: defaultScheduleId is the user's HOME schedule (their normal day).
+// It is EXPLICIT and per-uid — set by an admin per person, or in bulk via the
+// template panel (filter → pick schedule → set for all matched). This does
+// NOT breach the Layer 3 invariant below: the filter is a picker aid; what is
+// stored is an explicit per-person scheduleId, and NOTHING resolves a tag at
+// ring time. The client reads its OWN default via module 20's home listener.
 //
 // THE LAYER 3 INVARIANT (owner decision, carved into the rules file too):
 // tags are PICKER FILTERS, never runtime targeting. Future designation UIs
@@ -53,6 +60,10 @@ const rosterClose = document.getElementById('roster-close');
 const rosterList = document.getElementById('roster-list');
 const rosterSeedBtn = document.getElementById('roster-seed-btn');
 const rosterStatus = document.getElementById('roster-status');
+// v6.14.0: bulk "home schedule" template panel
+const tmplFilter = document.getElementById('roster-template-filter');
+const tmplSchedule = document.getElementById('roster-template-schedule');
+const tmplApply = document.getElementById('roster-template-apply');
 
 let myDoc = null;          // my roster doc data (or null)
 let rosterUnsub = null;    // admin modal snapshot
@@ -148,6 +159,8 @@ function openRoster() {
     rosterModal.classList.remove('hidden');
     setStatus(rosterStatus, '');
     rosterList.innerHTML = '<p class="text-sm text-gray-500">Loading…</p>';
+    if (tmplSchedule) tmplSchedule.innerHTML = scheduleOptions('');
+    if (tmplFilter) tmplFilter.value = '';
     const col = collection(state.db, 'artifacts', state.appId, 'public', 'data', 'roster');
     rosterUnsub = onSnapshot(col, (snap) => {
         rosterRows = snap.docs.map((d) => ({ uid: d.id, data: d.data() }))
@@ -161,6 +174,16 @@ function openRoster() {
 function closeRoster() {
     rosterModal.classList.add('hidden');
     if (rosterUnsub) { rosterUnsub(); rosterUnsub = null; }
+}
+
+// v6.14.0: <option> list of shared schedules for a home-schedule picker.
+function scheduleOptions(selectedId) {
+    const opts = ['<option value="">(no home schedule)</option>'];
+    (state.allSchedules || []).forEach((s) => {
+        opts.push('<option value="' + s.id + '"' + (s.id === selectedId ? ' selected' : '') + '>'
+            + escapeHtml(s.name) + '</option>');
+    });
+    return opts.join('');
 }
 
 function renderRoster() {
@@ -182,6 +205,9 @@ function renderRoster() {
             + '</div>'
             + '<div class="mb-2">' + (tags || '<span class="text-xs text-gray-500">no tags</span>') + '</div>'
             + '<div class="mb-2">' + (caps || '<span class="text-xs text-gray-500">no capabilities</span>') + '</div>'
+            + '<label class="block text-xs text-gray-600 mb-2">Home schedule (their normal day)'
+            + '<select data-r-default="' + uid + '" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm">'
+            + scheduleOptions(data.defaultScheduleId || '') + '</select></label>'
             + '<div class="flex flex-col sm:flex-row gap-3">'
             + '<input type="text" data-r-tag-input="' + uid + '" placeholder="Add tag" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm">'
             + '<input type="text" data-r-cap-input="' + uid + '" placeholder="Grant capability (narrowly!)" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm">'
@@ -201,6 +227,46 @@ async function adminWrite(uid, patch, label) {
 function rowData(uid) {
     const row = rosterRows.find((r) => r.uid === uid);
     return row ? row.data : { tags: [], capabilities: [] };
+}
+
+// v6.14.0: BULK home-schedule template. Filter the roster by tag or name
+// (the Layer 3 way — a FILTER, never runtime targeting), eyeball the count,
+// and set defaultScheduleId on each MATCHED person explicitly. This is the
+// "6th-grade teachers run the 6th-grade schedule" one-click, re-runnable when
+// new people are tagged. Stored per-uid; no tag is ever resolved at ring time.
+function matchesFilter(data, q) {
+    if (!q) return true;
+    if ((data.displayName || '').toLowerCase().includes(q)) return true;
+    return (data.tags || []).some((t) => t.toLowerCase().includes(q));
+}
+
+async function applyTemplate() {
+    const scheduleId = tmplSchedule ? tmplSchedule.value : '';
+    const q = (tmplFilter ? tmplFilter.value : '').trim().toLowerCase();
+    if (!scheduleId) { setStatus(rosterStatus, 'Pick a schedule to set as the home default first.', true); return; }
+    const matched = rosterRows.filter((r) => matchesFilter(r.data, q));
+    if (!matched.length) { setStatus(rosterStatus, 'No roster entries match that filter.', true); return; }
+    const sched = (state.allSchedules || []).find((s) => s.id === scheduleId);
+    const names = matched.map((r) => r.data.displayName || r.uid);
+    const preview = names.slice(0, 8).join(', ') + (names.length > 8 ? ', …' : '');
+    if (!window.confirm('Set home schedule "' + (sched ? sched.name : scheduleId) + '" for '
+            + matched.length + ' person/people?\n\n' + preview
+            + '\n\n(This sets an explicit default per person — no tag is resolved later.)')) return;
+    tmplApply.disabled = true;
+    setStatus(rosterStatus, 'Applying to ' + matched.length + '…');
+    try {
+        let n = 0;
+        for (const r of matched) {
+            await setDoc(rosterRef(r.uid), { defaultScheduleId: scheduleId }, { merge: true });
+            n++;
+        }
+        setStatus(rosterStatus, 'Home schedule set for ' + n + ' person/people.');
+        safeLog.log('[Roster] template: set default ' + scheduleId + ' for ' + n + ' (filter "' + q + '").');
+    } catch (e) {
+        setStatus(rosterStatus, 'Error applying template: ' + (e && e.message), true);
+    } finally {
+        tmplApply.disabled = false;
+    }
 }
 
 async function seedFromPresence() {
@@ -251,7 +317,16 @@ if (myModal) myModal.addEventListener('click', (e) => {
 if (rosterOpenBtn) rosterOpenBtn.addEventListener('click', openRoster);
 if (rosterClose) rosterClose.addEventListener('click', closeRoster);
 if (rosterSeedBtn) rosterSeedBtn.addEventListener('click', seedFromPresence);
+if (tmplApply) tmplApply.addEventListener('click', applyTemplate); // v6.14.0
 if (rosterList) {
+    // v6.14.0: per-person home schedule picker
+    rosterList.addEventListener('change', (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLElement)) return;
+        const uid = t.dataset.rDefault;
+        if (uid) adminWrite(uid, { defaultScheduleId: t.value || '' },
+            t.value ? 'Home schedule set.' : 'Home schedule cleared.');
+    });
     rosterList.addEventListener('click', (e) => {
         const t = e.target;
         if (!(t instanceof HTMLElement)) return;

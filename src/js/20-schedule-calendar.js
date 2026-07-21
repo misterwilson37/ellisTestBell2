@@ -59,51 +59,97 @@ function listenForScheduleCalendar() {
 function applyCalendarSchedule(trigger) {
     try {
         // V6.12.0 (Verb B): transformation recipes are INDEPENDENT of base
-        // designation — a teacher on their normal base can still have the
-        // day's bells transformed. Refresh them first, on every trigger,
-        // before any base-switch guard can return early. (No calendar =>
-        // resolves to [], which self-clears any stale set.)
+        // designation — refresh them first, on every trigger, before any
+        // base-switch path returns. (No calendar => [], self-clears.)
         refreshActiveTransforms();
 
-        if (!scheduleCalendar) { syncDesignationBanner(null); return; }
         if (!state.allSchedules || state.allSchedules.length === 0) return;
-
         const today = new Date();
-        // V6.10.0: per-user scoped resolution (engine 1.7.0)
-        const designatedId = window.BellEngine.resolveCalendarSchedule(
-            scheduleCalendar, today, state.userId || undefined);
-        // No base designation today: the banner may still show a
-        // transform-only note (syncDesignationBanner reads the summary).
-        if (!designatedId) { syncDesignationBanner(null); return; }
 
-        // Rule 2: designated schedule must still exist
-        if (!state.allSchedules.some(s => s.id === designatedId)) {
-            console.warn(`Calendar designates schedule "${designatedId}" which no longer exists — ignoring.`);
-            return;
-        }
+        // V6.14.0: resolution order is
+        //   (1) SCOPED calendar designation  — mandate, building wins, bannered
+        //   (2) school-wide exception/weekday — mandate (rare at Ellis), bannered
+        //   (3) HOME schedule (per-teacher)   — silent default, never bannered
+        // Steps 1+2 together reproduce the old resolveCalendarSchedule(uid)
+        // result and behavior exactly; step 3 is the new per-teacher layer,
+        // which is why home must be reachable even with NO calendar doc.
+        const scopedId = scheduleCalendar
+            ? window.BellEngine.resolveScopedDesignation(scheduleCalendar, today, state.userId || undefined)
+            : null;
+        if (scopedId) { applyMandate(scopedId, today, trigger); return; }
 
-        const targetPrefixed = `shared-${designatedId}`;
-        const currentPrefixed = scheduleSelector ? scheduleSelector.value : '';
+        const schoolWideId = scheduleCalendar
+            ? window.BellEngine.resolveCalendarSchedule(scheduleCalendar, today) // no uid -> exception/weekday only
+            : null;
+        if (schoolWideId) { applyMandate(schoolWideId, today, trigger); return; }
 
-        // Rule 3: manual choice today wins — but deviation is bannered (I1)
-        if (localStorage.getItem(MANUAL_SCHEDULE_CHOICE_KEY) === toLocalDateString(today)) {
-            syncDesignationBanner(currentPrefixed !== targetPrefixed
-                ? { designatedId, targetPrefixed } : null);
-            return;
-        }
-
-        // Rules 4+5: read the selector as the source of truth for what's active
-        if (currentPrefixed.startsWith('personal-')) { syncDesignationBanner(null); return; }
-        if (currentPrefixed === targetPrefixed) { syncDesignationBanner(null); return; }
-
-        safeLog.log(`[Calendar] Auto-switching to "${designatedId}" (trigger: ${trigger}).`);
-        if (scheduleSelector) scheduleSelector.value = targetPrefixed;
-        setActiveSchedule(targetPrefixed);
-        syncDesignationBanner(null);
-        noteForeignAnchors(designatedId); // I4 (logged; banner covers deviation case)
+        applyHomeSchedule(today, trigger);
     } catch (e) {
         console.error('applyCalendarSchedule failed:', e);
     }
+}
+
+// A calendar MANDATE (scoped designation or school-wide default): the
+// building's decision. Auto-follow unless a same-day manual choice deviates,
+// in which case banner it (I1). Behavior identical to the pre-6.14.0 path.
+function applyMandate(designatedId, today, trigger) {
+    if (!state.allSchedules.some(s => s.id === designatedId)) {
+        console.warn(`Calendar designates schedule "${designatedId}" which no longer exists — ignoring.`);
+        return;
+    }
+    const targetPrefixed = `shared-${designatedId}`;
+    const currentPrefixed = scheduleSelector ? scheduleSelector.value : '';
+    if (localStorage.getItem(MANUAL_SCHEDULE_CHOICE_KEY) === toLocalDateString(today)) {
+        syncDesignationBanner(currentPrefixed !== targetPrefixed
+            ? { designatedId, targetPrefixed } : null);
+        return;
+    }
+    if (currentPrefixed.startsWith('personal-')) { syncDesignationBanner(null); return; }
+    if (currentPrefixed === targetPrefixed) { syncDesignationBanner(null); return; }
+    safeLog.log(`[Calendar] Auto-switching to "${designatedId}" (trigger: ${trigger}).`);
+    if (scheduleSelector) scheduleSelector.value = targetPrefixed;
+    setActiveSchedule(targetPrefixed);
+    syncDesignationBanner(null);
+    noteForeignAnchors(designatedId);
+}
+
+// V6.14.0: the HOME schedule (per-teacher standing default) — a convenience,
+// NOT a building mandate, so it is applied SILENTLY (no banner). It never
+// yanks a personal-schedule user (that's a deliberate choice with an overlay)
+// and never overrides a same-day manual pick. Absent all of those, it brings
+// a teacher back to their normal schedule at day change / sign-in.
+function applyHomeSchedule(today, trigger) {
+    syncDesignationBanner(null); // no mandate; banner reflects transforms only
+    const homeId = state.homeScheduleId;
+    if (!homeId) return;
+    if (!state.allSchedules.some(s => s.id === homeId)) return; // home schedule was deleted
+    const targetPrefixed = `shared-${homeId}`;
+    const currentPrefixed = scheduleSelector ? scheduleSelector.value : '';
+    if (localStorage.getItem(MANUAL_SCHEDULE_CHOICE_KEY) === toLocalDateString(today)) return;
+    if (currentPrefixed.startsWith('personal-')) return;
+    if (currentPrefixed === targetPrefixed) return;
+    safeLog.log(`[Home] Auto-loading home schedule "${homeId}" (trigger: ${trigger}).`);
+    if (scheduleSelector) scheduleSelector.value = targetPrefixed;
+    setActiveSchedule(targetPrefixed);
+}
+
+// V6.14.0: watch this user's own roster doc for their home (default) schedule.
+// roster/{uid} is self-readable (rules). Live: if an admin sets/changes it,
+// the client re-resolves (and may silently switch) at once.
+let homeListenerUnsub = null;
+function listenForHomeSchedule() {
+    if (homeListenerUnsub) { homeListenerUnsub(); homeListenerUnsub = null; }
+    if (!state.db || !state.userId) return;
+    const ref = doc(state.db, 'artifacts', state.appId, 'public', 'data', 'roster', state.userId);
+    homeListenerUnsub = onSnapshot(ref, (snap) => {
+        const data = snap.exists() ? snap.data() : null;
+        const next = (data && typeof data.defaultScheduleId === 'string' && data.defaultScheduleId)
+            ? data.defaultScheduleId : null;
+        if (next !== state.homeScheduleId) {
+            state.homeScheduleId = next;
+            applyCalendarSchedule('home-updated');
+        }
+    }, (err) => { console.warn('Home-schedule listen error:', err && err.message); });
 }
 
 // ===== V6.12.0: Verb B — resolve today's transformation recipes =====
@@ -240,6 +286,7 @@ export {
     MANUAL_SCHEDULE_CHOICE_KEY,
     applyCalendarSchedule,
     listenForScheduleCalendar,
+    listenForHomeSchedule, // v6.14.0: per-teacher home schedule listener
     describeRecipe, // v6.12.0: shared label text so module 34's entry list
                     //   and this banner never drift
 };

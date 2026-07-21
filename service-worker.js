@@ -1,7 +1,14 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.18.0
+ * Version: 1.20.0
  *
+ * v1.20.0 changelog (2026-07, app 6.14.0): no new modules — cache bump to
+ *   ship the home-schedule feature (engine 1.10.0 + edited 15/20/33/34 +
+ *   index.html). CORE_ASSETS unchanged.
+ * v1.19.0 changelog (2026-07, app 6.13.0): + 35-schedule-grid.js (Layer 4
+ *   prefill grid — plan weeks ahead). NEW MODULE: added to CORE_ASSETS
+ *   (39 modules). Cache bump ships it plus the edited 14/20/34 + engine
+ *   1.9.0 (mergeCalendarEntry) + index.html.
  * v1.18.0 changelog (2026-07, app 6.12.0): no new modules — cache bump
  *   to ship Verb B wiring (edited 14/20/34 + state.js + index.html):
  *   calendar transformation recipes now resolve at runtime and transform
@@ -115,7 +122,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.18.0';
+const CACHE_VERSION = '1.20.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;
@@ -166,6 +173,7 @@ const CORE_ASSETS = [
     '/src/js/32-personal-anchor-migration.js',
     '/src/js/33-roster.js',
     '/src/js/34-day-designation.js', // v1.11.0 (app 6.4.0, presence)
+    '/src/js/35-schedule-grid.js', // v1.19.0 (app 6.13.0, prefill grid)
   '/src/js/99-init-and-listeners.js',
   '/src/js/main.js',
   '/src/js/state.js',

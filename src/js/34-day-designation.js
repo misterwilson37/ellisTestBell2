@@ -131,10 +131,11 @@ function buildRecipe() {
     return null;
 }
 
-async function open() {
+async function open(presetDate) {
     modal.classList.remove('hidden');
     setStatus('');
-    dateInput.value = toLocalDateString(new Date());
+    dateInput.value = (typeof presetDate === 'string' && presetDate)
+        ? presetDate : toLocalDateString(new Date());
     schedSelect.innerHTML = state.allSchedules.map((s) =>
         '<option value="' + s.id + '">' + escapeHtml(s.name) + '</option>').join('');
     // v6.12.0: reset to base mode; fill the extend-period name suggestions
@@ -245,34 +246,14 @@ async function addEntry() {
         const entries = Array.isArray(calDoc.days[dateStr].entries)
             ? calDoc.days[dateStr].entries : [];
 
-        let next;
-        if (isTransform) {
-            // Transforms COMPOSE (engine contract): a person can carry several
-            // the same day, and can also be base-designated. No dedup — just
-            // append. Remove is how you take one back.
-            next = entries.slice();
-            next.push(newEntry);
-        } else {
-            // V6.11.0: per-person last-write-wins for BASE. The resolver is
-            // first-hit, so a stale earlier entry would keep winning after a
-            // re-designation ("change my mind" silently broke). Strip each
-            // newly-designated uid from every existing BASE entry first, drop
-            // any entry whose scope empties, THEN append. Transform entries
-            // are untouched — base and transform coexist for one person.
-            const scopeSet = new Set(scope);
-            next = [];
-            for (const e of entries) {
-                if (e && e.verb === 'base' && Array.isArray(e.scope)) {
-                    const kept = e.scope.filter((u) => !scopeSet.has(u));
-                    if (kept.length === 0) continue;        // whole entry emptied
-                    if (kept.length !== e.scope.length) { next.push({ ...e, scope: kept }); continue; }
-                }
-                next.push(e);
-            }
-            next.push(newEntry);
-        }
+        // V6.13.0: the base-dedup / transform-append rule now lives in ONE
+        // tested place (engine mergeCalendarEntry) shared with the grid's
+        // copy-forward. Base = per-person last-write-wins; transform = append
+        // (compose). Behavior identical to the 6.11.0/6.12.0 inline versions.
+        const next = window.BellEngine.mergeCalendarEntry(entries, newEntry);
         calDoc.days[dateStr].entries = next;
         await setDoc(calRef(), { days: calDoc.days }, { merge: true });
+        document.dispatchEvent(new CustomEvent('ellis-calendar-changed')); // v6.13.0: grid refresh
         safeLog.log('[Designation] ' + dateStr + ': ' + scope.length + ' user(s) -> '
             + (isTransform ? 'transform ' + (newEntry.recipe && newEntry.recipe.type) : newEntry.scheduleId));
         setStatus(isTransform
@@ -295,6 +276,7 @@ async function removeEntry(index) {
     try {
         calDoc.days[dateStr].entries = entries;
         await setDoc(calRef(), { days: calDoc.days }, { merge: true });
+        document.dispatchEvent(new CustomEvent('ellis-calendar-changed')); // v6.13.0
         setStatus('Removed.');
         renderEntries();
     } catch (e) {
@@ -302,13 +284,25 @@ async function removeEntry(index) {
     }
 }
 
-if (openBtn) openBtn.addEventListener('click', open);
-if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+if (openBtn) openBtn.addEventListener('click', () => open());
+if (closeBtn) closeBtn.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    document.dispatchEvent(new CustomEvent('ellis-designation-closed')); // v6.13.0: let the grid reshow
+});
 if (addBtn) addBtn.addEventListener('click', addEntry);
 if (modeSelect) modeSelect.addEventListener('change', syncMode);           // v6.12.0
 if (recipeTypeSelect) recipeTypeSelect.addEventListener('change', syncRecipeType); // v6.12.0
 if (dateInput) dateInput.addEventListener('change', renderEntries);
 if (filterInput) filterInput.addEventListener('input', renderPeople);
+// v6.14.0: bulk check/uncheck the currently-shown people (still stores explicit uids)
+const selectAllBtn = document.getElementById('designation-select-all');
+const clearAllBtn = document.getElementById('designation-clear-all');
+if (selectAllBtn) selectAllBtn.addEventListener('click', () => {
+    peopleEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => { cb.checked = true; });
+});
+if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
+    peopleEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => { cb.checked = false; });
+});
 if (entriesEl) entriesEl.addEventListener('click', (e) => {
     const t = e.target;
     if (t instanceof HTMLElement && t.dataset.entryDel !== undefined) {
@@ -316,6 +310,7 @@ if (entriesEl) entriesEl.addEventListener('click', (e) => {
     }
 });
 
-// ===== module exports (6.10.0) =====
-// (none — self-wiring side-effect module, 28/29 pattern)
-export {};
+// ===== module exports (6.10.0; +6.13.0 grid entry point) =====
+// v6.13.0: the prefill grid (module 35) opens this modal on a chosen date.
+function openDesignationModal(dateStr) { return open(dateStr); }
+export { openDesignationModal };
