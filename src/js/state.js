@@ -143,6 +143,11 @@ export const state = {
     //   schedule. null = no home set (behaves exactly as pre-6.14.0).
     homeScheduleId: null,
 
+    // ---- v6.15.0: server-confirmed admin flag (admins/{uid} exists). Set by
+    //   module 15's auth handler; read by the untagged-teacher nudge (36).
+    //   Distinct from the 'admin-mode' body class, which is a manual toggle.
+    isAdmin: false,
+
     // ---- originally declared in 22-audit-log.js ----
     currentUserDisplayName: null,
 };

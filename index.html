@@ -7,7 +7,7 @@
          always match — this <title>, the visible <h1> banner, and the comment on
          the last line of this file. Update all three together. (z = fix/tweak,
          y = new feature, x = major shift with the owner's sign-off.) -->
-    <title>Ellis Web Bell 6.14.0</title>
+    <title>Ellis Web Bell 6.15.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -273,6 +273,13 @@
         <span id="designation-text" class="flex-grow"></span>
         <button type="button" id="designation-follow" class="px-2 py-1 text-amber-900 hover:bg-amber-200 rounded-lg font-medium underline">Follow</button>
         <button type="button" id="designation-dismiss" class="px-2 py-1 text-amber-900 hover:bg-amber-200 rounded-lg font-bold" title="Dismiss for this session">&times;</button>
+    </div>
+
+    <!-- v6.15.0: untagged-teacher nudge (admins only; shown by module 36) -->
+    <div id="untagged-nudge-banner" class="hidden kiosk-hide bg-blue-100 border-b border-blue-300 text-blue-900 px-4 py-2 text-sm flex items-center justify-between gap-4">
+        <span id="untagged-nudge-text" class="flex-grow"></span>
+        <button type="button" id="untagged-nudge-review" class="px-2 py-1 text-blue-900 hover:bg-blue-200 rounded-lg font-medium underline">Review</button>
+        <button type="button" id="untagged-nudge-dismiss" class="px-2 py-1 text-blue-900 hover:bg-blue-200 rounded-lg font-bold" title="Dismiss for this session">&times;</button>
     </div>
 
 
@@ -1680,7 +1687,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.14.0</h1>
+            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.15.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -3449,4 +3456,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 6.14.0 -->
+<!-- Version 6.15.0 -->

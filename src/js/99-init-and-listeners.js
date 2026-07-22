@@ -164,18 +164,31 @@ function init() {
     
     // V5.51.0: Register Service Worker for PWA support
     if ('serviceWorker' in navigator) {
+        // V6.15.0 BUGFIX: only surface the "new version" toast when this page
+        // was already under service-worker control WHEN IT LOADED — captured
+        // now, before any newly-installed worker can skipWaiting + claim it.
+        // A HARD refresh loads uncontrolled (controller === null) and pulls the
+        // latest straight from the network, so a worker updating right after is
+        // not news — suppress it. A NORMAL reload is served from the old SW's
+        // cache (controlled), so a new worker genuinely means "you're on the
+        // old version, refresh" — keep it. The old code read controller LIVE at
+        // statechange, which raced skipWaiting/claim and fired even on a hard
+        // refresh (the reported bug). First-ever install is also uncontrolled,
+        // so it correctly stays silent too.
+        const wasControlledAtLoad = !!navigator.serviceWorker.controller;
         navigator.serviceWorker.register('/service-worker.js')
             .then((registration) => {
                 safeLog.log('[PWA] Service Worker registered:', registration.scope);
-                
+
                 // Check for updates
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
+                    if (!newWorker) return;
                     safeLog.log('[PWA] New Service Worker installing...');
-                    
+
                     newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // New content available, show update notification
+                        if (newWorker.state === 'installed' && wasControlledAtLoad) {
+                            // Genuine mid-session/stale-cache update, not a fresh load.
                             safeLog.log('[PWA] New version available!');
                             showUserMessage('New version available! Refresh to update.');
                         }

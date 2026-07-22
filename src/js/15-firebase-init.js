@@ -165,10 +165,13 @@ async function initFirebase() {
                 }
 
                 // NEW: Enable admin toggle *only* if server-side check passed
+                state.isAdmin = isAdmin; // v6.15.0: expose for the untagged nudge (36)
                 if (isAdmin) {
                     adminToggleBtn.disabled = false;
                     adminToggleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     adminToggleBtn.title = "Toggle administrator controls";
+                    // v6.15.0: let the untagged-teacher nudge run its check
+                    document.dispatchEvent(new CustomEvent('ellis-admin-confirmed'));
                 } else {
                     adminToggleBtn.disabled = true;
                     adminToggleBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -295,6 +298,7 @@ async function initFirebase() {
                 }
                 
                 document.body.classList.remove('authenticated', 'not-anonymous', 'admin-mode');
+                state.isAdmin = false; // v6.15.0
                 signOutBtn.classList.add('hidden');
                 userIdElement.textContent = "Not signed in.";
                 userDisplayNameElement.textContent = ""; // NEW: Clear header display name
