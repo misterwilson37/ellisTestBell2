@@ -1,7 +1,11 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.21.0
+ * Version: 1.22.0
  *
+ * v1.22.0 changelog (2026-07, app 6.16.0): + 37-overlap-warning.js (read-only
+ *   period-overrun detector for the editor). NEW MODULE -> CORE_ASSETS now
+ *   41 modules. Cache bump also ships engine 1.11.0 (+detectPeriodOverlaps,
+ *   +VERSION-constant fix) and the module 18 render hook + index.html banner.
  * v1.21.0 changelog (2026-07, app 6.15.0): + 36-untagged-nudge.js (admin
  *   nudge for signed-in staff without tags). NEW MODULE: added to
  *   CORE_ASSETS (40 modules). Cache bump also ships the hard-refresh
@@ -126,7 +130,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.21.0';
+const CACHE_VERSION = '1.22.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;
@@ -179,6 +183,7 @@ const CORE_ASSETS = [
     '/src/js/34-day-designation.js', // v1.11.0 (app 6.4.0, presence)
     '/src/js/35-schedule-grid.js', // v1.19.0 (app 6.13.0, prefill grid)
     '/src/js/36-untagged-nudge.js', // v1.21.0 (app 6.15.0, untagged nudge)
+    '/src/js/37-overlap-warning.js', // v1.22.0 (app 6.16.0, overlap detector)
   '/src/js/99-init-and-listeners.js',
   '/src/js/main.js',
   '/src/js/state.js',

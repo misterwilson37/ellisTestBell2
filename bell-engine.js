@@ -1,6 +1,11 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.10.0
+ * Version: 1.11.0
+ *
+ * v1.11.0 (2026-07, app 6.16.0): + detectPeriodOverlaps (read-only period
+ *   overrun detector for the schedule editor). Also FIXED the VERSION
+ *   constant, which had silently stuck at 1.8.0 since the 1.9.0/1.10.0
+ *   header bumps never updated it (nothing in the battery checks it).
  *
  * v1.10.0 (2026-07, app 6.14.0): + resolveScopedDesignation (the scoped
  *   per-date designation split out of resolveCalendarSchedule, so callers
@@ -763,8 +768,59 @@
         return out2;
     }
 
+    /**
+     * v1.11.0 (app 6.16.0): find periods that OVERRUN the next one — a period
+     * whose last bell falls after the following period's first bell. Only
+     * periods with a real extent (>= 2 distinct resolved times) count;
+     * single-bell markers and relative-only stubs are skipped, and back-to-back
+     * boundaries (end == next start) are NOT flagged, so normal passing-period
+     * gaps never trip it. Pure; sorts a COPY by start; input untouched. Returns
+     * [] when clean, else { name, endsAt, nextName, startsAt, overlapSeconds }
+     * per overrun, in schedule order. Detection only — the caller decides what
+     * to do (6.16.0 just warns; a resolver is a later slice).
+     */
+    function detectPeriodOverlaps(periods) {
+        if (!Array.isArray(periods)) return [];
+        const spans = [];
+        for (let i = 0; i < periods.length; i++) {
+            const p = periods[i];
+            if (!p || p.isEnabled === false || !Array.isArray(p.bells)) continue;
+            let min = null;
+            let max = null;
+            for (let j = 0; j < p.bells.length; j++) {
+                const t = p.bells[j] && p.bells[j].time;
+                if (typeof t !== 'string' || !t) continue;
+                const s = timeToSeconds(t);
+                if (s === null || s === undefined) continue;
+                if (min === null || s < min) min = s;
+                if (max === null || s > max) max = s;
+            }
+            if (min === null || max === null || min === max) continue; // no real extent
+            spans.push({ name: p.name, start: min, end: max });
+        }
+        spans.sort((a, b) => a.start - b.start);
+        const out = [];
+        for (let i = 0; i < spans.length - 1; i++) {
+            const cur = spans[i];
+            const next = spans[i + 1];
+            if (cur.end > next.start) {
+                out.push({
+                    name: cur.name,
+                    endsAt: secondsToTime(cur.end),
+                    nextName: next.name,
+                    startsAt: secondsToTime(next.start),
+                    overlapSeconds: cur.end - next.start,
+                });
+            }
+        }
+        return out;
+    }
+
     const BellEngine = {
-        VERSION: '1.8.0', // v1.3.1: exported so the status modal can report it
+        VERSION: '1.11.0', // v1.3.1: exported so the status modal can report it
+                           // (v6.16.0 fix: this constant had drifted — the
+                           // 1.9.0/1.10.0 bumps missed it; nothing in the
+                           // battery verifies it. Now correct.)
         escapeHtml,
         getBellId,
         formatTime12Hour,
@@ -777,6 +833,7 @@
         toLocalDateString,
         resolveCalendarSchedule,
         resolveScopedDesignation,
+        detectPeriodOverlaps,
         shiftTimeString,
         getActiveScheduleShiftSeconds,
         estimateClockDriftMs,
