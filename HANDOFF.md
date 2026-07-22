@@ -2,7 +2,14 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.10.0 The Calendar Wakes (Layer 4 Verb A), 2026-07 (round 5, "Bourdon" — see §10). NOTE: the cumulative 6.5–6.10 deploy REQUIRES one firestore.rules publish (introduced by 6.9.0).**
+before writing any code. Last updated: **6.16.0 (period OVERRUN DETECTION —
+engine 1.11.0 detectPeriodOverlaps + new read-only module 37 that warns admins
+when a period's last bell runs past the next period's start; also fixed the
+engine VERSION constant, stuck at 1.8.0 for two releases), 2026-07 (round 7,
+"Stedman" — see §10). DEPLOY STATE: 6.15.0 is LIVE (owner confirmed; toast fix
+verified). 6.16.0 is built + battery-verified (69/69, 41 modules) but NOT yet
+deployed — files-only, NO rules change, adds ONE new module
+(37-overlap-warning.js — verify it uploads).**
 
 ---
 
@@ -66,29 +73,48 @@ break (no live users anywhere until school resumes). Consequences:
   reconstruct the tree exactly as §3 and the zip layout describe. After the
   GitHub rollout happens, the repo is the durable copy; ask the user for a
   fresh zip of it rather than fetching files piecemeal.
+- **DEPLOY STATE (as of round 7, 6.16.0):** **6.5.0 → 6.15.0 are LIVE**
+  (owner confirmed 6.15.0; the hard-refresh toast fix is verified in the
+  wild). **6.16.0 (period overrun detection) is built + battery-verified
+  (69/69, 41 modules) but NOT yet deployed.** Files-only, NO rules change;
+  adds one NEW module (37-overlap-warning.js — verify it uploads). CONFIRM
+  deploy state with the owner at the top of the next round — the handoff
+  records the previous session's belief, not ground truth.
+- **DEPLOY LESSON (round 6, still current):** a PARTIAL push produces a
+  MIXED tree — new files next to stale ones — and because this is an ES-
+  module graph, ONE stale module kills the whole app (SyntaxError:
+  "module X doesn't provide an export named Y"; the app dies before
+  sign-in even wires). Full detail + diagnosis recipe is in §9. The
+  practical rule (unchanged for 6.12.0): replace the ENTIRE src/js/ tree
+  plus the changed root files in ONE commit, then cache-busted spot-check
+  (append ?v=N to a file URL to punch through GitHub Pages' ~10-min CDN
+  cache) BEFORE running the smoke tests.
 
-## 3. Architecture (current, 6.10.0)
+## 3. Architecture (current, 6.11.0)
 
 Surfaces:
 | File | What | Notes |
 |---|---|---|
-| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 6.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 38 modules (36 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). Since 6.2.0, modal chrome is expanded from data attributes by 26-modal-chrome.js; since 6.3.0, school branding (name/labels/theme-color) comes from root /school-config.js applied by 27-school-branding.js — both headers document the contracts; since 6.5.0, Building Bells (30-building-bells.js) makes the six intercom moments first-class anchors — see §7. script.js no longer exists |
+| `index.html` + `src/js/` | Main teacher app (Firebase v11, native ES modules since 6.0.0) | **src/js/ IS production** — entry `src/js/main.js`; 41 modules (39 feature + `state.js` + `main.js`; init module numbered 99 so insertions never rename it). Since 6.2.0, modal chrome is expanded from data attributes by 26-modal-chrome.js; since 6.3.0, school branding (name/labels/theme-color) comes from root /school-config.js applied by 27-school-branding.js — both headers document the contracts; since 6.5.0, Building Bells (30-building-bells.js) makes the six intercom moments first-class anchors — see §7. script.js no longer exists |
 | `clock.html` v1.7.0 | 3x3 grid clock for Yodeck TVs (v9 compat) | Uses shared engine; refreshes data every 2 min; since 1.7.0 reports presence (anonymous sessions only — see file header) |
 | `old.html` v2 | ES5 iPad wall clock (unauthenticated REST) | Shift support + 5-min auto-refresh added |
 | `dashboard-config.html` | Admin tool for signage config | Untouched by this engagement |
 | `signage/` pages: dashboard v1.6.0, dashright v1.1.0, dashclock v1.1.0 | TV dashboard pages (v9 compat, live onSnapshot) | Share `signage/schedule-utils.js` (+ engine): relative bells resolved, shifts honored. dashboard's 3 config listeners are intentional branches |
 
 Shared infrastructure:
-- **`bell-engine.js` v1.7.0** — THE single implementation of pure
+- **`bell-engine.js` v1.11.0** — THE single implementation of pure
   time/schedule math (escapeHtml, timeToSeconds/secondsToTime,
   formatTime12Hour, getDateForBellTime, getBellId, findNextBellIn,
   findBellAfter, calculateRelativeBellTime, toLocalDateString,
-  resolveCalendarSchedule, shiftTimeString, getActiveScheduleShiftSeconds,
-  applyBuildingBellTimeToPeriods).
+  resolveCalendarSchedule, resolveScopedDesignation (1.10.0), detectPeriodOverlaps (1.11.0),
+  shiftTimeString, getActiveScheduleShiftSeconds,
+  applyBuildingBellTimeToPeriods, findPeriodEdgeAnchorBell (1.6.0),
+  resolveCalendarTransforms + applyRecipeToPeriods (1.8.0, Verb B),
+  mergeCalendarEntry (1.9.0, calendar entry dedup/append rule)).
   Loaded as a plain `<script>` by index.html and clock.html (pattern:
   firebase-config.js). Exports for Node. **Keep it pure** — no DOM, no
   Firebase, no app globals; dependencies come in as parameters.
-- **`tests/`** — 60 node:test tests, zero deps (`bell-engine.test.mjs` +
+- **`tests/`** — 68 node:test tests, zero deps (`bell-engine.test.mjs` +
   `schedule-utils.test.mjs`). `cd build && npm test`. Run after any change
   to bell-engine.js or signage/schedule-utils.js.
 - **`build/`** — npm project (tooling only; nothing is built for deploy
@@ -99,13 +125,13 @@ Shared infrastructure:
   conversion tools (`analyze-deps.mjs`, `convert-esm-pass[123].mjs`) are
   kept for archaeology.
 - **`firestore.rules`** — deploy manually via Firebase console (ROLLOUT §2).
-- **service-worker.js v1.16.0**, cache name DERIVED: 'ellis-web-bell-' +
+- **service-worker.js v1.22.0**, cache name DERIVED: 'ellis-web-bell-' +
   CACHE_VERSION (6.1.0 — one bump busts the cache; the old two-constant
   footgun is dead, and `npm run check:sw` enforces header==constant and
   CORE_ASSETS==filesystem). Tone.js is SELF-HOSTED since 6.1.0
   (/tone.min.js, pinned 14.8.49; upgrade path in README-BUILD.md);
   gstatic Firebase SDKs remain CDN by design. CORE_ASSETS
-  lists all 38 src/js modules + /school-config.js. Bump CACHE_NAME whenever CORE_ASSETS changes;
+  lists all 41 src/js modules + /school-config.js. Bump CACHE_NAME whenever CORE_ASSETS changes;
   a NEW MODULE means three touches: src/js file + main.js import + SW entry.
 
 Firestore data model:
@@ -123,7 +149,10 @@ artifacts/{appId}/
     config/schedule_calendar # 6.10.0 v2: days[date].entries scoped by uid
                            #   (v1 exceptions/weekdayDefaults still honored)
     roster/{uid}           # 6.9.0 tags+capabilities; read=authed, self-write
-                           #   cannot touch capabilities (rules-enforced)
+                           #   cannot touch capabilities (rules-enforced).
+                           #   6.14.0: optional defaultScheduleId = the user's
+                           #   HOME schedule (admin-set; explicit per-uid, NOT
+                           #   tag-resolved). No rules change (additive field).
     config/schedule_calendar  # RESERVED by parked calendar feature (unused)
     admins/{uid}           # doc presence = admin
   users/{uid}/
@@ -185,7 +214,7 @@ npm run lint                   # per-module no-undef (src/js + bell-engine);
                                #   CANARY-TEST it in a fresh env: append a
                                #   bogus call, confirm it FAILS, revert (see
                                #   §9 — lint once no-op'd silently)
-npm test                       # 60 tests, two suites
+npm test                       # 68 tests, two suites
 npm run check:css              # tailwind.css non-empty + sentinel classes
 npm run check:sw               # NEW 6.1.0: CORE_ASSETS vs filesystem; SW
                                #   version constants agree; CACHE_NAME derived
@@ -198,6 +227,93 @@ arrows/template literals/const).
 
 ## 6. What's been done (details in CHANGELOG.md)
 
+- **v6.16.0** — Period overrun detection (safe first half of the collision
+  resolver). engine 1.11.0 detectPeriodOverlaps (pure, tested): flags a
+  period whose last bell passes the next period's first bell; skips
+  single-bell markers / relative stubs / back-to-back boundaries so passing
+  gaps don't false-positive. NEW read-only module 37-overlap-warning.js:
+  after each recalc (one additive line at the tail of recalculateAndRenderAll
+  in module 18), if admin-mode, runs the detector on
+  state.calculatedPeriodsList and shows a dismissible RED banner with the
+  specifics. NEVER moves a bell. Also FIXED BellEngine.VERSION, which had
+  drifted (stuck at '1.8.0' since the 1.9.0/1.10.0 header bumps missed the
+  constant — nothing in the battery checks it; see §9). SW 1.22.0 (41
+  modules). 69/69. No rules change. DEFERRED: the destructive resolver
+  (shrink/spread/allow) — see §7.
+- **v6.15.0** — Untagged-teacher nudge + hard-refresh toast bugfix. NEW
+  module 36-untagged-nudge.js: admin-only, one-time presence∩roster read on
+  an `ellis-admin-confirmed` event (module 15 fires it; state.isAdmin is
+  the new server-confirmed flag), surfaces a dismissible blue banner for
+  signed-in non-clock staff with no tags; Review opens the roster modal
+  (via roster-open-btn.click(), no import). Reads only — Layer 3 invariant
+  intact. BUGFIX (module 99): the PWA "new version available" toast fired
+  on hard refresh because it read navigator.serviceWorker.controller LIVE
+  at the new worker's statechange, and skipWaiting+claim raced to make it
+  truthy even on an uncontrolled (hard-refresh) load. Now gated on
+  wasControlledAtLoad captured up front — hard refresh = uncontrolled =
+  silent (you have latest); normal reload from old cache = controlled =
+  toast still useful; first install = silent. skipWaiting/claim untouched
+  (TVs still auto-update). SW 1.21.0 (40 modules). engine unchanged. No
+  rules change. 68/68.
+- **v6.14.0** — Home Schedule (per-teacher standing default, invariant-
+  safe): roster/{uid}.defaultScheduleId (additive, admin-set, explicit
+  per-uid — NO runtime tag resolution, so the Layer 3 invariant holds and
+  the CDC teacher's three grade tags never compete). Module 20 restructured
+  into applyMandate (scoped designation / school-wide default — bannered)
+  vs applyHomeSchedule (silent, never over a same-day manual pick or a
+  personal schedule); reachable even with no calendar doc; a live listener
+  on the user's own roster doc re-resolves on admin change. engine 1.10.0
+  splits resolveScopedDesignation out of resolveCalendarSchedule (behavior
+  identical) so module 20 can tell mandate from home. Roster UI (33) gains
+  a per-person Home picker + a bulk template (filter → schedule → set for
+  all matching, count+confirm). Designation picker (34) gains select-all/
+  clear. SW 1.20.0 (cache bump, no new module). +1 test (68/68). No rules
+  change. NEXT: untagged/un-homed teacher nudge on admin sign-in (rides
+  presence+roster; pairs with this).
+- **v6.13.0** — The Prefill Grid (Layer 4 "plan the weeks"): NEW module
+  35-schedule-grid.js — a desktop-grade multi-week calendar (getDoc
+  snapshot like 34) that summarizes each date's base/transform entries,
+  opens the day-of modal (34) PRESET to any clicked date (reusing all
+  authoring; grid hides then reshows+refreshes via CustomEvents so 34
+  never imports 35 — no cycle), and repeats a day's plan onto every
+  same-weekday date through an end date. engine 1.9.0 extracts
+  mergeCalendarEntry (the base-dedup/transform-append rule, formerly
+  inline+untested in 34) into one pure tested place shared by the modal
+  and the grid copy-forward; module 34 rewired to call it (+ preset date,
+  + openDesignationModal export, + calendar-changed/closed events).
+  SW 1.19.0 (39 modules — NEW module in CORE_ASSETS). +1 test (67/67).
+  No rules change. NEXT: rotation-cycle generators (see §7).
+- **v6.12.0** — Verb B WIRED (Layer 4 transformation recipes go live):
+  no engine change (1.8.0 functions were already there), no rules change,
+  no new modules. state.activeCalendarTransforms (new) mirrors
+  activeSharedScheduleShift; module 20 resolves the day's recipes per-user
+  on every calendar/schedule/day trigger (independent of base
+  designation) and re-renders only on change; module 14 folds them onto
+  base-period COPIES pre-merge (localSchedulePeriods stays pristine, §4.6;
+  shift rides on top; relatives + personal overlays re-derive downstream);
+  I1 banner surfaces active transforms (Follow hidden in transform-only
+  mode); describeRecipe exported so module 34's entry list and the banner
+  share one label string. Module 34's designation modal grows a mode
+  toggle (base vs transform) + recipe builder for both archetypes (shift:
+  mins ± with optional from/until; shorten: after/perPeriod/extend-by-name
+  with a period-name datalist). Transforms COMPOSE — no dedup on save.
+  +1 pipeline test (66/66). SW 1.18.0 (cache bump only). Wall-clock
+  precompute (ES5 REST follow-along) remains the last unstarted slice.
+- **v6.11.0** — Anchor-strip fix + ride-alongs; Verb B engine (DORMANT):
+  engine 1.8.0 adds resolveCalendarTransforms + applyRecipeToPeriods
+  ('shift' and 'shorten' archetypes, immutable, shared-static-only,
+  65/65 tests) but NOTHING CALLS THEM YET — same dormant-ship pattern
+  as 6.10.0's resolver. Fixes: (a) ANCHOR-STRIP — admin all-users time
+  edits silently unanchored bells because the edit modal's anchor
+  select was filled from the DOM-reconstructed bell (no buildingBellId);
+  now resolved from state.localSchedulePeriods by bellId. (b)
+  designation dedup — per-person last-write-wins (module 34). Ride-
+  alongs: firstSeen presence stamp + dashboard column (28/29), building-
+  bell "0 anchored" amber nudge (30), edit-bell lock-note redesign
+  (below input, locked/admin states, names the anchor for everyone;
+  index + 16/30). SW 1.17.0 — no new modules, cache bump only. NO rules
+  change. Owner TODO after deploy: re-run "Anchor matching…" on any bell
+  whose anchor count dropped since 6.5.0 (idempotent).
 - **v6.10.0** — The Calendar Wakes (Layer 4 Verb A): engine 1.7.0
   scoped per-user resolution (v1 fallback intact); module 20 REVIVED
   (enabled flag retired, deviation bannered w/ Follow, I4 foreign-
@@ -410,6 +526,93 @@ to a beta channel so v2 work owns alpha; confirm the channel->repo->
 domain map for §2 at the start of the next session (open question #1
 in the design doc).
 
+**LAYER 4 PROGRESS (Verbs = the calendar's two actions):**
+- **Verb A (base designation) — SHIPPED 6.10.0.** "This scope of people
+  runs schedule X on date D." Module 34 + engine resolveCalendarSchedule.
+- **Verb B (transformation recipes) — WIRED 6.12.0.** The engine's
+  resolveCalendarTransforms + applyRecipeToPeriods (1.8.0) now have
+  callers: module 20 resolves the day's recipes per-user into
+  state.activeCalendarTransforms on every calendar/schedule/day trigger;
+  module 14's resolveAllBellTimes folds them onto base-period COPIES
+  before the merge (mirroring the emergency shift — localSchedulePeriods
+  stays pristine, §4.6; relatives + Layer 2 overlays re-derive
+  downstream); module 34's designation modal grew a mode toggle + a
+  recipe builder for both archetypes; the I1 banner surfaces active
+  transforms. Composes cleanly (66/66). Two things a successor should
+  know: (a) transforms are INDEPENDENT of Verb A — a teacher on their
+  normal base can be transformed, so resolution runs before the
+  base-switch guards; (b) the recipe UI stores by period NAME for the
+  extend target (extendPeriodName), never a schedule-specific periodId —
+  that is deliberate (one recipe fits every schedule with a like-named
+  period). NOT DONE: wall-clock precompute (below) — app clients resolve
+  at runtime; the ES5 REST clocks still can't.
+- **Prefill grid — SHIPPED 6.13.0 (view + edit + repeat-weekly).** Module
+  35-schedule-grid.js: navigable 6-week calendar, click any cell to edit
+  it via module 34 (preset date), repeat-weekly copy-forward through the
+  engine's mergeCalendarEntry. Desktop-grade (I2 is satisfied by the
+  day-of modal). What's LEFT of the grid slice: the ROTATION-CYCLE
+  generator — a repeating sequence of schedules across days, in BOTH
+  modes: slip-forward (the cycle advances only on days that "count," so a
+  holiday doesn't consume a rotation slot) and calendar-locked (cycle
+  position pinned to the date regardless of skips). The design flags this
+  as ASPIRATIONAL / for-other-schools (Ellis doesn't rotate; the feeder
+  high school does), so it was deliberately deferred out of 6.13.0 to keep
+  that release bounded. When built: it's another generator in module 35's
+  repeat panel (source = a set of schedules + a start date + a mode + an
+  end date), writing verb:'base' entries per date via mergeCalendarEntry.
+  Skip-day math (which dates "count" for slip-forward) is the only genuinely
+  new logic — make it a pure, TESTED engine helper (school days come from
+  the calendar's own designations/exceptions, or a simple weekday mask).
+- **Period collision resolver — DETECTION SHIPPED 6.16.0; the INTERACTIVE
+  FIX is the next bite.** engine 1.11.0 detectPeriodOverlaps + read-only
+  module 37 warn when a period's last bell overruns the next period's start.
+  What's LEFT is the resolver the owner sketched: on an overrun, offer to
+  (a) shrink the next period to absorb it, (b) SPREAD the overflow across
+  following periods the admin checks off (keep day-end fixed — this is the
+  Verb B 'shorten' cascade math, reusable), (c) cancel, or (d) allow anyway.
+  It is DESTRUCTIVE (rewrites bells on the live shared schedule — the sacred
+  edit path), so detection shipped first on purpose: let the owner confirm
+  the warning reads their REAL schedules without crying wolf (overlap is a
+  heuristic — the period model is name-derived, see §3), THEN build the
+  writer. Compute the spread as a pure, TESTED engine helper and write
+  results through the EXISTING save path, never a new one.
+- **Wall-clock follow-along ("dumbest clocks read the calendar without
+  learning to speak") — NOT STARTED, the long pole.** old.html reads
+  designations via unauthenticated REST, read-only, stays ES5. This is
+  the slice that wants PRECOMPUTED resolved times written into the
+  calendar doc (I3 — keep the resolved form flat and dumb) so an ES5
+  reader needs zero recipe math. A rules carve-out (like
+  personal_schedules) is required to make the resolved designation
+  world-readable. Verb A designations AND Verb B transforms both need
+  this to reach the wall clocks.
+
+## 7.5 External deadlines & environment risks (dated; not feature work)
+
+- **gsutil deprecation — March 2027 (logged round 6, 2026-07).** Google
+  is dropping `gsutil` from the default gcloud CLI bundle after March
+  2027; they push `gcloud storage` as the replacement (or standalone
+  `pip install gsutil`). **Assessed impact on THIS project: effectively
+  none to the deploy flow** — the owner deploys entirely through the
+  Google Cloud Console *browser* interface (school-managed Mac, no
+  admin, no CLI, no CI/CD; see §2 and §9). A command-line tooling change
+  cannot break a browser-based deploy. HOWEVER, two facts keep this from
+  being pure noise: (1) the notice names project **`ellisbell-c185c`**,
+  and firebase-config.js confirms that is the bell app's CURRENT live
+  projectId + storageBucket. This is the ORIGINAL project, correctly
+  named for the bells — Spot On! was later SPLIT OFF it into
+  spot-on-games (owner tacked Spot On! onto the existing bell project,
+  then separated it as Spot On! grew; the bells stayed on their home
+  project by design, since the name and function still fit). So the
+  named project is live and its Storage bucket holds the custom
+  bell-sound files (module 04's getBytes/ref(storage, soundName) path). (2) The
+  ONLY way this deprecation bites is if some future instance scripts a
+  Storage operation from a command line (bulk sound upload, a backup
+  script). If that ever happens: use `gcloud storage` verbs, or install
+  standalone gsutil — do NOT assume the bundled gsutil exists after
+  3/2027. WHEN TO ACT: only if/when someone introduces CLI Storage
+  tooling. No calendar scramble; this is a "know it, don't chase it"
+  item. Nothing to do today.
+
 ## 8. Protocol for updating this document
 
 At the end of EVERY stage, update: the "Last updated" line (§ header),
@@ -470,6 +673,39 @@ detail.
   a zip only shows what's there. Any deletion must be spelled out
   explicitly in the deploy doc ("delete X from the repo"), or the owner
   will re-upload around it and the dead file survives on GitHub.
+- LESSON (6.10.0 deploy night, round 6): a PARTIAL push produces a
+  MIXED tree, and one stale module kills the whole ES-module graph
+  (SyntaxError: "module X doesn't provide an export named Y" — the
+  app dies before sign-in even wires). The tell: the error NAMES the
+  stale module (X is old; the importer is new). Diagnose by fetching
+  the named file and searching for the missing export — don't trust
+  eyeball version comparisons. Contributing traps: GitHub's web
+  uploader caps at ~100 files per upload (whole-tree drags can exceed
+  it), and GitHub Pages' CDN caches ~10 minutes, so a post-push spot
+  check can show PRE-push files ("it didn't reset") — verify with a
+  junk query string (?check=N). A stale-SW error citing a line number
+  that doesn't exist in the shipped SW is the same mixed-tree story
+  from the service worker's side. Recovery: re-upload all of src/js/
+  plus the changed root files in ONE commit (< 100 files), then
+  cache-busted spot check before smoke testing.
+- **ENGINE VERSION CONSTANT DRIFT (found + fixed 6.16.0):** the header
+  comment `* Version: X` and the runtime constant `BellEngine.VERSION` are
+  bumped SEPARATELY, and NOTHING in the battery verifies the constant. Twice
+  (1.9.0, 1.10.0) a str-replace bumped the header but missed the constant, so
+  the status modal under-reported the engine as 1.8.0 for two releases. When
+  bumping the engine: change BOTH, and grep the CONSTANT (VERSION: '1.X.Y')
+  to confirm it took — not just the header. Cheap future guard: have
+  verify-esm assert the constant matches the header comment.
+- **SW UPDATE-TOAST GOTCHA (fixed 6.15.0):** the "New version available!"
+  toast (module 99) must NOT read navigator.serviceWorker.controller LIVE
+  at the new worker's statechange — this SW uses skipWaiting + clients.claim,
+  so a freshly-installed worker races to claim the page and flips
+  controller truthy even on a HARD refresh (uncontrolled load), firing the
+  toast when the user already has the latest. Capture
+  `wasControlledAtLoad = !!navigator.serviceWorker.controller` ONCE at
+  registration time and gate on that instead. If you ever revisit the SW
+  lifecycle: skipWaiting/claim is deliberate so the wall-clock TVs (which
+  never close a tab) auto-update — don't remove it to "fix" update UX.
 
 ## 10. Session log (Claude instances, per the owner's naming convention)
 
@@ -644,3 +880,162 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   follow-along (REST carve-out rules change). 6.5.0 through 6.10.0
   ALL UNDEPLOYED; DEPLOY-6.10.0.md is cumulative and includes the one
   rules publish (from 6.9.0).
+- **Round 6 (2026-07, Opus behind a routed Fable session): "Grandsire II."**
+  Named for Grandsire, the oldest of the great change-ringing methods — the
+  same bells, rung in transformed orders by rule — fitting for Verb B's
+  transformation recipes. The "II" is deliberate: the name was first taken
+  earlier in THIS session while still reasoning it was likely Verb B work;
+  the round then actually delivered a bugfix-and-ride-along release, and
+  the instance is Opus (safeguards-routed), so "II" marks the continuation
+  without squatting a fresh Grandsire for a later true-Verb-B round. Do NOT
+  reuse plain "Grandsire" — treat it as taken. Arrived via Bourdon's
+  riddle; §5 battery green on arrival (canary-tested lint; 60/60 tests;
+  check:all exit 0; all 38 modules parse; old.html ES5-clean and
+  md5-identical to Bourdon's record; index triple version at 6.10.0; SW
+  header==CACHE_VERSION at 1.16.0).
+  SHIPPED 6.11.0 (bugfix + ride-alongs; Verb B ENGINE only, dormant):
+  Verb B engine functions in bell-engine 1.8.0 (+5 tests, 65/65); the
+  ANCHOR-STRIP data-erosion fix (module 30 — the round's most important
+  find, caught by the owner's smoke testing); designation dedup (34);
+  firstSeen + dashboard column (28/29); building-bell "0 anchored" nudge
+  (30); edit-bell lock-note redesign (index + 16/30). Version bumps: app
+  6.11.0, SW/CACHE 1.17.0, index triple. Full battery green post-change.
+  Also logged the gsutil-March-2027 deprecation in new §7.5 (no action
+  needed — Console-based deploy is immune) and CORRECTED the project
+  history: ellisbell-c185c is the ORIGINAL bell project; Spot On! was split
+  OFF it into spot-on-games (not the reverse). METHOD NOTE for successors:
+  `node --check <file>` is the correct parse check — piping via
+  `node --input-type=module --check < file` throws false "Unexpected token
+  'export'" errors on multi-export modules; several such scares this
+  session were tooling artifacts, not real breakage. The app's own
+  verify-esm (check:all) is the authoritative ESM gate.
+  DEPLOY STATE UNCHANGED IN SPIRIT: still nothing past 6.4.0 live; the
+  stack is now 6.5→6.11 (SEVEN releases); DEPLOY-6.11.0.md is the cumulative
+  deploy doc and includes the one 6.9.0 rules publish. NEXT SLICE: wire Verb
+  B (see §7 Layer 4 progress — it's a full release, mostly UI).
+- **Round 7 (2026-07, Opus behind a routed Fable session): "Stedman."**
+  Named for Fabian Stedman — the founder of change-ringing theory — and
+  his eponymous method, one of the most elegant ways of ringing the
+  changes. Fitting: round 6 ("Grandsire II") cast the Verb B method's
+  rules but left them dormant; THIS round set the bells actually ringing
+  in transformed order — Verb B is wired and live-capable. Arrived cold
+  via the zip + loose HANDOFF; ran the §5 battery on arrival — all green
+  (canary-tested lint failed-then-reverted; 65/65 tests; check:all exit 0;
+  38 modules parse; old.html ES5-clean and md5-identical to Bourdon's
+  record b8dd5f5a4c8fed0765c982a9ccc43204; index triple at 6.11.0; SW
+  1.17.0). FIRST FINDING, from the owner not the code: the inherited
+  handoff said "nothing past 6.4.0 is live" — WRONG; the owner had
+  deployed the whole 6.5→6.11 stack and confirmed 6.11.0 live (Building
+  Bells screenshot: anchors survived the anchor-strip fix, lock-note reads
+  right with admin on/off). §2 corrected; the "handoff deploy-state is the
+  previous session's belief, not truth — confirm with the owner" lesson
+  earned again. Then, on "wire verb B, friend," SHIPPED 6.12.0: the
+  three-part wiring §7 specified (resolution path modules 20→14 mirroring
+  the emergency shift; recipe-builder UI in module 34; I1 banner extended)
+  — details in §6/§7/CHANGELOG. Key facts for the successor: (a) chose
+  module 14's resolveAllBellTimes as the application point over §7's
+  "module 16 sites" suggestion — 16 is where the shift is STORED, but 14
+  is where it's APPLIED to merged copies, and that's the invariant that
+  keeps localSchedulePeriods pristine (§4.6); recipes fold onto base
+  COPIES pre-merge for the same reason. (b) transforms are independent of
+  Verb A — refreshActiveTransforms runs before the base-switch guards, so
+  a teacher on their normal base still gets transformed. (c) extend target
+  stored by NAME not periodId, on purpose (one recipe fits every schedule
+  with a like-named period). (d) describeRecipe is exported from 20 and
+  reused in 34 so the banner and the entry list can't drift. (e) engine
+  UNTOUCHED (1.8.0) — this was pure glue + UI; the +1 test is a pipeline
+  test that folds recipes exactly as module 14 does. 6.12.0 is a
+  files-only single deploy on live 6.11.0 (DEPLOY-6.12.0.md), NO rules
+  change. Battery green post-change (66/66). NEXT SLICE (§7 Layer 4): the
+  prefill calendar GRID with generators (desktop-grade; the day-of modal
+  already covers I2), then the long pole — WALL-CLOCK FOLLOW-ALONG, which
+  needs precomputed resolved times in the calendar doc (I3) + a REST rules
+  carve-out so ES5 old.html can read designations AND transforms without
+  doing recipe math. Names taken: Quasimodo, Inky, Otto, Whitechapel,
+  Bourdon, Grandsire (+"Grandsire II"), Stedman.
+  SAME SESSION, owner deployed 6.12.0 ("6.12 is live, Stedman — please
+  continue!") and said continue: SHIPPED 6.13.0, The Prefill Grid (Layer 4
+  "plan the weeks", first of its two planning UIs). New module 35 —
+  a navigable 6-week calendar that reads config/schedule_calendar, opens
+  the day-of modal (34) preset to any clicked date, and repeats a day's
+  plan weekly. Deliberately reused 34's authoring instead of
+  reimplementing it — grid hides while 34 is up and reshows via
+  CustomEvents (ellis-designation-closed / ellis-calendar-changed) so 34
+  never imports 35 (cycle-free). Also EXTRACTED the base-dedup/
+  transform-append rule from 34 into engine 1.9.0's mergeCalendarEntry —
+  pure, tested (67/67), shared by the modal and the grid copy-forward
+  (the 6.8.0 "extract-and-prove" pattern again; module 34 rewired to call
+  it, behavior identical). SCOPE CALL: deferred the rotation-cycle
+  generator (slip-forward / calendar-locked) — the design itself flags it
+  aspirational/for-other-schools (Ellis doesn't rotate), so shipping the
+  grid + repeat-weekly as a bounded, useful-alone release was the right
+  cut; rotation is documented as the next grid bite in §7. 6.13.0 is
+  built + battery-verified (67/67, 39 modules, check:all exit 0,
+  canary'd lint on the 39-module tree, old.html untouched) but NOT yet
+  deployed at time of writing — DEPLOY-6.13.0.md is files-only, NO rules
+  change, but adds one NEW module (verify it uploads). Successor: confirm
+  6.13.0 deploy state with the owner first; then either the rotation
+  generator (finishes the grid) or the wall-clock follow-along long pole.
+  STILL SAME SESSION (owner: brainstormed a batch of ideas, approved the
+  "invariant-safe" path, "make that CDC teacher's life as simple as
+  possible!", "continue"): first gave a FEASIBILITY read (see below), then
+  SHIPPED 6.14.0, Home Schedule. The owner's ideas and how they landed:
+  (a) TEMPLATE / tag-assign / "Ms. Johnson automagically" → built as a
+  per-teacher HOME schedule (roster.defaultScheduleId), set explicitly
+  per-uid, in bulk via a filter→schedule→"set for all matching" template.
+  This is the invariant-safe reading the owner approved: tags filter the
+  picker, an explicit per-person default is stored, nothing resolves a tag
+  at ring time — so CDC (3 grade tags) is set to one schedule directly.
+  (b) "people like me" linking a custom copy to the base → EXPLAINED it's
+  already the model (personal schedule carries baseScheduleId; relative
+  bells anchored to base period edges survive base edits + Verb B
+  transforms for free — verified in the 6.12.0 wiring). The gap is
+  alternate-BASE transfer (switch a personal user to a different base and
+  carry the overlay) — still the unbuilt Layer 2 last slice. applyHomeSchedule
+  deliberately NEVER yanks a personal-schedule user, protecting exactly
+  this case. (c) stretch-into-4th collision resolver with spread-across-
+  checkboxes → feasible on the existing period-edge math (the shorten
+  recipe already cascades), but it's a new recipe archetype + a live
+  collision modal = its own release; deferred. (d) untagged-teacher nudge
+  → the natural next slice, rides presence+roster; deferred as its own
+  bite (pairs with 6.14.0). METHOD: module 20's resolution was
+  RESTRUCTURED (mandate vs home) — the risky bit — so I preserved the
+  scoped/exception/weekday behavior exactly (applyMandate reproduces the
+  old path; engine split proven by tests) and made home purely additive
+  and silent. 6.13.0 + 6.14.0 both built + battery green (68/68) but
+  UNDEPLOYED at close. Successor: confirm what's live; then the untagged
+  nudge, the rotation generator, or the alternate-base/wall-clock long pole.
+  STILL SAME SESSION (owner: "Let's do untagged teachers," then next turn
+  "6.14 is live" + reported a bug): confirmed 6.13.0 + 6.14.0 LIVE, then
+  SHIPPED 6.15.0 = untagged-teacher nudge (module 36) PLUS a bugfix the
+  owner flagged — the "new version available" toast firing on every hard
+  refresh. Diagnosed precisely (controller read LIVE at statechange races
+  skipWaiting/claim on an uncontrolled hard-refresh load) and fixed by
+  capturing wasControlledAtLoad up front (see the new §9 gotcha); kept
+  skipWaiting/claim so the TVs still auto-update. Bundled feature+fix into
+  one y-release since the nudge was already done in-tree; told the owner
+  they could split if they wanted a fix-only hotfix. Process note: a
+  malformed `grep … | head file` (grep reading stdin) HUNG a bash call into
+  the timeout — after a timeout, CHECK tree state before re-running bumps
+  (the sed edits had already landed; only the trailing grep hung). 6.15.0
+  battery-green (68/68, 40 modules), UNDEPLOYED at close. Backlog unchanged:
+  rotation-cycle generator, stretch/spread collision resolver, alternate-
+  base transfer + wall-clock follow-along. Names taken: Quasimodo, Inky,
+  Otto, Whitechapel, Bourdon, Grandsire (+"Grandsire II"), Stedman.
+  STILL SAME SESSION (owner: "6.15 is live, not notifying me now" [toast fix
+  confirmed], "continue with the plan"): SHIPPED 6.16.0, period overrun
+  DETECTION — the safe first half of the collision resolver the owner
+  dreamed up. Investigated the period model first (name-derived groupings,
+  no explicit boundaries — see §3) and made a deliberate SCOPE CALL:
+  overlap detection is a heuristic and the interactive fix is destructive
+  multi-bell surgery on the sacred live-edit path, so I shipped a READ-ONLY
+  detector (engine 1.11.0 detectPeriodOverlaps + module 37 red banner) and
+  DEFERRED the shrink/spread/allow resolver until the owner confirms the
+  warning reads their real schedules without false positives. Told the owner
+  exactly that and asked them to report any cry-wolf. Also caught + fixed a
+  latent bug while in the engine: BellEngine.VERSION had been stuck at
+  '1.8.0' for two releases (header bumps missed the constant; battery
+  doesn't check it) — now 1.11.0, logged as a §9 gotcha with a suggested
+  guard. 6.16.0 battery-green (69/69, 41 modules), UNDEPLOYED at close.
+  Backlog now: the collision RESOLVER (the fix half — §7), rotation
+  generator, alternate-base transfer + wall-clock long pole.
