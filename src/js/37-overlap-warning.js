@@ -96,6 +96,10 @@ function renderPreview() {
         chosenStrategy(), checkedAbsorb(), protectGaps);
     const spreadOnly = document.getElementById('overlap-resolver-spread-fields');
     if (spreadOnly) spreadOnly.classList.toggle('hidden', chosenStrategy() !== 'spread');
+    // v6.18.1: "protect passing periods" applies to Shrink AND Spread (Push
+    // preserves every gap inherently, so it's irrelevant there).
+    const protectRow = document.getElementById('overlap-resolver-protect-row');
+    if (protectRow) protectRow.classList.toggle('hidden', chosenStrategy() === 'push');
 
     let html = '';
     if (plan.warning) html += '<p class="text-amber-700 text-sm mb-2">⚠ ' + escapeHtml(plan.warning) + '</p>';

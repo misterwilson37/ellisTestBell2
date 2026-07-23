@@ -195,6 +195,11 @@ function describeRecipe(r) {
         if (r.extendPeriodName) s += ' to extend ' + r.extendPeriodName;
         return s;
     }
+    if (r.type === 'reclaim') {
+        return r.periodName
+            ? ('remove ' + r.periodName + ' and give its time to the rest of the day')
+            : '';
+    }
     return '';
 }
 

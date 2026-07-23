@@ -1,7 +1,15 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.24.0
+ * Version: 1.26.0
  *
+ * v1.26.0 changelog (2026-07, app 6.18.1): no new modules — cache bump: the
+ *   resolver's "Shrink" now protects passing periods by default too (engine
+ *   1.15.0), and the "Protect in-between times" checkbox governs Shrink +
+ *   Spread. Edited 37 + index.html + bell-engine.
+ * v1.25.0 changelog (2026-07, app 6.18.0): no new modules — cache bump for
+ *   the "Reclaim a period" Verb B recipe (engine 1.14.0 reclaim archetype +
+ *   recipe-builder option in module 34 + describeRecipe in 20). One-day,
+ *   non-destructive, never a dropdown entry.
  * v1.24.0 changelog (2026-07, app 6.17.1): no new modules — cache bump for
  *   resolver tweaks: spread protects passing periods by default (engine 1.13.0
  *   protectGaps), "Push later" demoted to 3rd with a dismissal-change confirm.
@@ -136,7 +144,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.24.0';
+const CACHE_VERSION = '1.26.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;

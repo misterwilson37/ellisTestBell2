@@ -50,6 +50,9 @@ const shortenAfterInput = document.getElementById('designation-shorten-after');
 const shortenMinsInput = document.getElementById('designation-shorten-mins');
 const shortenExtendInput = document.getElementById('designation-shorten-extend');
 const periodNamesList = document.getElementById('designation-period-names');
+// v6.18.0: reclaim (remove-a-period) fields
+const reclaimFields = document.getElementById('designation-reclaim-fields');
+const reclaimPeriodInput = document.getElementById('designation-reclaim-period');
 
 let calDoc = null;   // working copy of the whole config doc
 let roster = [];     // [{uid, displayName, tags}]
@@ -97,6 +100,7 @@ function syncRecipeType() {
     const t = recipeTypeSelect ? recipeTypeSelect.value : 'shift';
     if (shiftFields) shiftFields.classList.toggle('hidden', t !== 'shift');
     if (shortenFields) shortenFields.classList.toggle('hidden', t !== 'shorten');
+    if (reclaimFields) reclaimFields.classList.toggle('hidden', t !== 'reclaim'); // v6.18.0
 }
 
 // Read the transform fields into a recipe object, or null (+status) if invalid.
@@ -126,6 +130,11 @@ function buildRecipe() {
         const extend = shortenExtendInput && shortenExtendInput.value.trim();
         if (extend) recipe.extendPeriodName = extend;
         return recipe;
+    }
+    if (t === 'reclaim') {
+        const periodName = reclaimPeriodInput && reclaimPeriodInput.value.trim();
+        if (!periodName) { setStatus('Type the name of the period to remove (e.g. FLEX).', true); return null; }
+        return { type: 'reclaim', periodName };
     }
     setStatus('Unknown recipe type.', true);
     return null;

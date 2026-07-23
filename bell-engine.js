@@ -1,6 +1,14 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.13.0
+ * Version: 1.15.0
+ *
+ * v1.15.0 (2026-07, app 6.18.1): planOverlapResolution 'shrink' now honors
+ *   protectGaps (default TRUE) — the next period keeps a passing period after
+ *   the overrun instead of butting right against it.
+ *
+ * v1.14.0 (2026-07, app 6.18.0): applyRecipeToPeriods gains the 'reclaim'
+ *   archetype — remove a period for the day and redistribute its time (incl.
+ *   the incoming passing period) across the survivors, dismissal pinned.
  *
  * v1.13.0 (2026-07, app 6.17.1): planOverlapResolution gains a protectGaps
  *   flag (default TRUE) — spread now takes the overlap out of the CHECKED
@@ -41,6 +49,8 @@
  *         missing bound = open) moves by offsetSeconds.
  *       { type:'shorten', after, perPeriodSeconds, extendPeriodId?,
  *         extendPeriodName? } — "shorten everything after lunch so flex
+ *       { type:'reclaim', periodName } — "remove FLEX today; give its time
+ *         (from the previous period's end through FLEX's end) back to the rest"
  *         runs long": periods whose ORIGINAL start edge (per
  *         findPeriodEdgeAnchorBell) is >= `after` and before the extend
  *         target each lose perPeriodSeconds (clamped so no period drops
@@ -737,8 +747,130 @@
             return { periods: changed ? out : periods, changed: changed };
         }
 
+        // ---- archetype 3: reclaim (remove) a period; give its time back ----
+        // v1.14.0 (app 6.18.0): drop `periodName` for the day and redistribute
+        // the time it occupied across the surviving periods, DISMISSAL PINNED.
+        // Freed span = [previous period's END -> reclaimed period's END] — this
+        // SACRIFICES the incoming passing period and PRESERVES the outgoing one,
+        // so the two periods that become adjacent still get a passing period.
+        // Freed = incoming gap + reclaimed duration; handed out as extra length
+        // to the survivors (all of them, evenly), which is why the day can come
+        // out net-longer per class while ending at the same time. Static bells
+        // only; relatives re-derive (and any anchored INTO the reclaimed period
+        // will orphan to their fallback — a known v1 edge, see HANDOFF §7).
+        if (recipe.type === 'reclaim') {
+            const targetName = recipe.periodName;
+            if (typeof targetName !== 'string' || !targetName) return { periods: periods, changed: 0 };
+
+            // Static extent per period (only movable bells anchor the timeline).
+            const spans = [];
+            for (let i = 0; i < periods.length; i++) {
+                const p = periods[i];
+                if (!p || p.isEnabled === false || !Array.isArray(p.bells)) continue;
+                let min = null;
+                let max = null;
+                for (let j = 0; j < p.bells.length; j++) {
+                    const b = p.bells[j];
+                    if (!recipeEligible(b)) continue;
+                    const s = timeToSeconds(b.time);
+                    if (s === null || s === undefined) continue;
+                    if (min === null || s < min) min = s;
+                    if (max === null || s > max) max = s;
+                }
+                if (min === null) continue;
+                spans.push({ name: p.name, start: min, end: max });
+            }
+            spans.sort(function (a, b) { return a.start - b.start; });
+            let ri = -1;
+            for (let i = 0; i < spans.length; i++) { if (spans[i].name === targetName) { ri = i; break; } }
+            if (ri < 0) return { periods: periods, changed: 0 }; // target not present/movable
+
+            const R = spans[ri];
+            const prev = ri > 0 ? spans[ri - 1] : null;
+            const leftBound = prev ? prev.end : R.start;
+            const freed = R.end - leftBound;
+            if (freed <= 0) return { periods: periods, changed: 0 };
+
+            const survivors = spans.filter(function (s) { return s.name !== targetName; });
+            // Absorbers grow evenly (last gets remainder). Every survivor with a
+            // real extent can grow (move its end bell out).
+            const absorbers = survivors.filter(function (s) { return s.end > s.start; });
+            if (!absorbers.length) return { periods: periods, changed: 0 };
+            const shareOf = {};
+            const baseShare = Math.floor(freed / absorbers.length);
+            let acc = 0;
+            absorbers.forEach(function (s, i) {
+                shareOf[s.name] = (i === absorbers.length - 1) ? (freed - acc) : baseShare;
+                acc += shareOf[s.name];
+            });
+
+            // Rebuild the survivor timeline: preserve each survivor's original
+            // gap-before (the period that ORIGINALLY preceded it — so the period
+            // that followed R keeps R's OUTGOING gap), grow absorbers by share.
+            const newStart = {};
+            const newEnd = {};
+            let prevSpan = null;
+            for (let i = 0; i < survivors.length; i++) {
+                const s = survivors[i];
+                // original predecessor of s in the full sorted list:
+                const fullIdx = spans.indexOf(s);
+                const origPred = fullIdx > 0 ? spans[fullIdx - 1] : null;
+                if (!prevSpan) {
+                    newStart[s.name] = s.start; // first survivor anchors where it always did
+                } else {
+                    const gapBefore = origPred ? (s.start - origPred.end) : 0;
+                    newStart[s.name] = newEnd[prevSpan.name] + gapBefore;
+                }
+                const grow = shareOf[s.name] || 0;
+                newEnd[s.name] = newStart[s.name] + (s.end - s.start) + grow;
+                prevSpan = s;
+            }
+
+            // Map to bell moves + drop the reclaimed period's bells.
+            let changed = 0;
+            const out = [];
+            for (let i = 0; i < periods.length; i++) {
+                const p = periods[i];
+                if (!p || !Array.isArray(p.bells)) { out.push(p); continue; }
+                if (p.name === targetName) {
+                    // Remove the reclaimed period entirely (it's gone for the
+                    // day). Its own relatives go with it; relatives in OTHER
+                    // periods that anchored into it will orphan-fallback during
+                    // resolution (documented v1 behavior — HANDOFF §7).
+                    changed += p.bells.length;
+                    continue; // drop the period
+                }
+                if (!(p.name in newStart)) { out.push(p); continue; }
+                const startDelta = newStart[p.name] - spanStart(spans, p.name);
+                const grow = shareOf[p.name] || 0;
+                const endSec = spanEnd(spans, p.name);
+                let touched = false;
+                const newBells = p.bells.map(function (bell) {
+                    if (!recipeEligible(bell)) return bell;
+                    const t = timeToSeconds(bell.time);
+                    const d = (grow && t === endSec) ? (startDelta + grow) : startDelta;
+                    if (d === 0) return bell;
+                    touched = true;
+                    changed++;
+                    return Object.assign({}, bell, { time: secondsToTime(t + d) });
+                });
+                out.push(touched ? Object.assign({}, p, { bells: newBells }) : p);
+            }
+            return { periods: changed ? out : periods, changed: changed };
+        }
+
         // Unknown recipe type: fail closed, change nothing.
         return { periods: periods, changed: 0 };
+    }
+
+    // small helpers for the reclaim archetype (span lookups by name)
+    function spanStart(spans, name) {
+        for (let i = 0; i < spans.length; i++) if (spans[i].name === name) return spans[i].start;
+        return 0;
+    }
+    function spanEnd(spans, name) {
+        for (let i = 0; i < spans.length; i++) if (spans[i].name === name) return spans[i].end;
+        return 0;
     }
 
     /**
@@ -881,12 +1013,38 @@
         };
 
         if (strategy === 'shrink') {
+            // v6.18.1: protect the passing period by default — the next period
+            // starts a passing-period AFTER the overrun's end, not right on it
+            // (kids still need to get to the room). The gap reused is the next
+            // period's own OUTGOING gap (passing periods are ~uniform), else the
+            // smallest positive gap in the schedule. Unset protectGaps to butt
+            // them together. Only the next period's start moves, so dismissal is
+            // unchanged either way.
+            const protect = protectGaps !== false;
+            let target = P.end;
+            let warning = null;
+            if (protect) {
+                let g = 0;
+                if (pIdx + 2 < spans.length && (spans[pIdx + 2].start - Q.end) > 0) {
+                    g = spans[pIdx + 2].start - Q.end;
+                }
+                if (g === 0) {
+                    let minGap = null;
+                    for (let i = 0; i < spans.length - 1; i++) {
+                        const gap = spans[i + 1].start - spans[i].end;
+                        if (gap > 0 && (minGap === null || gap < minGap)) minGap = gap;
+                    }
+                    if (minGap !== null) g = minGap;
+                }
+                target = P.end + g;
+                if (target >= Q.end) warning = Q.name + ' would have almost no time left — consider Spread or Push instead.';
+            }
             let moved = false;
             for (let k = 0; k < Q.statics.length; k++) {
-                if (Q.statics[k].sec === Q.start) { addMove(Q.statics[k], P.end); moved = true; }
+                if (Q.statics[k].sec === Q.start) { addMove(Q.statics[k], target); moved = true; }
             }
             return { moves: moves, dayEndDeltaSeconds: 0,
-                warning: moved ? null : 'The next period has no movable (static) start bell to shrink.' };
+                warning: moved ? warning : 'The next period has no movable (static) start bell to shrink.' };
         }
         if (strategy === 'push') {
             for (let i = pIdx + 1; i < spans.length; i++) {
@@ -973,7 +1131,7 @@
     }
 
     const BellEngine = {
-        VERSION: '1.13.0', // v1.3.1: exported so the status modal can report it
+        VERSION: '1.15.0', // v1.3.1: exported so the status modal can report it
                            // (v6.16.0 fix: this constant had drifted — the
                            // 1.9.0/1.10.0 bumps missed it; nothing in the
                            // battery verifies it. Now correct.)
