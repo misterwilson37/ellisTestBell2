@@ -1,6 +1,15 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.11.0
+ * Version: 1.13.0
+ *
+ * v1.13.0 (2026-07, app 6.17.1): planOverlapResolution gains a protectGaps
+ *   flag (default TRUE) — spread now takes the overlap out of the CHECKED
+ *   PERIODS length, leaving passing periods intact; unset it for the old
+ *   gap-tightening behavior.
+ *
+ * v1.12.0 (2026-07, app 6.17.0): + planOverlapResolution (computes the bell
+ *   moves that resolve a period overrun — shrink/push/spread; static bells
+ *   only, relatives re-derive). Detection (1.11.0) now has an actor.
  *
  * v1.11.0 (2026-07, app 6.16.0): + detectPeriodOverlaps (read-only period
  *   overrun detector for the schedule editor). Also FIXED the VERSION
@@ -816,8 +825,155 @@
         return out;
     }
 
+    /**
+     * v1.12.0 (app 6.17.0): given RESOLVED periods and an overrun (period
+     * `overrunName` whose end passes the next period's start), compute the
+     * bell-time MOVES that resolve it under one strategy. Moves ONLY static
+     * bells (no `.relative`) — relative bells re-derive downstream, so they are
+     * never touched. Pure; returns { moves:[{bellId,from,to}], dayEndDeltaSeconds,
+     * warning }. The caller previews `moves` and applies them through the normal
+     * save path. Strategies:
+     *   'shrink' — move the next period's start bell(s) to the overrun's end
+     *              (next period gets shorter; day-end unchanged).
+     *   'push'   — shift the next period and everything after LATER by the
+     *              overlap (nothing shortens; day ends later).
+     *   'spread' — rigidly shift the following periods to close the overlap,
+     *              tightening the gaps AFTER each checked period so the day
+     *              still ends on time. Each period keeps its own length; the
+     *              slack comes out of the passing time between them. Warns if a
+     *              gap would go negative (i.e., it can't fully absorb there).
+     */
+    function planOverlapResolution(periods, overrunName, strategy, absorbNames, protectGaps) {
+        const empty = { moves: [], dayEndDeltaSeconds: 0, warning: null };
+        if (!Array.isArray(periods)) return empty;
+        const spans = [];
+        for (let i = 0; i < periods.length; i++) {
+            const p = periods[i];
+            if (!p || p.isEnabled === false || !Array.isArray(p.bells)) continue;
+            let min = null;
+            let max = null;
+            const statics = [];
+            for (let j = 0; j < p.bells.length; j++) {
+                const b = p.bells[j];
+                if (!b || typeof b.time !== 'string' || !b.time) continue;
+                const s = timeToSeconds(b.time);
+                if (s === null || s === undefined) continue;
+                if (min === null || s < min) min = s;
+                if (max === null || s > max) max = s;
+                if (!b.relative && b.bellId) statics.push({ bellId: b.bellId, sec: s, time: b.time });
+            }
+            if (min === null) continue;
+            spans.push({ name: p.name, start: min, end: max, statics: statics });
+        }
+        spans.sort(function (a, b) { return a.start - b.start; });
+        let pIdx = -1;
+        for (let i = 0; i < spans.length; i++) { if (spans[i].name === overrunName) { pIdx = i; break; } }
+        if (pIdx < 0 || pIdx + 1 >= spans.length) return { moves: [], dayEndDeltaSeconds: 0, warning: 'No following period to adjust.' };
+        const P = spans[pIdx];
+        const Q = spans[pIdx + 1];
+        const overlap = P.end - Q.start;
+        if (overlap <= 0) return empty;
+
+        const moves = [];
+        const addMove = function (bell, newSec) {
+            if (newSec === bell.sec) return;
+            moves.push({ bellId: bell.bellId, from: bell.time, to: secondsToTime(newSec) });
+        };
+
+        if (strategy === 'shrink') {
+            let moved = false;
+            for (let k = 0; k < Q.statics.length; k++) {
+                if (Q.statics[k].sec === Q.start) { addMove(Q.statics[k], P.end); moved = true; }
+            }
+            return { moves: moves, dayEndDeltaSeconds: 0,
+                warning: moved ? null : 'The next period has no movable (static) start bell to shrink.' };
+        }
+        if (strategy === 'push') {
+            for (let i = pIdx + 1; i < spans.length; i++) {
+                for (let k = 0; k < spans[i].statics.length; k++) addMove(spans[i].statics[k], spans[i].statics[k].sec + overlap);
+            }
+            return { moves: moves, dayEndDeltaSeconds: overlap, warning: null };
+        }
+        if (strategy === 'spread') {
+            const absorb = Array.isArray(absorbNames) ? absorbNames : [];
+            const followers = spans.slice(pIdx + 1);
+            const chosen = followers.filter(function (s) { return absorb.indexOf(s.name) !== -1; });
+            if (!chosen.length) return { moves: [], dayEndDeltaSeconds: 0, warning: 'Pick at least one period to absorb the overlap.' };
+            const protect = protectGaps !== false; // DEFAULT: protect passing periods -> take time out of the periods
+
+            if (protect) {
+                // Take the overlap out of the CHECKED periods' own length (move
+                // their end bell in), leaving every passing gap intact. Only a
+                // period with a movable static END bell distinct from its start
+                // can be shortened.
+                const shortenable = chosen.filter(function (s) {
+                    return s.end > s.start && s.statics.some(function (b) { return b.sec === s.end; });
+                });
+                if (!shortenable.length) {
+                    return { moves: [], dayEndDeltaSeconds: 0,
+                        warning: 'None of the checked periods can be shortened (no movable end bell). Try Shrink, or uncheck "Protect in-between times".' };
+                }
+                let warning = null;
+                const skipped = chosen.filter(function (s) { return shortenable.indexOf(s) === -1; });
+                if (skipped.length) warning = "Couldn't shorten " + skipped.map(function (s) { return s.name; }).join(', ') + ' (no movable end bell); spreading across the rest.';
+                const share = {};
+                const baseShare = Math.floor(overlap / shortenable.length);
+                let acc = 0;
+                shortenable.forEach(function (s, i) {
+                    const sh = (i === shortenable.length - 1) ? (overlap - acc) : baseShare;
+                    share[s.name] = sh; acc += sh;
+                    if (sh >= (s.end - s.start)) warning = 'Not enough room to shorten ' + s.name + ' by that much — it would collapse. Check more periods or use Push.';
+                });
+                // Each following period's START shifts right by (overlap minus
+                // shares already removed before it); a shortenable period's END
+                // additionally moves in by its own share (so the period gets
+                // shorter, not just later). Gaps between periods are preserved;
+                // the last period's net shift is 0, so dismissal is unchanged.
+                let sharesBefore = 0;
+                for (let i = 0; i < followers.length; i++) {
+                    const s = followers[i];
+                    const startDelta = overlap - sharesBefore;
+                    const myShare = share[s.name] || 0;
+                    for (let k = 0; k < s.statics.length; k++) {
+                        const b = s.statics[k];
+                        const d = (myShare && b.sec === s.end) ? (startDelta - myShare) : startDelta;
+                        addMove(b, b.sec + d);
+                    }
+                    sharesBefore += myShare;
+                }
+                return { moves: moves, dayEndDeltaSeconds: overlap - sharesBefore, warning: warning };
+            }
+
+            // Not protecting gaps: rigid per-period shift that tightens the gap
+            // AFTER each checked period (periods keep their length; passing time
+            // absorbs the overlap). Day-end holds only if a period follows the
+            // last checked one.
+            const share2 = {};
+            const baseShare2 = Math.floor(overlap / chosen.length);
+            let acc2 = 0;
+            chosen.forEach(function (s, i) {
+                const sh = (i === chosen.length - 1) ? (overlap - acc2) : baseShare2;
+                share2[s.name] = sh; acc2 += sh;
+            });
+            let delta = overlap;
+            let warning2 = null;
+            let prevEnd = null;
+            for (let i = pIdx + 1; i < spans.length; i++) {
+                const s = spans[i];
+                if (prevEnd !== null && (s.start + delta) < prevEnd) {
+                    warning2 = 'Not enough passing time to absorb it there without a new overlap. Try "Protect in-between times", or Shrink/Push.';
+                }
+                for (let k = 0; k < s.statics.length; k++) addMove(s.statics[k], s.statics[k].sec + delta);
+                prevEnd = s.end + delta;
+                if (share2[s.name]) delta -= share2[s.name];
+            }
+            return { moves: moves, dayEndDeltaSeconds: delta, warning: warning2 };
+        }
+        return { moves: [], dayEndDeltaSeconds: 0, warning: 'Unknown strategy.' };
+    }
+
     const BellEngine = {
-        VERSION: '1.11.0', // v1.3.1: exported so the status modal can report it
+        VERSION: '1.13.0', // v1.3.1: exported so the status modal can report it
                            // (v6.16.0 fix: this constant had drifted — the
                            // 1.9.0/1.10.0 bumps missed it; nothing in the
                            // battery verifies it. Now correct.)
@@ -834,6 +990,7 @@
         resolveCalendarSchedule,
         resolveScopedDesignation,
         detectPeriodOverlaps,
+        planOverlapResolution,
         shiftTimeString,
         getActiveScheduleShiftSeconds,
         estimateClockDriftMs,

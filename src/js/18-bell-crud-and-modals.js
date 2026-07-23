@@ -980,6 +980,42 @@ function recalculateAndRenderAll() {
     }
 }
 
+// V6.17.0: apply an overlap-resolution plan (computed + previewed by module
+// 37) to the SHARED schedule. Moves ONLY the named STATIC bells (relatives are
+// left to re-derive), then writes `periods` — the source of truth, exactly as
+// the delete-period path does — and logs the edit. The shared onSnapshot
+// listener then refreshes state + recalculates, which re-runs the overlap
+// detector and clears the banner if the overrun is gone. No new save path.
+async function applyOverlapFix(moves) {
+    if (!Array.isArray(moves) || !moves.length) return;
+    if (state.activePersonalScheduleId || !state.scheduleRef) {
+        showUserMessage('Overlap fixes apply to a shared schedule you are editing.');
+        return;
+    }
+    try {
+        const byId = {};
+        for (let i = 0; i < moves.length; i++) byId[moves[i].bellId] = moves[i].to;
+        let changed = 0;
+        const updated = state.localSchedulePeriods.map((p) => ({
+            ...p,
+            bells: (p.bells || []).map((b) => {
+                if (b && !b.relative && byId[b.bellId]) { changed++; return { ...b, time: byId[b.bellId] }; }
+                return b;
+            }),
+        }));
+        if (!changed) { showUserMessage('Nothing to change.'); return; }
+        await updateDoc(state.scheduleRef, { periods: updated });
+        logScheduleEdit(state.activeBaseScheduleId, 'resolve-overlap', { bellsMoved: changed }); // V6.17.0
+        showUserMessage('Overlap resolved — ' + changed + ' bell(s) moved.');
+    } catch (e) {
+        console.error('applyOverlapFix failed:', e);
+        showUserMessage('Could not apply the fix: ' + (e && e.message));
+    }
+}
+document.addEventListener('ellis-apply-overlap-fix', (e) => {
+    applyOverlapFix(e && e.detail && e.detail.moves);
+});
+
 // --- NEW in 4.44: Visual File Management Functions ---
 
 /**

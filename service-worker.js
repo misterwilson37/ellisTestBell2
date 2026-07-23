@@ -1,7 +1,13 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.22.0
+ * Version: 1.24.0
  *
+ * v1.24.0 changelog (2026-07, app 6.17.1): no new modules — cache bump for
+ *   resolver tweaks: spread protects passing periods by default (engine 1.13.0
+ *   protectGaps), "Push later" demoted to 3rd with a dismissal-change confirm.
+ * v1.23.0 changelog (2026-07, app 6.17.0): no new modules — cache bump for
+ *   the collision RESOLVER (engine 1.12.0 planOverlapResolution + edited
+ *   18/37 + index.html; the overlap banner is now bold + actionable).
  * v1.22.0 changelog (2026-07, app 6.16.0): + 37-overlap-warning.js (read-only
  *   period-overrun detector for the editor). NEW MODULE -> CORE_ASSETS now
  *   41 modules. Cache bump also ships engine 1.11.0 (+detectPeriodOverlaps,
@@ -130,7 +136,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.22.0';
+const CACHE_VERSION = '1.24.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;

@@ -7,7 +7,7 @@
          always match — this <title>, the visible <h1> banner, and the comment on
          the last line of this file. Update all three together. (z = fix/tweak,
          y = new feature, x = major shift with the owner's sign-off.) -->
-    <title>Ellis Web Bell 6.16.0</title>
+    <title>Ellis Web Bell 6.17.1</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -282,10 +282,34 @@
         <button type="button" id="untagged-nudge-dismiss" class="px-2 py-1 text-blue-900 hover:bg-blue-200 rounded-lg font-bold" title="Dismiss for this session">&times;</button>
     </div>
 
-    <!-- v6.16.0: period overrun warning (admins editing; shown by module 37) -->
-    <div id="overlap-warning-banner" class="hidden kiosk-hide bg-red-100 border-b border-red-300 text-red-900 px-4 py-2 text-sm flex items-center justify-between gap-4">
+    <!-- v6.16.0: period overrun warning (admins editing); v6.17.0: bolder + Fix -->
+    <div id="overlap-warning-banner" class="hidden kiosk-hide bg-red-600 border-b-2 border-red-800 text-white px-4 py-3 text-base font-medium flex items-center justify-between gap-4 shadow-md">
         <span id="overlap-warning-text" class="flex-grow"></span>
-        <button type="button" id="overlap-warning-dismiss" class="px-2 py-1 text-red-900 hover:bg-red-200 rounded-lg font-bold" title="Dismiss until it changes">&times;</button>
+        <button type="button" id="overlap-warning-fix" class="px-4 py-1.5 bg-white text-red-700 font-semibold rounded-lg shadow hover:bg-red-50">Fix…</button>
+        <button type="button" id="overlap-warning-dismiss" class="px-2 py-1 text-white hover:bg-red-700 rounded-lg font-bold text-lg" title="Dismiss until it changes">&times;</button>
+    </div>
+
+    <!-- v6.17.0: overlap resolver modal -->
+    <div id="overlap-resolver-modal" data-modal class="hidden">
+        <div data-modal-panel class="max-w-lg">
+            <h3 class="text-2xl font-medium mb-2">Resolve schedule overlap</h3>
+            <p id="overlap-resolver-summary" class="text-sm text-gray-600 mb-4"></p>
+            <div class="space-y-2 mb-4">
+                <label class="flex items-start gap-2 text-sm"><input type="radio" name="overlap-strategy" value="shrink" class="mt-1" checked> <span id="overlap-strategy-shrink-label">Shrink the next period (it starts later; day ends on time)</span></label>
+                <label class="flex items-start gap-2 text-sm"><input type="radio" name="overlap-strategy" value="spread" class="mt-1"> <span>Spread it across periods I choose (day ends on time)</span></label>
+                <label class="flex items-start gap-2 text-sm"><input type="radio" name="overlap-strategy" value="push" class="mt-1"> <span>Push everything later &mdash; <em>changes dismissal for the whole building</em></span></label>
+            </div>
+            <div id="overlap-resolver-spread-fields" class="hidden mb-4 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <p class="text-sm text-gray-600 mb-2">Which following periods should absorb the overlap? It's split evenly among the ones you check.</p>
+                <div id="overlap-resolver-absorb" class="space-y-1 max-h-40 overflow-y-auto mb-3"></div>
+                <label class="flex items-start gap-2 text-sm border-t pt-2"><input type="checkbox" id="overlap-resolver-protect" class="mt-1" checked> <span><strong>Protect in-between times</strong> — take the minutes out of the periods, not the passing periods (kids still get time to move &amp; use the bathroom). Uncheck to tighten the gaps instead.</span></label>
+            </div>
+            <div id="overlap-resolver-preview" class="mb-4 border-t pt-3"></div>
+            <div class="flex justify-end gap-3">
+                <button type="button" id="overlap-resolver-cancel" data-btn="cancel">Cancel</button>
+                <button type="button" id="overlap-resolver-apply" data-btn="primary">Apply fix</button>
+            </div>
+        </div>
     </div>
 
 
@@ -1693,7 +1717,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.16.0</h1>
+            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.17.1</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -3462,4 +3486,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 6.16.0 -->
+<!-- Version 6.17.1 -->
