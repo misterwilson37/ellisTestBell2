@@ -1,7 +1,12 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.26.0
+ * Version: 1.28.0
  *
+ * v1.27.0 changelog (2026-07, app 6.19.0): no new modules — cache bump for
+ *   the wall-clock feed (publisher half): admins publish transformed periods
+ *   to the public config/clock_feeds doc; "Show on clocks" picker in the
+ *   transform builder. NO rules change (config is already public-read). The
+ *   old.html reader is the next release. Edited 20/34 + index.html.
  * v1.26.0 changelog (2026-07, app 6.18.1): no new modules — cache bump: the
  *   resolver's "Shrink" now protects passing periods by default too (engine
  *   1.15.0), and the "Protect in-between times" checkbox governs Shrink +
@@ -144,7 +149,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.26.0';
+const CACHE_VERSION = '1.28.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;

@@ -53,6 +53,8 @@ const periodNamesList = document.getElementById('designation-period-names');
 // v6.18.0: reclaim (remove-a-period) fields
 const reclaimFields = document.getElementById('designation-reclaim-fields');
 const reclaimPeriodInput = document.getElementById('designation-reclaim-period');
+// v6.19.0: "show on clocks" targets (which public schedules' hallway clocks reflect this)
+const clockTargetsWrap = document.getElementById('designation-clock-targets');
 
 let calDoc = null;   // working copy of the whole config doc
 let roster = [];     // [{uid, displayName, tags}]
@@ -151,6 +153,14 @@ async function open(presetDate) {
     if (modeSelect) modeSelect.value = 'base';
     if (recipeTypeSelect) recipeTypeSelect.value = 'shift';
     populatePeriodNames();
+    // v6.19.0: clock targets = the public schedules whose hallway clocks should
+    // reflect this transform (explicit, per owner — no tag/uid inference).
+    if (clockTargetsWrap) {
+        clockTargetsWrap.innerHTML = (state.allSchedules || []).map((s) =>
+            '<label class="flex items-center gap-2 text-sm"><input type="checkbox" data-clock-sched="'
+            + escapeHtml(s.id) + '"> ' + escapeHtml(s.name) + '</label>').join('')
+            || '<p class="text-xs text-gray-500">No shared schedules yet.</p>';
+    }
     syncMode();
     filterInput.value = '';
     entriesEl.innerHTML = '<p class="text-sm text-gray-500">Loading…</p>';
@@ -240,6 +250,11 @@ async function addEntry() {
         if (!recipe) return;               // buildRecipe set the status
         if (!scope.length) { setStatus('Check at least one person — transforms apply to explicit lists, never tags.', true); return; }
         newEntry = { scope, verb: 'transform', recipe };
+        // v6.19.0: opt-in clock targets (which public schedules' clocks reflect it)
+        const clockIds = clockTargetsWrap
+            ? Array.from(clockTargetsWrap.querySelectorAll('input:checked')).map((cb) => cb.dataset.clockSched)
+            : [];
+        if (clockIds.length) newEntry.clockScheduleIds = clockIds;
     } else {
         const scheduleId = schedSelect.value;
         if (!dateStr || !scheduleId) { setStatus('Date and schedule are required.', true); return; }

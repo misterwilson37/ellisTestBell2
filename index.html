@@ -7,7 +7,7 @@
          always match — this <title>, the visible <h1> banner, and the comment on
          the last line of this file. Update all three together. (z = fix/tweak,
          y = new feature, x = major shift with the owner's sign-off.) -->
-    <title>Ellis Web Bell 6.18.1</title>
+    <title>Ellis Web Bell 6.20.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -1154,6 +1154,11 @@
                     </label>
                     <p class="text-xs text-gray-500">The period disappears for the day and the time it held — including the passing period leading into it — is split evenly across every remaining period. Dismissal stays put, so the other classes each get a little longer. The passing period <em>after</em> the removed one is preserved.</p>
                 </div>
+                <div class="border-t pt-3 mt-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Show on clocks (optional)</label>
+                    <p class="text-xs text-gray-500 mb-2">Tick the schedules whose hallway TVs/clocks should reflect this change for the day. Leave all unchecked to change only people's apps.</p>
+                    <div id="designation-clock-targets" class="space-y-1 max-h-32 overflow-y-auto"></div>
+                </div>
             </div>
             <div id="designation-entries" class="mb-4"></div>
             <input type="text" id="designation-filter" placeholder="Filter people by tag or name (e.g. 8th, CDC)" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm mb-2">
@@ -1726,7 +1731,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.18.1</h1>
+            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.20.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -3495,4 +3500,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 6.18.1 -->
+<!-- Version 6.20.0 -->
