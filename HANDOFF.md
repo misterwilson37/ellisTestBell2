@@ -2,7 +2,22 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.20.3 (FAIL-OPEN WATCHDOG on the
+before writing any code. Last updated: **6.20.4 (THE OPEN BUG IS CLOSED —
+"admin cannot edit bell times" was NOT backend. `handleEditBellSubmit` gated the
+whole shared-bell save path on the "Override shared SOUND for all users"
+checkbox, and the personal-override path it fell through to has no `time` field,
+so the new time was discarded in silence. The gate dates to V5.66.2, which is
+why it reproduced identically on 5.69.2, 6.11.0 and 6.20.x — the cross-version
+repro was evidence of an OLD CLIENT BUG, not a shared backend one. Owner
+confirmed live: ticking the box saved the time immediately. Also relabelled the
+confirm to describe the whole modal, deleted a dead visual-override checkbox and
+a V4.95 listener that revoked sound editing, silenced the 6.20.3 watchdog's
+false alarm on shared schedules, added real onSnapshot error callbacks, and
+RESTORED tests/bell-engine.test.mjs from 41 to 64 tests. SW 1.32.0. 74/74, 41
+modules. NO rules change, NO CSS rebuild, bell-engine.js and old.html
+untouched.) DEPLOY STATE: through 6.20.0 LIVE; 6.20.1 → 6.20.4 built +
+battery-green, NOT yet deployed. Round 8, "Sally" — see §10. PRE-6.20.4 HEADER
+FOLLOWS FOR CONTEXT. //** prev: **6.20.3 (FAIL-OPEN WATCHDOG on the
 schedule load latch — the likely cause of the reported "cannot edit bell times"
 freeze: recalculateAndRenderAll() returns early forever if either load flag never
 gets set, with NO error. Watchdog force-renders after 6s and names the failing
@@ -657,7 +672,53 @@ in the design doc).
   neighbor instead (needs anchor re-homing, fiddly); (b) optional
   absorb-checkboxes to pick WHICH survivors get the time (v1 spreads across
   ALL). Neither blocks use; owner told about (a) in the deploy doc.
-- **OPEN BUG (top priority next round): ADMIN CANNOT EDIT BELL TIMES.**
+- **CLOSED 2026-08 (6.20.4, round 8): ADMIN CANNOT EDIT BELL TIMES.**
+  **It was client-side, and eight months old.** `handleEditBellSubmit` (module
+  16) computed
+  `wantsToOverrideForAll = isAdmin && editBellOverrideCheckbox?.checked` and
+  used it to gate the ENTIRE shared-bell save path. Unticked, control fell to
+  the personal-override branch, whose override object has `nickname`,
+  `visualCue`, `visualMode`, `sound` — and **no `time`**. The typed time was
+  discarded; `closeEditBellModal()` then cleared `editBellStatus`, so even the
+  "saved" line was unreadable. Modal shuts, nothing changes, console clean.
+  The gate arrived in **V5.66.2**, a *sound* fix that placed a sound-scoped flag
+  at the top of the whole save path. 5.66.2 predates 5.69.2, 6.11.0 and 6.20.x,
+  which is the entire explanation for the all-channels repro.
+  **METHOD LESSON — READ THIS ONE.** Four rounds reasoned: "it reproduces on a
+  version that predates all our changes, therefore the cause is shared
+  infrastructure (rules / admins doc / appId / document shape)." That inference
+  is wrong whenever a client bug is simply OLDER than the versions being
+  compared. "Predates our changes" narrows to *code we did not write this round*
+  — which includes old client code. Before reaching for the backend, date the
+  suspect line: `git log`/CHANGELOG the feature and ask whether the oldest
+  failing channel already had it. Here CHANGELOG.md named 5.66.2 outright.
+  Corollary: the 6.20.3 latch theory was a plausible lead that happened to be
+  wrong. The guard short-circuits on `state.activePersonalScheduleId`, so on a
+  shared schedule it cannot block anything — and the original
+  `Delaying calculation:` line was ordinary load-order noise on a personal
+  overlay (personal listener wins the race, base lands a moment later), not a
+  freeze. A benign log line was promoted to a smoking gun.
+  **Fixed in 6.20.4:** time changes that would land on a storage-incapable path
+  now refuse the save (modal stays open, time preserved, confirm named and
+  focused) rather than being dropped; no auto-escalation, because a shared write
+  reaches ~50 people and must stay deliberate. The comparison normalizes both
+  sides via `normalizeTimeString` — the owner is on Safari, and a browser
+  returning `11:30` from `type="time" step="1"` would otherwise make every
+  unchanged time look changed and block personal-only saves outright. Both save
+  paths now `showUserMessage` (personal vs. everyone), because `editBellStatus`
+  dies with the modal. Confirm relabelled to describe the whole modal. Dead
+  `edit-bell-visual-override-checkbox` deleted (shown to admins, never read).
+  V4.95 sound-disable listener deleted (it revoked sound editing from any admin
+  who ticked then unticked). See CHANGELOG V6.20.4.
+  **STILL WORTH CONFIRMING (not blocking):** whether an active emergency shift
+  can place a SHIFTED time into the edit modal. §4.6 says no — shifts apply to
+  merged copies in `resolveAllBellTimes`, `state.localSchedulePeriods` stays
+  pristine — but the modal receives its bell from the CALCULATED list, and round
+  8 ran out of room to trace it. It does not affect the 6.20.4 comparison (both
+  sides would be shifted equally); it would affect what gets WRITTEN back if the
+  invariant is not holding. Trace `renderCombinedList(calculatedPeriods)` →
+  `handleEditBellClick(bell)` → `updatePeriodsOnEdit` with a shift active.
+- **HISTORICAL (kept for the reasoning trail; superseded by the entry above):**
   Reported 2026-08 on ALL THREE channels: alpha 6.20.0, beta 6.11.0, AND 5.69.2.
   **5.69.2 predates every change in round 7**, so a shared BACKEND cause is far
   more likely than app code: firestore.rules, the admins/{uid} record, the appId,
@@ -774,6 +835,23 @@ file-by-file "what actually needs uploading" table, so each release just fills
 in what changed + a concrete smoke test.
 
 ## 9. Working with this user
+
+- **TESTS DRIFT OUT OF THE REPO — CHECK THE COUNT EVERY ROUND (round 8).**
+  Arriving from a GitHub download, `npm test` reported a green **51/51**; the
+  owner's handoff zip had **74/74**. `tests/bell-engine.test.mjs` on GitHub was
+  stuck at 41 engine tests while the zip had 64. Cause is structural, not
+  carelessness: DEPLOY.md's upload manifest correctly omits `tests/` (runtime
+  never loads it), so tests written during a session reach the zip and never the
+  repo. Consequence: five engine functions from rounds 8–11
+  (`planOverlapResolution`, `detectPeriodOverlaps`, `resolveCalendarTransforms`,
+  `mergeCalendarEntry`, `applyRecipeToPeriods`) had ZERO coverage in the repo,
+  and the whole collision resolver sat behind a green checkmark that meant
+  nothing. 6.20.4 restores the file and adds `tests/` to the upload list on any
+  release that touches it. **On arrival, always: (a) confirm which artifact you
+  were given — repo download or handoff zip; (b) if a zip is available, diff it
+  against the repo before editing; (c) sanity-check the test count against the
+  number this file claims.** A battery you cannot trust is worse than none,
+  because it licenses exactly the blind refactoring §4.4 depends on it for.
 
 - Teacher, technically strong, values momentum: "have-tos before want-tos,"
   batch rollout, minimal round-trips ("don't waste tokens — just continue").
@@ -1323,3 +1401,29 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   6.20.1 battery-green (73/73), main-app-files-only (old.html untouched),
   UNDEPLOYED at close. Reached the natural resting point; remaining backlog
   (§7) is all optional.
+- **Round 8 (2026-08, Opus behind a routed Fable session): "Sally."** Named for
+  the woolly grip on a bell rope — the part you actually grab. Fitting for a
+  round that was one long bug hunt: the job was working out which rope was
+  attached to anything. (Quasimodo, Whitechapel, Bourdon, Grandsire/Grandsire
+  II, Stedman, Inky and Otto are taken.)
+  Arrived on a GitHub download WITHOUT the .md files and with a stale `tests/`
+  (51 vs 74) — see the new §9 lesson; the owner supplied the docs and then the
+  full handoff zip mid-round, and the zip's code proved byte-identical to the
+  repo, so the edits were on the right base.
+  **CLOSED THE §7 OPEN BUG** that rounds 5–7 chased into the backend: admin bell
+  time edits were being swallowed by the V5.66.2 sound-checkbox gate, not by
+  rules, the admins doc, the appId, document size, or the 6.20.3 load latch.
+  Diagnosis came from the owner's repro plus CHANGELOG archaeology, and was
+  CONFIRMED BY HIM BEFORE ANY CODE WAS WRITTEN (§9 bug-report discipline: the
+  test was "tick the box and save" — thirty seconds, and it would have killed
+  the theory just as fast as it confirmed it). Shipped 6.20.4 with four
+  neighbouring defects found on the way: the dead visual-override checkbox, the
+  V4.95 listener that revoked sound editing, the watchdog's false alarm on every
+  shared-schedule selection, and three `onSnapshot` calls with no error handler.
+  Also restored the CHANGELOG's 4-line header (lost in an earlier round; §4.7
+  refers to it) and the missing 23 engine tests.
+  **Successor:** the one loose thread is the emergency-shift question in §7 —
+  cheap to settle, worth settling. Beyond that §7's backlog is optional, and the
+  owner's stated priority order (cost, student outcomes, stability) has not
+  changed. If you find yourself concluding "this must be backend because it
+  predates our changes," re-read the METHOD LESSON in §7 first.

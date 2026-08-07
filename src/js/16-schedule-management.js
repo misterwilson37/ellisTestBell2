@@ -152,6 +152,17 @@ function setActiveSchedule(prefixedId) {
         safeLog.log("Setting active SHARED schedule:", scheduleId);
         state.activeBaseScheduleId = scheduleId;
         state.activePersonalScheduleId = null;
+
+        // V6.20.4: a shared schedule attaches NO personal listener, so nothing
+        // ever set this flag and the 6.20.3 watchdog fired its scary
+        // "a schedule listener never reported (base=true, personal=false)" line
+        // on EVERY shared selection — twice per admin toggle, since
+        // toggleAdminMode re-enters setActiveSchedule. Harmless (the latch in
+        // recalculateAndRenderAll short-circuits on activePersonalScheduleId, so
+        // it could never block a shared render) but it was crying wolf in the one
+        // log a future debugger will read. There is no personal schedule to wait
+        // for here; say so.
+        state.isPersonalScheduleLoaded = true;
         
         // V5.44: Hide standalone badge for shared schedules
         if (standaloneScheduleBadge) {
@@ -378,6 +389,13 @@ function setActiveSchedule(prefixedId) {
                     state.personalBellOverrides = {};
                 }
                 recalculateAndRenderAll();
+            }, (error) => {
+                // V6.20.4: a listener that errors used to fail SILENTLY — no
+                // callback meant the load flag never got set and the latch stuck
+                // shut with nothing in the console. Fail loud, then fail open.
+                console.error("Error on standalone personal schedule snapshot:", error);
+                state.isPersonalScheduleLoaded = true;
+                recalculateAndRenderAll();
             });
             
         } else {
@@ -449,6 +467,11 @@ function setActiveSchedule(prefixedId) {
                     state.localSchedule = [];
                 }
                 // NEW: v4.10.3 - Run the master calculation engine
+                recalculateAndRenderAll();
+            }, (error) => {
+                // V6.20.4: see the standalone listener above — fail loud, fail open.
+                console.error("Error on base schedule snapshot (linked personal):", error);
+                state.isBaseScheduleLoaded = true;
                 recalculateAndRenderAll();
             });
             
@@ -562,6 +585,11 @@ function setActiveSchedule(prefixedId) {
                     state.personalBellOverrides = {};
                 }
                 // NEW: v4.10.3 - Run the master calculation engine
+                recalculateAndRenderAll();
+            }, (error) => {
+                // V6.20.4: see the standalone listener above — fail loud, fail open.
+                console.error("Error on personal schedule snapshot:", error);
+                state.isPersonalScheduleLoaded = true;
                 recalculateAndRenderAll();
             });
         }
@@ -1227,7 +1255,12 @@ function handleEditBellClick(bell) {
             // Non-admin doesn't see it (their changes are always personal)
             if (isAdmin) {
                 editBellOverrideContainer.classList.remove('hidden');
-                document.getElementById('edit-bell-visual-override-container')?.classList.remove('hidden');
+                // V6.20.4: 'edit-bell-visual-override-container' is GONE from
+                // index.html. That second checkbox was shown to admins but its
+                // .checked was never read by any code — a dead control sitting
+                // next to a live one, in a modal where the live one's meaning was
+                // already wrong. One honest confirm now covers name, sound,
+                // visual and time together.
                 // Default unchecked = personal override only
                 if (editBellOverrideCheckbox) editBellOverrideCheckbox.checked = false;
                 // V6.5.0 (Building Bells): show + fill the anchor select (async fill;
@@ -1235,7 +1268,6 @@ function handleEditBellClick(bell) {
                 populateEditBellAnchorSelect(bell);
             } else {
                 editBellOverrideContainer.classList.add('hidden');
-                document.getElementById('edit-bell-visual-override-container')?.classList.add('hidden');
                 hideEditBellAnchorSelect(); // V6.5.0
                 // V6.11.0: no select for non-admins, but still name the anchor
                 // in the note (async; resolves from pristine state).
@@ -1255,7 +1287,6 @@ function handleEditBellClick(bell) {
             
             // Hide override containers - not applicable to custom bells
             editBellOverrideContainer.classList.add('hidden');
-            document.getElementById('edit-bell-visual-override-container')?.classList.add('hidden');
             hideEditBellAnchorSelect(); // V6.5.0: anchors are for shared bells only
             
             // Enable sound editing
@@ -1546,7 +1577,50 @@ async function handleEditBellSubmit(e) {
         if (oldBell.type === 'shared') {
             const isAdmin = document.body.classList.contains('admin-mode');
             const wantsToOverrideForAll = isAdmin && editBellOverrideCheckbox?.checked;
-            
+
+            // V6.20.4 — THE SILENT TIME-DROP FIX. Read this before touching the
+            // branch below; it cost four debugging rounds.
+            //
+            // A personal override can express nickname / sound / visual and
+            // NOTHING ELSE — there is no `time` field in the override object,
+            // because a personal time change is meaningless (the bell rings off
+            // the SHARED document for everybody). So a time edit that lands on
+            // the personal path is not saved anywhere; it is discarded.
+            //
+            // From V5.66.2 until now this branch swallowed exactly that. The
+            // checkbox was added as a SOUND escalation ("Override shared sound
+            // for all users") but was placed at the top of the whole shared-bell
+            // save path, so it silently gated time and name too. An admin typed a
+            // new time, hit Save, the modal closed, and nothing changed — no
+            // error, no toast (closeEditBellModal clears editBellStatus on the way
+            // out). Reported on all three channels because 5.66.2 predates all of
+            // them. V6.11.0 made it worse by printing "saving a new time changes
+            // this bell for every user" under an input whose value was being
+            // thrown away.
+            //
+            // Fix: never let a time change reach a path that cannot store it.
+            // Refuse the save, say why, and point at the confirm. We do NOT
+            // auto-escalate — pushing a bell change to ~50 people must stay an
+            // explicit, deliberate act.
+            // Compare NORMALIZED forms. The input is type="time" step="1", which
+            // should always yield HH:MM:SS — but a browser that hands back "11:30"
+            // for a whole minute would make every unchanged time look changed and
+            // would block personal-only saves outright. normalizeTimeString is
+            // already how this file reconciles HH:MM vs HH:MM:SS everywhere else.
+            const timeChanged = normalizeTimeString(newBell.time) !== normalizeTimeString(oldBell.time);
+            if (timeChanged && !wantsToOverrideForAll) {
+                editBellStatus.textContent = isAdmin
+                    ? 'Bell times are shared. Tick "Change this bell for everyone on this schedule" below, then Save again.'
+                    : 'Only an admin can change a shared bell time. Your other changes can still be saved.';
+                editBellStatus.classList.remove('hidden');
+                if (isAdmin && editBellOverrideCheckbox) {
+                    // Draw the eye to the control the message names.
+                    editBellOverrideContainer.classList.remove('hidden');
+                    editBellOverrideCheckbox.focus();
+                }
+                return; // modal STAYS OPEN; the typed time is preserved
+            }
+
             // FIX V5.66.2: Admin with checkbox UNCHECKED saves personal override (same as non-admin)
             // Admin with checkbox CHECKED edits the actual shared bell for everyone
             if (!wantsToOverrideForAll) {
@@ -1627,7 +1701,13 @@ async function handleEditBellSubmit(e) {
                 
                 // Trigger re-render to show updated bell
                 recalculateAndRenderAll();
-                
+
+                // V6.20.4: closeEditBellModal() hides editBellStatus, so the
+                // messages just set above were never actually readable — a save
+                // looked identical to a no-op. Say it somewhere that outlives the
+                // modal, and say WHOSE change it was.
+                showUserMessage('Saved for you only — this bell is unchanged for everyone else.');
+
                 closeEditBellModal();
                 return;
             }
@@ -1703,6 +1783,14 @@ async function handleEditBellSubmit(e) {
         editBellStatus.textContent = "Changes saved." + anchorNote; // V6.5.0: anchor detach notice
         // MODIFIED V4.92: Check the correct state variable
         if (!state.linkedEditData) { // If not waiting on linked edit modal
+            // V6.20.4: same reason as the personal path — the status line dies
+            // with the modal. A shared write hits every user of this schedule,
+            // so it is the one that most deserves an out-loud confirmation.
+            showUserMessage(
+                (oldBell.type === 'shared'
+                    ? 'Saved for everyone on this schedule.'
+                    : 'Changes saved.') + anchorNote
+            );
             closeEditBellModal();
         }
 

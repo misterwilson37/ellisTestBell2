@@ -7,7 +7,7 @@
          always match — this <title>, the visible <h1> banner, and the comment on
          the last line of this file. Update all three together. (z = fix/tweak,
          y = new feature, x = major shift with the owner's sign-off.) -->
-    <title>Ellis Web Bell 6.20.3</title>
+    <title>Ellis Web Bell 6.20.4</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -764,19 +764,19 @@
 
             <!-- NEW in 4.21: Override sound checkbox for shared bells -->
             <!-- Override shared sound checkbox -->
+			<!-- V6.20.4: THE ADMIN CONFIRM. This one checkbox governs the whole
+			     modal: unticked, everything you change here is yours alone;
+			     ticked, everything you change here changes for every user of
+			     this schedule. It was labelled "Override shared SOUND for all
+			     users" from 5.66.2 to 6.20.3 while actually gating name, visual
+			     AND time — which is how admin time edits came to vanish without
+			     a word. Keep the label describing the whole modal, not one field. -->
 			<div id="edit-bell-override-container" class="mb-4 hidden">
 			    <label class="flex items-center space-x-2 cursor-pointer">
 			        <input type="checkbox" id="edit-bell-override-checkbox" class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
-			        <span class="text-sm text-gray-700">Override shared sound for all users</span>
+			        <span class="text-sm text-gray-700">Change this bell for <strong>everyone</strong> on this schedule</span>
 			    </label>
-			</div>
-
-			<!-- NEW 5.20: Override visual checkbox (admin only) -->
-			<div id="edit-bell-visual-override-container" class="mb-4 hidden">
-			    <label class="flex items-center space-x-2 cursor-pointer">
-			        <input type="checkbox" id="edit-bell-visual-override-checkbox" class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
-			        <span class="text-sm text-gray-700">Override shared visual for all users</span>
-			    </label>
+			    <p class="text-xs text-gray-500 mt-1 ml-6">Leave unticked and your changes to the name, sound and visual apply only to you. Bell <em>times</em> are shared — changing a time requires this box.</p>
 			</div>
 
             <!-- V6.5.0: Building Bells anchor (admin + shared bell only; applies
@@ -1731,7 +1731,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.20.3</h1>
+            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.20.4</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -3500,4 +3500,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 6.20.3 -->
+<!-- Version 6.20.4 -->

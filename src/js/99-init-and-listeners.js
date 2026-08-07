@@ -23,7 +23,7 @@ import {
     deleteBellCancelBtn, deleteBellConfirmBtn, deleteCancelBtn, deleteConfirmBtn,
     deletePersonalCancelBtn, deletePersonalConfirmBtn, deletePersonalScheduleBtn,
     deleteScheduleBtn, deleteVisualCancelBtn, deleteVisualConfirmBtn, editBellCancelBtn,
-    editBellForm, editBellModal, editBellOverrideCheckbox, editBellSoundInput,
+    editBellForm, editBellModal, editBellSoundInput,
     editPeriodCancelBtn, editPeriodForm, editPeriodImageSelect, editPeriodModal,
     enterShareCodeCancel, enterShareCodeForm, enterShareCodeInput, enterShareCodeModal,
     exportCurrentScheduleBtn, exportSchedulesBtn, externalConflictCancelBtn,
@@ -1144,12 +1144,14 @@ function init() {
     editBellCancelBtn.addEventListener('click', closeEditBellModal);
     // NEW V4.95: Add listener for preview button
     document.getElementById('preview-edit-sound').addEventListener('click', () => playBell(editBellSoundInput.value));
-    // NEW V4.95: Add listener for override checkbox to enable/disable sound select
-    editBellOverrideCheckbox?.addEventListener('change', function() {
-        if (state.currentEditingBell && state.currentEditingBell.type === 'shared') {
-            editBellSoundInput.disabled = !this.checked; // Use 'this' instead of 'e.target'
-        }
-    });
+    // V6.20.4: REMOVED a V4.95 listener that disabled the sound dropdown
+    // whenever the override checkbox was unticked. V5.66.2 made personal sound
+    // overrides available to EVERYONE ("Sound dropdown enabled by default"), and
+    // handleEditBellClick sets editBellSoundInput.disabled = false — but this
+    // listener still fired on every change event, so an admin who ticked the box
+    // and then thought better of it silently lost the ability to edit the sound
+    // at all until they closed and reopened the modal. The checkbox chooses WHO a
+    // change reaches; it must not decide WHETHER a field is editable.
     
     // V5.49.0: Sound Preview Buttons - Added to all sound dropdowns
     document.getElementById('preview-quick-bell-sound')?.addEventListener('click', () => {

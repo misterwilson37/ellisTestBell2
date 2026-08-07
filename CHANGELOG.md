@@ -1,3 +1,69 @@
+# Ellis Web Bell — Changelog
+
+Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
+
+## V6.20.4 — Admin CAN edit bell times (the four-round OPEN BUG, closed)
+(Owner confirmed the diagnosis live: ticking the checkbox made the time save
+immediately. Root cause was client-side and eight months old, not backend.)
+
+- **THE BUG.** `handleEditBellSubmit` (module 16) gated the ENTIRE shared-bell
+  save path on `wantsToOverrideForAll = isAdmin && overrideCheckbox.checked`.
+  Unticked, it took the personal-override path — and a personal override object
+  has fields for nickname, sound and visual and **no field for time**. An
+  admin's new time was therefore discarded, the modal closed, and
+  `closeEditBellModal()` cleared `editBellStatus` on the way out, so even the
+  "Customization saved." line was never readable. Silence, no error, no change.
+- **WHY ALL THREE CHANNELS.** The gate landed in **V5.66.2**, which was a
+  *sound* fix ("Admins see 'Override for all users' checkbox to optionally push
+  to shared bell") but placed the flag at the top of the whole save path. 5.66.2
+  predates 5.69.2, 6.11.0 and 6.20.x, so every channel carried it. The
+  cross-version repro was evidence of an OLD CLIENT BUG, not a backend one.
+- **WHY IT GOT WORSE IN 6.11.0.** The lock-note redesign added
+  "🔓 Admin: saving a new time changes this bell for every user of this
+  schedule" directly under an input whose value was being thrown away. The UI
+  began promising exactly what the code refused to do.
+- **FIX (module 16):** a time change that would land on a path that cannot
+  store it now REFUSES the save — modal stays open, typed time preserved,
+  status line names the confirm, focus moves to it. No auto-escalation: pushing
+  a bell to ~50 people stays a deliberate act. Comparison runs through
+  `normalizeTimeString` on both sides, so a browser returning `11:30` instead of
+  `11:30:00` from `type="time" step="1"` cannot make an unchanged time look
+  changed and block personal-only saves.
+- **FIX (module 16):** both save paths now call `showUserMessage`, since
+  `editBellStatus` dies with the modal. Personal: "Saved for you only — this
+  bell is unchanged for everyone else." Shared: "Saved for everyone on this
+  schedule." A save and a no-op no longer look identical.
+- **FIX (index.html):** the confirm is relabelled from "Override shared **sound**
+  for all users" to "Change this bell for **everyone** on this schedule", with a
+  sub-line stating that name/sound/visual stay personal when unticked and that
+  times require the box. The label now describes the whole modal, which is what
+  the control has actually governed since 5.66.2.
+- **REMOVED (index.html + module 16):** the `edit-bell-visual-override-checkbox`
+  ("Override shared visual for all users"). It was shown to admins but its
+  `.checked` was never read by any code — a dead control beside a live one.
+- **REMOVED (module 99):** a V4.95 listener that set
+  `editBellSoundInput.disabled = !checkbox.checked`. V5.66.2 made personal sound
+  overrides available to everyone, so this silently revoked sound editing from
+  any admin who ticked the box and then unticked it. The confirm decides WHO a
+  change reaches, never WHETHER a field is editable.
+- **FIX (module 16): false watchdog.** The 6.20.3 watchdog fired
+  `[Watchdog] ... (base=true, personal=false)` on EVERY shared-schedule
+  selection — twice per admin toggle, since `toggleAdminMode` re-enters
+  `setActiveSchedule`. The shared branch attaches no personal listener and so
+  never set `isPersonalScheduleLoaded`. Harmless (the latch short-circuits on
+  `activePersonalScheduleId`) but it was crying wolf in the one log a future
+  debugger reads. The flag is now set explicitly in the shared branch.
+- **FIX (module 16): real `onSnapshot` error callbacks** on the three listeners
+  that had none (standalone-personal, linked-base, linked-personal). §7 asked
+  for these. Each logs and then fails open, so an erroring listener can never
+  again wedge the latch in silence.
+- **tests/bell-engine.test.mjs RESTORED to 64 tests** (was 41 on GitHub). The
+  rounds 8–11 tests never reached the repo because the deploy manifest omits
+  `tests/`. 74/74 across both suites. See HANDOFF §9.
+- **service-worker.js 1.32.0** (no new modules; cache bump). NO rules change,
+  NO CSS rebuild (all classes used were already compiled), `bell-engine.js` and
+  `old.html` untouched.
+
 ## V6.20.3 — Fail-open the schedule load latch (silent editor freeze)
 (Owner: "none of them are allowing me to change bell times" — on alpha 6.20.0,
 beta 6.11.0 AND 5.69.2, with NO console error. The one console line was

@@ -1,6 +1,6 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.31.0
+ * Version: 1.32.0
  *
  * v1.29.0 changelog (2026-07, app 6.20.1): no new modules — cache bump for the
  *   PWA update-UX fix: the "New version available! Refresh to update." popup is
@@ -157,7 +157,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.31.0';
+const CACHE_VERSION = '1.32.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;
