@@ -2,14 +2,31 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.16.0 (period OVERRUN DETECTION —
-engine 1.11.0 detectPeriodOverlaps + new read-only module 37 that warns admins
-when a period's last bell runs past the next period's start; also fixed the
-engine VERSION constant, stuck at 1.8.0 for two releases), 2026-07 (round 7,
-"Stedman" — see §10). DEPLOY STATE: 6.15.0 is LIVE (owner confirmed; toast fix
-verified). 6.16.0 is built + battery-verified (69/69, 41 modules) but NOT yet
-deployed — files-only, NO rules change, adds ONE new module
-(37-overlap-warning.js — verify it uploads).**
+before writing any code. Last updated: **6.20.3 (FAIL-OPEN WATCHDOG on the
+schedule load latch — the likely cause of the reported "cannot edit bell times"
+freeze: recalculateAndRenderAll() returns early forever if either load flag never
+gets set, with NO error. Watchdog force-renders after 6s and names the failing
+listener. Carries 6.20.2 + 6.20.1.) OPEN: why a listener fails to report — the
+[Watchdog] console line will say. // prev: 6.20.2 (nested periods are no longer
+reported as overlaps — lunch waves live INSIDE 4th period, which broke the
+detector with a false alarm; engine 1.16.0. Overlap hook now try/catch-guarded so
+it can never break the editor. Carries the undeployed 6.20.1 popup removal.)
+OPEN BUG: admin cannot edit bell times — reproduces on 5.69.2 too, so likely
+BACKEND, not app code; see §7 OPEN BUG. // prev: 6.20.1 (killed the "New version
+available!" PWA popup — it still nagged unattended clocks on post-deploy boot;
+module 99 now silently reloads once on controllerchange, guarded to genuine
+updates and skipped while a modal is open. SW 1.29.0. Owner's 2nd report of
+this toast — see §9). DEPLOY STATE: through 6.20.0 LIVE; 6.20.1 built +
+battery-green (73/73), NOT yet deployed (main-app files only; old.html
+unchanged). PRE-6.20.1 header follows for context. // 6.20.0 (WALL-CLOCK FEED, reader half —
+old.html now reads config/clock_feeds and renders today's published transformed
+periods for its pinned schedule; the hallway clocks follow the calendar. First
+old.html change all round; md5 now e56f1e4c50c597cfe9e5618e0b53c732. Also fixed
+a pre-existing shift-drop on the 5-min refresh), 2026-07 (round 7, "Stedman" —
+see §10). DEPLOY STATE: 6.16.0 is LIVE. 6.17.1 → 6.20.0 are built +
+battery-verified (73/73, 41 modules; old.html script syntax-checked) but NOT
+yet deployed — ONE whole-tree push (incl. old.html) covers all; files-only, NO
+rules change, NO new module.**
 
 ---
 
@@ -73,13 +90,13 @@ break (no live users anywhere until school resumes). Consequences:
   reconstruct the tree exactly as §3 and the zip layout describe. After the
   GitHub rollout happens, the repo is the durable copy; ask the user for a
   fresh zip of it rather than fetching files piecemeal.
-- **DEPLOY STATE (as of round 7, 6.16.0):** **6.5.0 → 6.15.0 are LIVE**
-  (owner confirmed 6.15.0; the hard-refresh toast fix is verified in the
-  wild). **6.16.0 (period overrun detection) is built + battery-verified
-  (69/69, 41 modules) but NOT yet deployed.** Files-only, NO rules change;
-  adds one NEW module (37-overlap-warning.js — verify it uploads). CONFIRM
-  deploy state with the owner at the top of the next round — the handoff
-  records the previous session's belief, not ground truth.
+- **DEPLOY STATE (as of round 7, 6.20.1):** **6.5.0 → 6.20.0 are all LIVE**
+  (owner confirmed 6.20.0). **6.20.1 is built + battery-green (73/73) but NOT
+  yet deployed** — main-app files only (index.html 6.20.1, service-worker.js
+  1.29.0, whole src/js/); bell-engine, tailwind.css, and old.html all UNCHANGED.
+  No rules change, no new module. It removes the update popup (see §9). Deploy
+  docs are now ONE rolling DEPLOY.md (§8). CONFIRM deploy state with the owner
+  at the top of the next round — the handoff records belief, not ground truth.
 - **DEPLOY LESSON (round 6, still current):** a PARTIAL push produces a
   MIXED tree — new files next to stale ones — and because this is an ES-
   module graph, ONE stale module kills the whole app (SyntaxError:
@@ -102,11 +119,12 @@ Surfaces:
 | `signage/` pages: dashboard v1.6.0, dashright v1.1.0, dashclock v1.1.0 | TV dashboard pages (v9 compat, live onSnapshot) | Share `signage/schedule-utils.js` (+ engine): relative bells resolved, shifts honored. dashboard's 3 config listeners are intentional branches |
 
 Shared infrastructure:
-- **`bell-engine.js` v1.11.0** — THE single implementation of pure
+- **`bell-engine.js` v1.16.0** — THE single implementation of pure
   time/schedule math (escapeHtml, timeToSeconds/secondsToTime,
   formatTime12Hour, getDateForBellTime, getBellId, findNextBellIn,
   findBellAfter, calculateRelativeBellTime, toLocalDateString,
   resolveCalendarSchedule, resolveScopedDesignation (1.10.0), detectPeriodOverlaps (1.11.0),
+  planOverlapResolution (1.12.0),
   shiftTimeString, getActiveScheduleShiftSeconds,
   applyBuildingBellTimeToPeriods, findPeriodEdgeAnchorBell (1.6.0),
   resolveCalendarTransforms + applyRecipeToPeriods (1.8.0, Verb B),
@@ -125,7 +143,7 @@ Shared infrastructure:
   conversion tools (`analyze-deps.mjs`, `convert-esm-pass[123].mjs`) are
   kept for archaeology.
 - **`firestore.rules`** — deploy manually via Firebase console (ROLLOUT §2).
-- **service-worker.js v1.22.0**, cache name DERIVED: 'ellis-web-bell-' +
+- **service-worker.js v1.31.0**, cache name DERIVED: 'ellis-web-bell-' +
   CACHE_VERSION (6.1.0 — one bump busts the cache; the old two-constant
   footgun is dead, and `npm run check:sw` enforces header==constant and
   CORE_ASSETS==filesystem). Tone.js is SELF-HOSTED since 6.1.0
@@ -148,6 +166,11 @@ artifacts/{appId}/
     config/building_bells  # 6.5.0 Building Bells (covered by config/{id} rules)
     config/schedule_calendar # 6.10.0 v2: days[date].entries scoped by uid
                            #   (v1 exceptions/weekdayDefaults still honored)
+    config/clock_feeds     # 6.19.0 public wall-clock feed (admin-write,
+                           #   public-read via existing config rule): map
+                           #   scheduleId -> { date, periods } of RESOLVED
+                           #   transformed periods for dumb clocks. old.html
+                           #   reader lands 6.20.0.
     roster/{uid}           # 6.9.0 tags+capabilities; read=authed, self-write
                            #   cannot touch capabilities (rules-enforced).
                            #   6.14.0: optional defaultScheduleId = the user's
@@ -227,6 +250,66 @@ arrows/template literals/const).
 
 ## 6. What's been done (details in CHANGELOG.md)
 
+- **v6.20.1** — Killed the "New version available!" PWA popup (module 99). It
+  still fired on a normal post-deploy boot (my 6.15.0 fix only suppressed the
+  hard-refresh case) — pure noise on an unattended clock. Now: no toast; the
+  page silently reloads ONCE on controllerchange, guarded by wasControlledAtLoad
+  (genuine updates only) and skipped if a [data-modal] is open. skipWaiting+
+  claim already auto-activate, so clocks self-update seamlessly. SW 1.29.0. No
+  rules change.
+- **v6.20.0** — Wall-clock feed (reader half): the clocks follow the calendar.
+  old.html (first change all round; md5 → e56f1e4c…) reads config/clock_feeds
+  via new ES5 fetchClockFeeds() (parseFields); loadPublicSchedule prefers
+  feeds[itsScheduleId] when date === today, applying the emergency shift on top,
+  fail-open to base. Fetched before each load at the dropdown + 5-min refresh.
+  Also fixed a pre-existing shift-drop on the refresh path. SW 1.28.0. No rules
+  change, no new module. Wall-clock arc COMPLETE.
+- **v6.19.0** — Wall-clock feed (publisher half). module 20 publishClockFeeds
+  (admin-only) composes today's clock-targeted transform recipes per schedule
+  onto its base periods and writes flat resolved periods to public
+  config/clock_feeds (KEY: config is already public-read — NO rules change).
+  module 34 "Show on clocks" checklist → clockScheduleIds on the transform
+  entry (explicit; option A). Stale feeds expire by date; same-day removal
+  resets to base. Verifiable in console. old.html reader = 6.20.0. SW 1.27.0.
+  73/73. No rules change, no new module.
+- **v6.18.1** — Resolver "Shrink" now protects passing periods by default too
+  (engine 1.15.0): instead of butting the next period against the overrun's
+  end (0 gap), it leaves a passing period sized from that period's own outgoing
+  gap (or the smallest positive gap). The "Protect in-between times" checkbox
+  moved out of spread-only and governs Shrink + Spread (hidden for Push).
+  Reinforced with owner: passing periods are MEASURED space (next.start −
+  this.end), never a stored field. SW 1.26.0. 73/73.
+- **v6.18.0** — "Reclaim a period" Verb B recipe. engine 1.14.0 'reclaim'
+  archetype in applyRecipeToPeriods: removes periodName for the day, frees
+  [prev.end → reclaimed.end] (reclaimed length + incoming passing period),
+  redistributes evenly across survivors with dismissal PINNED (each class
+  grows), preserves the outgoing passing gap. Static bells only; relatives
+  re-derive (anchored-into-reclaimed → orphan fallback, documented). Recipe
+  builder (34) gets a 3rd type + period-name field; describeRecipe (20)
+  labels it. Rides the existing Verb B pipeline — no new wiring, no new
+  module, no rules change. SW 1.25.0. 73/73. Per-day, non-destructive, never
+  a dropdown entry (owner emphatic).
+- **v6.17.1** — Resolver tweaks (owner feedback on unshipped 6.17.0). Spread
+  now PROTECTS passing periods by default: engine 1.13.0 adds protectGaps
+  (default true) — overlap comes out of the CHECKED periods' own length (move
+  their end bell in), gaps preserved, dismissal pinned; uncheck for the old
+  gap-tighten. "Push later" demoted to the 3rd option + a dramatic
+  dismissal-change window.confirm. SW 1.24.0. 71/71. Supersedes 6.17.0
+  (deploy 6.17.1).
+- **v6.17.0** — Collision resolver + bolder overlap banner. engine 1.12.0
+  planOverlapResolution (pure, tested): 'shrink' (next period starts later),
+  'push' (shift everything after later), 'spread' (rigid per-period shift
+  tightening gaps after checked periods, day-end fixed) — returns bell moves
+  for STATIC bells only (relatives re-derive). Module 37 banner is now bold +
+  red with a Fix… button (admin + SHARED schedule only) opening a
+  PREVIEW-before-apply resolver modal. On Apply, module 37 dispatches
+  ellis-apply-overlap-fix; module 18 rewrites the named static bells in
+  localSchedulePeriods and writes `periods` (source of truth, same as the
+  delete-period path — no new save path), logs 'resolve-overlap', and the
+  shared listener recalcs → detector re-runs → banner clears. SW 1.23.0 (no
+  new module). 70/70. No rules change. NOTE: 'spread' v1 tightens gaps
+  (periods keep length); "shorten the periods themselves" is a labeled
+  future mode. Preview makes current behavior explicit.
 - **v6.16.0** — Period overrun detection (safe first half of the collision
   resolver). engine 1.11.0 detectPeriodOverlaps (pure, tested): flags a
   period whose last bell passes the next period's first bell; skips
@@ -563,28 +646,88 @@ in the design doc).
   Skip-day math (which dates "count" for slip-forward) is the only genuinely
   new logic — make it a pure, TESTED engine helper (school days come from
   the calendar's own designations/exceptions, or a simple weekday mask).
-- **Period collision resolver — DETECTION SHIPPED 6.16.0; the INTERACTIVE
-  FIX is the next bite.** engine 1.11.0 detectPeriodOverlaps + read-only
-  module 37 warn when a period's last bell overruns the next period's start.
-  What's LEFT is the resolver the owner sketched: on an overrun, offer to
-  (a) shrink the next period to absorb it, (b) SPREAD the overflow across
-  following periods the admin checks off (keep day-end fixed — this is the
-  Verb B 'shorten' cascade math, reusable), (c) cancel, or (d) allow anyway.
-  It is DESTRUCTIVE (rewrites bells on the live shared schedule — the sacred
-  edit path), so detection shipped first on purpose: let the owner confirm
-  the warning reads their REAL schedules without crying wolf (overlap is a
-  heuristic — the period model is name-derived, see §3), THEN build the
-  writer. Compute the spread as a pure, TESTED engine helper and write
-  results through the EXISTING save path, never a new one.
-- **Wall-clock follow-along ("dumbest clocks read the calendar without
-  learning to speak") — NOT STARTED, the long pole.** old.html reads
-  designations via unauthenticated REST, read-only, stays ES5. This is
-  the slice that wants PRECOMPUTED resolved times written into the
-  calendar doc (I3 — keep the resolved form flat and dumb) so an ES5
-  reader needs zero recipe math. A rules carve-out (like
-  personal_schedules) is required to make the resolved designation
-  world-readable. Verb A designations AND Verb B transforms both need
-  this to reach the wall clocks.
+- **"Reclaim a period" — SHIPPED 6.18.0.** engine 1.14.0 'reclaim' archetype
+  in applyRecipeToPeriods + a recipe-builder option in module 34, riding the
+  existing Verb B pipeline (per-day, non-destructive, never a dropdown entry).
+  Freed span = [previous period's END → reclaimed period's END] (sacrifices
+  incoming passing period, preserves outgoing), redistributed evenly across
+  survivors with dismissal pinned → each class grows. Tested (last + mid
+  period). REFINEMENTS still open: (a) a relative bell anchored INTO the
+  reclaimed period orphans to fallback for the day — fold it onto a surviving
+  neighbor instead (needs anchor re-homing, fiddly); (b) optional
+  absorb-checkboxes to pick WHICH survivors get the time (v1 spreads across
+  ALL). Neither blocks use; owner told about (a) in the deploy doc.
+- **OPEN BUG (top priority next round): ADMIN CANNOT EDIT BELL TIMES.**
+  Reported 2026-08 on ALL THREE channels: alpha 6.20.0, beta 6.11.0, AND 5.69.2.
+  **5.69.2 predates every change in round 7**, so a shared BACKEND cause is far
+  more likely than app code: firestore.rules, the admins/{uid} record, the appId,
+  or the schedule document itself (e.g. size/shape). RULED OUT so far: admin
+  DETECTION works — the untagged-teacher nudge and the overlap "Fix..." button
+  only render for a server-confirmed admin, and the owner sees both; and
+  firestore.rules still reads `allow write: if isAdmin(appId)` on
+  public/data/schedules/{scheduleId} with isAdmin() = exists(admins/{uid}).
+  LEAD (2026-08, strongest yet): the owner's console showed NO errors, only
+  `Delaying calculation: base and personal schedules have not both loaded`
+  (18-bell-crud-and-modals.js). That guard (v4.32, so it predates round 7 and
+  exists in 5.69.2 too — explains the all-versions repro) returns early whenever
+  activePersonalScheduleId is set and isBaseScheduleLoaded/isPersonalScheduleLoaded
+  is false. Both flags are set ONLY inside onSnapshot SUCCESS callbacks in
+  16-schedule-management.js (lines ~369 base, ~439 personal) and NEITHER listener
+  passes an error callback => a failing/never-firing listener freezes rendering
+  silently and bell edits look impossible. 6.20.3 adds a 6s fail-open watchdog +
+  a guard message naming the missing listener. NEXT: get the `[Watchdog]` line
+  from the owner to learn WHICH listener fails, then fix the real cause (suspects:
+  a stale activePersonalScheduleId pointing at a deleted personal schedule, or the
+  personal onSnapshot erroring silently — consider adding real error callbacks to
+  both onSnapshot calls, which is the proper follow-up fix).
+  ALSO RULED OUT 2026-08 (owner supplied current firestore.rules; do not re-check
+  these): (a) RULES PERMIT IT — public/data/schedules/{scheduleId} has
+  `allow write: if isAdmin(appId)` and isAdmin resolves TRUE for the owner (the
+  client read the same admins/{uid} doc to enable admin mode, and the untagged
+  nudge + overlap "Fix..." button both render, which are admin-gated); (b) the
+  EDIT AUDIT LOG cannot block a save — edit_log denies update/delete to everyone,
+  which looked like a trap, but 22-audit-log.js logScheduleEdit() uses addDoc()
+  (always a fresh random id = create), fire-and-forget with its own .catch(), and
+  is never awaited; (c) NOT version-specific (5.69.2 fails too).
+  => Remaining suspects are CLIENT-SIDE JS or the SCHEDULE DATA itself. Note the
+  test run surfaced the engine's own "circular dependency detected for bell" data
+  guard — if a real bell in their schedule has a circular relative-anchor, the
+  engine skips it; worth checking whether their live data trips that, and whether
+  the edit modal's save handler throws before reaching updateDoc.
+  DO NOT start editing code. Per the owner's own rule (§9 bug-report discipline),
+  get a diagnostic FIRST: (1) the browser console error text when a save fails
+  (a `permission-denied` points at rules/appId; a TypeError points at client
+  code); (2) whether the edit modal opens at all vs. the save silently failing;
+  (3) the size of the schedule doc (Firestore hard-caps documents at 1 MiB —
+  worth checking, since edit_log/periods have grown all year).
+  NOTE: the false lunch-overlap alarm (fixed in 6.20.2) appeared on the very edit
+  the owner was attempting, so confirm whether editing works once 6.20.2 is up —
+  they may be linked, but do not ASSUME it.
+- **Period collision resolver — SHIPPED 6.17.0/6.17.1 (detection 6.16.0 +
+  engine 1.12.0 planOverlapResolution + module 37 preview-before-apply modal
+  (shrink/push/spread), write via module 18's existing periods-only save. What
+  could still be REFINED (not required): 'spread' currently tightens the GAPS
+  between checked periods (each keeps its length); a second mode that shortens
+  the PERIODS themselves (moving only their end-side bells — fiddly in the
+  name-derived model, and undefined for single-bell periods) is possible if
+  the owner wants it — they were told, and the preview makes the current
+  behavior explicit. Do it as an engine 'spread-shorten' strategy + a UI
+  toggle; test hard.
+- **Wall-clock follow-along — COMPLETE (publisher 6.19.0 + reader 6.20.0).**
+  config/{id} was already public-read (firestore.rules), so NO rules change;
+  feed lives at config/clock_feeds { feeds: { <scheduleId>: {date, periods} } }.
+  6.19.0: module 20 publishClockFeeds() (admin-only) composes today's clock-
+  targeted transform recipes per schedule and writes flat resolved periods;
+  module 34 "Show on clocks" checklist stores clockScheduleIds on the transform
+  entry (explicit). 6.20.0: old.html fetchClockFeeds() (ES5, via parseFields)
+  caches the feed; loadPublicSchedule prefers feeds[itsScheduleId] when date ===
+  localDateStr(today), applying the emergency shift on top; fail-open to base;
+  fetched before each load at the dropdown + 5-min-refresh call sites. md5 now
+  e56f1e4c50c597cfe9e5618e0b53c732 (was b8dd5f5a…). POSSIBLE FUTURE work (not
+  needed): base-designation-for-clocks (write the designated base's periods to
+  the feed — same mechanism); a clock could also read the feed at BOOT (today
+  it uses cached bells at boot and corrects on the 5-min refresh — fine for a
+  standing TV, but a fresh boot shows base until the first refresh).
 
 ## 7.5 External deadlines & environment risks (dated; not feature work)
 
@@ -622,6 +765,13 @@ stages), §9 if new lessons emerged, and §10 (session log — owner-requested
 as of round 3; add your name + one-liners as the round progresses). Keep it
 under ~350 lines — this is a map, not the territory; CHANGELOG.md carries
 detail.
+
+DEPLOY DOC (owner request, post-6.20.0): there is now ONE rolling `DEPLOY.md`
+(kept OUTSIDE the zip), REWRITTEN each release to describe only the current
+release + current live state. Do NOT create per-release DEPLOY-6.x.md files
+anymore (the old pile was collapsed into DEPLOY.md). It carries the standing
+file-by-file "what actually needs uploading" table, so each release just fills
+in what changed + a concrete smoke test.
 
 ## 9. Working with this user
 
@@ -688,6 +838,20 @@ detail.
   from the service worker's side. Recovery: re-upload all of src/js/
   plus the changed root files in ONE commit (< 100 files), then
   cache-busted spot check before smoke testing.
+- **old.html IS NOW TOUCHED (6.20.0), md5 e56f1e4c50c597cfe9e5618e0b53c732.**
+  It stayed byte-identical (b8dd5f5a…) the whole round until the wall-clock
+  reader. It's ES5 (iOS 9): NO const/let/arrow/template-literals/spread — use
+  var/function/string-concat. It has a generic REST parser (parseFields/
+  parseFieldValue), localDateStr (YYYY-MM-DD), and applyShiftToScheduleData
+  (emergency shift on static bells); it pins to a public schedule id in
+  localStorage; the 5-min auto-refresh (setInterval → refreshScheduleBtn.onclick)
+  is how a running TV picks up changes. Syntax-check by extracting the single
+  <script> block and node --check-ing it. NO automated md5 assertion — the lock
+  is doc discipline; RE-RECORD the md5 (header + §7 + §10) whenever it changes.
+- **REFRESH DROPPED THE EMERGENCY SHIFT (fixed 6.20.0):** old.html's initial
+  fetchPublicSchedules stored `data: applyShiftToScheduleData(fields)` but the
+  5-min refresh's public branch stored `data: fields` (raw), so a shift set
+  before a refresh vanished on the next refresh. Now both apply the shift.
 - **ENGINE VERSION CONSTANT DRIFT (found + fixed 6.16.0):** the header
   comment `* Version: X` and the runtime constant `BellEngine.VERSION` are
   bumped SEPARATELY, and NOTHING in the battery verifies the constant. Twice
@@ -696,7 +860,18 @@ detail.
   bumping the engine: change BOTH, and grep the CONSTANT (VERSION: '1.X.Y')
   to confirm it took — not just the header. Cheap future guard: have
   verify-esm assert the constant matches the header comment.
-- **SW UPDATE-TOAST GOTCHA (fixed 6.15.0):** the "New version available!"
+- **SW UPDATE-UX — TOAST REMOVED 6.20.1 (owner disliked it TWICE).** History:
+  6.15.0 fixed a false hard-refresh toast by gating on wasControlledAtLoad; but
+  that STILL showed the toast on a normal post-deploy boot (controlled load,
+  new SW installs) — correct-in-theory, but pure noise on an unattended clock,
+  which the owner reported (with a screenshot of a clock). Resolution: DELETE
+  the toast; rely on skipWaiting+clients.claim (already in the SW) to activate
+  the new version, and silently window.location.reload() ONCE on
+  `controllerchange`, guarded by (a) wasControlledAtLoad (never first-install /
+  hard-refresh) and (b) no open [data-modal] (never interrupt an admin edit).
+  LESSON: this app is fundamentally a DISPLAY — prefer silent self-update over
+  any "click to update" UX. Do NOT reintroduce an update popup.
+- **(historical) SW UPDATE-TOAST GOTCHA (6.15.0, superseded by 6.20.1):** the "New version available!"
   toast (module 99) must NOT read navigator.serviceWorker.controller LIVE
   at the new worker's statechange — this SW uses skipWaiting + clients.claim,
   so a freshly-installed worker races to claim the page and flips
@@ -798,7 +973,7 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   reports via the app under the same uid; both writing would flap the
   census row. Battery green at close (canary'd lint, 54/54, check:all,
   34 modules parse, clock inline script parse-checked, old.html
-  untouched — md5 b8dd5f5a4c8fed0765c982a9ccc43204). DEPLOY-6.5.0.md
+  now READ config/clock_feeds; md5 e56f1e4c50c597cfe9e5618e0b53c732, was b8dd5f5a4c8fed0765c982a9ccc43204 until 6.20.0). DEPLOY-6.5.0.md
   written (no rules publish needed this time). NOT deployed at time of
   writing — owner deploys. Successor: verify deployment state with the
   owner first; natural next bite is the v2 dashboard (design doc build
@@ -922,7 +1097,7 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   via the zip + loose HANDOFF; ran the §5 battery on arrival — all green
   (canary-tested lint failed-then-reverted; 65/65 tests; check:all exit 0;
   38 modules parse; old.html ES5-clean and md5-identical to Bourdon's
-  record b8dd5f5a4c8fed0765c982a9ccc43204; index triple at 6.11.0; SW
+  record e56f1e4c50c597cfe9e5618e0b53c732 (was b8dd5f5a4c8fed0765c982a9ccc43204 pre-6.20.0); index triple at 6.11.0; SW
   1.17.0). FIRST FINDING, from the owner not the code: the inherited
   handoff said "nothing past 6.4.0 is live" — WRONG; the owner had
   deployed the whole 6.5→6.11 stack and confirmed 6.11.0 live (Building
@@ -1039,3 +1214,112 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   guard. 6.16.0 battery-green (69/69, 41 modules), UNDEPLOYED at close.
   Backlog now: the collision RESOLVER (the fix half — §7), rotation
   generator, alternate-base transfer + wall-clock long pole.
+  STILL SAME SESSION (owner: "warning works, it's awfully subtle though...
+  what's left and what do you recommend?" → I laid out the roadmap and
+  recommended the resolver; owner: "make it bolder and do the collision
+  resolver. Go team!"): SHIPPED 6.17.0 = the collision RESOLVER + bolder
+  banner. Investigated the write path FIRST (periods is the source of truth,
+  reader falls back to legacy bells only if periods empty — so a periods-only
+  write like the delete-period path is safe) and the bell shape (static =
+  no .relative; relatives carry {parentBellId, offsetSeconds} and MUST NOT be
+  moved). Engine 1.12.0 planOverlapResolution does the math purely (3
+  strategies, static-only), module 37 previews before applying, module 18
+  writes via an event (no 18↔37 cycle). The whole thing is gated to admin +
+  SHARED schedule and every apply is preview-first, so the destructive part
+  is guarded three ways (preview, static-only, periods-only proven write).
+  SCOPE NOTE: 'spread' v1 tightens gaps (periods keep length) rather than
+  shortening the periods themselves — told the owner, offered the refinement,
+  preview shows the truth. 6.17.0 battery-green (70/70, 41 modules),
+  UNDEPLOYED at close. Backlog now: 'spread-shorten' refinement (optional),
+  rotation generator (low pri), alternate-base transfer + wall-clock long
+  pole. Names taken: Quasimodo, Inky, Otto, Whitechapel, Bourdon, Grandsire
+  (+"Grandsire II"), Stedman.
+  STILL SAME SESSION: owner reviewed 6.17.0 (not yet deployed) and asked for
+  two tweaks + floated a new idea. Shipped 6.17.1: (1) "Protect in-between
+  times" checkbox, DEFAULT ON, on Spread — passing periods are a hard floor
+  (bathroom math), so the overlap now comes out of the periods' own length by
+  default (engine 1.13.0 protectGaps); (2) demoted "Push later" to 3rd + a
+  playful dismissal-change confirm. Then a LONG, valuable design conversation
+  about a NEW feature the owner dreamed up — "Reclaim a period" (kill FLEX for
+  the day, redistribute its time, dismissal pinned). Nailed the spec together;
+  the KEY correction the owner made (twice — I got the bracket wrong both
+  times): the freed span is [PREVIOUS period end → RECLAIMED period end], which
+  sacrifices the INCOMING passing period and PRESERVES the OUTGOING one (so
+  adjacent classes keep a passing period). Full spec now in §7. It's a per-day
+  Verb B recipe (ephemeral, never a dropdown entry — owner was emphatic about
+  not cluttering the 7×+TCAP+concessions selector). NOT YET BUILT — that's the
+  next build. 6.17.1 battery-green (71/71, 41 modules), UNDEPLOYED at close
+  (supersedes 6.17.0).
+  STILL SAME SESSION (owner: "Hop to it!"): BUILT 6.18.0, "Reclaim a period"
+  — the feature designed the previous turn. engine 1.14.0 'reclaim' archetype
+  (added to applyRecipeToPeriods so it rides the Verb B pipeline wired in
+  6.12.0 — no new plumbing). The math is the owner's magic trick: remove FLEX,
+  free [prev.end → reclaimed.end] (26 min for FLEX = 22 + the 4-min incoming
+  passing period), spread evenly across survivors, dismissal PINNED → every
+  class grows. Verified with 2 tests (FLEX-as-last, and a mid-period case
+  proving the OUTGOING passing gap is preserved). Recipe-builder UI in module
+  34 (3rd type + period-name datalist); describeRecipe in 20. Owner emphatic
+  this NEVER becomes a dropdown entry — one-day calendar transform,
+  delete-to-undo, base pristine. Documented the one v1 edge (relatives
+  anchored INTO the reclaimed period orphan-fallback for the day). 6.18.0
+  battery-green (73/73, 41 modules), UNDEPLOYED at close (one push covers
+  6.17.1 + 6.18.0). Backlog: reclaim refinements (re-home orphaned anchors;
+  absorb-checkboxes), rotation generator (low pri), alternate-base transfer +
+  wall-clock long pole. Names taken: Quasimodo, Inky, Otto, Whitechapel,
+  Bourdon, Grandsire (+"Grandsire II"), Stedman.
+  STILL SAME SESSION: owner noticed "Shrink" (the resolver's default strategy)
+  didn't protect passing periods like Spread does — it butted the next period
+  against the overrun's end. Shipped 6.18.1: engine 1.15.0 'shrink' honors
+  protectGaps (default true), leaving a passing period sized from the next
+  period's own outgoing gap (fallback: smallest positive gap). Moved the
+  "Protect in-between times" checkbox out of spread-only so it governs Shrink +
+  Spread (hidden for Push). Good exchange confirming the mental model: passing
+  periods are NOT stored — they're measured space between bells (next.start −
+  this.end); "protecting" them is arithmetic, same as the whole name-derived
+  period model. 6.18.1 battery-green (73/73, 41 modules), UNDEPLOYED (one push
+  covers 6.17.1 + 6.18.0 + 6.18.1).
+  STILL SAME SESSION (owner picked option A — explicit clock targeting — and
+  said "whatever scope makes sense"): BUILT 6.19.0, the wall-clock feed
+  PUBLISHER (split the arc: publisher now, old.html reader = 6.20.0, so the
+  feed can be verified in the console before touching the md5-locked clock).
+  BIG SIMPLIFICATION found mid-build: config/{id} is ALREADY public-read in
+  the rules, so the feared rules carve-out isn't needed — the feed lives at
+  config/clock_feeds (told the owner; I'd previously said this arc touches
+  rules, it doesn't). Also confirmed old.html already pins to a public
+  schedule id and already resolves periods/relatives/shift in ES5 — so the
+  reader just needs to feed it TRANSFORMED periods, not teach it recipe math.
+  publishClockFeeds is admin-only (write rules), composes per-schedule,
+  self-expires stale feeds by date, resets same-day removals to base. "Show on
+  clocks" picker in module 34 stores clockScheduleIds (explicit). 6.19.0
+  battery-green (73/73, 41 modules), old.html still byte-identical (untouched;
+  its turn is 6.20.0), UNDEPLOYED (one push covers 6.17.1 → 6.19.0). NEXT:
+  6.20.0 old.html reader (see §7) — the payoff, and the first old.html change
+  all round.
+  STILL SAME SESSION (owner: "push 6.19 and 6.20 at once... if you're confident,
+  go — and do the handoff too"): BUILT 6.20.0, the wall-clock READER — the
+  payoff. First touch of old.html all round (md5 b8dd5f5a… → e56f1e4c50c597cfe
+  9e5618e0b53c732). Was honest with the owner mid-turn that I'd delivered
+  nothing since 6.19.0 and was low on rope; they said go if confident, so I did
+  ONE careful complete pass (no more recon): added ES5 fetchClockFeeds()
+  (reuses parseFields), a feed-override in loadPublicSchedule (prefer
+  feeds[scheduleId] when date === localDateStr(today), copy periods, apply the
+  emergency shift on top, fail-open to base), and wrapped both loadPublicSchedule
+  call sites (dropdown + 5-min refresh) so feeds are fetched first — race-free.
+  Boot uses cached bells and corrects on the refresh (fine for a standing TV).
+  Verified: extracted the single <script> block + node --check (SYNTAX OK), ES5
+  scan clean, main-app battery 73/73. Also fixed a pre-existing bug found in
+  passing: the 5-min refresh stored schedules WITHOUT the emergency shift (boot
+  applied it) — shifts were dropped on refresh; now both apply it. NO rules
+  change (config already public). The whole wall-clock arc is COMPLETE. 6.20.0
+  battery-green, UNDEPLOYED (one push, incl. old.html, covers 6.17.1 → 6.20.0;
+  cache-bust old.html on the TVs). Names taken: Quasimodo, Inky, Otto,
+  Whitechapel, Bourdon, Grandsire (+"Grandsire II"), Stedman.
+  POST-DEPLOY (owner deployed 6.17.1→6.20.0 in one push): (1) collapsed the
+  19-file DEPLOY-6.x.md pile into ONE rolling DEPLOY.md (§8) with the file-by-
+  file upload table. (2) Owner screenshot: the "New version available!" popup
+  on a CLOCK, on boot → shipped 6.20.1: REMOVED the toast, replaced with a
+  silent guarded auto-reload on controllerchange (§9 — the toast's 3rd
+  appearance and its retirement; lesson: this app is a DISPLAY, never nag).
+  6.20.1 battery-green (73/73), main-app-files-only (old.html untouched),
+  UNDEPLOYED at close. Reached the natural resting point; remaining backlog
+  (§7) is all optional.
