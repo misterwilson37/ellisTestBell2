@@ -34,7 +34,8 @@ import {
 } from './05-preferences-cloud-sync.js';
 import {
     closeEditBellModal, findBellChildren, findNearbyBell, flattenPeriodsToLegacyBells,
-    migrateLegacyBellsToPeriods, renderCombinedList, saveCustomQuickBells,
+    migrateLegacyBellsToPeriods, renderCombinedList, resolveAllBellTimes,
+    saveCustomQuickBells,
 } from './14-render-schedule-list.js';
 import { populatePeriodSelectors } from './15-firebase-init.js';
 import {
@@ -1262,6 +1263,59 @@ function openEditRelativeModal(bell) {
     * MODIFIED: v4.31 - Router function to open the correct edit modal.
     * @param {object} bell - The bell object from the list click.
     */
+/**
+ * V6.22.0 — find a bell as it is actually STORED in the shared schedule.
+ *
+ * state.localSchedulePeriods is the pristine base (§4.6): no emergency shift,
+ * no Verb B transform. The rendered list is NOT — module 14 applies both to
+ * merged copies, so a bell showing 8:15 on a +15 shift day is stored as 8:00.
+ * Anything that will be WRITTEN BACK to the schedule document has to start
+ * here, not from the DOM.
+ *
+ * Returns the stored bell object (never a copy — callers must not mutate it),
+ * or null when the bell is personal, legacy-without-bellId, or simply absent.
+ */
+function findStoredSharedBell(bellId) {
+    if (!bellId) return null;
+    const periods = state.localSchedulePeriods || [];
+    for (let i = 0; i < periods.length; i++) {
+        const bells = periods[i].bells || [];
+        for (let j = 0; j < bells.length; j++) {
+            if (bells[j].bellId === bellId) return bells[j];
+        }
+    }
+    return null;
+}
+
+/**
+ * V6.22.0 — THE EDIT MODAL EDITS THE BASE SCHEDULE. Read this before changing
+ * how the time field is populated; it is the sibling of the V6.20.4 fix and
+ * has the same shape (a save path quietly operating on the wrong thing).
+ *
+ * The bell handed to this function is reconstructed from the rendered row's
+ * data-* attributes, and module 14 renders CALCULATED times — base times with
+ * the emergency shift and today's calendar transforms already folded in. The
+ * shared save path, meanwhile, writes into currentSchedule.periods, which is
+ * the pristine Firestore document. So before 6.22.0, an admin who saved ANY
+ * shared-bell change (a rename, a sound, an anchor) while a shift or transform
+ * was active wrote the ADJUSTED time into the BASE schedule — permanently
+ * rebasing that bell for every user of the schedule, with no message and no
+ * way to notice until the shift expired and the bell rang at the wrong time.
+ * V6.20.4 made this MORE reachable, not less: its refusal message tells admins
+ * to tick the confirm and save again, which is precisely the path that writes.
+ *
+ * §4.6 claimed this could not happen ("edit modals never see, or save back,
+ * shifted times"). That was true of the VARIABLE — localSchedulePeriods really
+ * does stay pristine — and false of the MODAL, which reaches the same numbers
+ * by a different route. An invariant about a variable is not an invariant about
+ * a screen.
+ *
+ * Fix: for shared bells, populate the time input from the STORED bell and tell
+ * the admin when today's clocks disagree. Editing stays possible on a shift day
+ * (a name or sound fix should not have to wait); what changes is that the value
+ * in the box, the value compared for "did the time change", and the value
+ * written are all the same base-space number.
+ */
 function handleEditBellClick(bell) {
     // 1. Check if it's a relative bell
     if (bell.isRelative && bell.type === 'custom') {
@@ -1269,10 +1323,31 @@ function handleEditBellClick(bell) {
         openEditRelativeModal(bell);
     } else {
         // It's a static bell, open the static editor
-        state.currentEditingBell = { ...bell }; // Store state
-        
+
+        // V6.22.0: rebase to stored (base-space) time for SHARED bells — see the
+        // function header. Personal bells are untouched: the shift and the
+        // transforms only ever move shared-side statics, so a custom bell's
+        // rendered time IS its stored time.
+        const storedBell = bell.type === 'shared' ? findStoredSharedBell(bell.bellId) : null;
+        // A shared bell whose stored form is RELATIVE has no static time to edit;
+        // its time is derived from its parent. Handled further down.
+        const storedIsRelative = !!(storedBell && storedBell.relative);
+        const storedTime = (storedBell && storedBell.time && !storedIsRelative)
+            ? storedBell.time : null;
+        // Fall back to the rendered time when the bell is not in the base doc
+        // (personal bell, or a shared bell mid-listener-refresh). Falling back is
+        // safe for display; the save path re-reads the document anyway.
+        const baseTime = storedTime || bell.time;
+        const timeWasRebased = !!storedTime
+            && normalizeTimeString(storedTime) !== normalizeTimeString(bell.time);
+
+        // currentEditingBell is the `oldBell` of the save path. It MUST carry the
+        // base time: it is what the "did the time actually change" comparison
+        // comes from and what the audit log records as the before-value.
+        state.currentEditingBell = { ...bell, time: baseTime };
+
         // Set fields
-        editBellTimeInput.value = bell.time;
+        editBellTimeInput.value = baseTime;
         editBellNameInput.value = bell.name;
         
         // NEW 5.31: Set the visual mode radio button
@@ -1333,8 +1408,35 @@ function handleEditBellClick(bell) {
             if (lockedSpan) lockedSpan.classList.toggle('hidden', isAdmin);
             if (adminSpan) adminSpan.classList.toggle('hidden', !isAdmin);
 
-            // Lock time for non-admins
-            if (isAdmin) {
+            // V6.22.0: say out loud that the box holds the BASE time whenever
+            // today's clocks show something else. Without this the admin sees
+            // 8:00 in a modal opened from a row reading 8:15 and reasonably
+            // concludes the app has lost the shift.
+            const rebasedSpan = document.getElementById('edit-time-note-rebased');
+            if (rebasedSpan) {
+                rebasedSpan.classList.toggle('hidden', !timeWasRebased);
+                if (timeWasRebased) {
+                    rebasedSpan.textContent =
+                        `📅 Editing the base schedule time. Today this bell rings at `
+                        + `${formatTime12Hour(bell.time, true)} because of an active `
+                        + `shift or schedule change — that adjustment is not being edited here.`;
+                }
+            }
+
+            // V6.22.0: a stored-RELATIVE shared bell has no time of its own. It
+            // reaches this static editor because the router above only sends
+            // CUSTOM relatives to the relative modal, and the row's Edit button
+            // is rendered for every bell. Before now, saving one for everyone
+            // replaced the stored bell wholesale and stripped `relative`,
+            // silently converting a derived bell into a fixed one. The write
+            // side is fixed in updatePeriodsOnEdit; this is the UI half — do not
+            // offer a field whose value cannot be honoured.
+            const relativeSpan = document.getElementById('edit-time-note-relative');
+            if (relativeSpan) relativeSpan.classList.toggle('hidden', !storedIsRelative);
+
+            // Lock time for non-admins, and for derived (relative) bells at any
+            // permission level.
+            if (isAdmin && !storedIsRelative) {
                 editBellTimeInput.disabled = false;
                 editBellTimeInput.style.opacity = '1';
                 editBellTimeInput.style.cursor = 'text';
@@ -1652,7 +1754,19 @@ async function handleEditBellSubmit(e) {
     }
     
     // Check for nearby bell (excluding the bell we are currently editing)
-    const allBells = [...state.localSchedule, ...state.personalBells];
+    //
+    // V6.22.0: compare LIKE WITH LIKE. state.localSchedule holds today's
+    // CALCULATED shared times (shift + transforms folded in), but a shared edit
+    // now carries a BASE-space time, so on a shift day the old comparison was
+    // off by the shift in both directions — inventing collisions against bells
+    // that are nowhere near, and missing real ones. A pristine resolution gives
+    // base-space times for relatives as well as statics, so nothing drops out of
+    // the check. Personal bells are pinned clock times either way and are
+    // compared unchanged, exactly as before.
+    const sharedBellsForProximity = oldBell.type === 'shared'
+        ? resolveAllBellTimes({ pristine: true }).flatBellList.filter(b => b.type === 'shared')
+        : state.localSchedule;
+    const allBells = [...sharedBellsForProximity, ...state.personalBells];
     const nearbyBell = findNearbyBell(newBell.time, allBells, oldBell);
     
     if (nearbyBell) {
@@ -2062,6 +2176,23 @@ function updatePeriodsOnEdit(periods, oldBell, newBell) {
             // field-stripping failure mode I0 warns about, in our own client.
             if (!('buildingBellId' in updatedBell) && period.bells[bellIndex].buildingBellId) {
                 updatedBell.buildingBellId = period.bells[bellIndex].buildingBellId;
+            }
+            // V6.22.0: preserve `relative` on the same terms, and for the same
+            // reason. This function REPLACES the stored bell with newBell rather
+            // than merging into it, so any field the edit modal does not know
+            // about is dropped. The static editor does not know about `relative`
+            // — and it is reachable for shared relative bells, because the router
+            // in handleEditBellClick only diverts CUSTOM relatives to the
+            // relative modal while module 14 renders an Edit button on every row.
+            // The result was a derived bell silently flattened into a fixed one
+            // at whatever time it happened to resolve to that day, breaking the
+            // link to its parent for everybody. The engine reads `relative` in
+            // preference to `time` (calculateRelativeBellTime step 1), so a
+            // preserved anchor keeps winning and a stale time field is inert.
+            // An edit that MEANS to change the anchor passes `relative`
+            // explicitly and still overrides this.
+            if (!('relative' in updatedBell) && period.bells[bellIndex].relative) {
+                updatedBell.relative = period.bells[bellIndex].relative;
             }
             if (updatedBell.buildingBellId === null || updatedBell.buildingBellId === undefined) {
                 delete updatedBell.buildingBellId; // Firestore rejects undefined; null means "cleared"

@@ -497,3 +497,22 @@ body.simplified-mode .bulk-select-period {
 
 /* overlap-warning-banner is bg-red-600/text-white — legible in both themes.
    Listed here only so the next reader knows it was checked, not missed. */
+
+/* ============================================================
+   V6.22.0 — the fourth banner, per the instruction above.
+   #roster-unrostered-banner is built by 33-roster.js inside the Roster & Tags
+   modal to name people who have a presence doc but no roster row. It uses
+   bg-amber-100 / text-amber-900, which is correct in light mode and near-black
+   text on a pale box in dark mode — same failure as the two above, so it gets
+   the same treatment. Colours match #designation-banner so the two amber
+   surfaces agree.
+   ============================================================ */
+:root[data-theme="dark"] #roster-unrostered-banner {
+    background-color: #4a3410;   /* deep amber, matches #designation-banner */
+    border-color: #7a5618;
+    color: #ffe3ad;
+}
+:root[data-theme="dark"] #roster-unrostered-banner p {
+    color: #ffe3ad;              /* the text-amber-900 utility is !important-free,
+                                    but be explicit: the <p>s carry their own class */
+}

@@ -41,10 +41,15 @@ async function checkUntagged() {
             getDocs(collection(state.db, ...base, 'roster')),
         ]);
 
-        // uid -> has at least one tag
+        // uid -> has at least one tag; plus every uid that has a roster doc at
+        // all (v6.22.0 — "no tags" and "not on the roster" are different
+        // problems with different fixes, and only one of them is solved inside
+        // the roster list).
         const tagged = new Set();
+        const onRoster = new Set();
         rosterSnap.docs.forEach((d) => {
             const data = d.data();
+            onRoster.add(d.id);
             if (data && Array.isArray(data.tags) && data.tags.length) tagged.add(d.id);
         });
 
@@ -61,13 +66,28 @@ async function checkUntagged() {
         if (!seen.size) { hide(); return; }
 
         const names = Array.from(seen.values());
-        const preview = names.slice(0, 3).join(', ') + (names.length > 3 ? ', …' : '');
         const n = seen.size;
-        textEl.textContent = n === 1
+        // v6.22.0: the old preview showed 3 names then ", …", so a count of 4
+        // read as "you said four, I can see three." Say how many are hidden.
+        const preview = names.length > 3
+            ? names.slice(0, 3).join(', ') + ' and ' + (names.length - 3) + ' more'
+            : names.join(', ');
+        // v6.22.0: how many of them have no roster row at all. Those will NOT
+        // appear in the Roster & Tags list until "Seed from presence" is
+        // pressed, so naming them here without saying so sends the admin
+        // looking for someone who cannot be there yet.
+        const unrostered = Array.from(seen.keys()).filter((uid) => !onRoster.has(uid)).length;
+        let msg = n === 1
             ? '1 person has signed in but has no tag yet (' + preview + ').'
             : n + ' people have signed in but have no tags yet (' + preview + ').';
+        if (unrostered) {
+            msg += ' ' + unrostered + (unrostered === 1 ? ' is' : ' of them are')
+                + ' not on the roster yet — open Review and press "Seed from presence" to add'
+                + (unrostered === 1 ? ' them' : ' them all') + '.';
+        }
+        textEl.textContent = msg;
         banner.classList.remove('hidden');
-        safeLog.log('[Untagged] ' + n + ' present staff without tags.');
+        safeLog.log('[Untagged] ' + n + ' present staff without tags; ' + unrostered + ' not on roster.');
     } catch (e) {
         // Silent: this is a convenience nudge, never block or alarm.
         safeLog.log('[Untagged] check skipped:', e && e.message);

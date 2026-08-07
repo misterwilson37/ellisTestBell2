@@ -582,8 +582,23 @@ function calculateRelativeBellTime(bell, bellMap, allPeriods, visited = new Set(
     * flatBellList: Flat list of all calculated bells for the clock
     * }
     */
-function resolveAllBellTimes() {
+function resolveAllBellTimes(options = {}) {
     // MODIFIED in 4.29: MERGE shared and personal periods instead of just concatenating
+    //
+    // V6.22.0: `options.pristine` resolves the schedule in BASE SPACE — the
+    // emergency shift and the day's Verb B transforms are both skipped, so the
+    // returned times are the ones actually STORED in Firestore. Everything else
+    // (merge, relative resolution, overlays) is identical, which is the point:
+    // relative bells still resolve, so a caller gets exact base-space times for
+    // relatives too, not just statics.
+    //
+    // WHY IT EXISTS: the edit modal writes to the BASE schedule document, so
+    // every value it reasons about must be in base space. Before 6.22.0 it read
+    // the rendered (shifted/transformed) time and wrote it straight back — see
+    // the header of handleEditBellClick in 16-schedule-management.js. Default is
+    // false; the one pre-existing caller (module 18's recalculateAndRenderAll)
+    // is unaffected.
+    const pristine = options.pristine === true;
     const mergedPeriodsMap = new Map();
 
     // V5.74.0: EMERGENCY SCHEDULE SHIFT. If the active shared schedule carries
@@ -594,7 +609,8 @@ function resolveAllBellTimes() {
     // that's the ripple. Personal static bells (pinned clock times) do not
     // move. The date check runs on every recalculation, so the shift
     // self-expires at the midnight recalc without any cleanup write.
-    const activeShiftSeconds = window.BellEngine.getActiveScheduleShiftSeconds(
+    // V6.22.0: pristine mode reports base-space times, so no shift.
+    const activeShiftSeconds = pristine ? 0 : window.BellEngine.getActiveScheduleShiftSeconds(
         state.activeSharedScheduleShift, new Date());
 
     // V6.12.0: LAYER 4 VERB B — transformation recipes. If the school
@@ -612,7 +628,8 @@ function resolveAllBellTimes() {
     // pristine base periods bells carry no _originType, so the engine's
     // recipeEligible treats them as shared (its documented pre-merge case).
     let basePeriods = state.localSchedulePeriods;
-    const activeTransforms = Array.isArray(state.activeCalendarTransforms)
+    // V6.22.0: pristine mode reports base-space times, so no transforms either.
+    const activeTransforms = (!pristine && Array.isArray(state.activeCalendarTransforms))
         ? state.activeCalendarTransforms : [];
     for (let i = 0; i < activeTransforms.length; i++) {
         // applyRecipeToPeriods is immutable and returns the SAME array

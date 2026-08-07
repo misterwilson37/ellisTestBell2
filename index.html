@@ -7,7 +7,7 @@
          always match — this <title>, the visible <h1> banner, and the comment on
          the last line of this file. Update all three together. (z = fix/tweak,
          y = new feature, x = major shift with the owner's sign-off.) -->
-    <title>Ellis Web Bell 6.21.0</title>
+    <title>Ellis Web Bell 6.22.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -684,6 +684,13 @@
 				        <span id="edit-time-note-locked" class="hidden text-gray-500">🔒 Only admin can change anchor bell times</span>
 				        <span id="edit-time-note-admin" class="hidden text-amber-600">🔓 Admin: saving a new time changes this bell for every user of this schedule.</span>
 				        <span id="edit-time-note-anchor" class="hidden text-gray-500"></span>
+				        <!-- V6.22.0: shown when the stored (base) time differs from
+				             the time on today's clocks, i.e. an emergency shift or a
+				             calendar transform is active. Filled in by module 16. -->
+				        <span id="edit-time-note-rebased" class="hidden block mt-1 text-amber-600"></span>
+				        <!-- V6.22.0: shown for a shared bell stored as RELATIVE — its
+				             time is derived from a parent bell, so the field is locked. -->
+				        <span id="edit-time-note-relative" class="hidden block mt-1 text-gray-500">🔗 This bell's time is calculated from another bell, so it can't be typed here. Delete and re-add it to change how it's anchored.</span>
 				    </div>
 				</div>
                 <div>
@@ -1087,9 +1094,14 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Set a home schedule in bulk</label>
                 <p class="text-xs text-gray-500 mb-2">Filter by tag or name, pick a schedule, and set it as the home default for everyone who matches. You'll see the count before it applies. Each person gets an explicit default — no tag is resolved later, so the CDC teacher (all three grades) is set directly, once.</p>
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="text" id="roster-template-filter" placeholder="Filter (e.g. 6th)" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm">
-                    <select id="roster-template-schedule" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm"></select>
-                    <button type="button" id="roster-template-apply" data-btn="primary">Set for all matching</button>
+                    <!-- V6.22.0: min-w-0 lets the two fields shrink (an <input>'s
+                         default min-width is its ~20-character intrinsic size, which
+                         forced this row wider than the panel); flex-shrink-0 +
+                         whitespace-nowrap stop the button collapsing to its longest
+                         word and wrapping onto three lines. -->
+                    <input type="text" id="roster-template-filter" placeholder="Filter (e.g. 6th)" class="flex-grow min-w-0 px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm">
+                    <select id="roster-template-schedule" class="flex-grow min-w-0 px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm"></select>
+                    <button type="button" id="roster-template-apply" data-btn="primary" class="flex-shrink-0 whitespace-nowrap">Set for all matching</button>
                 </div>
             </div>
             <div id="roster-list"></div>
@@ -1731,7 +1743,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.21.0</h1>
+            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.22.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -3510,4 +3522,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 6.21.0 -->
+<!-- Version 6.22.0 -->

@@ -2,7 +2,31 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.21.0 (DUPLICATE SCHEDULE ships —
+before writing any code. Last updated: **6.22.0 (THE EDIT MODAL EDITS THE BASE
+SCHEDULE — the §7 loose thread was a live data-corruption bug, not a curiosity.
+The modal rebuilt its bell from the rendered row's data-* attributes, which carry
+SHIFTED/TRANSFORMED times, while the shared save path writes the PRISTINE
+document: any shared-bell save during an emergency shift (a rename, a sound, an
+anchor) permanently rebased that bell for everyone. 6.20.4 made it MORE reachable
+by telling admins to tick the confirm and save again. Fixed via
+findStoredSharedBell + resolveAllBellTimes({pristine:true}); proximity check
+rebased to match; updatePeriodsOnEdit now preserves `relative` (it replaces
+rather than merges, and shared relative bells DO reach the static editor, so
+saving one flattened it to a fixed bell); time field locked for derived bells.
+Plus three things the owner reported from the wild: the roster bulk-template
+button overlapping its panel, the untagged nudge naming people who are
+structurally absent from the roster list it opens, and its "4 people / 3 names"
+count. SW 1.34.0, 74/74, 41 modules, NO rules change, NO CSS rebuild.)
+DEPLOY STATE: through 6.20.4 LIVE on alpha (owner confirmed); 6.21.0 and 6.22.0
+built + battery-green, NOT yet deployed — ONE push covers both. Round 9,
+"Gudgeon" — see §10.
+**BACKPORT DOWNGRADED (owner, 2026-08):** he is the ONLY admin on every channel,
+the 6.20.4 bug only ever bit administrative edits, and he now knows the confirm
+must be ticked. Faculty were never blocked. So the school/building backport is NO
+LONGER top priority. BUT see §7 — the 6.22.0 shift-rebase bug DOES exist on the
+school channel (5.79.x has temporaryShift since v5.74) and he is exactly the
+person who can trigger it. Building (5.69.5) predates the shift and is unaffected.
+// prev: **6.21.0 (DUPLICATE SCHEDULE ships —
 admin-only deep copy of the selected shared schedule, with REGENERATED bellIds
 and periodIds so a teacher's personal overrides/mutes cannot bleed between a
 schedule and its copy; buildingBellId anchors preserved, temporaryShift not
@@ -687,11 +711,13 @@ in the design doc).
   neighbor instead (needs anchor re-homing, fiddly); (b) optional
   absorb-checkboxes to pick WHICH survivors get the time (v1 spreads across
   ALL). Neither blocks use; owner told about (a) in the deploy doc.
-- **OPEN, TOP PRIORITY, NOT IN THIS REPO: BACKPORT THE BELL-TIME FIX.**
-  6.20.4 fixed the silent admin time-drop on ALPHA only. The school channel is
-  on the 5.79.x line and the building channel on 5.69.5 — both postdate V5.66.2
-  and therefore carry the identical bug. School resumes shortly for ~50 faculty.
-  This is worth more than every remaining item in this section combined.
+- **DOWNGRADED 2026-08 (owner call, round 9): BACKPORT THE BELL-TIME FIX.**
+  The owner is the ONLY admin on every channel, the V5.66.2 bug only ever bit
+  ADMINISTRATIVE edits, and he now knows to tick the confirm. Faculty consume
+  bells; they never hit the path. So this is no longer urgent — do NOT re-promote
+  it to top priority without new evidence. It stays listed because the school
+  channel will eventually be pushed, and because the 6.22.0 shift-rebase bug
+  (above) rides the same channel and is the one with teeth.
   Those channels are PRE-modularization (`script.js` monolith, no src/js/), so
   it is a port, not a copy: find `handleEditBellSubmit`, locate
   `wantsToOverrideForAll`, and add the same "refuse rather than silently drop a
@@ -749,14 +775,25 @@ in the design doc).
   `edit-bell-visual-override-checkbox` deleted (shown to admins, never read).
   V4.95 sound-disable listener deleted (it revoked sound editing from any admin
   who ticked then unticked). See CHANGELOG V6.20.4.
-  **STILL WORTH CONFIRMING (not blocking):** whether an active emergency shift
-  can place a SHIFTED time into the edit modal. §4.6 says no — shifts apply to
-  merged copies in `resolveAllBellTimes`, `state.localSchedulePeriods` stays
-  pristine — but the modal receives its bell from the CALCULATED list, and round
-  8 ran out of room to trace it. It does not affect the 6.20.4 comparison (both
-  sides would be shifted equally); it would affect what gets WRITTEN back if the
-  invariant is not holding. Trace `renderCombinedList(calculatedPeriods)` →
-  `handleEditBellClick(bell)` → `updatePeriodsOnEdit` with a shift active.
+  **ANSWERED AND FIXED (6.22.0, round 9): the invariant was NOT holding.** It
+  can, and it did — the modal rebuilds its bell from the rendered row's `data-*`
+  attributes, and module 14 renders CALCULATED times (shift + Verb B transforms
+  folded into merged copies). The shared save path writes into
+  `currentSchedule.periods`, the PRISTINE document. So a shared-bell save of ANY
+  kind during a shift wrote the adjusted time into the base, permanently rebasing
+  the bell for every user, silently. Round 8 was right that it "would affect what
+  gets WRITTEN back," and right to flag it as cheap to settle.
+  §4.6 was true of the VARIABLE and false of the SCREEN — see the new §9 lesson.
+  Fixed by `findStoredSharedBell()` + populating the modal from the stored bell;
+  `resolveAllBellTimes({pristine:true})` for a base-space proximity check; the
+  time input locked for stored-relative bells; and `updatePeriodsOnEdit`
+  preserving `relative` (see CHANGELOG V6.22.0 before changing any of it).
+  **NOT DONE, and the reason matters:** the same bug exists on the SCHOOL channel
+  (5.79.x — `temporaryShift` landed in v5.74), and the owner is the only admin,
+  i.e. exactly the person who can trigger it. Building (5.69.5) predates the
+  shift entirely and is unaffected. If the school channel is ever pushed, port
+  this before the 6.20.4 confirm fix — a swallowed edit is an annoyance, a
+  rebased bell is wrong data for ~50 people.
 - **HISTORICAL (kept for the reasoning trail; superseded by the entry above):**
   Reported 2026-08 on ALL THREE channels: alpha 6.20.0, beta 6.11.0, AND 5.69.2.
   **5.69.2 predates every change in round 7**, so a shared BACKEND cause is far
@@ -874,6 +911,34 @@ file-by-file "what actually needs uploading" table, so each release just fills
 in what changed + a concrete smoke test.
 
 ## 9. Working with this user
+
+- **AN INVARIANT ABOUT A VARIABLE IS NOT AN INVARIANT ABOUT A SCREEN (round 9).**
+  §4.6 promised that "edit modals never see (or save back) shifted times," and
+  the code backing that promise was correct: `state.localSchedulePeriods` really
+  does stay pristine. The modal reached the same numbers anyway, by a second
+  route nobody had drawn — module 14 renders CALCULATED times into `data-*`
+  attributes, and the modal rebuilds its bell from the DOM. Four rounds of
+  documentation asserted safety that the data flow did not provide.
+  Generalise: when an invariant is phrased as "X stays clean," ask what ELSE
+  carries X's values. Rendered attributes, cached copies, event payloads and
+  audit records are all places a value can arrive from. **Grep for the consumers,
+  not the guarded variable.** The cheap check is to ask, of any value about to be
+  WRITTEN: which coordinate space is this in, and is it the same space as the
+  destination? Here the modal read display-space and wrote storage-space.
+- **THE OWNER'S SCREENSHOTS KEEP OUT-EARNING THE BATTERY (round 9 confirms
+  round 8).** Three of this round's six fixes came from one screenshot and two
+  sentences of description: a wrapped button, a banner that named someone the
+  list could not show, and a count that disagreed with its own examples. The
+  battery is blind to all three — they are not syntax, not linkage, not tests.
+  A fourth (`bg-amber-50` is not in the compiled CSS, so a new banner would have
+  been transparent in dark mode) was caught only by checking the compiled output
+  rather than assuming a Tailwind class exists. **Before shipping any new class,
+  grep tailwind.css for it.** `verify-css` checks sentinels, not your new class.
+- **PRESENCE ≠ ROSTER (round 9; useful whenever Layer 3 comes up).** Signing in
+  writes `presence/{uid}`; it does NOT create `roster/{uid}`. Anything that
+  counts one and displays the other will disagree, and the admin sees a name they
+  cannot act on. "Seed from presence" is the bridge, and until 6.22.0 nothing
+  said so at the moment of confusion.
 
 - **TESTS DRIFT OUT OF THE REPO — CHECK THE COUNT EVERY ROUND (round 8).**
   Arriving from a GitHub download, `npm test` reported a green **51/51**; the
@@ -1475,3 +1540,29 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   owner's stated priority order (cost, student outcomes, stability) has not
   changed. If you find yourself concluding "this must be backend because it
   predates our changes," re-read the METHOD LESSON in §7 first.
+- **Round 9 (2026-08): "Gudgeon."** Named for the pins a bell pivots on —
+  invisible in every photograph of a bell, catastrophic when worn. Apt for a
+  round that opened by checking an invariant nobody could see. (Quasimodo,
+  Whitechapel, Bourdon, Grandsire/Grandsire II, Stedman, Sally, Inky and Otto are
+  taken.)
+  Arrived on a GitHub download WITH the .md files and a CORRECT 74-test suite —
+  round 8's `tests/` restoration reached the repo, so §9's drift check passed for
+  the first time. Full battery green on arrival, lint canary verified.
+  **SETTLED THE §7 LOOSE THREAD, and it was not loose — it was load-bearing.**
+  The emergency-shift question was a live data-corruption bug: shared-bell saves
+  during a shift or transform rebased the stored bell for everyone. Shipped
+  6.22.0 with that fix, a sibling `relative`-stripping fix in the same save path,
+  and three defects the owner reported from the wild (overlapping bulk-template
+  button; the untagged nudge naming people absent from the roster list its own
+  Review button opens; its "4 people / 3 names" count).
+  **The owner downgraded the backport** on good reasoning — he is the sole admin
+  and the 6.20.4 bug only bit admin edits. Recorded in §7, along with the fact
+  that the 6.22.0 bug is the one that actually reaches the school channel.
+  **Successor:** round 8's two recommended sweeps are still unstarted and are
+  still the right next move — (a) affordance (does each control's enabled state
+  and label match what saving does), (b) dark-mode contrast of everything since
+  ~6.9.0. Round 9 fixed one instance of each while chasing other things, which is
+  evidence for doing them systematically rather than against it. Before touching
+  the modal's time handling, read CHANGELOG V6.22.0 and the header of
+  `handleEditBellClick`; both exist to stop the fix being undone by someone who
+  thinks the rendered time is the real one.

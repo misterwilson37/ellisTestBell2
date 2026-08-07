@@ -68,6 +68,14 @@ const tmplApply = document.getElementById('roster-template-apply');
 let myDoc = null;          // my roster doc data (or null)
 let rosterUnsub = null;    // admin modal snapshot
 let rosterRows = [];       // [{uid, data}]
+// v6.22.0: non-clock presence, read once per roster-modal open. PRESENCE AND
+// ROSTER ARE DIFFERENT COLLECTIONS — signing in writes presence/{uid}, it does
+// NOT create roster/{uid}. So someone can be counted by the untagged nudge
+// (which reads presence) and be absent from this list (which reads roster),
+// which is exactly what an admin sees as "the banner named Torres but Torres
+// isn't here." We surface the gap instead of leaving it to be deduced.
+let presenceRows = [];     // [{uid, displayName}]
+let presenceLoaded = false;
 
 function rosterRef(uid) {
     return doc(state.db, 'artifacts', state.appId, 'public', 'data', 'roster', uid);
@@ -169,6 +177,63 @@ function openRoster() {
     }, (err) => {
         setStatus(rosterStatus, 'Error: ' + err.message + ' (admin only)', true);
     });
+    loadPresenceForRoster(); // v6.22.0: fire-and-forget; re-renders when it lands
+}
+
+/**
+ * v6.22.0 — one-shot presence read so the modal can name who has signed in but
+ * has no roster row yet. Deliberately NOT a listener: this is a rarely-opened
+ * admin modal and presence is one small doc per person, so a live subscription
+ * would cost reads all session for information that changes when someone signs
+ * in for the first time. Failure is silent — the roster list is the feature,
+ * this is the signpost.
+ */
+async function loadPresenceForRoster() {
+    presenceLoaded = false;
+    try {
+        const col = collection(state.db, 'artifacts', state.appId, 'public', 'data', 'presence');
+        const snap = await getDocs(col);
+        presenceRows = snap.docs
+            .filter((d) => (d.data() || {}).surface !== 'clock') // TVs are not staff
+            .map((d) => ({ uid: d.id, displayName: (d.data() || {}).displayName || 'Unknown' }));
+        presenceLoaded = true;
+        renderRoster();
+    } catch (e) {
+        safeLog.log('[Roster] presence check skipped:', e && e.message);
+    }
+}
+
+/**
+ * v6.22.0 — people with a presence doc and no roster doc. These are invisible
+ * in the roster list until "Seed from presence" creates rows for them.
+ */
+function unrosteredFromPresence() {
+    if (!presenceLoaded) return [];
+    const have = new Set(rosterRows.map((r) => r.uid));
+    return presenceRows.filter((p) => !have.has(p.uid));
+}
+
+function unrosteredNoticeHtml() {
+    const missing = unrosteredFromPresence();
+    if (!missing.length) return '';
+    const names = missing.map((p) => p.displayName);
+    const shown = names.slice(0, 6).map(escapeHtml).join(', ');
+    const extra = names.length > 6 ? ' and ' + (names.length - 6) + ' more' : '';
+    // v6.22.0 CONTRAST: bg-amber-100 / border-amber-300 / text-amber-900 are all
+    // present in the compiled tailwind.css (bg-amber-50 is NOT — it would have
+    // rendered as a transparent box with near-black text on the dark modal, the
+    // exact failure V6.21.0 fixed in the three banners). The id carries the
+    // dark-theme override in styles.css; see the banner block there.
+    return '<div id="roster-unrostered-banner" class="mb-4 rounded-lg border border-amber-300 bg-amber-100 p-3">'
+        + '<p class="text-sm font-medium text-amber-900">'
+        + missing.length + (missing.length === 1 ? ' person has' : ' people have')
+        + ' signed in but ' + (missing.length === 1 ? 'is' : 'are') + ' not on the roster yet</p>'
+        + '<p class="text-xs text-amber-900 mt-1">' + shown + extra + '</p>'
+        + '<p class="text-xs text-amber-900 mt-1">Signing in records usage, but it does not create a'
+        + ' roster entry. Press <strong>Seed from presence</strong> above to add'
+        + ' ' + (missing.length === 1 ? 'them' : 'them all') + ', then tag'
+        + ' ' + (missing.length === 1 ? 'them' : 'each of them') + ' below.</p>'
+        + '</div>';
 }
 
 function closeRoster() {
@@ -187,11 +252,13 @@ function scheduleOptions(selectedId) {
 }
 
 function renderRoster() {
+    const notice = unrosteredNoticeHtml(); // v6.22.0
     if (!rosterRows.length) {
-        rosterList.innerHTML = '<p class="text-sm text-gray-500 mb-4">No roster entries yet. "Seed from presence" creates a row for everyone the usage dashboard has seen, or users add themselves via My Tags.</p>';
+        rosterList.innerHTML = notice
+            + '<p class="text-sm text-gray-500 mb-4">No roster entries yet. "Seed from presence" creates a row for everyone the usage dashboard has seen, or users add themselves via My Tags.</p>';
         return;
     }
-    rosterList.innerHTML = rosterRows.map(({ uid, data }) => {
+    rosterList.innerHTML = notice + rosterRows.map(({ uid, data }) => {
         const tags = (data.tags || []).map((t) =>
             chip(t, 'data-r-tag-del="' + escapeHtml(t) + '" data-r-uid="' + uid + '"',
                 'bg-gray-200 text-gray-700')).join(' ');
