@@ -83,6 +83,8 @@ export const state = {
     calculatedPeriodsList: [],
     appId: undefined,
     isAudioReady: false,
+    // V6.20.3: handle for the load-latch watchdog (see 16-schedule-management)
+    loadLatchWatchdogId: null,
     isBaseScheduleLoaded: false,
     isPersonalScheduleLoaded: false,
     isScheduleReady: false,

@@ -165,35 +165,31 @@ function init() {
     // V5.51.0: Register Service Worker for PWA support
     if ('serviceWorker' in navigator) {
         // V6.15.0 BUGFIX: only surface the "new version" toast when this page
-        // was already under service-worker control WHEN IT LOADED — captured
-        // now, before any newly-installed worker can skipWaiting + claim it.
-        // A HARD refresh loads uncontrolled (controller === null) and pulls the
-        // latest straight from the network, so a worker updating right after is
-        // not news — suppress it. A NORMAL reload is served from the old SW's
-        // cache (controlled), so a new worker genuinely means "you're on the
-        // old version, refresh" — keep it. The old code read controller LIVE at
-        // statechange, which raced skipWaiting/claim and fired even on a hard
-        // refresh (the reported bug). First-ever install is also uncontrolled,
-        // so it correctly stays silent too.
+        // V6.20.1: this app is mostly an unattended CLOCK/display, so the old
+        // "New version available! Refresh to update." popup was pure noise —
+        // nobody's there to tap OK, and it covered the time (reported twice).
+        // The service worker already skipWaiting()s + clients.claim()s, so a new
+        // version takes control on its own; we just RELOAD ONCE, silently, when
+        // it does — so a long-running clock actually runs the new code without
+        // anyone touching it. Guards: (1) wasControlledAtLoad — only reload on a
+        // genuine update, never a first install or a hard refresh (which already
+        // has fresh code); (2) skip while a modal/editor is open, so we never
+        // yank the rug out from under an admin mid-edit (they get it next load).
         const wasControlledAtLoad = !!navigator.serviceWorker.controller;
+        let reloadingForUpdate = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (reloadingForUpdate || !wasControlledAtLoad) return;
+            if (document.querySelector('[data-modal]:not(.hidden)')) {
+                safeLog.log('[PWA] Update ready, but a modal is open — deferring reload.');
+                return;
+            }
+            reloadingForUpdate = true;
+            safeLog.log('[PWA] New version active — reloading to apply.');
+            window.location.reload();
+        });
         navigator.serviceWorker.register('/service-worker.js')
             .then((registration) => {
                 safeLog.log('[PWA] Service Worker registered:', registration.scope);
-
-                // Check for updates
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    if (!newWorker) return;
-                    safeLog.log('[PWA] New Service Worker installing...');
-
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && wasControlledAtLoad) {
-                            // Genuine mid-session/stale-cache update, not a fresh load.
-                            safeLog.log('[PWA] New version available!');
-                            showUserMessage('New version available! Refresh to update.');
-                        }
-                    });
-                });
             })
             .catch((error) => {
                 console.warn('[PWA] Service Worker registration failed:', error);

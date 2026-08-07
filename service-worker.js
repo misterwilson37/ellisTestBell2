@@ -1,7 +1,15 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.28.0
+ * Version: 1.31.0
  *
+ * v1.29.0 changelog (2026-07, app 6.20.1): no new modules — cache bump for the
+ *   PWA update-UX fix: the "New version available! Refresh to update." popup is
+ *   GONE (it nagged unattended clocks on every post-deploy boot). Replaced with
+ *   a silent one-time reload on controllerchange (genuine updates only, never
+ *   while a modal is open). Edited module 99.
+ * v1.28.0 changelog (2026-07, app 6.20.0): no new modules — cache bump for the
+ *   wall-clock feed READER: old.html reads config/clock_feeds (ES5). Also fixed
+ *   the refresh path dropping the emergency shift.
  * v1.27.0 changelog (2026-07, app 6.19.0): no new modules — cache bump for
  *   the wall-clock feed (publisher half): admins publish transformed periods
  *   to the public config/clock_feeds doc; "Show on clocks" picker in the
@@ -149,7 +157,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.28.0';
+const CACHE_VERSION = '1.31.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;

@@ -1,6 +1,9 @@
 /**
  * Ellis Web Bell — Shared Bell Engine
- * Version: 1.15.0
+ * Version: 1.16.0
+ *
+ * v1.16.0 (2026-08, app 6.20.2): detectPeriodOverlaps ignores NESTED periods
+ *   (lunch waves inside 4th period are legitimate, not collisions).
  *
  * v1.15.0 (2026-07, app 6.18.1): planOverlapResolution 'shrink' now honors
  *   protectGaps (default TRUE) — the next period keeps a passing period after
@@ -944,6 +947,14 @@
         for (let i = 0; i < spans.length - 1; i++) {
             const cur = spans[i];
             const next = spans[i + 1];
+            // v1.16.0 (app 6.20.2) NESTING IS LEGITIMATE, NOT A COLLISION.
+            // Lunch waves run INSIDE 4th period — true of every lunch at this
+            // school — advisory sits inside a block, etc. If either span is
+            // fully contained in the other, that's nesting: skip it. Only a
+            // PARTIAL overrun is a real problem. This was the false positive
+            // ("4th Period ends 12:08 PM, but Lunch A begins 11:36 AM").
+            if (next.end <= cur.end) continue;                            // next nested in cur
+            if (cur.start >= next.start && cur.end <= next.end) continue; // cur nested in next
             if (cur.end > next.start) {
                 out.push({
                     name: cur.name,
@@ -1131,7 +1142,7 @@
     }
 
     const BellEngine = {
-        VERSION: '1.15.0', // v1.3.1: exported so the status modal can report it
+        VERSION: '1.16.0', // v1.3.1: exported so the status modal can report it
                            // (v6.16.0 fix: this constant had drifted — the
                            // 1.9.0/1.10.0 bumps missed it; nothing in the
                            // battery verifies it. Now correct.)

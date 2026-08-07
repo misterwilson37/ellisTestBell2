@@ -924,7 +924,16 @@ async function handleSubmitMultiAddRelativeBell(e) {
 function recalculateAndRenderAll() {
     // NEW in 4.32: Guard against race condition on personal schedule load
     if (state.activePersonalScheduleId && (!state.isBaseScheduleLoaded || !state.isPersonalScheduleLoaded)) {
-        console.warn("Delaying calculation: base and personal schedules have not both loaded.");
+        // V6.20.3: say WHICH listener we're waiting on. This guard returning
+        // forever is a SILENT editor freeze (no error, nothing renders, bell
+        // times look unchangeable) — the exact symptom reported 2026-08. The
+        // watchdog in setActiveSchedule (module 16) force-clears it if a
+        // listener never reports, so this can no longer deadlock.
+        console.warn('Delaying calculation: waiting on '
+            + (!state.isBaseScheduleLoaded ? 'BASE' : '')
+            + (!state.isBaseScheduleLoaded && !state.isPersonalScheduleLoaded ? ' + ' : '')
+            + (!state.isPersonalScheduleLoaded ? 'PERSONAL' : '')
+            + ' schedule listener (personal id: ' + state.activePersonalScheduleId + ').');
         return; // Exit, wait for the other listener to fire
     }
     // V5.66.3: Debug logging for calculation
@@ -959,7 +968,14 @@ function recalculateAndRenderAll() {
 
     // V6.16.0: read-only overrun check on the freshly-calculated periods
     // (admin-only; never mutates anything).
-    refreshOverlapWarning();
+    // V6.20.2: HARD-GUARDED. This is a cosmetic warning bolted onto the tail of
+    // the sacred render path — if it ever throws, it must NOT take rendering or
+    // bell EDITING down with it. Never remove this try/catch.
+    try {
+        refreshOverlapWarning();
+    } catch (e) {
+        console.warn('[Overlap] warning skipped (non-fatal):', e && e.message);
+    }
     
     // NEW in 4.55: Force an immediate clock update to load the initial visual cue
     // MODIFIED V4.61: Removed check; clock update must run immediately after data load to display the visual cue.

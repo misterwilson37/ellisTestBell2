@@ -56,6 +56,26 @@ function setActiveSchedule(prefixedId) {
     // NEW in 4.32: Reset loading flags
     state.isBaseScheduleLoaded = false;
     state.isPersonalScheduleLoaded = false;
+
+    // V6.20.3 WATCHDOG (fail-open). The load latch in recalculateAndRenderAll
+    // waits for BOTH listeners before rendering. If one never reports — a
+    // listener that errors, a personal schedule doc that never resolves, a
+    // stale activePersonalScheduleId pointing at a deleted schedule — the app
+    // renders NOTHING and bell times cannot be edited, with no console error.
+    // That silent freeze was reported 2026-08 across every version. Rendering a
+    // possibly-incomplete schedule is far better than a dead editor, so after a
+    // grace period we force the latch open and recalculate.
+    if (state.loadLatchWatchdogId) clearTimeout(state.loadLatchWatchdogId);
+    state.loadLatchWatchdogId = setTimeout(() => {
+        if (!state.isBaseScheduleLoaded || !state.isPersonalScheduleLoaded) {
+            console.warn('[Watchdog] A schedule listener never reported (base='
+                + state.isBaseScheduleLoaded + ', personal=' + state.isPersonalScheduleLoaded
+                + '). Forcing render so the editor stays usable.');
+            state.isBaseScheduleLoaded = true;
+            state.isPersonalScheduleLoaded = true;
+            recalculateAndRenderAll();
+        }
+    }, 6000);
     
     // Unsubscribe from *both* listeners
     if (state.activeScheduleListenerUnsubscribe) {
