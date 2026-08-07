@@ -2,6 +2,51 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## V6.21.0 — Duplicate a schedule; two affordance/contrast fixes
+(Owner: "I do not see a method of duplicating a schedule as an admin." Plus two
+follow-ups from the 6.20.4 deploy screenshots. Minor bump: a new feature.)
+
+- **NEW: Duplicate Selected Schedule** (Admin Zone, beside Rename). Deep-copies
+  the selected SHARED schedule's periods into a new one, prompts for a name
+  (defaults to "<name> (copy)"), logs a `duplicate-schedule` audit entry, and
+  switches to the new schedule. Previously the only route was export-to-JSON and
+  re-import. Six near-identical schedules run simultaneously here, differing
+  mainly by lunch wave, so this is the common case.
+  **DESIGN DECISION — identities regenerated, anchors preserved.** Every
+  `bellId` and `periodId` in the copy is NEW. `bellId` is the key a teacher's
+  personal overrides, mutes and skips are stored under, so reusing the source's
+  ids would make one teacher's nickname or muted bell on "Lunch A" silently
+  reappear on "Lunch B" — a cross-schedule bleed that would be brutal to
+  diagnose. Relative bells' `parentBellId` values are remapped to the copy's new
+  ids so chains survive. `buildingBellId` anchors ARE kept (an anchor means
+  "this bell IS that intercom moment," which the copy genuinely shares).
+  `temporaryShift` is NOT copied — an emergency shift is a fact about one
+  schedule on one day, never an inherited property. No rules change: the new doc
+  goes to `public/data/schedules` under the existing admin-write rule.
+- **FIX: "Rename Schedule" was greyed out for admins on shared schedules.**
+  `handleRenamePersonalSchedule()` bailed whenever `activePersonalScheduleId`
+  was null — i.e. on every shared schedule — leaving an admin looking at a
+  greyed button on a schedule they are entitled to rename, with no explanation.
+  The button is labelled plainly "Rename Schedule", so it now renames whatever
+  is selected: on a shared schedule it routes to
+  `openRenameSharedScheduleModal()`, which has handled both types since V5.45.1
+  and re-checks admin-mode itself. Same routing the inline pencil has used since
+  v5.68.0. No new authority — this button simply stops being the odd one out.
+- **FIX: banner text unreadable in dark mode.** `#untagged-nudge-banner`
+  (6.15.0) and `#designation-banner` (6.10.0) were built with literal
+  light-palette Tailwind (`bg-blue-100`/`text-blue-900`,
+  `bg-amber-100`/`text-amber-900`) rather than the `--theme-*` variables the app
+  themes through, so in dark mode the background darkened and the near-black
+  text did not. The owner's nudge banner was illegible; the designation banner
+  was equally broken and simply had not fired yet.
+  `#overlap-warning-banner` (`bg-red-600`/`text-white`) is legible in both and
+  is left alone — noted in the CSS so the next reader knows it was checked.
+  Fixed in **styles.css** (hand-written, so no CSS rebuild) with
+  `:root[data-theme="dark"]` overrides; light mode is byte-identical to before.
+- **service-worker.js 1.33.0** (no new modules; cache bump). NO rules change,
+  NO tailwind rebuild (`disabled:opacity-50` / `disabled:cursor-not-allowed`
+  were already compiled), `bell-engine.js` and `old.html` untouched. 74/74.
+
 ## V6.20.4 — Admin CAN edit bell times (the four-round OPEN BUG, closed)
 (Owner confirmed the diagnosis live: ticking the checkbox made the time save
 immediately. Root cause was client-side and eight months old, not backend.)

@@ -50,7 +50,8 @@ import {
     relativeBellSoundSelect, relativeDirection, relativeHoursInput, relativeMinutesInput,
     relativeSecondsInput, renameAudioCancelBtn, renameAudioForm, renameAudioModal,
     renamePersonalCancelBtn, renamePersonalScheduleBtn, renamePersonalScheduleForm,
-    renamePersonalScheduleModal, renamePersonalScheduleStatus, renameScheduleBtn,
+    duplicateScheduleBtn, renamePersonalScheduleModal, renamePersonalScheduleStatus,
+    renameScheduleBtn,
     renameSharedCancelBtn, renameSharedScheduleForm, renameSharedScheduleModal,
     renameVisualCancelBtn, renameVisualForm, renameVisualModal, restoreCancelBtn,
     restoreConfirmBtn, restoreFileInput, restorePersonalScheduleBtn, revokeShareCodeBtn,
@@ -98,7 +99,8 @@ import { initFirebase } from './15-firebase-init.js';
 import {
     closeLinkedEditModal, confirmDeleteBell, confirmDeleteSchedule,
     confirmRestorePersonalSchedule, handleBackupPersonalSchedule, handleCreateSchedule,
-    handleDeleteBellClick, handleDeleteSchedule, handleEditBellClick, handleEditBellSubmit,
+    handleDeleteBellClick, handleDeleteSchedule, handleDuplicateSchedule, handleEditBellClick,
+    handleEditBellSubmit,
     handleInlineRenameScheduleClick, handleLinkedEdit, handleMultiAddPeriodSubmit,
     handleRenamePersonalSchedule, handleRenamePersonalScheduleSubmit,
     handleRenameSharedScheduleSubmit, handleRestoreFileSelect,
@@ -263,6 +265,9 @@ function init() {
 
     // NEW V4.91: Modals (Rename Shared Schedule)
     renameScheduleBtn.addEventListener('click', openRenameSharedScheduleModal);
+    // V6.21.0: duplicate the selected shared schedule (admin-only; the handler
+    // re-checks admin-mode itself, the disabled state is only the affordance).
+    duplicateScheduleBtn?.addEventListener('click', handleDuplicateSchedule);
     renameSharedScheduleForm.addEventListener('submit', handleRenameSharedScheduleSubmit);
     renameSharedCancelBtn.addEventListener('click', () => {
         renameSharedScheduleModal.classList.add('hidden');

@@ -8,7 +8,8 @@ import {
     addBellModal, addPeriodModal, addSharedBellForm, backupPersonalScheduleBtn,
     confirmDeleteBellModal, confirmDeleteBellText, confirmDeleteModal, confirmDeleteText,
     confirmLinkedEditModal, confirmRestoreModal, confirmRestoreText, createPersonalScheduleBtn,
-    deletePersonalScheduleBtn, editBellModal, editBellNameInput, editBellOverrideCheckbox,
+    deletePersonalScheduleBtn, duplicateScheduleBtn, editBellModal, editBellNameInput,
+    editBellOverrideCheckbox,
     editBellOverrideContainer, editBellSoundInput, editBellStatus, editBellTimeInput,
     exportCurrentScheduleBtn, importCurrentScheduleBtn, inlineRenameScheduleBtn,
     linkedEditStatus, linkedScheduleList, multiAddSubmitBtn, multiPeriodEndSoundInput,
@@ -118,6 +119,7 @@ function setActiveSchedule(prefixedId) {
 
     // NEW V4.91: Disable admin rename button
     renameScheduleBtn.disabled = true;
+    if (duplicateScheduleBtn) duplicateScheduleBtn.disabled = true; // V6.21.0
     updateInlineRenameScheduleBtn(); // v5.68.0: mirror state to inline pencil button
     
     // v3.03: Disable personal schedule buttons
@@ -184,6 +186,13 @@ function setActiveSchedule(prefixedId) {
                 importCurrentScheduleBtn.disabled = false;
                 // NEW V4.91: Enable shared rename button
                 renameScheduleBtn.disabled = false;
+                // V6.21.0: and the plainly-labelled "Rename Schedule" button in
+                // the schedule panel, which now routes to the same admin flow.
+                // Without this it stays greyed on shared schedules and an admin
+                // has no idea why. See handleRenamePersonalSchedule().
+                renamePersonalScheduleBtn.disabled = false;
+                // V6.21.0: duplicating the selected shared schedule is admin-only.
+                if (duplicateScheduleBtn) duplicateScheduleBtn.disabled = false;
                 updateInlineRenameScheduleBtn(); // v5.68.0: mirror to inline pencil
             }
         }
@@ -701,6 +710,93 @@ async function handleCreateSchedule(e) {
         
     } catch (error) {
         console.error("Error creating schedule:", error);
+    }
+}
+
+// --- V6.21.0: DUPLICATE THE SELECTED SHARED SCHEDULE (admin only) ---
+/**
+ * Creates a new shared schedule containing a deep copy of the selected one's
+ * periods. The owner builds near-identical variants constantly (six schedules
+ * run simultaneously, differing mainly by lunch wave), and the only way to do
+ * this before 6.21.0 was export-to-JSON and re-import.
+ *
+ * DESIGN DECISION — IDENTITIES ARE REGENERATED, ANCHORS ARE NOT.
+ * Every bellId and periodId in the copy is NEW. They must be: bellId is the key
+ * a teacher's personal overrides, mutes and skips are stored under
+ * (bellOverrides[bell.bellId] in their personal schedule doc). If the duplicate
+ * reused the original's ids, one teacher's nickname or muted bell on "6th Grade
+ * Lunch A" would silently reappear on "6th Grade Lunch B" — a cross-schedule
+ * bleed that would be miserable to diagnose later. A duplicate is a NEW
+ * schedule whose bells merely start at the same times.
+ * buildingBellId anchors ARE preserved: an anchor means "this bell IS that
+ * intercom moment," and the copy genuinely shares those moments (§7 Building
+ * Bells). temporaryShift is deliberately NOT copied — an emergency shift is a
+ * fact about one schedule on one day, never an inherited property.
+ */
+async function handleDuplicateSchedule() {
+    if (!document.body.classList.contains('admin-mode')) return;
+    if (!state.activeBaseScheduleId || state.activePersonalScheduleId) return;
+
+    const source = state.allSchedules.find(s => s.id === state.activeBaseScheduleId);
+    if (!source) {
+        showUserMessage('Could not find the selected schedule to duplicate.');
+        return;
+    }
+
+    const proposed = `${source.name} (copy)`;
+    const name = (window.prompt('Name for the duplicate schedule:', proposed) || '').trim();
+    if (!name) return; // cancelled or blank — do nothing
+
+    try {
+        // Deep copy via JSON round-trip: periods are plain data (no Dates, no
+        // Firestore sentinels), which is the same assumption the export feature
+        // has relied on since V4.90.
+        const copiedPeriods = JSON.parse(JSON.stringify(source.periods || []));
+
+        copiedPeriods.forEach((period) => {
+            period.periodId = generatePeriodId();       // 6.6.0 period identity
+            (period.bells || []).forEach((bell) => {
+                bell.bellId = generateBellId();         // see DESIGN DECISION above
+            });
+        });
+
+        // Relative bells reference their anchor by parentBellId, which we just
+        // rewrote — repoint them at the copy's ids so chains survive. Bells whose
+        // parent is not in this schedule are left alone (the engine already
+        // falls back safely for unresolvable anchors).
+        const idMap = {};
+        (source.periods || []).forEach((p, pi) => {
+            (p.bells || []).forEach((b, bi) => {
+                if (b.bellId) idMap[b.bellId] = copiedPeriods[pi].bells[bi].bellId;
+            });
+        });
+        copiedPeriods.forEach((period) => {
+            (period.bells || []).forEach((bell) => {
+                if (bell.parentBellId && idMap[bell.parentBellId]) {
+                    bell.parentBellId = idMap[bell.parentBellId];
+                }
+            });
+        });
+
+        const newDocRef = await addDoc(state.schedulesCollectionRef, {
+            name,
+            periods: copiedPeriods,
+            bells: flattenPeriodsToLegacyBells(copiedPeriods), // legacy readers
+        });
+
+        logScheduleEdit(newDocRef.id, 'duplicate-schedule', { // V5.75.0
+            name,
+            copiedFrom: source.name,
+            copiedFromId: source.id,
+            periodCount: copiedPeriods.length,
+        });
+
+        showUserMessage(`Created "${name}" as a copy of "${source.name}".`);
+        scheduleSelector.value = `shared-${newDocRef.id}`;
+        setActiveSchedule(scheduleSelector.value);
+    } catch (error) {
+        console.error('Error duplicating schedule:', error);
+        showUserMessage('Could not duplicate the schedule. See the console for details.');
     }
 }
 
@@ -2397,7 +2493,21 @@ function findAllNearbySharedBells(time) {
 
 // MODIFIED: v3.26 - Replaced prompt() with custom modal
 function handleRenamePersonalSchedule() {
-    if (!state.activePersonalScheduleId) return;
+    // V6.21.0: This button is labelled plainly "Rename Schedule", so it must
+    // rename whatever schedule is actually selected. It used to bail whenever
+    // activePersonalScheduleId was null — i.e. on every SHARED schedule — which
+    // left an admin staring at a greyed "Rename Schedule" button while looking
+    // at a schedule they are fully entitled to rename (owner report, 2026-08).
+    // The Admin Zone's openRenameSharedScheduleModal() already handles BOTH
+    // types (V5.45.1) and re-checks admin-mode itself, and the inline pencil has
+    // routed this way since v5.68.0. Same routing, same permission model, no new
+    // authority — this button simply stops being the odd one out.
+    if (!state.activePersonalScheduleId) {
+        if (document.body.classList.contains('admin-mode')) {
+            openRenameSharedScheduleModal();
+        }
+        return;
+    }
     const schedule = state.allPersonalSchedules.find(s => s.id === state.activePersonalScheduleId);
     if (!schedule) return;
 
@@ -2771,6 +2881,7 @@ export {
     handleDeleteBellClick,
     handleDeleteSchedule,
     handleEditBellClick,
+    handleDuplicateSchedule,
     handleEditBellSubmit,
     handleInlineRenameScheduleClick,
     handleLinkedEdit,

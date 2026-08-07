@@ -1,73 +1,84 @@
 # DEPLOY — Ellis Web Bell (rolling; rewritten each release)
 
 One deploy doc, kept OUTSIDE the zip, describing the current release only.
-(Replaces the old per-version DEPLOY-6.x.md pile.) Full history is in CHANGELOG.md.
+Full history is in CHANGELOG.md.
 
 ---
 
 ## Current state
 
-- **LIVE: 6.20.0.**
-- **Pending: 6.20.3** — carries the undeployed 6.20.1 + 6.20.2. Targets the
-  "can't edit bell times" freeze, the false lunch overlap, and the update popup.
+- **LIVE: 6.20.4** (owner deployed; bell-time fix confirmed working).
+- **Pending: 6.21.0** — Duplicate Schedule, plus the greyed rename button and
+  the unreadable dark-mode banners.
 
-App 6.20.3 - engine 1.16.0 - service-worker 1.31.0 - old.html UNCHANGED (e56f1e4c...)
-
-## Standing procedure (how every release ships)
-
-No build, no terminal, no CLI — **GitHub web uploads only**, in ONE commit.
-
-**Which files actually need to go up** (the deploy doc each release will spell
-this out, but the rule is):
-
-| File | When it needs re-uploading |
-|---|---|
-| `index.html` | every release |
-| `service-worker.js` | every release (its `CACHE_VERSION` bump is what busts stale caches) |
-| `src/js/` (whole folder) | whenever ANY module changed |
-| `bell-engine.js` | ONLY when the engine version changed |
-| `tailwind.css` | ONLY when it changed (new classes added) |
-| `old.html` | ONLY when it changed — and cache-bust it on the TVs (`old.html?v=NNN`), it loads outside the service worker |
-| `firestore.rules` | ONLY when rules changed (rare; publish in the Firebase console) |
-
-**Why push the whole `src/js/` folder when only one module changed:** a partial
-push can leave a stale module next to fresh ones (a module importing something an
-old sibling no longer exports), which kills the app. Pushing the whole folder in
-one commit makes that impossible. New modules MUST land (a missing one 404s the
-app).
-
-**After pushing:** cache-bust (append `?v=NNN`) and confirm the version in the
-status modal before smoke-testing. Roll back by re-pushing the previous zip's
-tree in one commit.
+App 6.21.0 · engine 1.16.0 (UNCHANGED) · service-worker 1.33.0 · old.html UNCHANGED (e56f1e4c…)
 
 ---
 
-## This release: 6.20.3 (carries 6.20.1 + 6.20.2)
+## UPLOAD THIS RELEASE
 
-**1. The likely cause of "I can't change bell times."** The console line you sent —
-`Delaying calculation: base and personal schedules have not both loaded` — comes
-from a guard that makes the app render NOTHING until both the base and personal
-schedule listeners have reported in. If either never reports, that latch stays
-stuck forever: no error, no crash, the editor simply never updates and bell times
-look unchangeable. You run a personal overlay, so you take that code path. Two
-changes: a **watchdog** now force-opens the latch after 6 seconds and renders
-anyway (a possibly-incomplete schedule beats a dead editor), and the warning now
-names WHICH listener it is waiting on, so if it recurs the console says so.
+| File | Upload? |
+|---|---|
+| `index.html` | **YES** (6.21.0) |
+| `service-worker.js` | **YES** (1.33.0 — the cache bump is what busts stale copies) |
+| `src/js/` (whole folder) | **YES** |
+| `styles.css` | **YES** (hand-written; carries the dark-mode banner fix) |
+| `CHANGELOG.md`, `HANDOFF.md`, `DEPLOY.md` | **YES** |
+| `bell-engine.js` | no — unchanged |
+| `tailwind.css` | no — no new classes; the two used were already compiled |
+| `old.html` | no — unchanged |
+| `firestore.rules` | no — **no rules change** |
+| `README.md`, `SETUP.md`, `ROLLOUT.md` | no — unchanged |
 
-**2. False overlap alarm on lunches** (6.20.2). Lunch waves run INSIDE 4th period;
-nested periods are legitimate and are no longer reported as collisions. Real
-partial overruns still are. The overlap check is also wrapped so it can never
-break rendering or editing.
+Everything in ONE commit. Push the whole `src/js/` folder even though only two
+modules changed: a partial push can leave a stale module importing something a
+fresh sibling no longer exports, which kills the whole ES-module graph.
 
-**3. Update popup removed** (6.20.1). Displays reload silently instead.
+**After pushing:** cache-bust (append `?v=NNN`) and confirm 6.20.4 in the status
+modal (tap the footer version) BEFORE smoke-testing. Roll back by re-pushing the
+previous zip's tree in one commit.
 
-**Files to upload:** `index.html` (6.20.3), `service-worker.js` (1.31.0),
-`src/js/` (whole folder), `bell-engine.js` (1.16.0).
-**Not needed:** `tailwind.css`, `old.html` — both unchanged. No rules change.
+---
 
-**Smoke test:** load the app as admin on your usual personal overlay and try
-changing a bell time. If it now works, that latch was the culprit. Watch the
-console: if you see `[Watchdog] A schedule listener never reported (base=...,
-personal=...)`, send me that line — it names the listener that is failing, which
-is the remaining root cause to chase. Also confirm no red overlap banner on a
-schedule with lunch inside 4th, and no update popup.
+## What's in 6.21.0
+
+**1. Duplicate Selected Schedule.** New button in the Admin Zone, next to
+Rename. Copies the selected shared schedule's periods into a brand-new
+schedule, asks you to name it (defaults to "<name> (copy)"), and switches you
+to it. Shows up in the audit log as `duplicate-schedule`.
+
+One thing worth knowing: the copy's bells get **new internal IDs**. They have
+to. Those IDs are how each teacher's personal nicknames, sounds and muted bells
+are stored — if the copy reused the original's, someone's muted bell on "Lunch
+A" would silently turn up muted on "Lunch B" too. Building-bell anchors ARE
+carried over (the copy shares those intercom moments). Any emergency shift on
+the original is NOT carried over, since a shift is about one day.
+
+**2. "Rename Schedule" works for admins on shared schedules.** It was greyed
+out because that button only ever handled *personal* schedules, despite its
+label. It now renames whatever is selected, routing to the same admin rename
+flow the Admin Zone button and the little pencil already use.
+
+**3. Banners readable in dark mode.** The "N people have signed in but have no
+tags yet" banner was dark-navy text on a dark background. So was the schedule
+designation banner — you just hadn't seen it fire yet. Both were built with
+fixed light-mode colours instead of the app's theme variables. Fixed in
+`styles.css`; light mode looks exactly as before.
+
+---
+
+## Smoke test
+
+1. **Duplicate.** Admin on a shared schedule → Admin Zone → Duplicate Selected
+   Schedule → accept the default name. Expect: new schedule created, selected,
+   with the same periods and bells. Check a relative bell still sits the right
+   distance from its anchor.
+2. **Overrides do not bleed.** On the ORIGINAL, mute a bell or give it a
+   personal nickname. Switch to the duplicate. Expect: that bell is untouched
+   there.
+3. **Rename.** Admin on a shared schedule → the "Rename Schedule" button in the
+   schedule panel should be enabled and should rename the shared schedule.
+4. **Dark mode.** Switch to dark. Expect the untagged-teachers banner to be
+   clearly readable. Light mode should look unchanged.
+5. Re-confirm 6.20.4 still behaves: changing a bell time without ticking the box
+   refuses with a message rather than silently closing.

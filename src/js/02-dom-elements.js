@@ -92,6 +92,8 @@ const renameSharedNewNameInput = document.getElementById('rename-shared-new-name
 const renameSharedScheduleStatus = document.getElementById('rename-shared-schedule-status');
 const renameSharedCancelBtn = document.getElementById('rename-shared-cancel');
 const renameScheduleBtn = document.getElementById('rename-schedule-btn'); // The button in Admin Zone
+// V6.21.0: duplicate the selected shared schedule (Admin Zone, admin-only)
+const duplicateScheduleBtn = document.getElementById('duplicate-schedule-btn');
 // v5.68.0: Inline pencil button next to schedule title. Mirrors the enabled state of
 // renameScheduleBtn (admin) or renamePersonalScheduleBtn (personal, non-admin).
 const inlineRenameScheduleBtn = document.getElementById('inline-rename-schedule-btn');
@@ -893,6 +895,7 @@ export {
     renamePersonalScheduleModal,
     renamePersonalScheduleStatus,
     renameScheduleBtn,
+    duplicateScheduleBtn,
     renameSharedCancelBtn,
     renameSharedNewNameInput,
     renameSharedOldName,

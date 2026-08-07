@@ -2,7 +2,22 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.20.4 (THE OPEN BUG IS CLOSED —
+before writing any code. Last updated: **6.21.0 (DUPLICATE SCHEDULE ships —
+admin-only deep copy of the selected shared schedule, with REGENERATED bellIds
+and periodIds so a teacher's personal overrides/mutes cannot bleed between a
+schedule and its copy; buildingBellId anchors preserved, temporaryShift not
+copied. Plus two affordance fixes from deploy screenshots: the plainly-labelled
+"Rename Schedule" button now renames shared schedules for admins instead of
+sitting greyed, and the untagged-nudge + designation banners are readable in
+dark mode (they used literal light-palette Tailwind instead of --theme-*; fixed
+in hand-written styles.css so no CSS rebuild). SW 1.33.0, 74/74, 41 modules, NO
+rules change.) DEPLOY STATE: through 6.20.4 LIVE on alpha (owner deployed and
+confirmed 6.20.4 — the bell-time fix is verified in the wild); 6.21.0 built +
+battery-green, NOT yet deployed. Round 8, "Sally" — see §10.
+**BIGGEST OPEN ITEM IS NOT IN THIS REPO:** the 6.20.4 bell-time fix has NOT
+reached the school (5.79.x line) or building (5.69.5) channels, and school
+resumes shortly for ~50 faculty. Both predate V5.66.2 and so carry the identical
+silent time-drop. See §7. // prev: **6.20.4 (THE OPEN BUG IS CLOSED —
 "admin cannot edit bell times" was NOT backend. `handleEditBellSubmit` gated the
 whole shared-bell save path on the "Override shared SOUND for all users"
 checkbox, and the personal-override path it fell through to has no `time` field,
@@ -672,6 +687,30 @@ in the design doc).
   neighbor instead (needs anchor re-homing, fiddly); (b) optional
   absorb-checkboxes to pick WHICH survivors get the time (v1 spreads across
   ALL). Neither blocks use; owner told about (a) in the deploy doc.
+- **OPEN, TOP PRIORITY, NOT IN THIS REPO: BACKPORT THE BELL-TIME FIX.**
+  6.20.4 fixed the silent admin time-drop on ALPHA only. The school channel is
+  on the 5.79.x line and the building channel on 5.69.5 — both postdate V5.66.2
+  and therefore carry the identical bug. School resumes shortly for ~50 faculty.
+  This is worth more than every remaining item in this section combined.
+  Those channels are PRE-modularization (`script.js` monolith, no src/js/), so
+  it is a port, not a copy: find `handleEditBellSubmit`, locate
+  `wantsToOverrideForAll`, and add the same "refuse rather than silently drop a
+  time change" guard. The relabelled checkbox matters just as much as the guard —
+  without it the refusal message names a control the user cannot find.
+  Confirm with the owner FIRST which repo is which (§2 has been wrong about
+  channel topology before) and get a fresh zip of the target.
+- **OPEN (evidence-backed, bounded — round 8's recommendation):** two sweeps
+  earned by what 6.20.4/6.21.0 actually turned up, worth doing before any §7
+  roadmap work. (a) AFFORDANCE SWEEP: for every interactive control, does its
+  enabled state match who can really use it, and does its label match what
+  saving actually does? The edit-bell modal alone yielded four defects of this
+  kind, and the rename button a fifth — that is a pattern, not coincidence.
+  (b) DARK-MODE CONTRAST SWEEP of everything added since ~6.9.0: three banners,
+  two were unreadable. Newer surfaces were built with literal Tailwind colours
+  while the app themes through `--theme-*` variables. Both sweeps are finite and
+  mechanically checkable. A COLD full-codebase audit is NOT recommended — 41
+  modules of theoretical findings has poor signal; every good find this round
+  came from a real user symptom.
 - **CLOSED 2026-08 (6.20.4, round 8): ADMIN CANNOT EDIT BELL TIMES.**
   **It was client-side, and eight months old.** `handleEditBellSubmit` (module
   16) computed
@@ -1422,6 +1461,15 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   shared-schedule selection, and three `onSnapshot` calls with no error handler.
   Also restored the CHANGELOG's 4-line header (lost in an earlier round; §4.7
   refers to it) and the missing 23 engine tests.
+  **Then shipped 6.21.0** at the owner's request after he deployed 6.20.4 and
+  confirmed the bell-time fix live: Duplicate Selected Schedule (the bellId
+  regeneration decision is documented in the function header AND in CHANGELOG
+  V6.21.0 — read it before changing how duplication works), plus the greyed
+  rename button and the dark-mode banner contrast, both spotted by the owner in
+  post-deploy screenshots. Note the pattern in those two: BOTH were things a
+  user could SEE were wrong that no verifier could catch. The battery is blind
+  to contrast and to whether a disabled button ought to be disabled. Screenshots
+  from the owner are worth more than another lint pass; ask for them.
   **Successor:** the one loose thread is the emergency-shift question in §7 —
   cheap to settle, worth settling. Beyond that §7's backlog is optional, and the
   owner's stated priority order (cost, student outcomes, stability) has not
