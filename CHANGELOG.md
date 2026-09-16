@@ -2,6 +2,142 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## V6.24.0 — Save a queue as a Quick Bell
+(Owner: "My class always starts with 15 minutes of typing... immediately after
+is 2.5 minutes of an image of Beethoven... I have the 15 minutes saved as a
+quick bell and the beethoven saved as a quickbell, but I don't have BOTH."
+Minor bump: a new feature. Builds directly on 6.23.0.)
+
+- **NEW: "Save as a Quick Bell" in the Quick Bell Queue modal.** Name the queue,
+  press Save, and it becomes one of the four Quick Bell buttons. Pressing that
+  button runs the whole sequence — each step with its own duration, sound and
+  graphic. The owner's real case: a delayed start now costs one click instead of
+  two, with no chance of forgetting the second half.
+- **A saved queue is an ORDINARY custom quick bell carrying a `steps` array.**
+  No parallel "saved queues" list. It lives in the same four slots, uses the
+  same icon/colour controls in Manage Quick Bells, the same broadcast tick, the
+  same backup/restore, the same Firestore document. Absent or empty `steps`
+  means an ordinary one-shot bell, so every existing quick bell is untouched.
+- **BUGFIX (pre-existing, found on the way): `alwaysBroadcast` did not survive a
+  reload.** The Firestore snapshot handler in module 15 rebuilds each quick bell
+  field by field from a WHITELIST, and `alwaysBroadcast` was never added when
+  V5.65.0 introduced it. The setting is read when rendering the button and when
+  launching, so ticking "broadcasts to all devices" worked until the next
+  refresh and then silently reverted to off. Now carried through — along with
+  `steps` and `queueRepeatTimes`. **The whitelist is commented as such now:** any
+  new quick-bell field must be added THERE as well as at its write site, or it
+  vanishes on reload.
+- **Deliberate limits, both recorded in module 12's header:**
+  (a) the button icon defaults to the FIRST step's graphic and the tooltip
+  duration is the WHOLE run's total — then it is editable in the ordinary
+  manager, so there is no second icon picker in the queue modal;
+  (b) **"until a bell rings" repeat mode is NOT saved.** It targets a bellId from
+  today's resolved schedule, which means nothing tomorrow. A saved queue always
+  repeats by numeric count; the modal says so under the Save field.
+- **Queue buttons are visually distinct:** a small step-count badge in the corner,
+  and the hover label reads "2 steps / 17m 30s" rather than a bare duration,
+  because the button runs a sequence and one time would understate it.
+- Launch reads the steps from `state.customQuickBells`, NOT from a `data-*`
+  attribute — steps are objects, and round 9's lesson about rebuilding state
+  from rendered DOM applies here too.
+
+**Verification:** §5 battery green (74/74, 41 modules). Plus a throwaway jsdom
+harness driving the real modules against the real DOM: 25 checks, including the
+owner's exact routine saved and relaunched, the 4-slot cap, the no-name refusal,
+and a round trip through module 15's actual mapper source proving `steps`,
+`queueRepeatTimes` and `alwaysBroadcast` now survive a reload while a plain bell
+still loads with `steps: null`. **NO CSS rebuild** (the badge is positioned with
+inline styles precisely to avoid one). NO rules change — `steps` is an additive
+field on an existing user-owned document. SW CACHE_VERSION 1.36.0.
+
+## V6.23.0 — Quick Bell Queue: a graphic per timer, not per queue
+(Owner: "I'd like to be able to add a queue of bells to the quickbells menu. So
+one bell with a graphic followed by another bell with a different graphic. Each
+with its own sound." Minor bump: a new feature.)
+
+**Most of this already existed.** The Quick Bell Queue (V5.55.0) has always run
+a sequence of timers with a DIFFERENT SOUND PER STEP. The missing half was the
+picture: one `queue-visual-select` at the bottom of the modal set a single
+graphic for the entire run, stashed in `state.queueVisual`. So a queue could
+say three different things and show one. "2 minutes to announcements" ->
+"line up" -> "go" was impossible as one queue.
+
+- **NEW: every timer row has its own "Graphic" dropdown**, beside its own
+  "Sound". A queue entry is now a complete little bell:
+  `{durationSeconds, sound, visual}`. Same option set the queue-level control
+  offered — Default "Q", Shared Visuals, My Visuals — and deliberately still no
+  "Upload..." entry: upload lives in the visual library, a queue row picks from
+  what is already there.
+- **The graphic is "before"-mode**, matching the rest of the app: a row's
+  picture is on screen WHILE that row counts down, and swaps the instant that
+  row rings and the next one starts. `advanceQueue()` increments `queueIndex`
+  before starting the next timer, so `queueIndex` always names the running
+  entry and `getQueueVisualHtml()` just reads it.
+- **Module 10 needed NO change.** Its visual key was already
+  `queue:<index>:<repeat>`, so the clock engine re-renders the cue on every
+  advance; it only ever asked `getQueueVisualHtml()` what to draw. This is why
+  the feature came in at five files — the queue's plumbing was right, it just
+  had one variable where it needed an array field.
+- **REMOVED: the queue-level "Visual Cue" control** (`#queue-visual-select` in
+  index.html, and the `queueVisualSelect` const + export in module 02). Keeping
+  it alongside per-row dropdowns would be two controls setting the same thing.
+  `state.queueVisual` SURVIVES but is now write-never: it is read only as a
+  fallback by `getQueueVisualHtml()` for an entry with no `visual` of its own.
+- **Row layout rebuilt** from one wrapping line into three labelled lines
+  (Length / Sound / Graphic) plus a header line carrying "Timer N" and the
+  delete button. The label column is one identical `w-16` on all three lines and
+  the trailing control is one identical `w-8 h-8 flex-shrink-0` on all three —
+  the preview button, the graphic thumbnail, and a same-size spacer on the
+  Length line — so every field begins and ends on the same two vertical rules.
+- **NEW: a 32x32 live thumbnail** of each row's chosen graphic, at the end of
+  the Graphic line. Five rows of identical-looking dropdown labels are hard to
+  proofread before you hit Start; five little pictures are not.
+- `renumberQueueTimerRows()` now finds the label via `.queue-timer-label`
+  instead of `querySelector('span')`. The row contains several spans now (the
+  h/m/s units) and the first one is no longer guaranteed to be the label.
+
+**Verification:** §5 battery green (74/74, 41 modules, check:esm/lint/css/sw all
+OK). Plus a throwaway jsdom harness (round-4 method, not shipped) that drove the
+real module against the real index.html DOM: 24 checks, including a three-step
+queue with three different graphics asserting three DIFFERENT rendered visuals,
+the no-visual backward-compatibility fallback, and the label/trailing-control
+alignment. **NO CSS rebuild needed** — every Tailwind class used was verified
+present in the built tailwind.css. NO rules change, NO new module.
+SW CACHE_VERSION 1.35.0.
+
+## V6.22.0 — The edit modal edits the BASE schedule (shift-rebase data bug)
+(RECONSTRUCTED in round 10 from the HANDOFF header, module 16's inline notes and
+module 14's `pristine` comments. Round 9 shipped this code but never wrote the
+entry, while module 16 tells its reader "see CHANGELOG V6.22.0 before changing
+any of it" — a dangling pointer. If round 9's own account survives anywhere,
+prefer it over this summary.)
+
+- **FIX (data corruption): saving any shared bell during an emergency shift
+  permanently rebased it for everyone.** The edit modal rebuilt its bell from
+  the rendered row's `data-*` attributes, and module 14 renders CALCULATED times
+  — shift and Verb B transforms already folded in. The shared save path writes
+  into `currentSchedule.periods`, the PRISTINE document. So a rename, a sound
+  change, an anchor change — any shared save while a shift was active — wrote
+  the *adjusted* time into the base, silently, for all ~50 users. 6.20.4 made it
+  MORE reachable by instructing admins to tick the confirm and save again.
+  Fixed via `findStoredSharedBell()` (populate the modal from the STORED bell)
+  and `resolveAllBellTimes({pristine: true})` (proximity check in base space).
+- **FIX: the time field is locked for derived bells**, and `updatePeriodsOnEdit`
+  now PRESERVES `relative`. It replaces rather than merges, and shared relative
+  bells do reach the static editor, so saving one flattened it to a fixed bell.
+- **Three fixes the owner reported from the wild:** the roster bulk-template
+  button overlapping its panel; the untagged nudge naming people structurally
+  absent from the roster list it opens; and that nudge's "4 people / 3 names"
+  count mismatch.
+- **LESSON (recorded in HANDOFF §9):** §4.6's "localSchedulePeriods stays
+  pristine" was true of the VARIABLE and false of the SCREEN. Anything rebuilt
+  from rendered DOM is in display space, not storage space.
+
+**Known NOT done:** the same bug exists on the school channel (5.79.x —
+`temporaryShift` landed in v5.74), where the owner is the only admin and so
+exactly the person who can trigger it. Building (5.69.5) predates the shift and
+is unaffected. SW 1.34.0, 74/74, 41 modules, no rules change, no CSS rebuild.
+
 ## V6.21.0 — Duplicate a schedule; two affordance/contrast fixes
 (Owner: "I do not see a method of duplicating a schedule as an admin." Plus two
 follow-ups from the 6.20.4 deploy screenshots. Minor bump: a new feature.)

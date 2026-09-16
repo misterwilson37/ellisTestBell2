@@ -266,7 +266,11 @@ const queueUntilBellSelect = document.getElementById('queue-until-bell');
 const queueIgnorePersonalCheckbox = document.getElementById('queue-ignore-personal');
 const queueIgnoreSharedCheckbox = document.getElementById('queue-ignore-shared');
 const queueIgnoreSharedWarning = document.getElementById('queue-ignore-shared-warning');
-const queueVisualSelect = document.getElementById('queue-visual-select');
+// 6.24.0: save-a-queue-as-a-quick-bell controls
+const queueSaveNameInput = document.getElementById('queue-save-name-input');
+const queueSaveBtn = document.getElementById('queue-save-btn');
+// 6.23.0: queue-visual-select REMOVED from index.html — the queue's graphic
+// is per-timer-row now and those selects are built by module 12.
 const queueCancelBtn = document.getElementById('queue-cancel-btn');
 const queueStartBtn = document.getElementById('queue-start-btn');
 const queueModalCloseBtn = document.getElementById('queue-modal-close-btn');
@@ -860,10 +864,11 @@ export {
     queueIgnoreSharedWarning,
     queueModalCloseBtn,
     queueRepeatTimesInput,
+    queueSaveBtn,
+    queueSaveNameInput,
     queueStartBtn,
     queueTimersContainer,
     queueUntilBellSelect,
-    queueVisualSelect,
     quickBellControls,
     quickBellQueueBtn,
     quickBellQueueModal,

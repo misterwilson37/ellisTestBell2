@@ -518,6 +518,22 @@ function listenForCustomQuickBells(userId) {
                 visualCue: b.visualCue || `[CUSTOM_TEXT] ${index + 1}|#4B9CD3|#FFFFFF`,
                     
                 sound: b.sound || 'ellisBell.mp3',
+                // V6.24.0: a saved QUEUE. Array of {durationSeconds, sound,
+                // visual}; absent/empty means this is an ordinary one-shot
+                // quick bell. Stored as-is; queueRepeatTimes rides alongside.
+                // THIS MAPPER IS A WHITELIST — it rebuilds each bell field by
+                // field, so ANY field omitted here is silently dropped on the
+                // next reload. Add new quick-bell fields HERE as well as at
+                // their write site.
+                steps: Array.isArray(b.steps) ? b.steps : null,
+                queueRepeatTimes: b.queueRepeatTimes || 1,
+                // V6.24.0 BUGFIX: alwaysBroadcast was missing from this
+                // whitelist since V5.65.0. It is read when rendering the
+                // button (module 13) and when launching (module 99), but it
+                // was never carried back out of Firestore — so ticking
+                // "broadcast to all devices" survived until the next reload
+                // and then silently reverted to off.
+                alwaysBroadcast: b.alwaysBroadcast === true,
                 isActive: b.isActive !== false // 5.19.3 Default to TRUE (active/checked)
             }));
             safeLog.log("Processed bells:", bells);

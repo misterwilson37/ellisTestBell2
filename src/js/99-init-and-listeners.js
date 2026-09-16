@@ -44,7 +44,7 @@ import {
     newPersonalScheduleNameInput, orphanHandlingModal, periodCollapsePreference,
     periodSelectAllBtn, periodSelectNoneBtn, previewAddStaticSoundBtn, previewChangeSoundBtn,
     previewSharedSoundBtn, queueAddTimerBtn, queueCancelBtn, queueIgnoreSharedCheckbox,
-    queueIgnoreSharedWarning, queueModalCloseBtn, queueStartBtn, quickBellControls,
+    queueIgnoreSharedWarning, queueModalCloseBtn, queueSaveBtn, queueStartBtn, quickBellControls,
     quickBellQueueBtn, quickBellQueueModal, quickBellSoundSelect, quickBellVisualSelect,
     relativeAnchorBellSelect, relativeBellCancelBtn, relativeBellForm, relativeBellModal,
     relativeBellSoundSelect, relativeDirection, relativeHoursInput, relativeMinutesInput,
@@ -83,7 +83,9 @@ import { startQuickBell, updateClock } from './10-clock-engine.js';
 import { broadcastQuickBell, toggleBroadcastMode } from './11-quick-bell-broadcast.js';
 import {
     addQueueTimerRow, cancelQueue, closeQuickBellQueueModal, openQuickBellQueueModal,
+    saveQueueAsQuickBell,
     startQueue,
+    startSavedQueue,
 } from './12-quick-bell-queue.js';
 import {
     renderCustomQuickBells, syncCustomBellFormToArray,
@@ -756,6 +758,18 @@ function init() {
     quickBellControls.addEventListener('click', (e) => {
         const customBtn = e.target.closest('.custom-quick-launch-btn');
         if (customBtn) {
+            // V6.24.0: a quick bell carrying `steps` is a SAVED QUEUE — run the
+            // whole sequence instead of one timer. Read from the array rather
+            // than a data-* attribute: steps are objects, and the round-9
+            // lesson about rebuilding state from rendered DOM applies here too.
+            const customId = parseInt(customBtn.dataset.customId, 10);
+            const bellData = state.customQuickBells.find(b => b && b.id === customId);
+            
+            if (bellData && Array.isArray(bellData.steps) && bellData.steps.length > 0) {
+                startSavedQueue(bellData.steps, bellData.queueRepeatTimes);
+                return;
+            }
+            
             const hours = parseInt(customBtn.dataset.hours, 10) || 0;
             const minutes = parseInt(customBtn.dataset.minutes, 10) || 0;
             const seconds = parseInt(customBtn.dataset.seconds, 10) || 0;
@@ -1632,6 +1646,10 @@ function init() {
         queueAddTimerBtn.addEventListener('click', addQueueTimerRow);
     }
     
+    if (queueSaveBtn) {
+        // V6.24.0
+        queueSaveBtn.addEventListener('click', saveQueueAsQuickBell);
+    }
     if (queueStartBtn) {
         queueStartBtn.addEventListener('click', startQueue);
     }

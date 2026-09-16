@@ -2,7 +2,40 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.22.0 (THE EDIT MODAL EDITS THE BASE
+before writing any code. Last updated: **6.24.0 (SAVE A QUEUE AS A QUICK BELL.
+The owner's class opens with 15 min of typing under a hamburger icon, then 2.5
+min of Beethoven; both halves were saved as SEPARATE quick bells and he had no
+way to fire the pair. Now the queue modal has "Save as a Quick Bell": a saved
+queue is an ORDINARY custom quick bell carrying a `steps` array, living in the
+same 4 slots with the same icon/broadcast/backup machinery — no parallel list.
+FOUND AND FIXED EN ROUTE: module 15's snapshot handler rebuilds each quick bell
+from a WHITELIST, and `alwaysBroadcast` was never added when V5.65.0 introduced
+it — the broadcast tick silently reverted on every reload. That whitelist is now
+commented as a whitelist. Deliberate limits: icon defaults to step 1's graphic
+(editable in the manager); "until a bell rings" repeat is NOT saved, since it
+targets today's bellId. SW 1.36.0, 74/74, 41 modules, NO rules change, NO CSS
+rebuild. Round 10, "Plain Bob" — see §10.) DEPLOY STATE: through 6.20.4 LIVE on
+alpha (owner confirmed); 6.21.0 through 6.24.0 built + battery-green, NOT
+deployed — ONE push covers all four.
+// prev: **6.23.0 (QUICK BELL QUEUE — A GRAPHIC
+PER TIMER. The owner asked for "a queue of bells... one bell with a graphic
+followed by another bell with a different graphic, each with its own sound."
+Most of it already existed: the V5.55.0 queue has always varied SOUND per step.
+Only the picture was queue-wide — one `queue-visual-select` feeding
+state.queueVisual. Now each timer row owns a "Graphic" dropdown and a queue
+entry is {durationSeconds, sound, visual}; the queue-level control is REMOVED
+(two controls for one thing). Module 10 needed NO change — its visual key was
+already `queue:<index>:<repeat>`. Five files. Row relaid out into labelled
+Length/Sound/Graphic lines on one w-16 label column and one w-8 h-8 trailing
+column; added a 32x32 live thumbnail per row. SW 1.35.0, 74/74, 41 modules, NO
+rules change, NO CSS rebuild (classes verified present). ALSO: reconstructed the
+MISSING V6.22.0 CHANGELOG entry — round 9 shipped the code and never wrote it,
+while module 16 points readers at it. ALSO: new ROADMAP.md — §7 below is still
+the full record, but it was unreadable as a planning doc; ROADMAP.md is the
+one-page index. Round 10, "Plain Bob" — see §10.) DEPLOY STATE: through 6.20.4
+LIVE on alpha (owner confirmed); 6.21.0, 6.22.0 AND 6.23.0 built +
+battery-green, NOT deployed — ONE push covers all three.
+// prev: **6.22.0 (THE EDIT MODAL EDITS THE BASE
 SCHEDULE — the §7 loose thread was a live data-corruption bug, not a curiosity.
 The modal rebuilt its bell from the rendered row's data-* attributes, which carry
 SHIFTED/TRANSFORMED times, while the shared save path writes the PRISTINE
@@ -584,6 +617,12 @@ arrows/template literals/const).
 
 ## 7. Roadmap (user's priority order, set 2026-07)
 
+> **START WITH ROADMAP.md (new in 6.23.0).** This section is the full record —
+> priorities, closed bugs, and the reasoning trails behind both — and it is too
+> long to plan from. ROADMAP.md is the one-page index of what is actually left.
+> Keep them in sync; when they disagree, THIS section wins and ROADMAP.md gets
+> fixed.
+
 **Stages 1–5 — DONE (v5.75–v5.79).** Audit log, signage full-depth, clock
 drift warning, notification backup ring, status view. Each module's header
 carries its design rationale, deliberate deviations, and parked follow-ups
@@ -1071,6 +1110,46 @@ the reasoning here, and never reuses a predecessor's name. (Names used on
 the owner's OTHER projects — e.g. Tentacalendar's Inky and Otto — are also
 off-limits.) Rounds 1–2 predate this log and went unnamed.
 
+
+- **Round 10 (2026-09): "Plain Bob."** Named for the first change-ringing method
+  every ringer learns — the one where bells ring in a CHANGING sequence rather
+  than straight down the scale. Fitting for the round that made each bell in a
+  queue differ from the last. (Grandsire and Stedman, also methods, were already
+  taken by rounds 6 and 7.)
+  Arrived cold to a zip; §5 battery green on arrival and matching the handoff
+  exactly (6.22.0, SW 1.34.0, 74/74, 41 modules) — the handoff's belief was
+  ground truth this time.
+  Shipped **6.23.0** (per-timer graphics in the Quick Bell Queue) and **6.24.0**
+  (save a queue as a Quick Bell). KEY FINDING for the first: most of the feature
+  already existed — the V5.55.0 queue always varied SOUND per step; only the
+  picture was queue-wide. Module 10 needed no change at all because its visual
+  key was already `queue:<index>:<repeat>`. Worth internalising: before building
+  what the owner asks for, check how much of it the codebase already does. He
+  described this as "could be clunky to add" and it was five files.
+  KEY FINDING for the second: module 15's quick-bell snapshot handler is a
+  WHITELIST mapper, so `alwaysBroadcast` had been silently dropped on every
+  reload since V5.65.0. Fixed, and the whitelist is now labelled as one. Suspect
+  the same pattern anywhere else a Firestore doc is rebuilt field-by-field.
+  ALSO: reconstructed the **missing V6.22.0 CHANGELOG entry** — round 9 shipped
+  the code but never wrote it, while module 16 tells its reader to "see CHANGELOG
+  V6.22.0 before changing any of it." If round 9's own account ever surfaces,
+  prefer it.
+  ALSO: created **ROADMAP.md** at the owner's suggestion. A roadmap existed (§7)
+  but was unreadable as a planning doc — priorities interleaved with closed bugs
+  and reasoning trails across a 1,568-line file. ROADMAP.md is the one-page
+  index; §7 stays the source of truth for WHY. Keep them in sync.
+  METHOD NOTE, reusable: the round-4 jsdom harness still works and is cheap.
+  Recipe for a fresh container — `npm i --no-save jsdom`, load index.html into
+  JSDOM, `dom.window.eval(bell-engine.js)` first (module 00 reads
+  `window.BellEngine` at eval time), and register a tiny loader hook mapping
+  `https://` specifiers to a stub module that exports every Firebase name found
+  across `src/js`. Force `process.exit()` at the end or jsdom's timers hang the
+  run. 49 assertions across the two features, including a round trip through
+  module 15's ACTUAL mapper source rather than a copy of it.
+  Successor: names taken are Quasimodo, Whitechapel, Bourdon, Grandsire II,
+  Stedman, Sally, Gudgeon, Plain Bob (+ Inky and Otto on Tentacalendar). FOUR
+  releases are now built and undeployed — confirm deploy state before anything
+  else, and read ROADMAP.md before §7.
 - **Round 1 (2026-07, Fable):** unnamed. Stages 1–5 + v5.79.x launch/fixes.
 - **Round 2 (2026-07, Fable):** unnamed. The stage-2 modularization
   (6.0.0, mislabeled 7.0.0). Session ended confused/interrupted — see the
