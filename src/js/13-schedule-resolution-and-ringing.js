@@ -7,7 +7,7 @@ import {
 } from './02-dom-elements.js';
 import { playBell } from './05-preferences-cloud-sync.js';
 import { updatePipCustomQuickBells } from './09-picture-in-picture.js';
-import { getCustomBellIconHtml } from './14-render-schedule-list.js';
+import { getCustomBellIconHtml, getQueueSplitIconSvg } from './14-render-schedule-list.js';
 import { getVisualHtml } from './18-bell-crud-and-modals.js';
 import { parseVisualBgColor } from './19-visual-cues-and-files.js';
 import { maybeNotifyBell } from './24-notifications.js';
@@ -106,7 +106,7 @@ function renderCustomQuickBells() {
         const fullPreviewHtml = getVisualHtml(rawVisualCue, name || 'Preview');
         
         // V5.43.1: Generate button preview HTML  
-        const buttonPreviewHtml = getCustomBellIconHtml(rawVisualCue, rawIconText, iconColor, textColor);
+        const buttonPreviewHtml = getCustomBellIconHtml(rawVisualCue, rawIconText, iconColor, textColor, bell.steps);
 
         return `
             <div class="p-4 border rounded-xl shadow-md ${hasData ? 'border-indigo-300 bg-white' : 'border-dashed border-gray-300 bg-gray-50'} space-y-4">
@@ -268,7 +268,12 @@ function renderCustomQuickBells() {
             const visualCue = bell.visualCue || `[CUSTOM_TEXT] ${bell.iconText}|${bell.iconBgColor}|${bell.iconFgColor}`;
             let visualContent = '';
             
-            if (visualCue.startsWith('http')) {
+            // V6.24.0: a saved queue draws as a diagonal split of its steps —
+            // half a hamburger, half a Beethoven — because one graphic cannot
+            // describe a sequence. Checked FIRST: the sentinel is not a URL.
+            if (visualCue === '[QUEUE_SPLIT]' && Array.isArray(bell.steps) && bell.steps.length > 1) {
+                visualContent = getQueueSplitIconSvg(bell.steps, bell.iconBgColor, bell.iconFgColor);
+            } else if (visualCue.startsWith('http')) {
                 // It's an image URL
                 // Constantly updating in 5.25 to get the appearance right.
                 visualContent = `<img src="${visualCue}" alt="${escapeHtml(bell.name)}" class="absolute inset-0 w-full h-full object-contain p-1">`;

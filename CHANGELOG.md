@@ -34,6 +34,18 @@ Minor bump: a new feature. Builds directly on 6.23.0.)
   (b) **"until a bell rings" repeat mode is NOT saved.** It targets a bellId from
   today's resolved schedule, which means nothing tomorrow. A saved queue always
   repeats by numeric count; the modal says so under the Save field.
+- **The button icon is a DIAGONAL SPLIT of the queue's steps** — half a
+  hamburger, half a Beethoven — rather than whichever graphic happened to be
+  first. Bands are axis-aligned rects inside a clipPath rotated -45deg about the
+  centre; the square's diagonal is 100*sqrt(2), so a band of `DIAG/n` tiles it
+  exactly for any n, and at n=2 it is precisely half and half. A divider stroke
+  between bands keeps two dark graphics reading as two. Steps without an image
+  (the default "Q", custom text) fill their band with the bell's colours and the
+  step number — never a broken `<image>`.
+  **Capped at 3 bands** however many steps: past three, 44px of button divided
+  diagonally is confetti, and the step-count badge already says how many there
+  are. The icon is stored as a `[QUEUE_SPLIT]` SENTINEL, not baked in at save
+  time, so editing a step's graphic later updates the button automatically.
 - **Queue buttons are visually distinct:** a small step-count badge in the corner,
   and the hover label reads "2 steps / 17m 30s" rather than a bare duration,
   because the button runs a sequence and one time would understate it.

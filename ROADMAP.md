@@ -16,8 +16,8 @@ When they disagree, HANDOFF.md wins — and fix this file.
 | | |
 |---|---|
 | Latest built version | **6.24.0** (app), **1.36.0** (service worker) |
-| Live on alpha (owner's channel) | **through 6.20.4**, owner-confirmed |
-| Built, battery-green, NOT deployed | **6.21.0, 6.22.0, 6.23.0, 6.24.0** — one push covers all four |
+| Live on alpha (owner's channel) | **through 6.22.0** — owner-confirmed 2026-09, round 10 |
+| Built, NOT yet pushed | **6.23.0, 6.24.0** — one push covers both |
 | Beta channel (CDC teacher) | 6.4.0 |
 | Building channel (bells domain) | 5.69.5 backport |
 | School channel (~50 faculty) | 5.79.x |
@@ -30,9 +30,16 @@ the start of every round — the handoff has been wrong about this before.
 
 ## 1. Deploy what is already built
 
-Four releases are sitting finished: duplicate-a-schedule (6.21.0), the
-shift-rebase data fix (6.22.0), per-timer queue graphics (6.23.0), and
-save-a-queue-as-a-quick-bell (6.24.0). One commit covers all four.
+**CORRECTED round 10.** The handoff claimed 6.21.0 and 6.22.0 were built but
+undeployed. They are NOT — the owner downloaded this repo from GitHub, and on a
+GitHub Pages site the repo IS the deployment, so everything in it is live. Round
+9 pushed and the handoff was never updated. **Only 6.23.0 and 6.24.0 are
+outstanding**, and they are this round's work.
+
+**LESSON, since this has now happened twice:** the handoff records what the last
+session BELIEVED at the moment it stopped writing, which is always before the
+owner's final push. Treat its deploy state as stale by default and ask him first
+— his answer, not the document, is ground truth.
 
 **Rule that has bitten this project before:** replace the ENTIRE `src/js/` tree
 plus the changed root files in ONE commit. A partial push leaves new modules
@@ -81,6 +88,68 @@ symptom Jake hit.
 
 ---
 
+## 3b. OPEN BUG (round 10, unreproduced): stale quick-bell icon on the display
+
+**Symptom, owner-reported:** after running a saved queue, the visual cue fell
+back to the icon of a quick bell and STAYED there the rest of the afternoon.
+Gone the next day — consistent with a page reload clearing it, since nothing here
+is persisted.
+
+**Confirmed structural defect** in module 10's visual priority block, Priority 3:
+
+```js
+if (!visualHtml && millisToQuickBell < Infinity) {
+```
+
+The gate tests only that a quick-bell end time EXISTS, never that it is still in
+the FUTURE. So any non-null `state.quickBellEndTime` — including one whose
+moment passed hours ago — outranks the period visual (Priority 4) forever. It
+then falls into the `else` branch and matches a saved quick bell by NAME
+(`b.name === activeTimerLabel`) and paints that bell's icon. That is precisely
+the reported shape: one quick bell's icon, pinned, until reload.
+
+**What was ruled out** (read in full, round 10): the queue's own teardown is
+clean. `advanceQueue()` calls `cancelQueue()` after the final repeat, and
+`cancelQueue()` nulls `queueTimerEndTime`, `quickBellEndTime`, the queue array,
+the index and the repeat counter. 6.24.0's `startSavedQueue()` sets the same
+fields `startQueue()` does. So the queue is most likely the TRIGGER (it made him
+look at the display) rather than the cause; the stale end time probably came
+from an ordinary quick bell earlier that day.
+
+**What is NOT yet explained:** how `quickBellEndTime` survived past its own ring,
+since module 10 line ~344 nulls it when it fires. Prime suspect is the ring's
+cooldown gate — `nowTimestamp - state.lastRingTimestamp > RING_COOLDOWN` sits in
+front of BOTH the ring and the clear, so a quick bell expiring inside a schedule
+bell's cooldown is skipped; it should be retried on a later tick, which needs
+confirming. A backgrounded or slept tab is the other candidate. **Do not fix
+blind.** Get the diagnostic below first.
+
+**Diagnostic (owner runs this on the display machine the moment it recurs, in
+the browser console — it needs no reload, and a reload destroys the evidence):**
+
+```js
+copy(JSON.stringify({
+  qbEnd: state.quickBellEndTime, qbName: state.quickBellEndTime?.bellName,
+  overdueSec: state.quickBellEndTime
+    ? Math.round((Date.now() - new Date(state.quickBellEndTime).getTime())/1000) : null,
+  queueActive: state.queueActive, queueEnd: state.queueTimerEndTime,
+  queueLen: state.quickBellQueue?.length, queueIdx: state.queueIndex,
+  lastRing: state.lastRingTimestamp, now: Date.now(),
+  visualSource: document.getElementById('visual-cue-source')?.textContent
+}, null, 2))
+```
+
+`qbEnd` non-null with a positive `overdueSec` and `queueActive: false` confirms
+the diagnosis above, and `qbName` names the bell whose icon is stuck.
+
+**The fix, once confirmed,** is to require the end time to be in the future
+(`millisToQuickBell > 0`) rather than merely present, and to clear a quick-bell
+end time that is overdue past a sane threshold whether or not it managed to ring.
+Guard both, not just one: the defect is that a past-tense end time is treated as
+an active one, and clearing is currently the ring handler's side effect.
+
+---
+
 ## 4. Calendar v2 — what is left
 
 The big architecture (see DESIGN-CALENDAR-V2.md) is mostly built. Remaining:
@@ -105,7 +174,80 @@ The big architecture (see DESIGN-CALENDAR-V2.md) is mostly built. Remaining:
 
 ---
 
-## 5. Smaller / someday
+## 5. Birthday ticker on the signage right column (NEW, requested round 10)
+
+**Not started. This is a fresh project, not a tweak — hand it its own session.**
+
+### Where this lives (the owner asked, having lost track)
+
+It is NOT in the main app. It is in **`signage/`**, three sibling full-page
+displays meant for Yodeck frames, each a standalone HTML file with its own
+inline CSS and JS and its own version line in its `<title>`:
+
+| File | Version | What it shows |
+|---|---|---|
+| `signage/dashboard.html` | v1.6.0 | The full display: media/Canva area **plus** the right column |
+| `signage/dashright.html` | v1.1.0 | The right column ALONE — clock on top, scoreboard below |
+| `signage/dashclock.html` | — | The clock alone |
+
+The right column is `.right-column`, containing `.clock-area` (the
+`#main-clock` readout plus the three `.schedule-column` period/countdown
+cells — that is the "triple bell notifier") and `.houses-area` (four
+`.house-card`s: Accomodore, Callidus, Princeps, Vevaios, auto-sorted by score).
+
+Scores arrive from a **published Google Sheet CSV** whose URL is stored in the
+dashboard config doc as `housesSheetCsvUrl`, edited in `dashboard-config.html`.
+`src/js/25-status-view.js` version-checks all three signage pages by scraping
+their `<title>`, so **a version bump in the title is load-bearing**, not
+decoration.
+
+### The requested change
+
+Reorder the right column and add a fourth element at the top:
+
+1. **Birthday ticker** (NEW) — top
+2. **Four house cards** — middle, still auto-sorted descending by score
+3. **Clock + triple bell notifier** — bottom (currently top)
+
+So the clock moves from top to bottom and the ticker takes its place.
+
+### What has to be decided before building
+
+- **Where birthdays come from.** The scoreboard already reads a published
+  Sheet CSV, so a second sheet (or a second tab) is the obvious, consistent
+  answer — same mechanism, same admin edit point, no schema change, and no
+  student data in Firestore. **Confirm this with the owner first.**
+- **Student privacy is the constraint that decides the design.** Every other
+  school project here refuses to store student-identifying data. A birthday
+  ticker is inherently student-identifying, it is aimed at a screen in a public
+  hallway, and a date of birth is more sensitive than a house score. Settle
+  BEFORE building: first name plus last initial or full name; whether the year
+  is ever shown (it should not be); whether a student can be omitted on request;
+  and whether the sheet stays out of Firestore entirely. Ask the owner what the
+  school already permits rather than assuming.
+- **What it shows on a day with no birthday** — nothing, a placeholder, or
+  "upcoming this week". An empty band at the top of the column looks broken.
+- **Scope across the three files.** `dashright.html` and `dashboard.html` both
+  contain the right column as DUPLICATED markup and script, and their headers
+  say so explicitly ("logic duplicated from dashboard.html"). Changing the
+  column means changing both, in step, with both version lines bumped. Decide
+  early whether this is the moment to factor the column into one shared file —
+  it is the third change to hit the duplication.
+
+### Sizing warning, learned twice already
+
+Both files' headers record the same bug fixed twice: **`vw`/`vh` units scale to
+the viewport, not the container**, so text sized that way exploded when the
+column was rendered in a narrow Yodeck frame. The fix both times was
+`container-type: inline-size` plus `cqw` units, and `dashboard.html` v1.6.0
+added `max-width: 30cqw` on `.house-crest` for the same reason. **Size the
+ticker in `cqw` against the column container from the start.** Adding a fourth
+band also squeezes the other three — check the real frame, not a desktop
+browser window.
+
+---
+
+## 6. Smaller / someday
 
 - **Admin broadcast layer** — school-wide messages and admin-pushed countdown
   quick bells ("2 minutes until announcements", tornado-drill notices) as a
@@ -136,7 +278,7 @@ The big architecture (see DESIGN-CALENDAR-V2.md) is mostly built. Remaining:
 
 ---
 
-## 6. Standing rules worth not rediscovering
+## 7. Standing rules worth not rediscovering
 
 - Deploy the whole `src/js/` tree in one commit (see §1).
 - Alpha -> beta -> building is the promotion order.

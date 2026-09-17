@@ -887,7 +887,72 @@ function resolveAllBellTimes(options = {}) {
     * @param {string} fgColor - Foreground color hex
     * @returns {string} HTML content for the button (Icon or Text)
     */
-function getCustomBellIconHtml(visualCue, iconText, bgColor, fgColor) {
+/**
+ * V6.24.0 — DIAGONAL SPLIT ICON for a saved queue.
+ *
+ * A saved queue runs several bells, so a single graphic under-describes it.
+ * This slices the 44px button into one diagonal band per step, in order, so
+ * the owner's "typing then Beethoven" button shows half a hamburger and half
+ * a Beethoven rather than picking one.
+ *
+ * HOW: bands are axis-aligned rects in a clipPath rotated -45deg about the
+ * centre. The square's diagonal is 100*sqrt(2) ~= 141.42, so a band of width
+ * 141.42/n starting at -20.71 covers the square exactly. This generalises to
+ * any n without per-case polygon maths — at n=2 it is precisely half and half.
+ *
+ * HONEST LIMIT: past 3 steps the bands are thinner than the button is
+ * forgiving. Legibility is capped by deliberately splitting at most the first
+ * MAX_BANDS steps and marking the remainder with a count badge (drawn by the
+ * caller), rather than shaving the icon into confetti.
+ *
+ * Non-image steps (the default "Q", custom text) fill their band with the
+ * bell's colours and the step number — never a broken <image>.
+ */
+const QUEUE_ICON_MAX_BANDS = 3;
+
+function getQueueSplitIconSvg(steps, bgColor, fgColor) {
+    const bands = steps.slice(0, QUEUE_ICON_MAX_BANDS);
+    const n = bands.length;
+    if (n === 0) return '';
+    
+    const DIAG = 141.42;      // 100 * sqrt(2)
+    const OFFSET = -20.71;    // (DIAG - 100) / 2
+    const bandW = DIAG / n;
+    const uid = `qs${Math.random().toString(36).slice(2, 8)}`;
+    
+    let defs = '';
+    let body = '';
+    
+    bands.forEach((step, i) => {
+        const clipId = `${uid}-${i}`;
+        defs += `<clipPath id="${clipId}"><rect x="${(OFFSET + bandW * i).toFixed(2)}" y="${OFFSET}" width="${bandW.toFixed(2)}" height="${DIAG}" transform="rotate(-45 50 50)"/></clipPath>`;
+        
+        const visual = step && step.visual;
+        if (visual && visual.startsWith('http')) {
+            // preserveAspectRatio="slice" fills the band; the graphic is
+            // cropped rather than letterboxed, which reads better this small.
+            body += `<image href="${escapeHtml(visual)}" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`;
+        } else {
+            body += `<g clip-path="url(#${clipId})"><rect x="0" y="0" width="100" height="100" fill="${bgColor}"/><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="46" font-weight="bold" fill="${fgColor}" font-family="'Century Gothic', 'Questrial', sans-serif">${i + 1}</text></g>`;
+        }
+        
+        // Divider between bands, so two dark graphics still read as two.
+        if (i > 0) {
+            const c = 200 * (i / n); // the line x + y = c
+            const x1 = Math.max(0, c - 100), y1 = Math.min(100, c);
+            const x2 = Math.min(100, c), y2 = Math.max(0, c - 100);
+            body += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${fgColor}" stroke-width="3" stroke-opacity="0.9"/>`;
+        }
+    });
+    
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="absolute inset-0 w-full h-full"><defs>${defs}</defs><rect x="0" y="0" width="100" height="100" fill="${bgColor}"/>${body}</svg>`;
+}
+
+function getCustomBellIconHtml(visualCue, iconText, bgColor, fgColor, steps) {
+    // V6.24.0: a saved queue draws as a diagonal split of its steps.
+    if (visualCue === '[QUEUE_SPLIT]' && Array.isArray(steps) && steps.length > 1) {
+        return `<div class="w-full h-full relative overflow-hidden">${getQueueSplitIconSvg(steps, bgColor || '#4B9CD3', fgColor || '#FFFFFF')}</div>`;
+    }
     // V5.43.2: Extract background color from [BG:...] prefix if present
     let customBgColor = null;
     let baseVisualCue = visualCue;
@@ -1470,6 +1535,7 @@ export {
     findNearbyBell,
     flattenPeriodsToLegacyBells,
     getCustomBellIconHtml,
+    getQueueSplitIconSvg,
     handleChangeSoundSubmit,
     migrateLegacyBellsToPeriods,
     openChangeSoundModal,

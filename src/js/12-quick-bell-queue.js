@@ -499,6 +499,13 @@ async function saveQueueAsQuickBell() {
     const isImage = firstVisual && firstVisual.startsWith('http');
     const iconText = name.substring(0, 3);
     
+    // V6.24.0: if the queue has more than one step, the button icon is a
+    // DIAGONAL SPLIT of them (module 14's getQueueSplitIconSvg) rather than
+    // whichever single graphic happened to be first. The sentinel keeps the
+    // steps as the source of truth, so editing a step's graphic later updates
+    // the icon automatically instead of baking it in at save time.
+    const useSplit = steps.length > 1;
+    
     const totalSeconds = steps.reduce((sum, s) => sum + s.durationSeconds, 0);
     
     const newBell = {
@@ -516,7 +523,7 @@ async function saveQueueAsQuickBell() {
         iconText: iconText,
         iconBgColor: '#4B9CD3',
         iconFgColor: '#FFFFFF',
-        visualCue: isImage ? firstVisual : `[CUSTOM_TEXT] ${iconText}|#4B9CD3|#FFFFFF`,
+        visualCue: useSplit ? '[QUEUE_SPLIT]' : (isImage ? firstVisual : `[CUSTOM_TEXT] ${iconText}|#4B9CD3|#FFFFFF`),
         steps: steps,
         queueRepeatTimes: parseInt(queueRepeatTimesInput.value) || 1,
         alwaysBroadcast: false,

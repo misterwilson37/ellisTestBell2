@@ -11,12 +11,16 @@ same 4 slots with the same icon/broadcast/backup machinery — no parallel list.
 FOUND AND FIXED EN ROUTE: module 15's snapshot handler rebuilds each quick bell
 from a WHITELIST, and `alwaysBroadcast` was never added when V5.65.0 introduced
 it — the broadcast tick silently reverted on every reload. That whitelist is now
-commented as a whitelist. Deliberate limits: icon defaults to step 1's graphic
-(editable in the manager); "until a bell rings" repeat is NOT saved, since it
+commented as a whitelist. The button icon is a DIAGONAL SPLIT of the steps (clipPath bands rotated -45,
+capped at 3, stored as a [QUEUE_SPLIT] sentinel so it tracks step edits); "until a bell rings" repeat is NOT saved, since it
 targets today's bellId. SW 1.36.0, 74/74, 41 modules, NO rules change, NO CSS
-rebuild. Round 10, "Plain Bob" — see §10.) DEPLOY STATE: through 6.20.4 LIVE on
-alpha (owner confirmed); 6.21.0 through 6.24.0 built + battery-green, NOT
-deployed — ONE push covers all four.
+rebuild. Round 10, "Plain Bob" — see §10.) DEPLOY STATE (CORRECTED BY THE OWNER, round 10):
+through **6.22.0 IS LIVE** on alpha. The pre-round-10 header claimed 6.21.0 and
+6.22.0 were built-but-undeployed; they were not — he downloaded this repo from
+GitHub, and on a Pages site the repo IS the deployment. Round 9 pushed and never
+updated the header. ONLY 6.23.0 + 6.24.0 are outstanding; ONE push covers both.
+SUCCESSORS: this header's deploy state is written BEFORE the owner's final push
+of the session, so it is stale by construction. ASK HIM, do not trust it.
 // prev: **6.23.0 (QUICK BELL QUEUE — A GRAPHIC
 PER TIMER. The owner asked for "a queue of bells... one bell with a graphic
 followed by another bell with a different graphic, each with its own sound."
