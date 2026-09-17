@@ -247,6 +247,39 @@ browser window.
 
 ---
 
+## 5b. "Add a temp bell" inside the bell modal (NEW, requested round 10)
+
+**Not built. Deliberately split off from 6.25.0**, which shipped the modal it
+would live in.
+
+The owner: "perhaps even an 'add temp bell' option in between each scheduled
+bell. I've had a couple of times where that would be helpful." Lower priority
+than the skip/unskip half, which is why that half shipped alone.
+
+The idea: a thin insert affordance between rows of the bell modal that drops a
+one-off bell into that gap for today only — the mirror image of skipping.
+
+**What has to be decided first, because it is not a UI question:**
+- **Where does a temp bell LIVE?** Skips are an occurrence set
+  (`HH:MM:SS|name|YYYY-MM-DD`) in localStorage that self-clears overnight and is
+  deliberately device-specific (V5.55.6 removed mute state from cloud sync). A
+  temp bell should almost certainly mirror that — a today-only local overlay,
+  NOT a write into `personalBells`, which would persist it forever and sync it.
+  Confirm before building; getting this wrong writes junk into real schedules.
+- **What does "between these two bells" mean for a TIME?** The gap gives a
+  range, not a value. Default to the midpoint, or prompt for a time bounded by
+  the neighbours? The midpoint is guessable and needs no picker; a picker is
+  honest but adds the chaos the owner was trying to avoid.
+- **Does it need a sound and a graphic,** or does it inherit from the bell
+  before it? Inheriting is one fewer decision in the moment, which is the whole
+  point of a temp bell.
+- **How is it removed** — reuse Unskip on it, or a separate delete? Reusing the
+  existing toggle keeps the modal to one button per row.
+
+**Note:** the modal's list is capped at five and rebuilt on every toggle, with
+the rendered array stashed so an index resolves to the same bell that was drawn.
+Any insert must re-render through the same path, or the indices drift.
+
 ## 6. Smaller / someday
 
 - **Admin broadcast layer** — school-wide messages and admin-pushed countdown

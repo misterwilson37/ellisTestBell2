@@ -40,6 +40,12 @@ import { state } from './state.js';
 // matches the old queue-level control. Upload lives in the visual library;
 // a queue row picks from what is already there.
 
+// V6.25.0 — PER-STEP LABELS. A queue step can carry a name, shown on the
+// countdown line as "Hamburger time! (Queue 1/2)" instead of a bare
+// "Queue (1/2)". That line is the same wide row that normally reads
+// "until <bell name>!", so there is room. Optional: an empty label falls back
+// to the old bare form, so nothing changes for a queue that does not use it.
+
 let queueTimerRowId = 0; // Unique ID for timer rows
 
 function openQuickBellQueueModal() {
@@ -86,6 +92,11 @@ function addQueueTimerRow() {
         <div class="flex items-center justify-between gap-2 mb-2">
             <span class="queue-timer-label text-sm font-semibold text-gray-700">Timer ${rowId + 1}</span>
             <button type="button" class="queue-delete-btn w-8 h-8 flex-shrink-0 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded text-sm" title="Remove timer">🗑</button>
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+            <label class="text-sm text-gray-600 w-16 flex-shrink-0">Label</label>
+            <input type="text" class="queue-label flex-1 min-w-0 px-2 py-1 border border-gray-300 rounded text-sm" maxlength="40" placeholder="optional, e.g. Hamburger time!">
+            <div class="w-8 h-8 flex-shrink-0" aria-hidden="true"></div>
         </div>
         <div class="flex items-center gap-2 mb-2">
             <label class="text-sm text-gray-600 w-16 flex-shrink-0">Length</label>
@@ -435,13 +446,16 @@ function collectQueueStepsFromRows() {
         const sound = row.querySelector('.queue-sound').value;
         // V6.23.0: each row carries its own graphic
         const visual = row.querySelector('.queue-visual').value;
+        // V6.25.0: and its own optional label, shown on the countdown line
+        const label = (row.querySelector('.queue-label').value || '').trim();
         const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
         
         if (totalSeconds > 0) {
             steps.push({
                 durationSeconds: totalSeconds,
                 sound: sound,
-                visual: visual
+                visual: visual,
+                label: label
             });
         }
     });
@@ -548,7 +562,8 @@ function startSavedQueue(steps, repeatTimes = 1) {
     state.quickBellQueue = steps.map(s => ({
         durationSeconds: s.durationSeconds,
         sound: s.sound,
-        visual: s.visual
+        visual: s.visual,
+        label: s.label || ''
     }));
     
     // Saved queues always repeat by COUNT — see the note on saveQueueAsQuickBell.

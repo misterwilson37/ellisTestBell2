@@ -63,8 +63,9 @@ import {
     userMessageModal, userMessageOkBtn, visualUploadStatus,
 } from './02-dom-elements.js';
 import {
-    bulkSelectedBells, getBellOverrideKey, getNextSkippedBell, getVisualOverrideKey,
-    saveBellVisualOverrides, saveMutedBells, saveSoundOverrides, skipNextBell, unskipBell,
+    bulkSelectedBells, closeBellManagerModal, getBellOverrideKey, getVisualOverrideKey,
+    handleBellManagerToggle, openBellManagerModal,
+    saveBellVisualOverrides, saveMutedBells, saveSoundOverrides,
     updateMainPageSkipButtons, updateMuteButtonsUI,
 } from './04-app-state-and-bells.js';
 import {
@@ -1674,20 +1675,29 @@ function init() {
         });
     }
     
-    // V5.47.13: Skip Bell button handler
+    // V6.25.0: the Skip button now OPENS THE BELL MODAL instead of blindly
+    // skipping whatever is next. The old one-click behaviour is what made it
+    // impossible to tell which bell you had just cancelled.
     document.getElementById('skip-bell-btn').addEventListener('click', () => {
-        skipNextBell();
-        updateMainPageSkipButtons();
+        openBellManagerModal();
     });
     
-    // V5.47.13: Unskip Bell button handler
-    document.getElementById('unskip-bell-btn').addEventListener('click', () => {
-        const skippedBell = getNextSkippedBell();
-        if (skippedBell) {
-            unskipBell(skippedBell);
+    // V6.25.0: bell modal — per-row Skip/Unskip, close, backdrop click.
+    const bellManagerModal = document.getElementById('bell-manager-modal');
+    if (bellManagerModal) {
+        document.getElementById('bell-manager-list').addEventListener('click', (e) => {
+            const btn = e.target.closest('.bell-manager-toggle');
+            if (!btn) return;
+            handleBellManagerToggle(parseInt(btn.dataset.bellIndex, 10));
             updateMainPageSkipButtons();
-        }
-    });
+        });
+        document.getElementById('bell-manager-close-btn').addEventListener('click', () => {
+            closeBellManagerModal();
+        });
+        bellManagerModal.addEventListener('click', (e) => {
+            if (e.target === bellManagerModal) closeBellManagerModal();
+        });
+    }
     
     // V5.47.0: Picture-in-Picture toggle button
     const pipToggleBtn = document.getElementById('pip-toggle-btn');

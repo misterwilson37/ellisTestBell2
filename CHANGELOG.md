@@ -2,6 +2,46 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## V6.25.0 — Named queue steps; skip bells by name instead of blind
+(Owner, on the countdown line: "it feels more helpful for it to say 'hamburger
+time! (queue 1/2)'." And on skipping: "it got confusing to know which bells were
+being cancelled, when all you're saying is 'skip' or 'unskip' bell." Minor bump.)
+
+- **NEW: each queue step can carry a LABEL.** The countdown line now reads
+  `Hamburger time! (Queue 1/2)` rather than a bare `Queue (1/2)`. That line is
+  the same wide row that normally reads "until <bell name>!", so there is room.
+  The label is OPTIONAL and empty falls back to the old bare form, so an
+  existing saved queue is unchanged until it is edited. Labels ride inside the
+  `steps` array, which module 15 stores whole, so no new field to whitelist.
+- **NEW: the bell modal — skip/unskip the next five bells BY NAME.** Each row
+  shows the bell's name and time with its own Skip/Unskip button. A skipped bell
+  STAYS in the list, struck through, because otherwise there is nothing left to
+  press Unskip on. The modal stays open as you toggle, so fixing a mis-skip does
+  not mean reopening it.
+- **REPLACES both old buttons rather than adding a third.** "Skip Bell" hit
+  whichever bell was next and "Unskip" restored whichever was earliest, and
+  neither NAMED the bell until after the fact — precisely the wrong behaviour
+  during a schedule change. The single button now opens the modal, and its label
+  changes to "Skip / Unskip Bells…" while anything is skipped. The owner's
+  constraint was no more chaos on the main screen, so button count went 2 -> 1.
+- **NOT a PiP problem.** Document Picture-in-Picture runs in a separate window,
+  so opening this modal does not disturb a popped-out countdown.
+- `skipNextBell()` now delegates to a new `skipBell(bell)`, so the blind path and
+  the pick-from-a-list path share one implementation and cannot drift. Same
+  occurrence key, so skips still self-clear overnight.
+- **BUGFIX guarded on the way:** `updateMainPageSkipButtons()` opened with
+  `if (!skipBtn || !unskipBtn) return;`. Removing the unskip button would have
+  made that bail out every time, silently hiding the skip button forever. It now
+  guards on the skip button alone.
+
+**Verification:** §5 battery green (74/74, 41 modules). Plus a throwaway jsdom
+harness: 28 checks, including the exact countdown string, the unlabelled-step
+fallback, skipping the SECOND listed bell and asserting its neighbours are
+untouched, the struck-through-but-still-listed state, and the guard bug above.
+**NO CSS rebuild** — `line-through`, `max-h-80` and `last:border-b-0` are all
+absent from the built tailwind.css, so those three are done with inline styles.
+SW CACHE_VERSION 1.37.0.
+
 ## V6.24.0 — Save a queue as a Quick Bell
 (Owner: "My class always starts with 15 minutes of typing... immediately after
 is 2.5 minutes of an image of Beethoven... I have the 15 minutes saved as a

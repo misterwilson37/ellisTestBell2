@@ -2,7 +2,23 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.24.0 (SAVE A QUEUE AS A QUICK BELL.
+before writing any code. Last updated: **6.25.0 (NAMED QUEUE STEPS + THE BELL
+MODAL. (1) A queue step can carry a LABEL, so the countdown line reads
+"Hamburger time! (Queue 1/2)" instead of "Queue (1/2)" — that line is the same
+wide row that normally reads "until <bell name>!". Optional; empty falls back to
+the bare form. (2) Skipping a bell is no longer blind: one button opens a modal
+listing the NEXT FIVE BELLS BY NAME AND TIME, each with its own Skip/Unskip.
+Skipped bells stay listed, struck through, or there is nothing to unskip.
+REPLACED both old buttons rather than adding a third (owner: no more chaos on
+the main screen). skipNextBell() now delegates to a new skipBell(bell). GUARDED
+EN ROUTE: updateMainPageSkipButtons() opened with `if (!skipBtn || !unskipBtn)
+return;`, which would have hidden the skip button forever once the unskip button
+was removed. NOT YET BUILT and on the roadmap as §5b: "add a temp bell" between
+rows of that modal — split off deliberately; it needs the storage question
+settled first (today-only local overlay, NOT a write into personalBells). SW
+1.37.0, 74/74, 41 modules, NO rules change, NO CSS rebuild. Round 10, "Plain
+Bob" — see §10.)
+// prev: **6.24.0 (SAVE A QUEUE AS A QUICK BELL.
 The owner's class opens with 15 min of typing under a hamburger icon, then 2.5
 min of Beethoven; both halves were saved as SEPARATE quick bells and he had no
 way to fire the pair. Now the queue modal has "Save as a Quick Bell": a saved
@@ -1138,6 +1154,14 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   the code but never wrote it, while module 16 tells its reader to "see CHANGELOG
   V6.22.0 before changing any of it." If round 9's own account ever surfaces,
   prefer it.
+  Also shipped **6.25.0** (per-step queue labels; the skip/unskip bell modal).
+  OPEN BUG found this round and NOT fixed — see ROADMAP.md §3b: a stale
+  `quickBellEndTime` pins a quick bell's icon to the display until reload,
+  because module 10's Priority 3 gate tests `millisToQuickBell < Infinity`
+  without checking the time is still in the FUTURE. The queue's teardown was
+  read in full and is clean; the queue is the trigger, not the cause. A console
+  diagnostic for the owner to run at the moment it recurs is in §3b — get that
+  before fixing, and do not fix blind.
   ALSO: created **ROADMAP.md** at the owner's suggestion. A roadmap existed (§7)
   but was unreadable as a planning doc — priorities interleaved with closed bugs
   and reasoning trails across a 1,568-line file. ROADMAP.md is the one-page

@@ -7,7 +7,7 @@
          always match — this <title>, the visible <h1> banner, and the comment on
          the last line of this file. Update all three together. (z = fix/tweak,
          y = new feature, x = major shift with the owner's sign-off.) -->
-    <title>Ellis Web Bell 6.24.0</title>
+    <title>Ellis Web Bell 6.25.0</title>
 
     <!-- V5.51.0: PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -1743,7 +1743,7 @@
     <!-- MODIFIED in 4.49: Widened main container from 2xl to 4xl -->
     <div class="container mx-auto max-w-4xl p-4 md:p-8">
         <header class="text-center mb-8 kiosk-hide">
-            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.24.0</h1>
+            <h1 id="app-banner-title" class="text-4xl font-bold text-blue-700">Ellis Web Bell 6.25.0</h1>
             <p class="text-lg text-gray-600">A real-time, synchronized bell schedule</p>
             <!-- V5.44.0: Clock Display Link, V5.47.3: Added Dashboard Link -->
             <div class="mt-2 flex items-center justify-center gap-3 text-sm">
@@ -1841,12 +1841,12 @@
                         </div>
                         <!-- Action buttons - right aligned in status row -->
                         <div class="flex gap-2">
-                            <button id="skip-bell-btn" class="px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 hidden" title="Skip the next scheduled bell (just this once)">
+                            <button id="skip-bell-btn" class="px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 hidden" title="Choose which of the next five bells to skip or restore">
                                 Skip Bell
                             </button>
-                            <button id="unskip-bell-btn" class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 hidden">
-                                Unskip
-                            </button>
+                            <!-- V6.25.0: the separate Unskip button is GONE. Both
+                                 skip and unskip now happen in #bell-manager-modal,
+                                 which names each bell instead of acting blind. -->
                             <button id="cancel-quick-bell-btn" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 hidden">
                                 Cancel Timer
                             </button>
@@ -3220,6 +3220,20 @@
             </div>
         </div>
 
+        <!-- V6.25.0: Bell modal — skip/unskip the next five bells BY NAME. -->
+        <div id="bell-manager-modal" data-modal class="hidden">
+            <div data-modal-panel class="max-w-md">
+                <h3 class="text-2xl font-medium mb-1">Next five bells</h3>
+                <p class="text-sm text-gray-600 mb-4">Skip a bell for today only. Skipped bells stay listed so you can restore them. Everything resets overnight.</p>
+                <div id="bell-manager-list" class="mb-6 overflow-y-auto" style="max-height:20rem;"></div>
+                <div class="flex gap-3">
+                    <button type="button" id="bell-manager-close-btn" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- NEW V5.29.0 / V5.42.0: Passing Period Visual Modal -->
         <div id="passing-period-visual-modal" data-modal class="hidden">
             <form id="passing-period-visual-form" data-modal-panel class="max-w-md">
@@ -3532,4 +3546,4 @@ HOW TO ADD A NEW ADMIN:
 The new admin will have admin privileges (including the "Make Public" button) the next time they refresh the app.
 -->
 
-<!-- Version 6.24.0 -->
+<!-- Version 6.25.0 -->
