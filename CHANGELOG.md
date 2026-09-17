@@ -2,6 +2,74 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## clock.html v1.8.0 — the clock plays each bell's OWN sound
+(Companion to app 6.25.1. Sibling surface; the app version is unchanged at
+6.25.1. SW CACHE_VERSION 1.38.0 so clocks pick it up.)
+
+- **FIX: `playBellSound()` took no argument** and played `config.sound` for
+  every bell it rang, so a bell the teacher had deliberately set to
+  "Silent / None" still rang on the clock. It now takes the bell's own sound and
+  honours `[SILENT]`. Owner's reasoning: if someone has chosen sounds per bell
+  on the website, the clock should play what they chose — silence included.
+- **`config.sound` is now the FALLBACK**, used for any bell with no sound of its
+  own, which is every bell on a never-customised schedule. The setup screen's
+  label changed to say so. Existing setups sound exactly as they did.
+- **Non-URL sounds fall back rather than failing**, mirroring `old.html`'s
+  long-standing guard: the app stores a sound as either a full download URL or a
+  Storage path, and `new Audio(path)` cannot resolve a bare path. On a signage
+  clock a failed load is indistinguishable from a broken bell, so it falls back.
+- **NO new control.** The owner asked for a per-schedule-line silent toggle
+  defaulting to silent; the per-column 🔔 checkbox already does exactly that and
+  already defaults to OFF. Inverting it would flip the meaning of `a1`…`a9`,
+  which are baked into every saved clock URL, silently turning audio ON for
+  anyone holding an old link.
+
+**Verification:** 7 checks against the extracted real function — `[SILENT]`
+plays nothing, a bell's own URL plays that URL, absent/empty/non-URL sounds fall
+back, and a clock with no fallback configured plays nothing instead of throwing.
+§5 battery green (74/74, 41 modules).
+
+## V6.25.1 — A bell set to "Silent / None" rang the DEFAULT bell
+(Owner: "I have a scheduled bell that's supposed to be silent. It's ringing the
+default bell every time (which is very confusing)." Patch bump: pure bug fix.)
+
+**Root cause, one line, no ambiguity.** The sound dropdowns have offered
+"Silent / None" since 5.32/5.33 — module 19 injects `<option value="[SILENT]">`
+into the Default Sounds optgroup of EVERY sound select, schedule bells included.
+`playBell()` never had a case for it. So `[SILENT]` was truthy, skipped the
+empty-soundName guard, and fell through to Case 3, which treats any
+unrecognised soundName as a Firebase Storage path. `ref(state.storage,
+'[SILENT]')` then `getBytes()` fails, the catch fires, and that handler's
+"fall back to default" rings `ellisBell.mp3`. A bell explicitly marked silent
+therefore rang the default bell — the loudest possible wrong answer, and worse
+than either intended outcome.
+
+- **FIX:** `playBell()` returns early on `[SILENT]`, before the synth cases.
+- **The empty-soundName fallback is deliberately UNCHANGED.** An empty sound
+  still rings the default. That asymmetry is intentional: empty means a field
+  was never set, and a bell that goes quiet because of a blank field is a silent
+  failure. `[SILENT]` is an explicit choice and is now honoured as one.
+- **CORROBORATION:** `old.html`, the ES5 legacy surface, has handled `[SILENT]`
+  correctly this whole time (`if (url === '[SILENT]') return;`). So the feature
+  was real and the modular app is what lacks it — either it never made the 6.0.0
+  modularization or it was dropped in it. Worth remembering when a feature
+  "works on the old page but not the app".
+- **NOT fixed, flagged on the roadmap:** `clock.html` ignores per-bell sounds
+  entirely — it plays one configured `config.sound` for every bell — so a silent
+  bell still rings on any clock column with audio enabled. That is a different
+  shape of problem (its audio model, not a missing case) and needs the owner's
+  call before changing.
+- A system notification is still sent for a silent bell (`maybeNotifyBell` is
+  untouched). That seems right — silent means no AUDIO, not invisible — but it
+  is a judgement call, so it is recorded here rather than assumed.
+
+**Verification:** §5 battery green (74/74, 41 modules). Plus a throwaway harness
+that evaluates the REAL `playBell` source against stubs: 7 checks — `[SILENT]`
+plays nothing, never reaches Firebase Storage, and never falls back; while the
+default bell, the built-in synths, the empty-sound fallback and the
+genuinely-broken-URL fallback all still behave exactly as before.
+One file changed. SW CACHE_VERSION 1.37.1.
+
 ## V6.25.0 — Named queue steps; skip bells by name instead of blind
 (Owner, on the countdown line: "it feels more helpful for it to say 'hamburger
 time! (queue 1/2)'." And on skipping: "it got confusing to know which bells were

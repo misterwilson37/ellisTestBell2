@@ -150,6 +150,22 @@ an active one, and clearing is currently the ring handler's side effect.
 
 ---
 
+## 3c. clock.html per-bell audio — DONE in clock.html v1.8.0
+
+Resolved in round 10. `playBellSound()` took no argument and played one
+configured sound for every bell, so a bell set silent still rang there. It now
+takes the bell's own sound, honours `[SILENT]`, and falls back to the configured
+sound for any bell that has none — so untouched setups sound exactly as before.
+The owner's reasoning: if someone has gone to the trouble of choosing sounds per
+bell on the website, the clock should play what they chose, silence included.
+
+**His requested per-schedule-line silent toggle ALREADY EXISTS** and was left
+alone: the per-column 🔔 checkbox on the setup screen is all-or-nothing audio per
+schedule line and already defaults to OFF, so a refresh stays quiet. Inverting it
+to a "silent" checkbox would flip the meaning of a control that is already
+encoded in every saved URL (`a1`…`a9`), silently turning audio ON for anyone
+holding an old link. Not worth it for a relabel.
+
 ## 4. Calendar v2 — what is left
 
 The big architecture (see DESIGN-CALENDAR-V2.md) is mostly built. Remaining:
@@ -247,38 +263,50 @@ browser window.
 
 ---
 
-## 5b. "Add a temp bell" inside the bell modal (NEW, requested round 10)
+## 5b. "Add a temp bell" inside the bell modal — SPEC SETTLED, NOT BUILT
 
-**Not built. Deliberately split off from 6.25.0**, which shipped the modal it
-would live in.
+The modal it lives in shipped in 6.25.0. **Every open question below was
+answered by the owner in round 10; this is a build ticket, not a design one.**
 
-The owner: "perhaps even an 'add temp bell' option in between each scheduled
-bell. I've had a couple of times where that would be helpful." Lower priority
-than the skip/unskip half, which is why that half shipped alone.
+**The governing principle, in his words:** a teacher needs the option of
+something specific ("going to the auditorium at 8:23") or general ("midway
+through the class"). **Default to the general, make every field editable, and
+both cases are covered.** Quick path and detailed path, one control.
 
-The idea: a thin insert affordance between rows of the bell modal that drops a
-one-off bell into that gap for today only — the mirror image of skipping.
+**Storage — DECIDED.** Mirror the skip set exactly: a today-only local overlay
+that self-clears overnight, keyed like `getSkipKey()`
+(`HH:MM:SS|name|YYYY-MM-DD`), device-specific, in localStorage. **Do NOT write
+into `personalBells`** — that persists forever and syncs. Skips already work
+this way (V5.55.6 deliberately removed mute state from cloud sync), so a temp
+bell is the same shape of thing and should share the mechanism.
 
-**What has to be decided first, because it is not a UI question:**
-- **Where does a temp bell LIVE?** Skips are an occurrence set
-  (`HH:MM:SS|name|YYYY-MM-DD`) in localStorage that self-clears overnight and is
-  deliberately device-specific (V5.55.6 removed mute state from cloud sync). A
-  temp bell should almost certainly mirror that — a today-only local overlay,
-  NOT a write into `personalBells`, which would persist it forever and sync it.
-  Confirm before building; getting this wrong writes junk into real schedules.
-- **What does "between these two bells" mean for a TIME?** The gap gives a
-  range, not a value. Default to the midpoint, or prompt for a time bounded by
-  the neighbours? The midpoint is guessable and needs no picker; a picker is
-  honest but adds the chaos the owner was trying to avoid.
-- **Does it need a sound and a graphic,** or does it inherit from the bell
-  before it? Inheriting is one fewer decision in the moment, which is the whole
-  point of a temp bell.
-- **How is it removed** — reuse Unskip on it, or a separate delete? Reusing the
-  existing toggle keeps the modal to one button per row.
+**Defaults when inserted between two bells — ALL EDITABLE:**
 
-**Note:** the modal's list is capped at five and rebuilt on every toggle, with
-the rendered array stashed so an index resolves to the same bell that was drawn.
-Any insert must re-render through the same path, or the indices drift.
+| Field | Default | Editable how |
+|---|---|---|
+| Time | Midpoint of the gap | Normal time input, fully editable |
+| Name | Auto ("Temp bell" or similar) | Text field |
+| Sound | The app's standard default | The normal sound dropdown |
+| Graphic | Text cue from the NAME, or `!` if none set | The normal visual dropdown |
+
+**Graphic must NOT inherit from the previous bell** — the owner's reason is
+good: two identical graphics back to back is confusing rather than helpful. Use
+the existing `[CUSTOM_TEXT] <text>|<bg>|<fg>` format the quick bells already use.
+
+**One wrinkle to handle, not yet put to the owner:** the auto-name and the
+name-derived graphic collide. If the bell auto-names to "Temp bell", a
+text-from-name graphic reads "Tem", which is noise. Treat an auto-generated name
+as "not set" for graphic purposes so it shows `!` until the teacher types a real
+name, then track what they type. Flag this to him if it turns out to be awkward.
+
+**Removal — DECIDED (low stakes).** Reuse the row's existing Skip button if that
+is simpler. He noted that "skip" reads oddly for something already temporary,
+but the end result is identical and he does not mind. One button per row wins.
+
+**Implementation note carried from 6.25.0:** the modal's list is capped at five
+and re-rendered on every toggle, with the rendered array stashed so an index
+resolves to the same bell that was drawn. Any insert MUST re-render through that
+same path or the indices drift.
 
 ## 6. Smaller / someday
 

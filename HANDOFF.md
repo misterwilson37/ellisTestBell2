@@ -2,7 +2,25 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.25.0 (NAMED QUEUE STEPS + THE BELL
+before writing any code. Last updated: **6.25.1 (SILENT BELLS RANG THE DEFAULT
+BELL. The sound dropdowns have offered "Silent / None" since 5.32/5.33 (module
+19 injects `[SILENT]` into every Default Sounds optgroup) but playBell() had NO
+CASE for it, so `[SILENT]` fell through to the custom-sound path, was looked up
+as a Firebase Storage path, 404'd, and the catch's "revert to default" rang
+ellisBell.mp3. One-line fix: early return in playBell. The EMPTY-soundName
+fallback to default is deliberately UNCHANGED — empty means never set, [SILENT]
+means chosen. NOTE FOR SUCCESSORS: old.html has handled [SILENT] correctly all
+along, so when a feature "works on the old page but not the app", suspect the
+6.0.0 modularization dropped it. ALSO SHIPPED, same round: clock.html v1.8.0 — it
+took no sound argument and played config.sound for EVERY bell, so silent bells
+rang there too. Now honours bell.sound and [SILENT], with config.sound as the
+fallback; non-URL sounds fall back (old.html's guard). NO new control: the
+per-column bell checkbox already gives per-line all-or-nothing audio and already
+defaults OFF, and inverting it would flip the meaning of a1..a9 in every saved
+clock URL. ROADMAP §5b is now a SETTLED SPEC (temp bells: today-only local
+overlay like skips, midpoint time, all fields editable) — a build ticket, not a
+design question. SW 1.37.1, 74/74, 41 modules, one file changed.
+// prev: **6.25.0 (NAMED QUEUE STEPS + THE BELL
 MODAL. (1) A queue step can carry a LABEL, so the countdown line reads
 "Hamburger time! (Queue 1/2)" instead of "Queue (1/2)" — that line is the same
 wide row that normally reads "until <bell name>!". Optional; empty falls back to
