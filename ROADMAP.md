@@ -1,13 +1,13 @@
 # Ellis Web Bell — ROADMAP
 
-**New in round 10 (6.23.0).** A roadmap already existed, but it lived in §7 of a
+**New in round 10.** A roadmap already existed, but it lived in §7 of a
 1,568-line HANDOFF.md, interleaved with closed bugs and reasoning trails. This
 file is the short version: what is actually left, in plain English, on one page.
 
 **HANDOFF.md remains the source of truth for *why*.** This file is the index.
 When they disagree, HANDOFF.md wins — and fix this file.
 
-**Last reviewed:** round 10, 2026-09, at 6.24.0.
+**Last reviewed:** round 10, 2026-09, at **6.25.1 + clock.html v1.8.0**.
 
 ---
 
@@ -15,9 +15,9 @@ When they disagree, HANDOFF.md wins — and fix this file.
 
 | | |
 |---|---|
-| Latest built version | **6.24.0** (app), **1.36.0** (service worker) |
+| Latest built version | **6.25.1** (app), **1.38.0** (service worker), **v1.8.0** (clock.html) |
 | Live on alpha (owner's channel) | **through 6.22.0** — owner-confirmed 2026-09, round 10 |
-| Built, NOT yet pushed | **6.23.0, 6.24.0** — one push covers both |
+| Built, NOT yet pushed | **6.23.0, 6.24.0, 6.25.0, 6.25.1, clock.html v1.8.0** — one push covers all |
 | Beta channel (CDC teacher) | 6.4.0 |
 | Building channel (bells domain) | 5.69.5 backport |
 | School channel (~50 faculty) | 5.79.x |
@@ -33,8 +33,8 @@ the start of every round — the handoff has been wrong about this before.
 **CORRECTED round 10.** The handoff claimed 6.21.0 and 6.22.0 were built but
 undeployed. They are NOT — the owner downloaded this repo from GitHub, and on a
 GitHub Pages site the repo IS the deployment, so everything in it is live. Round
-9 pushed and the handoff was never updated. **Only 6.23.0 and 6.24.0 are
-outstanding**, and they are this round's work.
+9 pushed and the handoff was never updated. **Everything outstanding is round
+10's own work**: 6.23.0, 6.24.0, 6.25.0, 6.25.1 and clock.html v1.8.0.
 
 **LESSON, since this has now happened twice:** the handoff records what the last
 session BELIEVED at the moment it stopped writing, which is always before the

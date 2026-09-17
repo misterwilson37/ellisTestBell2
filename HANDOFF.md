@@ -19,7 +19,14 @@ per-column bell checkbox already gives per-line all-or-nothing audio and already
 defaults OFF, and inverting it would flip the meaning of a1..a9 in every saved
 clock URL. ROADMAP §5b is now a SETTLED SPEC (temp bells: today-only local
 overlay like skips, midpoint time, all fields editable) — a build ticket, not a
-design question. SW 1.37.1, 74/74, 41 modules, one file changed.
+design question. SW 1.38.0, 74/74, 41 modules; two files changed
+(src/js/05-preferences-cloud-sync.js and clock.html).)
+DEPLOY STATE: through **6.22.0 IS LIVE** on alpha (owner-confirmed round 10 — he
+downloaded the repo from GitHub, and on a Pages site the repo IS the deployment).
+OUTSTANDING, built + battery-green, NOT pushed: **6.23.0, 6.24.0, 6.25.0, 6.25.1
+and clock.html v1.8.0** — ONE push covers all of them.
+THIS LINE IS STALE BY CONSTRUCTION: it is written before the owner's final push
+of the session. ASK HIM, do not trust it. It has been wrong twice.
 // prev: **6.25.0 (NAMED QUEUE STEPS + THE BELL
 MODAL. (1) A queue step can carry a LABEL, so the countdown line reads
 "Hamburger time! (Queue 1/2)" instead of "Queue (1/2)" — that line is the same
@@ -1172,7 +1179,19 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   the code but never wrote it, while module 16 tells its reader to "see CHANGELOG
   V6.22.0 before changing any of it." If round 9's own account ever surfaces,
   prefer it.
-  Also shipped **6.25.0** (per-step queue labels; the skip/unskip bell modal).
+  Also shipped **6.25.0** (per-step queue labels; the skip/unskip bell modal),
+  **6.25.1** (a bell set to "Silent / None" rang the DEFAULT bell — playBell had
+  no case for `[SILENT]`, so it was looked up as a Storage path, 404'd, and the
+  catch's fallback rang ellisBell.mp3), and **clock.html v1.8.0** (same bug on
+  that surface, different shape: playBellSound took no argument at all).
+  SEVEN releases this round: 6.23.0, 6.24.0, 6.25.0, 6.25.1, clock v1.8.0, plus
+  the reconstructed 6.22.0 changelog entry and ROADMAP.md itself.
+  PATTERN WORTH CARRYING: three of the five bugs found this round were the same
+  shape — a feature that exists at one layer and is missing a case at another
+  (`alwaysBroadcast` absent from module 15's whitelist mapper; `[SILENT]` absent
+  from playBell; per-bell sound absent from clock.html). `old.html` handled
+  `[SILENT]` correctly the whole time, which is the tell: when something works on
+  the old page but not the app, suspect the 6.0.0 modularization dropped it.
   OPEN BUG found this round and NOT fixed — see ROADMAP.md §3b: a stale
   `quickBellEndTime` pins a quick bell's icon to the display until reload,
   because module 10's Priority 3 gate tests `millisToQuickBell < Infinity`
