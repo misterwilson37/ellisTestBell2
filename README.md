@@ -10,7 +10,7 @@ A real-time, synchronized school bell schedule and timer system. Built for a sch
 | `clock.html` | Multi-schedule grid clock (up to 3x3) for Yodeck TV kiosks | v9 compat | Relative-bell math comes from the shared `bell-engine.js` as of v1.5.0 (its old local copy had silently diverged). As of v1.8.0 each bell plays ITS OWN sound, honouring "Silent / None"; the setup screen's picker is the fallback. Configured entirely by URL params (`a1`…`a9` are the per-column audio toggles) — so any new param must default to today's behaviour or saved clock URLs change meaning |
 | `old.html` | Legacy self-contained clock for old iPads / Kindle Fires (iOS 9-era browsers) | None — raw Firestore REST API, **unauthenticated** | ES5 only, no modules. This is why `personal_schedules` must stay publicly readable in firestore.rules |
 | `dashboard-config.html` | Admin tool for the signage dashboard config | v9 compat | Intentionally not cached by the service worker |
-| `signage/` | dashboard.html, dashright.html, dashclock.html + crest PNGs for TVs | v9 compat | **IS in this repo** (the older "not in this snapshot" note was wrong). House scores come from a published Google Sheet CSV whose URL lives in the dashboard config. The right column is DUPLICATED between dashboard.html and dashright.html — change both together. Size in `cqw`, never `vw`/`vh`: that bug has been fixed twice |
+| `signage/` | dashboard.html, dashright.html, dashclock.html + crest PNGs for TVs | v9 compat | **IS in this repo** (the older "not in this snapshot" note was wrong). As of 6.26.0 the right column is NO LONGER duplicated: it lives once in `right-column.css` + `right-column.js` and both pages mount it — do not re-inline it. The column is ticker / house cards / clock, top to bottom. House scores and the three birthday-ticker sheets all come from published Google Sheet CSVs whose URLs live in the dashboard config. Size in `cqw`, never `vw`/`vh`: that bug has been fixed twice |
 
 ## ⚠️ The Build Rule (the one people forget)
 
@@ -32,8 +32,9 @@ After touching `bell-engine.js`, run `cd build && npm test`.
 ## Shared infrastructure
 
 - `bell-engine.js` — the SINGLE implementation of the pure time/schedule math (formatting, time↔seconds, next-bell lookup, relative-bell resolution), shared by the main app AND clock.html via a plain `<script>` tag. Hand-edited, covered by `tests/bell-engine.test.mjs`. Keep it pure: no DOM, no Firebase, no app globals.
-- `src/js/` — the 29 production ES modules (27 feature modules + `state.js` shared mutable state + `main.js` entry point). The filenames say what lives where; `build/README-BUILD.md` has the ownership map. Adding a module = also add it to `service-worker.js` CORE_ASSETS + `src/js/main.js`.
-- `tests/` — unit tests for the engine. Run with `cd build && npm test` (or `node --test tests/bell-engine.test.mjs`). No packages needed.
+- `src/js/` — the 41 production ES modules (39 feature modules + `state.js` shared mutable state + `main.js` entry point). The filenames say what lives where; `build/README-BUILD.md` has the ownership map. Adding a module = also add it to `service-worker.js` CORE_ASSETS + `src/js/main.js`.
+- `signage/right-column.css` + `signage/right-column.js` — the SINGLE home for the TV right column (ticker, house scoreboard, clock), shared by `signage/dashboard.html` and `signage/dashright.html`. Plain `<script>`/`<link>`, no build step, same pattern as `schedule-utils.js`. Both files carry a `Version:` line that module 25's status view reads.
+- `tests/` — unit tests for the engine, the signage schedule utils, and the right column's calendar math. Run with `cd build && npm test`. No packages needed.
 - `firebase-config.js` — the ONLY place the Firebase config lives. Every surface loads it before its own logic.
 - `firestore.rules` — security rules. Read the comments before changing; `old.html`'s unauthenticated REST reads and the share-code feature both depend on specific carve-outs.
 - `service-worker.js` — offline caching for the main app, clock, and signage. Bump `CACHE_NAME` whenever `CORE_ASSETS` changes.

@@ -1,7 +1,21 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.38.0
+ * Version: 1.41.0
  *
+ * v1.41.0 changelog (2026-09, app 6.26.0 unchanged): no new CORE_ASSETS — cache
+ *   bump for right-column.js v1.2.0 / right-column.css v1.1.0 (second fallback
+ *   line, length-aware ticker sizing).
+ * v1.40.0 changelog (2026-09, app 6.26.0 unchanged): no new CORE_ASSETS — cache
+ *   bump so TVs pick up right-column.js v1.1.0 (faculty birthday feed, the
+ *   fill-to-two fix, and console load diagnostics). Signage players reload
+ *   rarely and on their own schedule; a cache bump is the only thing that
+ *   reliably moves them.
+ * v1.39.0 changelog (2026-09, app 6.26.0): two new CORE_ASSETS —
+ *   /signage/right-column.js and /signage/right-column.css, the shared right
+ *   column that dashboard.html and dashright.html were both carrying their own
+ *   copy of. Both pages now HARD-DEPEND on these two files: a stale cache of
+ *   either leaves a TV with an empty column rather than a slightly wrong one,
+ *   which is why this is a cache bump and not just an additive list edit.
  * v1.29.0 changelog (2026-07, app 6.20.1): no new modules — cache bump for the
  *   PWA update-UX fix: the "New version available! Refresh to update." popup is
  *   GONE (it nagged unattended clocks on every post-deploy boot). Replaced with
@@ -157,7 +171,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.38.0';
+const CACHE_VERSION = '1.41.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;
@@ -225,6 +239,11 @@ const CORE_ASSETS = [
   // Note: dashboard-config.html is intentionally NOT cached. It's an admin tool;
   // stale offline copies would be confusing, and it's not on Yodeck TVs anyway.
   '/signage/schedule-utils.js',
+  // v1.39.0: the shared right column (app 6.26.0). Both dashboard.html and
+  // dashright.html now depend on these two, so a stale cache of either one
+  // leaves a TV with no column at all.
+  '/signage/right-column.js',
+  '/signage/right-column.css',
   '/signage/dashboard.html',
   '/signage/dashclock.html',
   '/signage/dashright.html',

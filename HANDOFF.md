@@ -2,7 +2,40 @@
 
 **Audience:** a fresh Claude instance picking up this project cold (or the
 teacher who maintains it, re-orienting after time away). Read this whole file
-before writing any code. Last updated: **6.25.1 (SILENT BELLS RANG THE DEFAULT
+before writing any code. Last updated: **6.26.0 (THE SIGNAGE RIGHT COLUMN IS NOW
+ONE FILE, AND HAS A BIRTHDAY TICKER. dashboard.html and dashright.html each
+carried their own copy of the column and had drifted FIVE ways: house names
+7cqw vs 9cqw (9 won — the size the owner eyeballed), dashright/dashclock naming
+Urbanist+Questrial while only dashboard LOADED the webfonts (so the pages
+rendered in different typefaces on every Yodeck player — this was most of the
+"it doesn't quite match"), bare 1fr vs minmax(0,1fr) on the period cells, nowrap
+present vs absent, and .right vs .right-column. All five resolved into
+signage/right-column.css + signage/right-column.js, schedule-utils.js pattern:
+plain <script>, one global, NO build step (he has no CLI). NEW ticker band, top
+of the column: ticker 12% / houses 71% / clock 17%, clock moved top->bottom, all
+three old bands squeezed. Three published Sheet CSVs (birthdays, closures,
+holidays) + fallback line, configured in dashboard-config.html v1.3.0. PRIVACY
+SHAPED THE SCHEMA: the published birthday tab is a FORMULA over a private roster
+tab, so the public URL carries no birth year, no full last name and nobody who
+opted out — enforced at the source, not by this code skipping rows. Early wishes
+spread over min(ceil(closure/2), 15) school days so no kid is unacknowledged;
+the 15 cap is what makes SUMMER birthdays reachable at all. FOUND EN ROUTE: the
+config page deletes null keys then set({merge:true}), so blanking a box and
+saving does NOT clear it — fixed for the four new fields with
+FieldValue.delete(), left alone for canvaUrl/housesSheetCsvUrl and logged in
+ROADMAP §3. SW 1.39.0, 98/98 (24 new), 41 modules, no rules change, no CSS
+rebuild. Then right-column.js v1.1.0 in the same round: FACULTY birthdays from
+a fourth CSV pooled with the students, a FIX to the fill-to-two rule (it added
+at most ONE holiday, so a no-birthday day showed a single static line with
+nothing to flip to), and console load diagnostics — an unparseable sheet row is
+dropped silently and a hallway TV cannot report it. Then v1.2.0: TWO fallback
+lines (a quiet day has to flip, not repeat itself) and LENGTH-AWARE ticker
+sizing — a fixed 8cqw holds ~22 chars per line in a 25% column, and faculty
+entries (title + full surname) make the LONGEST strings the most routine ones.
+Step boundaries are arithmetic, not measurement; they want one look at a long
+faculty name on the real frame. SW 1.41.0, 109/109.
+Round 11, "Tenor" — see §10.)
+// prev: **6.25.1 (SILENT BELLS RANG THE DEFAULT
 BELL. The sound dropdowns have offered "Silent / None" since 5.32/5.33 (module
 19 injects `[SILENT]` into every Default Sounds optgroup) but playBell() had NO
 CASE for it, so `[SILENT]` fell through to the custom-sound path, was looked up
@@ -21,12 +54,18 @@ clock URL. ROADMAP §5b is now a SETTLED SPEC (temp bells: today-only local
 overlay like skips, midpoint time, all fields editable) — a build ticket, not a
 design question. SW 1.38.0, 74/74, 41 modules; two files changed
 (src/js/05-preferences-cloud-sync.js and clock.html).)
-DEPLOY STATE: through **6.22.0 IS LIVE** on alpha (owner-confirmed round 10 — he
-downloaded the repo from GitHub, and on a Pages site the repo IS the deployment).
-OUTSTANDING, built + battery-green, NOT pushed: **6.23.0, 6.24.0, 6.25.0, 6.25.1
-and clock.html v1.8.0** — ONE push covers all of them.
-THIS LINE IS STALE BY CONSTRUCTION: it is written before the owner's final push
-of the session. ASK HIM, do not trust it. It has been wrong twice.
+DEPLOY STATE — **STOP ASKING HIM THIS. SETTLED ROUND 11, IN HIS WORDS: "I post
+everything up every single time you send it to me."** So: the zip you were
+handed IS what is live on alpha. There is no gap between what you receive and
+what is deployed, there never has been, and three rounds running have now
+opened by asking a question whose answer was always the same. Rounds 9 and 10
+each recorded a deploy gap that did not exist — not because he forgot to push,
+but because the handoff was written minutes BEFORE a push that was always going
+to happen. The document was describing its own blind spot and successors kept
+reading it as news.
+WHAT TO DO INSTEAD: assume everything in the zip is live, and write the OUTGOING
+delta — what THIS round changed and he has not yet received — rather than a
+belief about his channel. That delta is real information; the other was not.
 // prev: **6.25.0 (NAMED QUEUE STEPS + THE BELL
 MODAL. (1) A queue step can carry a LABEL, so the countdown line reads
 "Hamburger time! (Queue 1/2)" instead of "Queue (1/2)" — that line is the same
@@ -1215,6 +1254,43 @@ off-limits.) Rounds 1–2 predate this log and went unnamed.
   Stedman, Sally, Gudgeon, Plain Bob (+ Inky and Otto on Tentacalendar). FOUR
   releases are now built and undeployed — confirm deploy state before anything
   else, and read ROADMAP.md before §7.
+- **Round 11 (2026-09): "Tenor."** The tenor is the heaviest bell in a ring, the
+  one every other bell tunes against, and in a peal it COVERS — holding the same
+  place at the end of every change while the others swap around. This round's
+  job was making three signage pages tune to one source instead of drifting
+  apart, so it fit. (Names taken: Quasimodo, Whitechapel, Bourdon, Grandsire II,
+  Stedman, Sally, Gudgeon, Plain Bob, Tenor, + Inky and Otto on Tentacalendar.)
+  Arrived to a zip at 6.25.1; §5 battery green on arrival and matching the
+  handoff exactly.
+  Shipped **6.26.0**: extracted the duplicated right column into
+  signage/right-column.{css,js}, then built the birthday ticker on top of it.
+  Deliberately TWO STEPS, extraction first as a no-behaviour-change move: adding
+  a fourth band to two copies and merging afterwards would have meant doing the
+  layout twice and reconciling two sets of squeeze decisions.
+  **KEY FINDING: the five drifts.** Two files that were supposed to be the same
+  thing had diverged in five separate ways, and the loudest one — the missing
+  Google Fonts link — had nothing to do with either file's own history. Worth
+  internalising: when the owner says one surface "doesn't quite match" another,
+  diff the two rather than reading either one closely. Four of the five were
+  invisible in any single file.
+  **A TEST FAILED AND THE TEST WAS WRONG.** The Thanksgiving fixture listed
+  Wed–Sun as the closure and expected one nine-day run; the code correctly
+  produced TWO runs with Mon/Tue still school days in between. Both are
+  legitimate — which one you get depends entirely on what the closure sheet
+  says. Fixed the fixture to list the closed WEEKDAYS (how he will actually fill
+  it in) and let run detection glue the weekends on. Flagged to him, because it
+  is the one way he can mis-enter the sheet and get quietly wrong behaviour.
+  **METHOD NOTE, correcting round 10's recipe:** `dom.window.eval()` does NOT
+  attach globals under current jsdom — `globalThis` inside it is not the window,
+  so BellEngine/SignageScheduleUtils land nowhere and every assertion fails
+  confusingly. Use `runScripts: 'dangerously'` and append real `<script>`
+  elements instead; that runs the files the way a browser does.
+  **STILL WANTED FROM THE OWNER:** enrolment, to size MAX_LEAD_SCHOOL_DAYS. The
+  ticker shows roughly (75/365 x enrolment)/15 summer names a day in the last
+  three weeks of school — ~9 items at 600 students, ~17 at 1200, where the cap
+  wants raising to 20. One constant in right-column.js.
+  Successor: **do not open by asking about deploy state.** He posts everything
+  the moment he receives it; see §2, rewritten this round to say so.
 - **Round 1 (2026-07, Fable):** unnamed. Stages 1–5 + v5.79.x launch/fixes.
 - **Round 2 (2026-07, Fable):** unnamed. The stage-2 modularization
   (6.0.0, mislabeled 7.0.0). Session ended confused/interrupted — see the

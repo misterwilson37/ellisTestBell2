@@ -1,0 +1,333 @@
+/**
+ * Ellis Web Bell — Signage Right Column (styles)
+ * Version: 1.1.0 (app release v6.26.0)
+ *
+ * v1.1.0: the ticker's font size is now set per line by right-column.js
+ * (FIT_STEPS) rather than fixed at 8cqw here. A 25%-of-TV column fits roughly
+ * a dozen characters per line at 8cqw, and "Happy Early Birthday, Mr. Wilson!"
+ * is a routine output of this feature, not an edge case — faculty entries carry
+ * a title AND a full surname. The value below is now only the fallback for a
+ * span the script has not yet written to.
+ *
+ * The SINGLE home for the right column's appearance, shared by
+ * dashboard.html (where it is the right 25%) and dashright.html (where it
+ * fills the frame). Before this file, both pages carried their own copy and
+ * both headers admitted it. They had already drifted five ways by the time
+ * this was written:
+ *
+ *   - .house-name was 9cqw in dashright and 7cqw in dashboard. dashright
+ *     v1.1.0 bumped it after the owner's eyeball test on live hardware and
+ *     dashboard never got the bump. 9cqw is the value he approved and is
+ *     therefore the value here.
+ *   - dashright named 'Urbanist'/'Questrial' in its font stack but never
+ *     loaded the webfonts — only dashboard had the <link>. So the two pages
+ *     rendered in different typefaces on any player without Century Gothic
+ *     installed, which is every Yodeck player. Both now load the link.
+ *   - The clock's three period cells used bare 1fr in dashboard (no
+ *     min-content floor) and minmax(0, 1fr) + min-width: 0 in dashright.
+ *     Same root cause as the v1.5.2 setup-panel overflow. minmax wins.
+ *   - .column-label / .column-period / .column-countdown were nowrap in
+ *     dashboard and wrapping in dashright. nowrap + ellipsis wins: a wrapped
+ *     period name pushes the countdown out of a 20%-tall band.
+ *   - The root element was .right in dashboard and .right-column in
+ *     dashright. Both are now .rc-column.
+ *
+ * LAYOUT ORDER CHANGED IN 1.0.0 (owner's request). Top to bottom:
+ *   1. .rc-ticker      12%  — birthdays / wacky holidays   (NEW)
+ *   2. .houses-area    71%  — four house cards, 17.75% each
+ *   3. .clock-area     17%  — clock + three period cells   (was top, 20%)
+ * The three previous bands were squeezed to make room rather than the
+ * scoreboard absorbing it alone, per his read of the live screen.
+ *
+ * SIZE IN cqw, NEVER vw/vh. That bug has now been fixed three times in this
+ * folder: vw/vh resolve against the VIEWPORT, which inside a Yodeck frame is
+ * a quarter of the TV, so text came out a quarter of the intended size. Every
+ * container that text is sized against declares container-type explicitly,
+ * and only ever inline-size for the scoreboard (container-type: size on a
+ * flex parent with flex:1 children collapsed the cards to coloured bars in
+ * v1.4.1 — do not go back).
+ *
+ * LOAD ORDER (in each page's <head>):
+ *     <link rel="stylesheet" href="right-column.css">
+ * then the page's own <style> for anything outside the column.
+ */
+
+/* Palette. Owned here for the two pages that load this file; dashclock.html
+   does not load it and keeps its own identical copy. */
+:root {
+    --carolina-blue: #4B9CD3;
+    --carolina-blue-light: #7BAFD4;
+    --carolina-blue-sky: #8FC3E8;
+    --dark-grey: #1a1a1a;
+    --slate-bg: #111827;
+}
+
+/* Full-frame mount, used by dashright.html. dashboard.html mounts into its
+   own .right (25% wide) instead, so it does not use this class. */
+.rc-mount {
+    width: 100%;
+    height: 100%;
+}
+
+.rc-column {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--slate-bg);
+}
+
+/* ---- 1. Birthday / holiday ticker (12%) -------------------------------- */
+
+.rc-ticker {
+    height: 12%;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--slate-bg) 0%, #1a1a1a 100%);
+    container-type: inline-size;
+    font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
+    color: #fff;
+    /* The flap hinges in 3D. Perspective is sized against the column so the
+       fold looks the same at any TV size. */
+    perspective: 60cqw;
+}
+
+/* The split-flap. Four copies of the text, two clipped halves each:
+     .rc-flap-top    (static) shows the NEXT text's top half, revealed as the
+                     front flap falls away
+     .rc-flap-bottom (static) shows the CURRENT text's bottom half, covered as
+                     the back flap swings up
+     .rc-flap-front  animates 0 -> -90deg, showing CURRENT's top half
+     .rc-flap-back   animates 90deg -> 0, showing NEXT's bottom half
+   Whole-line, not per-character: per-character means ~30 elements animating
+   in lockstep every five seconds forever on a player that is not fast, and
+   from across a hallway it reads identically. */
+.rc-flap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+}
+
+.rc-flap-half {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50%;
+    overflow: hidden;
+    backface-visibility: hidden;
+}
+
+/* Each half contains a text block the full height of the band, so the text is
+   centred on the WHOLE ticker in both halves and the halves clip it. This is
+   also why wrapped text works: the split falls where it falls, which is the
+   split-flap look. */
+.rc-flap-half > span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 200%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 4cqw;
+    /* Overridden per line by right-column.js; this is the starting value only. */
+    font-size: 8cqw;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.01em;
+}
+
+.rc-flap-top { top: 0; }
+.rc-flap-top > span { top: 0; }
+
+.rc-flap-bottom { bottom: 0; }
+.rc-flap-bottom > span { bottom: 0; }
+
+/* A hairline at the hinge, the way a real board has a gap between the halves. */
+.rc-flap-top { border-bottom: 1px solid rgba(0, 0, 0, 0.45); }
+
+.rc-flap-front {
+    transform-origin: bottom center;
+    transform: rotateX(0deg);
+    z-index: 2;
+}
+
+.rc-flap-back {
+    transform-origin: top center;
+    transform: rotateX(90deg);
+    z-index: 2;
+}
+
+/* .rc-flipping is added for one animation cycle, then removed once the static
+   halves have been updated to the new text. If the transition never fires
+   (reduced motion, an old engine), the text still swaps — the flip is
+   decoration, the swap is the feature. */
+.rc-flipping .rc-flap-front {
+    transform: rotateX(-90deg);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.rc-flipping .rc-flap-back {
+    transform: rotateX(0deg);
+    transition: transform 0.25s cubic-bezier(0, 0, 0.2, 1) 0.25s;
+}
+
+/* Idle state: the animating flaps are parked out of sight behind the statics. */
+.rc-flap:not(.rc-flipping) .rc-flap-front { transform: rotateX(-90deg); }
+.rc-flap:not(.rc-flipping) .rc-flap-back { transform: rotateX(90deg); }
+
+/* ---- 2. House scoreboard (71%) ----------------------------------------- */
+
+.houses-area {
+    height: 71%;
+    display: flex;
+    flex-direction: column;
+    container-type: inline-size;
+}
+
+.house-card {
+    flex: 1 1 0;                       /* equal share: ~17.75% of the column */
+    display: grid;
+    grid-template-columns: auto 1fr;   /* crest | name-over-score */
+    align-items: center;
+    gap: 3cqw;
+    padding: 2% 3cqw;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    font-family: 'Century Gothic', 'Urbanist', 'Questrial', serif;
+}
+
+.house-crest {
+    height: 90%;
+    max-width: 30cqw;   /* cap so the crest cannot dominate a narrow frame */
+    width: auto;
+    object-fit: contain;
+    /* transparent PNGs — the card colour shows through */
+}
+
+.house-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    min-width: 0;
+    gap: 1%;
+    height: 100%;
+}
+
+.house-name {
+    font-family: 'Century Gothic', Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    font-size: 9cqw;    /* the value the owner eyeballed on hardware */
+    font-variant-caps: small-caps;
+    text-transform: lowercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.house-score {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    font-size: 16cqw;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.house-accomodore { background: #ffffff; color: #111827; }
+.house-callidus   { background: #d1d5db; color: #111827; }  /* matches --theme-border */
+.house-princeps   { background: var(--carolina-blue); color: #111827; }
+.house-vevaios    { background: var(--slate-bg); color: #ffffff; }
+
+/* ---- 3. Clock + period cells (17%, now the bottom band) ---------------- */
+
+.clock-area {
+    height: 17%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #1a1a1a 0%, var(--slate-bg) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2%;
+    container-type: size;
+    font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
+}
+
+/* 13cqw, down from 15cqw. The band lost three points of height while cqw text
+   is keyed to WIDTH, so the readout plus three cells no longer fit at the old
+   size. Expect to tune this against the real frame. */
+#main-clock {
+    font-size: 13cqw;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    width: 100%;
+    line-height: 1.1;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+
+#schedule-columns {
+    display: grid;
+    /* minmax(0, 1fr), never bare 1fr: bare 1fr is minmax(auto, 1fr) and the
+       auto floor refuses to shrink below the longest label ("TCAP - 6th"),
+       overflowing the whole row. Same root cause as clock.html v1.4.0. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2cqw;
+    width: 100%;
+    margin-top: 2cqh;
+}
+
+.schedule-column {
+    text-align: center;
+    padding: 1.5cqh 1cqw;
+    border-radius: 8px;
+    background: var(--dark-grey);
+    border: 1px solid #333;
+    min-width: 0;
+}
+
+.column-label {
+    font-size: 4cqw;
+    font-weight: 600;
+    color: #a0a0a0;
+    margin-bottom: 1cqh;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.column-period {
+    font-size: 5cqw;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 1.4em;
+}
+
+.column-period.active { color: var(--carolina-blue); }
+
+.column-countdown {
+    font-size: 3.5cqw;
+    color: var(--carolina-blue);
+    margin-top: 1cqh;
+    white-space: nowrap;
+}
+
+/* ---- Version stamp ----------------------------------------------------- */
+
+.version-stamp {
+    position: fixed;
+    bottom: 4px;
+    right: 8px;
+    font-size: 10px;
+    color: #333;
+    font-family: -apple-system, sans-serif;
+    z-index: 1;
+}

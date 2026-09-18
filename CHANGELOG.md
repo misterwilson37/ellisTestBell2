@@ -2,6 +2,147 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## signage/right-column.js v1.2.0 — a second default line, and length-aware sizing
+(Sibling surface; app unchanged at 6.26.0. CSS v1.1.0, SW 1.41.0, config v1.5.0.)
+
+**Two fallback lines**, alternating, so a day with no birthdays and no wacky
+holiday still FLIPS instead of showing one sentence to itself. Defaults are now
+`Ellis — 4 Houses, 1 Home` and `Have a delightful day!` — "One School" came out
+at the owner's request, since it is not part of what anyone at Ellis says. Set
+only one and the old repeat behaviour is what is left.
+
+**The band no longer uses one font size for everything.** Asking whether a
+longer default line would fit surfaced a problem with the feature itself, not
+the default: at a fixed 8cqw a line in a 25%-of-TV column holds about 22
+characters, and **the longest strings this ticker produces are its most routine
+ones** — faculty entries carry a title AND a full surname, so
+`Happy Early Birthday, Ms. Vandermeulen!` is ordinary output, not an edge case.
+Each line now picks its size from its own length (four steps, 9.5cqw down to
+5.25cqw), set per span rather than per band because mid-flip the two halves
+hold different strings. Steps, not a smooth curve: a continuous fit would make
+every flip a slightly different size, which reads as jitter on a wall.
+
+**The step boundaries are arithmetic, not measurement**, and are commented as
+such in the file — they want one look at a long faculty name on the real frame.
+A test pins the property that actually matters regardless of tuning: size never
+grows as length grows, and there is a floor.
+
+## signage/right-column.js v1.1.0 — faculty birthdays, and the fill-to-two fix
+(Sibling surface; the app version is unchanged at 6.26.0. SW CACHE_VERSION
+1.40.0 so TVs actually pick it up. `dashboard-config.html` v1.4.0.)
+
+**Faculty birthdays** from a fourth published CSV (`facultyBirthdaysSheetCsvUrl`),
+pooled with the students: same greeting, same early-wish spreading over breaks,
+same contribution to the two-item minimum. Kept as its own feed and its own tab
+rather than stacked into the student one — the student formula exists to strip
+birth year, surname and opt-outs, and faculty need none of that stripping.
+Display format differs by design: `Mr. Wilson`, not `John S.`
+
+**FIXED: the fill-to-two rule only ever added ONE holiday.** So a day with no
+birthdays showed a single static line with nothing to flip to — the exact
+opposite of the "always a rotation of at least 2" the band exists for. It now
+pulls holidays until it HAS two, then the fallback line, and **never takes more
+than it needs**: on a one-birthday day that kid's name is half the rotation
+rather than a quarter of it. Padding one child's name with four wacky holidays
+gets the priority backwards. Several holidays may now be listed per date; which
+pair is used is seeded by the full date, so a date with three rotates through
+different pairs across school years while staying fixed within any one day.
+
+**Console load diagnostics.** Every sheet load now logs rows-fetched vs
+rows-parsed — `[rc/ticker] closures: 10 rows, 10 parsed`. An unparseable row is
+dropped silently (a date typed `9/4` with no year, a tab that was never actually
+published) and **a TV in a hallway cannot report that**, so the check has to be
+visible from a desk. A mismatch logs at warn level with the likely cause.
+
+Two existing tests asserted the old one-holiday behaviour and were updated
+rather than worked around; what they were really pinning — that the pick is
+deterministic, because two TVs must never disagree — is still pinned. **106/106.**
+
+## V6.26.0 — the signage right column becomes ONE file, and grows a birthday ticker
+(Round 11, "Tenor". App bump is minor and small: module 25 reports two more
+files. The real work is in `signage/`. SW CACHE_VERSION 1.39.0.)
+
+**The column existed twice and had already drifted five ways.** `dashboard.html`
+and `dashright.html` each carried their own copy of the right column's CSS and
+script, and both headers admitted it in comments. Extracted to
+**`signage/right-column.css` + `signage/right-column.js`** (v1.0.0), following
+the `schedule-utils.js` pattern exactly: plain `<script>`, one global, no build
+step. The five drifts found and resolved in the merge:
+
+- **House names were 7cqw in dashboard, 9cqw in dashright.** dashright v1.1.0
+  bumped them after the owner's eyeball test on live hardware; dashboard never
+  got it. **9cqw won** — it is the size he actually approved.
+- **dashright and dashclock named `Urbanist`/`Questrial` and never loaded
+  them.** Only dashboard.html had the Google Fonts `<link>`, so on any player
+  without Century Gothic installed — every Yodeck player — the pages rendered in
+  different typefaces. This is most of why the standalone column never quite
+  matched. Both now load it.
+- **The clock's three period cells used bare `1fr` in dashboard** (no
+  min-content floor, so a long label overflows the row) against
+  `minmax(0, 1fr)` + `min-width: 0` in dashright. Same root cause as the v1.5.2
+  setup-panel fix. minmax won.
+- **`white-space: nowrap` was on the period cells in dashboard and absent in
+  dashright**, so identical text ellipsized on one page and wrapped on the
+  other. nowrap won: a wrapped period name pushes the countdown out of the band.
+- **The root element was `.right` in one file and `.right-column` in the
+  other.** Both are now `.rc-column`.
+
+**NEW: the birthday ticker**, top band of the column, at the owner's request.
+The column now reads ticker (12%) / four house cards (71%) / clock (17%), down
+from clock (20%) / cards (80%) — the clock moved from top to bottom and all
+three previous bands were squeezed rather than the scoreboard absorbing it
+alone. `#main-clock` went 15cqw -> 13cqw because the band lost height while cqw
+text is keyed to width.
+
+**Three published Google Sheet CSVs**, configured in `dashboard-config.html`
+v1.3.0: birthdays (name + month/day), closures (start, end, label), wacky
+holidays (month/day + text). **Student privacy shaped the schema:** the
+published birthday tab is a formula over a PRIVATE roster tab, so the public
+URL never carries a birth year, a full last name, or anyone who opted out — the
+opt-out is enforced at the source, not by this code choosing to skip a row.
+Nothing is written to Firestore, per the standing rule for student data.
+
+**Early wishes, so no kid goes unacknowledged.** On each school day the ticker
+shows today's birthdays plus a share of the birthdays falling in an upcoming
+closure, spread over `min(ceil(closure length / 2), 15)` school days of lead
+time: a weekend on the Friday, Thanksgiving's nine days across the whole
+preceding week, summer across the last three weeks of school. Closure *runs* are
+computed, not read — the sheet lists the weekdays school is shut and the
+flanking weekends are glued on, so a Monday holiday beside a weekend is one
+three-day closure rather than two. Names are dealt out in date order in balanced
+chunks. Everything is a pure function of (sheets, date), which is what lets two
+TVs showing the same column agree on the same name at the same second.
+
+- **The 15-day cap is what makes summer birthdays reachable at all.** Without
+  it they would need ten weeks of runway and simply never be wished. It also
+  means graduating 8th graders get theirs on the way out.
+- **A school day with fewer than two birthdays pulls in that date's wacky
+  holiday**, so the band always rotates; with neither, a configurable fallback
+  line, so it is never empty.
+- **Split-flap rotation, 5s a card**, whole-line rather than per-character:
+  thirty elements animating in lockstep every five seconds forever on a slow
+  player buys nothing readable from across a hallway.
+- **A real CSV parser** replaces the bare `split(',')` the score fetcher uses.
+  Fine for four integers, not fine for names — one `"Smith, Jr."` would shift
+  every column on the row.
+
+**FOUND EN ROUTE, fixed for the new fields only:** `dashboard-config.html`
+deletes null keys from its payload and then calls `set(..., {merge: true})`, so
+**clearing a box and saving does not clear the stored value.** The four ticker
+fields now send `FieldValue.delete()` when blanked, so the ticker can actually
+be switched back off. `canvaUrl` and `housesSheetCsvUrl` still behave the old
+way — same defect, deliberately left alone, and logged in ROADMAP §3 with the
+affordance sweep where it belongs.
+
+**Verification:** §5 battery green. **98/98 tests** (24 new in
+`tests/right-column.test.mjs`, covering the closure-run detection, lead windows,
+chunking, the summer cap and the CSV parser), 41 modules, no rules change, no
+CSS rebuild. Plus a jsdom pass confirming the mounted column's band order,
+element counts and a live clock readout. **One test failure during the build
+was the TEST being wrong, not the code** — its Thanksgiving fixture listed
+Wed–Sun and produced two runs with school days in between; the fixture now
+lists the closed weekdays, which is how the sheet is actually filled in.
+
 ## clock.html v1.8.0 — the clock plays each bell's OWN sound
 (Companion to app 6.25.1. Sibling surface; the app version is unchanged at
 6.25.1. SW CACHE_VERSION 1.38.0 so clocks pick it up.)

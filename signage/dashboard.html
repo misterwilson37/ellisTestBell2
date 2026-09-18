@@ -3,8 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard v1.6.0</title>
-    <!-- Dashboard Display v1.6.0 -->
+    <title>Dashboard v1.7.0</title>
+    <!-- Dashboard Display v1.7.0 -->
+    <!-- v1.7.0: THE RIGHT COLUMN LEFT THIS FILE. Its CSS and script now live in
+         the shared signage/right-column.css + signage/right-column.js, which
+         dashright.html loads too — so the column exists once and the two pages
+         cannot drift again. Five drifts that had already accumulated were
+         resolved in the merge (right-column.css lists all five); the one
+         visible HERE is that house names go 7cqw -> 9cqw, matching the size
+         the owner eyeballed on live hardware and shipped to dashright v1.1.0
+         but never to this file.
+
+         Also in 1.7.0, the column's order changed at the owner's request:
+         birthday ticker on top (NEW), house cards in the middle, clock at the
+         bottom. All three previous bands were squeezed rather than the
+         scoreboard absorbing it alone — 12% ticker / 71% cards / 17% clock,
+         from 20% clock / 80% cards.
+
+         What stayed here: the Canva frame, the setup panel, the URL-parameter
+         schedule mode, and the popup window. The URL-parameter mode is why
+         init() passes scheduleConfigOverride — dashright.html has no such
+         mode and passes nothing. -->
     <!-- v1.6.0: Companion to dashright.html v1.0.2 — added max-width: 30cqw on
          .house-crest so the crest doesn't balloon oversized when the scoreboard
          renders in a narrow frame. Consistency with dashright. -->
@@ -94,20 +113,15 @@
          signage pages AND the rest of the app. Load order matters. -->
     <script src="../bell-engine.js"></script>
     <script src="schedule-utils.js"></script>
+    <!-- Shared right column (v1.0.0): markup, clock tick, scoreboard, ticker. -->
+    <script src="right-column.js"></script>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="right-column.css">
     
     <style>
-        /* Dashboard Display v1.6.0 */
-        :root {
-            --carolina-blue: #4B9CD3;
-            --carolina-blue-light: #7BAFD4;
-            --carolina-blue-sky: #8FC3E8;   /* v1.3.0: brighter dark-mode accent */
-            --dark-grey: #1a1a1a;
-            --slate-bg: #111827;            /* v1.3.0: matches main app dark mode */
-        }
-        
+        /* Dashboard Display v1.7.0 — column styles are in right-column.css */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--slate-bg); }
         
@@ -115,94 +129,6 @@
         
         .left { width: 75%; height: 100%; position: relative; }
         .right { width: 25%; height: 100%; display: flex; flex-direction: column; }
-        
-        .clock-area { 
-            height: 20%;  /* v1.4.0: was 30% — right column split 20/80 per spec */
-            overflow: hidden;
-            background: linear-gradient(180deg, var(--slate-bg) 0%, #1a1a1a 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 3%;
-            container-type: size;
-            font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
-        }
-        
-        /* v1.4.0: House scoreboard — four equal-height cards filling 80% of right column.
-           Each card is 25% of that 80% = 20% of full viewport height.
-           v1.5.3: Same tiny-text fix that was applied to dashright.html v1.0.1.
-           Switched back to container queries, but using container-type: inline-size
-           (not `size`, which was the v1.4.1 disaster). inline-size measures only the
-           width axis, so we query the scoreboard's own rendered width rather than
-           the viewport — which matters if dashboard.html ever renders in a frame
-           narrower than the full window. Heights stay as % (no cqh available with
-           inline-size, and we don't need it — % heights work fine for flex children). */
-        .houses-area {
-            height: 80%;
-            display: flex;
-            flex-direction: column;
-            container-type: inline-size;
-        }
-        
-        .house-card {
-            flex: 1 1 0;   /* equal share of available height */
-            display: grid;
-            grid-template-columns: auto 1fr;   /* crest | name+score stack */
-            align-items: center;
-            gap: 3cqw;
-            padding: 2% 3cqw;
-            min-height: 0;
-            min-width: 0;
-            overflow: hidden;
-            font-family: 'Century Gothic', 'Urbanist', 'Questrial', serif;
-        }
-        
-        .house-crest {
-            height: 90%;           /* 90% of card height per Jake */
-            max-width: 30cqw;      /* v1.6.0: cap width so the crest doesn't balloon in narrow frames */
-            width: auto;
-            object-fit: contain;
-            /* transparent PNGs — card color shows through */
-        }
-        
-        /* Name-over-score stack. Both right-aligned so scores form a clean vertical column. */
-        .house-info {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: flex-end;
-            min-width: 0;
-            gap: 1%;
-            height: 100%;
-        }
-        
-        .house-name {
-            font-family: 'Century Gothic', Georgia, 'Times New Roman', serif;
-            font-weight: 700;
-            font-size: 7cqw;
-            font-variant-caps: small-caps;
-            text-transform: lowercase;
-            letter-spacing: 0.05em;
-            line-height: 1;
-            white-space: nowrap;
-        }
-        
-        .house-score {
-            font-family: Georgia, 'Times New Roman', serif;
-            font-weight: 700;
-            font-size: 16cqw;
-            line-height: 1;
-            letter-spacing: -0.02em;
-        }
-        
-        /* Per-house palette. Foil color (name + score) picked for contrast on each bg.
-           Palette confirmed with Jake: Accomodore white, Callidus app-grey, Princeps
-           Carolina, Vevaios slate (matches main app dark bg). */
-        .house-accomodore { background: #ffffff; color: #111827; }
-        .house-callidus   { background: #d1d5db; color: #111827; }  /* matches --theme-border */
-        .house-princeps   { background: var(--carolina-blue); color: #111827; }
-        .house-vevaios    { background: var(--slate-bg); color: #ffffff; }
         
         /* v1.4.0: Canva iframe fills 100% of the .left zone when loaded. */
         #canva-frame {
@@ -247,66 +173,6 @@
         }
         
         iframe { border: none; width: 100%; height: 100%; }
-        
-        /* Clock Styles - using container queries */
-        #main-clock {
-            font-size: 15cqw;
-            font-weight: 700;
-            color: #fff;
-            text-align: center;
-            width: 100%;
-            line-height: 1.1;
-            white-space: nowrap;
-            letter-spacing: 0.02em;
-        }
-        
-        #schedule-columns {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2cqw;
-            width: 100%;
-            margin-top: 3cqh;
-        }
-        
-        .schedule-column {
-            text-align: center;
-            padding: 2cqh 1cqw;
-            border-radius: 8px;
-            background: var(--dark-grey);
-            border: 1px solid #333;
-        }
-        
-        .column-label {
-            font-size: 4cqw;
-            font-weight: 600;
-            color: #a0a0a0;
-            margin-bottom: 1cqh;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .column-period {
-            font-size: 5cqw;
-            font-weight: 700;
-            color: #fff;
-            line-height: 1.2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            min-height: 1.4em;
-        }
-        
-        .column-period.active {
-            color: var(--carolina-blue);
-        }
-        
-        .column-countdown {
-            font-size: 3.5cqw;
-            color: var(--carolina-blue);
-            margin-top: 1cqh;
-            white-space: nowrap;
-        }
         
         /* Setup Panel Styles */
         body.setup-mode .container { display: none; }
@@ -563,66 +429,13 @@
             </div>
         </div>
 
-        <!-- v1.4.0: RIGHT 25% — clock (top 20%) + four house cards (80%). -->
-        <div class="right">
-            <div class="clock-area">
-                <div id="main-clock">--:--:-- --</div>
-                <div id="schedule-columns">
-                    <div class="schedule-column">
-                        <div class="column-label">--</div>
-                        <div class="column-period">--</div>
-                        <div class="column-countdown"></div>
-                    </div>
-                    <div class="schedule-column">
-                        <div class="column-label">--</div>
-                        <div class="column-period">--</div>
-                        <div class="column-countdown"></div>
-                    </div>
-                    <div class="schedule-column">
-                        <div class="column-label">--</div>
-                        <div class="column-period">--</div>
-                        <div class="column-countdown"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- v1.4.0: House scoreboard — four stacked equal-height cards.
-                 v1.4.1: Name + score stacked in .house-info for better use of width. -->
-            <div class="houses-area" id="houses-area">
-                <div class="house-card house-accomodore" data-house="accomodore">
-                    <img class="house-crest" src="accomodore.png" alt="Accomodore crest">
-                    <div class="house-info">
-                        <div class="house-name">Accomodore</div>
-                        <div class="house-score" id="score-accomodore">—</div>
-                    </div>
-                </div>
-                <div class="house-card house-callidus" data-house="callidus">
-                    <img class="house-crest" src="callidus.png" alt="Callidus crest">
-                    <div class="house-info">
-                        <div class="house-name">Callidus</div>
-                        <div class="house-score" id="score-callidus">—</div>
-                    </div>
-                </div>
-                <div class="house-card house-princeps" data-house="princeps">
-                    <img class="house-crest" src="princeps.png" alt="Princeps crest">
-                    <div class="house-info">
-                        <div class="house-name">Princeps</div>
-                        <div class="house-score" id="score-princeps">—</div>
-                    </div>
-                </div>
-                <div class="house-card house-vevaios" data-house="vevaios">
-                    <img class="house-crest" src="vevaios.png" alt="Vevaios crest">
-                    <div class="house-info">
-                        <div class="house-name">Vevaios</div>
-                        <div class="house-score" id="score-vevaios">—</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- v1.7.0: the right column is built by right-column.js into this
+             mount. Ticker / house cards / clock, in that order. -->
+        <div class="right" id="rc-mount"></div>
     </div>
 
     <script>
-        // Dashboard Display v1.6.0
+        // Dashboard Display v1.7.0
         
         // v1.4.3: Diagnostic — log any postMessage events from canva.com so we can
         // see whether Canva broadcasts slide-ended / playback-complete events we
@@ -662,8 +475,8 @@
         const appId = firebaseConfig.appId;
         // v1.4.0: Removed legacy Google Drive API key — video fetching retired in favor of Canva iframe.
         
-        let schedules = {};
-        let scheduleConfig = {};     // Schedule selection (from URL or Firestore)
+        // v1.7.0: `schedules` and `scheduleConfig` moved to right-column.js —
+        // the column owns its own schedule loading now.
         let mediaConfig = {};        // v1.4.0: now holds canvaUrl, housesSheetCsvUrl (was: videoFolderId, slidesUrl)
         let currentCanvaUrl = null;  // v1.4.0: tracks loaded iframe URL so we only reload on change
         
@@ -748,48 +561,26 @@
                 return;
             }
             
-            if (useSharedConfig) {
-                // ?tv or ?shared - use Firestore config for everything
-                configRef.onSnapshot(snapshot => {
-                    if (snapshot.exists) {
-                        const data = snapshot.data();
-                        scheduleConfig = {
-                            s1: data.s1 || null,
-                            s2: data.s2 || null,
-                            s3: data.s3 || null,
-                            l1: data.l1 || '',
-                            l2: data.l2 || '',
-                            l3: data.l3 || ''
-                        };
-                        mediaConfig = data;
-                        updateMedia(mediaConfig);
-                        loadSchedules(scheduleConfig);
-                    }
-                });
-            } else {
-                // Have custom URL params - show dashboard with those
-                scheduleConfig = urlConfig;
-                
-                // Listen for media config from Firestore (video folder, slides URL)
-                configRef.onSnapshot(snapshot => {
-                    if (snapshot.exists) {
-                        mediaConfig = snapshot.data();
-                    } else {
-                        mediaConfig = {};
-                    }
-                    updateMedia(mediaConfig);
-                });
-                
-                // Load schedules based on URL config
-                loadSchedules(scheduleConfig);
-            }
-            
-            // v1.4.0: Video check removed — Canva iframe + house scores handled by updateMedia()
-            // which is already triggered via Firestore onSnapshot listener above.
-            
-            // Start clock updates
-            setInterval(updateClock, 1000);
-            updateClock();
+            // v1.7.0: this listener is now the CANVA half only. The right column
+            // keeps its own listener on the same doc for schedules, scores and the
+            // ticker; Firestore shares the underlying subscription, so the second
+            // listener costs nothing.
+            configRef.onSnapshot(snapshot => {
+                mediaConfig = snapshot.exists ? snapshot.data() : {};
+                updateMedia(mediaConfig);
+            });
+
+            // v1.7.0: the column builds itself, loads its own schedules and runs
+            // its own clock. scheduleConfigOverride is passed ONLY in the
+            // URL-parameter mode — with ?tv or ?shared it stays null and the
+            // column reads s1..s3 / l1..l3 from the config doc, exactly as
+            // dashright.html does.
+            SignageRightColumn.init({
+                db: db,
+                appId: appId,
+                mount: document.getElementById('rc-mount'),
+                scheduleConfigOverride: useSharedConfig ? null : urlConfig
+            });
         }
         
         async function populateSetupDropdowns() {
@@ -880,8 +671,10 @@
          * interrupting the Canva loop with every unrelated config tweak).
          */
         function updateMedia(config) {
+            // v1.7.0: housesSheetCsvUrl is no longer read here — right-column.js
+            // has its own listener on the same config doc and owns the
+            // scoreboard. This function is now Canva and nothing else.
             applyCanvaUrl(config.canvaUrl || '');
-            applyHousesSheetUrl(config.housesSheetCsvUrl || '');
         }
         
         /**
@@ -915,160 +708,11 @@
             fallback.style.display = 'none';
         }
         
-        /**
-         * Configures the house scoreboard fetch. On first call, fetches immediately
-         * and sets up a 5-minute interval. On subsequent calls with the same URL,
-         * does nothing (the interval is already running).
-         */
-        let housesFetchTimer = null;
-        let currentHousesUrl = null;
-        function applyHousesSheetUrl(url) {
-            const normalizedUrl = (url || '').trim();
-            if (normalizedUrl === currentHousesUrl) return; // No change
-            currentHousesUrl = normalizedUrl;
-            if (housesFetchTimer) {
-                clearInterval(housesFetchTimer);
-                housesFetchTimer = null;
-            }
-            if (!normalizedUrl) {
-                // No sheet configured — leave the placeholder "—" visible
-                return;
-            }
-            fetchHouseScores();
-            // Google Sheets CSV endpoint caches ~5 min server-side; matching that.
-            housesFetchTimer = setInterval(fetchHouseScores, 5 * 60 * 1000);
-        }
-        
-        /**
-         * Fetches the published-to-web CSV and updates the four house scores.
-         * Sheet structure (per Jake, 2026-04):
-         *   Row 1: headers (house names)
-         *   Row 2: scores (A=Accomodore, B=Callidus, C=Princeps, D=Vevaios)
-         * Defensive: logs but doesn't throw on parse failure; scoreboard just stays stale.
-         *
-         * v1.4.3: Auto-sorts cards by score descending — highest at top, lowest at bottom.
-         * Uses CSS flex `order` so the DOM stays stable (no reflow churn, accessibility
-         * tree preserved). Houses with blank / unparseable scores sort to the bottom.
-         */
-        async function fetchHouseScores() {
-            if (!currentHousesUrl) return;
-            try {
-                const response = await fetch(currentHousesUrl, { cache: 'no-store' });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const csvText = await response.text();
-                const rows = csvText.split(/\r?\n/).filter(r => r.length > 0);
-                if (rows.length < 2) {
-                    console.warn('[scores] CSV has fewer than 2 rows; expected header + scores');
-                    return;
-                }
-                // Row 2 (index 1) has the scores. Simple comma split — scores are
-                // numeric so no embedded commas / quoted fields to worry about.
-                const scores = rows[1].split(',').map(s => s.trim());
-                const houseOrder = ['accomodore', 'callidus', 'princeps', 'vevaios'];
-                
-                // Parse each house into a sortable record.
-                const ranked = houseOrder.map((house, i) => {
-                    const raw = scores[i];
-                    const parsed = (raw !== undefined && raw !== '') ? parseInt(raw, 10) : NaN;
-                    return {
-                        house: house,
-                        raw: raw,
-                        numeric: isNaN(parsed) ? null : parsed
-                    };
-                });
-                
-                // Sort descending by numeric score. Null scores sort to bottom,
-                // preserving house order among themselves. Stable sort preserves
-                // original order for ties. Modern browsers all use stable sort.
-                ranked.sort((a, b) => {
-                    if (a.numeric === null && b.numeric === null) return 0;
-                    if (a.numeric === null) return 1;
-                    if (b.numeric === null) return -1;
-                    return b.numeric - a.numeric;
-                });
-                
-                // Apply flex order + display score. Flex 'order' defaults to 0,
-                // so using 0..3 (rank) reorders cards from top to bottom.
-                ranked.forEach((entry, rank) => {
-                    const card = document.querySelector('.house-' + entry.house);
-                    if (card) card.style.order = rank;
-                    const scoreEl = document.getElementById('score-' + entry.house);
-                    if (scoreEl && entry.raw !== undefined && entry.raw !== '') {
-                        scoreEl.textContent = entry.numeric !== null
-                            ? entry.numeric.toLocaleString()
-                            : entry.raw;
-                    }
-                });
-            } catch (err) {
-                console.warn('[scores] fetch failed (will retry next interval):', err);
-            }
-        }
-        
-        async function loadSchedules(config) {
-            const scheduleIds = [config.s1, config.s2, config.s3].filter(Boolean);
-            
-            for (const id of scheduleIds) {
-                const scheduleRef = db.collection('artifacts').doc(appId)
-                    .collection('public').doc('data')
-                    .collection('schedules').doc(id);
-                
-                scheduleRef.onSnapshot(snapshot => {
-                    if (snapshot.exists) {
-                        const data = snapshot.data();
-                        // v5.76.0: shared record — resolves relative bells and
-                        // applies today's emergency shift at read time.
-                        schedules[id] = SignageScheduleUtils.makeScheduleRecord(data);
-                        updateClock();
-                    }
-                });
-            }
-        }
-        
-        function updateClock() {
-            const now = new Date();
-            const hours = now.getHours();
-            const mins = now.getMinutes();
-            const secs = now.getSeconds();
-            const ampm = hours >= 12 ? 'pm' : 'am';
-            const displayHours = hours % 12 || 12;
-            
-            document.getElementById('main-clock').textContent = 
-                `${displayHours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} ${ampm}`;
-            
-            const columns = document.querySelectorAll('.schedule-column');
-            const scheduleIds = [scheduleConfig.s1, scheduleConfig.s2, scheduleConfig.s3];
-            const labels = [scheduleConfig.l1, scheduleConfig.l2, scheduleConfig.l3];
-            
-            scheduleIds.forEach((scheduleId, index) => {
-                if (scheduleId && schedules[scheduleId]) {
-                    const schedule = schedules[scheduleId];
-                    const label = labels[index] || schedule.name || '';
-                    const status = getScheduleStatus(schedule);
-                    
-                    columns[index].querySelector('.column-label').textContent = label;
-                    columns[index].querySelector('.column-period').textContent = status.period;
-                    columns[index].querySelector('.column-countdown').textContent = status.countdown;
-                    
-                    const periodEl = columns[index].querySelector('.column-period');
-                    if (status.active) {
-                        periodEl.classList.add('active');
-                    } else {
-                        periodEl.classList.remove('active');
-                    }
-                }
-            });
-        }
-        
-        // (getScheduleStatus moved to schedule-utils.js in v5.76.0 — now resolves
-//  relative bells and applies emergency shifts via the shared engine)
-        const getScheduleStatus = window.SignageScheduleUtils.getScheduleStatus;
-        
-        // (timeToSeconds moved to schedule-utils.js in v5.76.0)
-        
-        // (formatTime12Hour moved to schedule-utils.js in v5.76.0)
-        
-        // (formatCountdown moved to schedule-utils.js in v5.76.0)
-        
+        // v1.7.0: applyHousesSheetUrl(), fetchHouseScores(), loadSchedules() and
+        // updateClock() moved to right-column.js, along with the
+        // SignageScheduleUtils alias they used. Every one of them was duplicated
+        // verbatim in dashright.html; now there is one copy.
+
         // v1.4.0: checkForNewVideo() + loadVideo() removed. The old Drive-video-playback
         // path is replaced by the Canva iframe via applyCanvaUrl(). Google Drive API
         // key also removed. If you need to resurrect the video path, the full

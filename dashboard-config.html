@@ -3,8 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Config v1.2.0</title>
-    <!-- Dashboard Config v1.2.0 -->
+    <title>Dashboard Config v1.5.0</title>
+    <!-- Dashboard Config v1.5.0 -->
+    <!-- v1.5.0: tickerFallbackText2 — a SECOND fallback line, so a day with no
+         birthdays and no wacky holiday still flips between two sentences
+         instead of showing one to itself. Both optional; both default in
+         right-column.js. -->
+    <!-- v1.4.0: facultyBirthdaysSheetCsvUrl — a second birthday feed, pooled
+         with the students by right-column.js v1.1.0. Kept as its own field and
+         its own published tab rather than stacked into the student feed: the
+         student feed's formula exists to strip birth year, surname and
+         opt-outs, and faculty need none of that stripping. Additive as ever. -->
+    <!-- v1.3.0: Birthday ticker support — three new published-CSV fields
+         (birthdaysSheetCsvUrl, closuresSheetCsvUrl, holidaysSheetCsvUrl) plus
+         tickerFallbackText. All four are optional and all four are additive:
+         an existing config doc with none of them set renders a ticker showing
+         the fallback line, and nothing else about the dashboard changes.
+         Additive-only is invariant zero here — all three channels share one
+         Firestore. -->
     <!-- v1.2.0: Dashboard rewrite support. Replaced Google Drive "Video" section
          with Canva Embed URL field. Renamed sheetID -> housesSheetCsvUrl and
          updated helper text to request the full published-CSV URL (the dashboard
@@ -360,6 +376,69 @@
                 </div>
             </div>
             
+            <!-- Birthday Ticker Section (v1.3.0) -->
+            <div class="section">
+                <h2>🎂 Birthday Ticker</h2>
+                <p class="help" style="margin-bottom:16px;">
+                    The band at the top of the signage right column. All three sheets are optional —
+                    leave them blank and the ticker just shows the fallback line below.<br>
+                    <strong>Publish the individual TAB, not "Entire Document"</strong>
+                    (File → Share → Publish to web → pick the tab → Comma-separated values).
+                    Publishing the whole document would publish your private roster with it.
+                </p>
+                <div class="field">
+                    <label>Birthdays — published CSV URL</label>
+                    <input type="text" id="birthdaysSheetCsvUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&amp;single=true&amp;output=csv">
+                    <p class="help">
+                        Two columns: display name, then month/day. Expected structure: row 1 = headers, rows below = one student each.<br>
+                        This tab should be a FORMULA over your private roster tab, so that the published URL never carries
+                        a birth year, a full last name, or anyone who has opted out. See HANDOFF.md §7 for the formula.
+                    </p>
+                </div>
+                <div class="field">
+                    <label>Faculty birthdays — published CSV URL</label>
+                    <input type="text" id="facultyBirthdaysSheetCsvUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&amp;single=true&amp;output=csv">
+                    <p class="help">
+                        Same two columns as the student feed, but the name column reads "Mr. Wilson" rather than "John S." —
+                        faculty get titles and full surnames, students get first name and last initial.<br>
+                        Faculty are pooled with the students: same greeting, same early wishes over breaks, and they count
+                        toward the two-item minimum. Optional — leave blank for students only.
+                    </p>
+                </div>
+                <div class="field">
+                    <label>School closures — published CSV URL</label>
+                    <input type="text" id="closuresSheetCsvUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&amp;single=true&amp;output=csv">
+                    <p class="help">
+                        Three columns: start date, end date (leave blank for a single day), label.<br>
+                        <strong>Do not list weekends</strong> — the ticker works those out. List only the weekdays school is closed;
+                        a break that touches a weekend is joined up automatically. Without this sheet, only weekends count as days off.
+                    </p>
+                </div>
+                <div class="field">
+                    <label>Wacky holidays — published CSV URL</label>
+                    <input type="text" id="holidaysSheetCsvUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&amp;single=true&amp;output=csv">
+                    <p class="help">
+                        Two columns: month/day, then the text to display. Several rows can share a date — one is picked,
+                        and the same one all day. Shown on any school day with fewer than two birthdays, so the band always rotates.
+                    </p>
+                </div>
+                <div class="field">
+                    <label>Fallback line 1</label>
+                    <input type="text" id="tickerFallbackText" placeholder="Ellis — 4 Houses, 1 Home">
+                    <p class="help">
+                        Shown when there is no birthday and no holiday for the day, so the band is never empty.
+                    </p>
+                </div>
+                <div class="field">
+                    <label>Fallback line 2</label>
+                    <input type="text" id="tickerFallbackText2" placeholder="Have a delightful day!">
+                    <p class="help">
+                        The band flips between the two, so a quiet day still rotates instead of showing one line to itself.
+                        Leave blank to just repeat line 1. Long lines are fine — the ticker sizes each line to fit.
+                    </p>
+                </div>
+            </div>
+            
             <!-- Save Button -->
             <button class="btn-primary" id="saveBtn" onclick="saveConfig()">Save Configuration</button>
             
@@ -388,14 +467,14 @@
             <div style="margin-top: 32px; text-align: center;">
                 <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
                 <div style="margin-top: 12px; font-size: 11px; color: #666;">
-                    Dashboard Config v1.2.0
+                    Dashboard Config v1.5.0
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Dashboard Config v1.2.0
+        // Dashboard Config v1.5.0
         
         // v1.0.0: Firebase config comes from shared firebase-config.js
         // (loaded via <script src="firebase-config.js"> in <head>).
@@ -508,6 +587,15 @@
                             'Please paste the Published Sheet CSV URL to migrate.');
                     }
                     document.getElementById('housesSheetCsvUrl').value = existingSheetUrl;
+                    // v1.3.0: birthday ticker fields. Absent on any config doc
+                    // saved before 1.3.0, which is fine — they default to blank
+                    // and the ticker falls back.
+                    document.getElementById('birthdaysSheetCsvUrl').value = data.birthdaysSheetCsvUrl || '';
+                    document.getElementById('facultyBirthdaysSheetCsvUrl').value = data.facultyBirthdaysSheetCsvUrl || '';
+                    document.getElementById('closuresSheetCsvUrl').value = data.closuresSheetCsvUrl || '';
+                    document.getElementById('holidaysSheetCsvUrl').value = data.holidaysSheetCsvUrl || '';
+                    document.getElementById('tickerFallbackText').value = data.tickerFallbackText || '';
+                    document.getElementById('tickerFallbackText2').value = data.tickerFallbackText2 || '';
                 }
             } catch (error) {
                 console.error('Error loading config:', error);
@@ -535,6 +623,21 @@
             // Remove null values — keeps Firestore doc tidy
             Object.keys(config).forEach(key => {
                 if (config[key] === null) delete config[key];
+            });
+            
+            // v1.3.0: the four ticker fields use FieldValue.delete() when blanked
+            // rather than being dropped from the payload. The pattern above —
+            // delete the key, then set({merge:true}) — means clearing a box and
+            // saving does NOT clear the stored value, so the ticker could never
+            // be switched back off once switched on. Explicit deletes make the
+            // Save button do what its label says for these fields.
+            // NOTE: canvaUrl and housesSheetCsvUrl still behave the old way. That
+            // is a pre-existing affordance defect of the same shape, left alone
+            // here because changing it is not this release's job.
+            ['birthdaysSheetCsvUrl', 'facultyBirthdaysSheetCsvUrl', 'closuresSheetCsvUrl',
+             'holidaysSheetCsvUrl', 'tickerFallbackText', 'tickerFallbackText2'].forEach(id => {
+                const value = document.getElementById(id).value.trim();
+                config[id] = value || firebase.firestore.FieldValue.delete();
             });
             
             try {

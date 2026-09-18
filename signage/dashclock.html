@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Clock v1.1.0</title>
-    <!-- Dashboard Clock Display v1.1.0 -->
+    <title>Dashboard Clock v1.1.1</title>
+    <!-- Dashboard Clock Display v1.1.1 -->
+    <!-- v1.1.1: Added the Google Fonts <link>. This page's font stack has named
+         'Urbanist' and 'Questrial' since v1.1.0 but only dashboard.html ever
+         loaded the webfonts, so on any player without Century Gothic installed
+         — which is every Yodeck player — this page rendered in the device's
+         generic sans while dashboard.html rendered in Urbanist. Same fix went
+         into dashright.html v1.2.0. No other change: this page is clock-only
+         and does not use the shared right column. -->
     <!-- v1.1.0: Full-screen multi-schedule clock that pulls its schedule selection
          from the shared Firestore dashboard-config doc — the same config that powers
          dashboard.html and dashright.html. Intended use: a Yodeck frame that needs
@@ -26,8 +33,10 @@
          signage pages AND the rest of the app. Load order matters. -->
     <script src="../bell-engine.js"></script>
     <script src="schedule-utils.js"></script>
+    <!-- v1.1.1: the webfonts the font stack below has always named. -->
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
     <style>
-        /* Dashboard Clock Display v1.1.0 — visual match to dashboard.html's clock area */
+        /* Dashboard Clock Display v1.1.1 — visual match to dashboard.html's clock area */
         :root {
             --carolina-blue: #4B9CD3;
             --carolina-blue-light: #7BAFD4;
@@ -146,10 +155,10 @@
             </div>
         </div>
     </div>
-    <div class="version-stamp">Dashboard Clock v1.1.0</div>
+    <div class="version-stamp">Dashboard Clock v1.1.1</div>
 
     <script>
-        // Dashboard Clock Display v1.1.0
+        // Dashboard Clock Display v1.1.1
         
         if (!window.firebaseConfig) {
             throw new Error("firebase-config.js failed to load. Check <script> tag order in <head>.");

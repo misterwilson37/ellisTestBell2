@@ -95,6 +95,11 @@ const VERSION_FETCH_SOURCES = [
     { label: 'signage/dashright.html',      url: 'signage/dashright.html',      regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
     { label: 'signage/dashclock.html',      url: 'signage/dashclock.html',      regex: /<title>[^<]*v(\d+(?:\.\d+)+)/i },
     { label: 'signage/schedule-utils.js',   url: 'signage/schedule-utils.js',   regex: /Version:\s*(\d+(?:\.\d+)+)/ },
+    // 6.26.0: the shared right column. Both signage pages hard-depend on these,
+    // so a version mismatch here is the first thing to check when a TV shows a
+    // blank column.
+    { label: 'signage/right-column.js',     url: 'signage/right-column.js',     regex: /Version:\s*(\d+(?:\.\d+)+)/ },
+    { label: 'signage/right-column.css',    url: 'signage/right-column.css',    regex: /Version:\s*(\d+(?:\.\d+)+)/ },
     { label: 'firebase-config.js',          url: 'firebase-config.js',          regex: /Version:\s*(\d+(?:\.\d+)+)/ },
 ];
 

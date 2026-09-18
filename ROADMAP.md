@@ -7,7 +7,7 @@ file is the short version: what is actually left, in plain English, on one page.
 **HANDOFF.md remains the source of truth for *why*.** This file is the index.
 When they disagree, HANDOFF.md wins — and fix this file.
 
-**Last reviewed:** round 10, 2026-09, at **6.25.1 + clock.html v1.8.0**.
+**Last reviewed:** round 11, 2026-09, at **6.26.0**.
 
 ---
 
@@ -15,31 +15,33 @@ When they disagree, HANDOFF.md wins — and fix this file.
 
 | | |
 |---|---|
-| Latest built version | **6.25.1** (app), **1.38.0** (service worker), **v1.8.0** (clock.html) |
-| Live on alpha (owner's channel) | **through 6.22.0** — owner-confirmed 2026-09, round 10 |
-| Built, NOT yet pushed | **6.23.0, 6.24.0, 6.25.0, 6.25.1, clock.html v1.8.0** — one push covers all |
+| Latest built version | **6.26.0** (app), **1.41.0** (service worker), **v1.2.0** (right-column.js) |
+| Live on alpha (owner's channel) | **everything he has received** — he pushes on receipt, so 6.25.1 as of round 11's start |
+| Outgoing delta (round 11) | **6.26.0** — signage right column extracted + birthday ticker |
 | Beta channel (CDC teacher) | 6.4.0 |
 | Building channel (bells domain) | 5.69.5 backport |
 | School channel (~50 faculty) | 5.79.x |
-| Tests | 74/74, 41 modules |
+| Tests | 109/109, 41 modules |
 
-**The deploy state above is BELIEF, not ground truth.** Confirm it with Jake at
-the start of every round — the handoff has been wrong about this before.
+**The table above is what this round BUILT, not a guess about his channel.**
+He posts everything on receipt, so whatever zip you were handed is live — see
+§1. Do not open a round by asking him about deploy state.
 
 ---
 
 ## 1. Deploy what is already built
 
-**CORRECTED round 10.** The handoff claimed 6.21.0 and 6.22.0 were built but
-undeployed. They are NOT — the owner downloaded this repo from GitHub, and on a
-GitHub Pages site the repo IS the deployment, so everything in it is live. Round
-9 pushed and the handoff was never updated. **Everything outstanding is round
-10's own work**: 6.23.0, 6.24.0, 6.25.0, 6.25.1 and clock.html v1.8.0.
+**CLOSED ROUND 11 — there is nothing to deploy that he does not already have.**
+The owner's rule, stated plainly: *"I post everything up every single time you
+send it to me."* On a GitHub Pages site the repo IS the deployment, so the zip
+handed to a new session is, by construction, what is live.
 
-**LESSON, since this has now happened twice:** the handoff records what the last
-session BELIEVED at the moment it stopped writing, which is always before the
-owner's final push. Treat its deploy state as stale by default and ask him first
-— his answer, not the document, is ground truth.
+**DO NOT OPEN A ROUND BY ASKING ABOUT DEPLOY STATE.** Rounds 9, 10 and 11 all
+did, and the answer was the same every time. The old advice here ("treat it as
+stale and ask him first") produced the very ritual it was trying to prevent: the
+handoff can only ever describe the moment before the session's last push, so it
+will always look like there is a gap, and there never is. Record the OUTGOING
+delta — what this round is sending him — and let him push it as he always does.
 
 **Rule that has bitten this project before:** replace the ENTIRE `src/js/` tree
 plus the changed root files in ONE commit. A partial push leaves new modules
@@ -78,6 +80,13 @@ Earned by real symptoms, not theory — both are finite and mechanically checkab
   match who can actually use it, and does its label match what saving actually
   does? The edit-bell modal alone produced four defects of this kind and the
   rename button a fifth. That is a pattern.
+- **Known instance, found round 11 and NOT fixed:** `dashboard-config.html`
+  deletes null keys from its payload then calls `set(..., {merge: true})`, so
+  clearing a field and pressing Save does not clear the stored value — the
+  button does not do what its label says. 6.26.0 fixed this for the four new
+  ticker fields only (`FieldValue.delete()` when blank); `canvaUrl` and
+  `housesSheetCsvUrl` still behave the old way. Textbook affordance defect,
+  left for the sweep rather than widened mid-release.
 - **Dark-mode contrast sweep** of everything added since ~6.9.0. Three banners
   were checked, two were unreadable — newer surfaces were built with literal
   Tailwind colours while the app themes through `--theme-*` variables.
@@ -190,78 +199,38 @@ The big architecture (see DESIGN-CALENDAR-V2.md) is mostly built. Remaining:
 
 ---
 
-## 5. Birthday ticker on the signage right column (NEW, requested round 10)
+## 5. Birthday ticker on the signage right column — DONE in 6.26.0
 
-**Not started. This is a fresh project, not a tweak — hand it its own session.**
+Built round 11, together with the right-column extraction it depended on. The
+column now reads **ticker 12% / four house cards 71% / clock 17%** — the clock
+moved from top to bottom and all three previous bands were squeezed, rather than
+the scoreboard absorbing the new band alone.
 
-### Where this lives (the owner asked, having lost track)
+**The duplication question answered itself:** `dashboard.html` and
+`dashright.html` had already drifted five ways (see CHANGELOG 6.26.0 and the
+header of `right-column.css`, which lists all five with reasoning). The column
+now lives once, in `signage/right-column.css` + `signage/right-column.js`,
+following the `schedule-utils.js` pattern — plain `<script>`, one global, no
+build step. `dashright.html` is now a mount point and a few lines of Firebase
+wiring. Both new files are in CORE_ASSETS and in module 25's version report.
 
-It is NOT in the main app. It is in **`signage/`**, three sibling full-page
-displays meant for Yodeck frames, each a standalone HTML file with its own
-inline CSS and JS and its own version line in its `<title>`:
+**Data comes from four published Sheet CSVs** (students, faculty, closures, holidays), set in `dashboard-config.html`
+v1.3.0 — birthdays, closures, wacky holidays, plus a fallback line. The
+privacy design is load-bearing and should not be "simplified": the published
+birthday tab is a formula over a PRIVATE roster tab, so the public URL carries
+no birth year, no full last name and no student who opted out. Nothing about
+students touches Firestore.
 
-| File | Version | What it shows |
-|---|---|---|
-| `signage/dashboard.html` | v1.6.0 | The full display: media/Canva area **plus** the right column |
-| `signage/dashright.html` | v1.1.0 | The right column ALONE — clock on top, scoreboard below |
-| `signage/dashclock.html` | — | The clock alone |
+**Open, and the only thing outstanding:** the owner still owes an enrolment
+figure so `MAX_LEAD_SCHOOL_DAYS` (currently 15) can be sized. It governs how
+many summer birthdays land per day in the last three weeks of school — fine at
+~600 students, wants raising to 20 at ~1200. One constant in right-column.js.
 
-The right column is `.right-column`, containing `.clock-area` (the
-`#main-clock` readout plus the three `.schedule-column` period/countdown
-cells — that is the "triple bell notifier") and `.houses-area` (four
-`.house-card`s: Accomodore, Callidus, Princeps, Vevaios, auto-sorted by score).
-
-Scores arrive from a **published Google Sheet CSV** whose URL is stored in the
-dashboard config doc as `housesSheetCsvUrl`, edited in `dashboard-config.html`.
-`src/js/25-status-view.js` version-checks all three signage pages by scraping
-their `<title>`, so **a version bump in the title is load-bearing**, not
-decoration.
-
-### The requested change
-
-Reorder the right column and add a fourth element at the top:
-
-1. **Birthday ticker** (NEW) — top
-2. **Four house cards** — middle, still auto-sorted descending by score
-3. **Clock + triple bell notifier** — bottom (currently top)
-
-So the clock moves from top to bottom and the ticker takes its place.
-
-### What has to be decided before building
-
-- **Where birthdays come from.** The scoreboard already reads a published
-  Sheet CSV, so a second sheet (or a second tab) is the obvious, consistent
-  answer — same mechanism, same admin edit point, no schema change, and no
-  student data in Firestore. **Confirm this with the owner first.**
-- **Student privacy is the constraint that decides the design.** Every other
-  school project here refuses to store student-identifying data. A birthday
-  ticker is inherently student-identifying, it is aimed at a screen in a public
-  hallway, and a date of birth is more sensitive than a house score. Settle
-  BEFORE building: first name plus last initial or full name; whether the year
-  is ever shown (it should not be); whether a student can be omitted on request;
-  and whether the sheet stays out of Firestore entirely. Ask the owner what the
-  school already permits rather than assuming.
-- **What it shows on a day with no birthday** — nothing, a placeholder, or
-  "upcoming this week". An empty band at the top of the column looks broken.
-- **Scope across the three files.** `dashright.html` and `dashboard.html` both
-  contain the right column as DUPLICATED markup and script, and their headers
-  say so explicitly ("logic duplicated from dashboard.html"). Changing the
-  column means changing both, in step, with both version lines bumped. Decide
-  early whether this is the moment to factor the column into one shared file —
-  it is the third change to hit the duplication.
-
-### Sizing warning, learned twice already
-
-Both files' headers record the same bug fixed twice: **`vw`/`vh` units scale to
-the viewport, not the container**, so text sized that way exploded when the
-column was rendered in a narrow Yodeck frame. The fix both times was
-`container-type: inline-size` plus `cqw` units, and `dashboard.html` v1.6.0
-added `max-width: 30cqw` on `.house-crest` for the same reason. **Size the
-ticker in `cqw` against the column container from the start.** Adding a fourth
-band also squeezes the other three — check the real frame, not a desktop
-browser window.
-
----
+**Watch for, first time he fills in the closure sheet:** it takes the WEEKDAYS
+school is shut and glues the flanking weekends on itself. Listing the weekends
+as well, or listing a break as Wed–Sun when it really starts Monday, produces a
+different set of closure runs and therefore different lead windows. A unit test
+pins both readings so the behaviour is at least visible.
 
 ## 5b. "Add a temp bell" inside the bell modal — SPEC SETTLED, NOT BUILT
 
