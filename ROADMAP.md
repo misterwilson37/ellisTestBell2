@@ -15,13 +15,13 @@ When they disagree, HANDOFF.md wins — and fix this file.
 
 | | |
 |---|---|
-| Latest built version | **6.26.0** (app), **1.41.0** (service worker), **v1.2.0** (right-column.js) |
+| Latest built version | **6.26.0** (app), **1.42.0** (service worker), **v1.3.0** (right-column.js) |
 | Live on alpha (owner's channel) | **everything he has received** — he pushes on receipt, so 6.25.1 as of round 11's start |
 | Outgoing delta (round 11) | **6.26.0** — signage right column extracted + birthday ticker |
 | Beta channel (CDC teacher) | 6.4.0 |
 | Building channel (bells domain) | 5.69.5 backport |
 | School channel (~50 faculty) | 5.79.x |
-| Tests | 109/109, 41 modules |
+| Tests | 118/118, 41 modules |
 
 **The table above is what this round BUILT, not a guess about his channel.**
 He posts everything on receipt, so whatever zip you were handed is live — see

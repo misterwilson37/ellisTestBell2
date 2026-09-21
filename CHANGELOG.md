@@ -2,6 +2,49 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## dashboard-config.html v1.5.2 — the Quick Links pointed at files that don't exist
+(Sibling surface; app unchanged at 6.26.0. No SW bump — this page is
+intentionally not cached.)
+
+**"Launch TV Dashboard" and "Dashboard Setup" both 404'd**, and had since before
+round 11: they linked `dashboard.html` relative to this page, which lives at the
+site root, while the dashboard lives in `signage/`. Found by the owner the first
+time he clicked through to test the ticker. Both now point into `signage/`.
+Added a **"Right Column Only"** button for `signage/dashright.html` — the page
+used for the ticker's console check, which until now had no link from anywhere.
+
+## signage/right-column.js v1.3.0 — context cards, and "Happy" added by the ticker
+(Sibling surface; app unchanged at 6.26.0. SW 1.42.0, config v1.5.1 — help text
+only.)
+
+The owner's events list now has 2+ entries for every calendar day, and some of
+them mean nothing without a sentence ("Who is Gygax?"). **The holidays sheet is
+now four columns:** month/day, name, context (optional), no-"Happy" (optional).
+
+- **Context is its own card**, flipped in right after the headline — never a
+  second line on the same card. The band is 12% of the column; a headline plus
+  a sentence in that space shrinks both past readability from across a hallway.
+  One fact per flip: the question lands, and the answer arrives five seconds
+  later.
+- **The ticker adds "Happy <name>!" itself**, because every entry in the list
+  was written to be said that way. Column D opts a row out, for memorials like
+  Patriot Day. A row typed the long way round (`Happy Pi Day!`) is not doubled.
+- **No-birthday days show EVERY event** listed for the date, not just two —
+  there is nobody's airtime to protect. Birthday days are unchanged: one
+  birthday takes ONE event plus its context, so that child is a third of a
+  three-card loop. **Owner's call**, over repeating the name to hold it at half.
+
+**Considered, built, and removed the same round: per-screen variety** via a
+`?screen=N` URL parameter. It worked, but the owner's Yodeck setup is ONE screen
+sent out to many TVs, so there is no per-TV URL to put it in. Every TV shows the
+same thing, which he is fine with. Removed rather than left dormant, so no later
+session tells him to set a parameter that cannot work on his hardware; a note in
+the file header says not to re-propose it unless the setup changes.
+
+Four tests asserted the old behaviour and were updated — three for the new
+"Happy" wrapper, one for the all-events rule, which changed deliberately.
+**118/118.**
+
 ## signage/right-column.js v1.2.0 — a second default line, and length-aware sizing
 (Sibling surface; app unchanged at 6.26.0. CSS v1.1.0, SW 1.41.0, config v1.5.0.)
 

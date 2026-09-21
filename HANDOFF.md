@@ -33,7 +33,13 @@ lines (a quiet day has to flip, not repeat itself) and LENGTH-AWARE ticker
 sizing — a fixed 8cqw holds ~22 chars per line in a 25% column, and faculty
 entries (title + full surname) make the LONGEST strings the most routine ones.
 Step boundaries are arithmetic, not measurement; they want one look at a long
-faculty name on the real frame. SW 1.41.0, 109/109.
+faculty name on the real frame. Then v1.3.0: the holidays sheet went to FOUR
+columns (name, context, no-Happy flag) because the owner's list now covers every
+day and some entries need explaining. Context is its OWN CARD after the
+headline, never a second line; the ticker adds "Happy <name>!" itself; no-
+birthday days show every event. Per-screen variety (?screen=N) was built and
+REMOVED — his Yodeck is one screen fanned out to many TVs, so there is no per-TV
+URL. Do not re-propose it. SW 1.42.0, 118/118.
 Round 11, "Tenor" — see §10.)
 // prev: **6.25.1 (SILENT BELLS RANG THE DEFAULT
 BELL. The sound dropdowns have offered "Silent / None" since 5.32/5.33 (module

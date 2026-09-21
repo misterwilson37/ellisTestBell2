@@ -169,7 +169,7 @@ test('a wacky holiday fills in when there are fewer than two birthdays', () => {
     });
     const items = I.buildTickerItems(d(2026, 6, 4));       // Thursday
     assert.equal(items.length, 2);
-    assert.ok(items.includes('National Cheese Day'));
+    assert.ok(items.includes('Happy National Cheese Day!'));   // v1.3.0 wrapper
 });
 
 test('two birthdays is already a rotation, so no holiday is pulled in', () => {
@@ -246,18 +246,20 @@ test('no birthdays and two holidays listed: BOTH are shown, so the band rotates'
     ]});
     const items = I.buildTickerItems(d(2026, 6, 4));
     assert.equal(items.length, 2);
-    assert.deepEqual([...items].sort(), ['One', 'Two']);
+    assert.deepEqual([...items].sort(), ['Happy One!', 'Happy Two!']);
 });
 
-test('no birthdays and three holidays listed: exactly two, never more', () => {
+test('no birthdays and three events listed: ALL THREE are shown (v1.3.0)', () => {
+    // Changed deliberately in v1.3.0, owner's call: with nobody's birthday to
+    // protect, a day shows every event it has rather than stopping at two.
     setData({ holidays: [
         { monthday: '06/04', text: 'One' },
         { monthday: '06/04', text: 'Two' },
         { monthday: '06/04', text: 'Three' },
     ]});
     const items = I.buildTickerItems(d(2026, 6, 4));
-    assert.equal(items.length, 2);
-    assert.equal(new Set(items).size, 2);          // no repeats
+    assert.equal(items.length, 3);
+    assert.equal(new Set(items).size, 3);          // each once, no repeats
 });
 
 test('one birthday takes half the rotation, not a quarter of it', () => {
@@ -290,7 +292,7 @@ test('only one fallback set: it repeats, as before', () => {
 test('one holiday and no birthdays: fallback line 1 takes the second slot', () => {
     setData({ holidays: [{ monthday: '06/04', text: 'Only One' }],
               fallback: 'Line One', fallback2: 'Line Two' });
-    assert.deepEqual(I.buildTickerItems(d(2026, 6, 4)), ['Only One', 'Line One']);
+    assert.deepEqual(I.buildTickerItems(d(2026, 6, 4)), ['Happy Only One!', 'Line One']);
 });
 
 test('ticker sizing never grows as lines get longer, and has a floor', () => {
@@ -344,4 +346,86 @@ test('a faculty birthday over a break gets the same early wish as a student', ()
         .filter(x => x.includes('Dr. Reed'));
     assert.equal(week.length, 1);
     assert.ok(week[0].startsWith('Happy Early Birthday'));
+});
+
+// --- v1.3.0: context cards, the Happy wrapper, per-screen variety -----------
+
+const FINGER = { monthday: '02/08', name: "Bill Finger's Birthday",
+                 context: 'He created all of the recognizable aspects of Batman.' };
+const GYGAX  = { monthday: '07/27', name: "Gary Gygax's Birthday",
+                 context: 'He co-created Dungeons & Dragons.' };
+const PATRIOT = { monthday: '09/11', name: 'Patriot Day', noHappy: true };
+
+test('the wrapper: "Happy <name>!", and memorials opt out', () => {
+    assert.equal(I.headlineFor({ name: 'National Donut Day' }), 'Happy National Donut Day!');
+    assert.equal(I.headlineFor({ name: 'Patriot Day', noHappy: true }), 'Patriot Day');
+});
+
+test('the wrapper never doubles up on a row typed the long way round', () => {
+    assert.equal(I.headlineFor({ name: 'Happy Pi Day!' }), 'Happy Pi Day!');
+    assert.equal(I.headlineFor({ name: 'Talk Like a Pirate Day!!' }), 'Happy Talk Like a Pirate Day!');
+});
+
+test('context is its own card, directly after its headline', () => {
+    setData({ holidays: [FINGER] });
+    const items = I.buildTickerItems(d(2027, 2, 8));       // a Monday
+    const at = items.indexOf("Happy Bill Finger's Birthday!");
+    assert.ok(at >= 0);
+    assert.equal(items[at + 1], 'He created all of the recognizable aspects of Batman.');
+});
+
+test('one birthday + an event with context: three cards, the kid appears once', () => {
+    setData({ birthdays: [{ name: 'Maya R.', monthday: '02/08' }], holidays: [FINGER] });
+    const items = I.buildTickerItems(d(2027, 2, 8));
+    assert.deepEqual(items, [
+        'Happy Birthday, Maya R.!',
+        "Happy Bill Finger's Birthday!",
+        'He created all of the recognizable aspects of Batman.',
+    ]);
+});
+
+test('one birthday takes exactly ONE event even when several are listed', () => {
+    setData({
+        birthdays: [{ name: 'Maya R.', monthday: '02/08' }],
+        holidays: [FINGER, { monthday: '02/08', name: 'Boy Scouts Day' },
+                   { monthday: '02/08', name: 'Kite Flying Day' }]
+    });
+    const items = I.buildTickerItems(d(2027, 2, 8));
+    const headlines = items.filter(x => x.startsWith('Happy') && !x.includes('Maya'));
+    assert.equal(headlines.length, 1);
+});
+
+test('two birthdays: no events at all, context included', () => {
+    setData({
+        birthdays: [{ name: 'A.', monthday: '02/08' }, { name: 'B.', monthday: '02/08' }],
+        holidays: [FINGER]
+    });
+    const items = I.buildTickerItems(d(2027, 2, 8));
+    assert.equal(items.length, 2);
+    assert.ok(!items.some(x => x.includes('Batman')));
+});
+
+test('no birthdays: every event AND every context card, each pair kept together', () => {
+    setData({ holidays: [FINGER, { monthday: '02/08', name: 'Kite Flying Day' }] });
+    const items = I.buildTickerItems(d(2027, 2, 8));
+    assert.equal(items.length, 3);                     // 2 headlines + 1 context
+    const at = items.indexOf("Happy Bill Finger's Birthday!");
+    assert.equal(items[at + 1], 'He created all of the recognizable aspects of Batman.');
+});
+
+test('a memorial is shown exactly as written', () => {
+    setData({ holidays: [PATRIOT] });
+    assert.ok(I.buildTickerItems(d(2026, 9, 11)).includes('Patriot Day'));
+});
+
+test('the event pick is seeded by the date alone, unchanged since v1.2.0', () => {
+    // Every TV runs the same page, so every TV must land on the same event.
+    const events = ['A', 'B', 'C', 'D', 'E'].map(n => ({ monthday: '02/08', name: n }));
+    setData({ birthdays: [{ name: 'Kid K.', monthday: '02/08' }], holidays: events });
+    const key = '2027-02-08';
+    let seed = 0;
+    for (const ch of key) seed = (seed * 31 + ch.charCodeAt(0)) % 100000;
+    const expected = 'Happy ' + events[seed % events.length].name + '!';
+    assert.ok(I.buildTickerItems(d(2027, 2, 8)).includes(expected));
+    assert.deepEqual(I.buildTickerItems(d(2027, 2, 8)), I.buildTickerItems(d(2027, 2, 8)));
 });

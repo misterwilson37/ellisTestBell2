@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Config v1.5.0</title>
-    <!-- Dashboard Config v1.5.0 -->
+    <title>Dashboard Config v1.5.2</title>
+    <!-- Dashboard Config v1.5.2 -->
+    <!-- v1.5.2: FIXED the Quick Links — "Launch TV Dashboard" and "Dashboard
+         Setup" both pointed at /dashboard.html, which does not exist; the
+         signage pages live in signage/. Added "Right Column Only" for
+         signage/dashright.html, the page used for the ticker's console check. -->
+    <!-- v1.5.1: help text only — the holidays sheet is now four columns
+         (right-column.js v1.3.0): name, optional context card, optional
+         no-"Happy" flag for memorials. No new fields. -->
     <!-- v1.5.0: tickerFallbackText2 — a SECOND fallback line, so a day with no
          birthdays and no wacky holiday still flips between two sentences
          instead of showing one to itself. Both optional; both default in
@@ -418,8 +425,11 @@
                     <label>Wacky holidays — published CSV URL</label>
                     <input type="text" id="holidaysSheetCsvUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?gid=...&amp;single=true&amp;output=csv">
                     <p class="help">
-                        Two columns: month/day, then the text to display. Several rows can share a date — one is picked,
-                        and the same one all day. Shown on any school day with fewer than two birthdays, so the band always rotates.
+                        Four columns: <strong>month/day</strong> (as text, e.g. 07/08), <strong>name</strong>,
+                        <strong>context</strong> (optional), <strong>no-Happy</strong> (optional).<br>
+                        The ticker shows each name as "Happy &lt;name&gt;!" — put anything in the fourth column for rows that
+                        must not be (memorials like Patriot Day). A context sentence gets its own card, right after the name.<br>
+                        No birthdays that day: every event is shown. One birthday: one event. Two or more: none.
                     </p>
                 </div>
                 <div class="field">
@@ -448,10 +458,17 @@
             <div class="section" style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #333;">
                 <h2>🔗 Quick Links</h2>
                 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px;">
-                    <a href="dashboard.html?tv" target="_blank" class="btn-primary" style="text-decoration: none; text-align: center;">
+                    <!-- v1.5.2: these pointed at dashboard.html at the SITE ROOT, which does
+                         not exist — the signage pages live in signage/ and this page lives at
+                         the root. Both buttons 404'd. Pre-existing, found by the owner the
+                         first time he clicked through to test the ticker. -->
+                    <a href="signage/dashboard.html?tv" target="_blank" class="btn-primary" style="text-decoration: none; text-align: center;">
                         📺 Launch TV Dashboard
                     </a>
-                    <a href="dashboard.html" target="_blank" style="background: #333; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none;">
+                    <a href="signage/dashright.html" target="_blank" style="background: #333; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none;">
+                        ▮ Right Column Only
+                    </a>
+                    <a href="signage/dashboard.html" target="_blank" style="background: #333; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none;">
                         🎛️ Dashboard Setup
                     </a>
                     <a href="clock.html" target="_blank" style="background: #333; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none;">
@@ -467,14 +484,14 @@
             <div style="margin-top: 32px; text-align: center;">
                 <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
                 <div style="margin-top: 12px; font-size: 11px; color: #666;">
-                    Dashboard Config v1.5.0
+                    Dashboard Config v1.5.2
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Dashboard Config v1.5.0
+        // Dashboard Config v1.5.2
         
         // v1.0.0: Firebase config comes from shared firebase-config.js
         // (loaded via <script src="firebase-config.js"> in <head>).

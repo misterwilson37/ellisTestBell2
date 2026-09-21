@@ -1,7 +1,10 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.41.0
+ * Version: 1.42.0
  *
+ * v1.42.0 changelog (2026-09, app 6.26.0 unchanged): no new CORE_ASSETS — cache
+ *   bump for right-column.js v1.3.0 (context cards, the "Happy" wrapper, every
+ *   event shown on no-birthday days).
  * v1.41.0 changelog (2026-09, app 6.26.0 unchanged): no new CORE_ASSETS — cache
  *   bump for right-column.js v1.2.0 / right-column.css v1.1.0 (second fallback
  *   line, length-aware ticker sizing).
@@ -171,7 +174,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.41.0';
+const CACHE_VERSION = '1.42.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;

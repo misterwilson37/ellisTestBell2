@@ -1,6 +1,27 @@
 /**
  * Ellis Web Bell — Signage Right Column (behaviour)
- * Version: 1.2.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ * Version: 1.3.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ *
+ * v1.3.0: the holiday list grew to 2+ events for every calendar day, several
+ *   of which mean nothing without a sentence of context ("Who is Gygax?").
+ *   (a) FOUR-COLUMN HOLIDAYS: month/day, name, context (optional), no-Happy
+ *       flag (optional). The ticker now wraps each name as "Happy <name>!",
+ *       because every entry in the owner's list was written to be said that
+ *       way; column D opts a row out for memorials like Patriot Day.
+ *   (b) CONTEXT IS ITS OWN CARD, flipped in right after the headline, never a
+ *       second line on the same card. The band is 12% of the column: a
+ *       headline plus a sentence in that space shrinks both past readability
+ *       from across a hallway. One fact per flip, question then answer.
+ *   (c) NO-BIRTHDAY DAYS SHOW EVERY EVENT listed for the date (owner's call),
+ *       instead of stopping at two. Birthday days are unchanged: with one
+ *       birthday the ticker takes ONE event (plus its context card), so that
+ *       kid is a third of a three-card loop — owner's call, over repeating
+ *       the name to keep it at half.
+ *   CONSIDERED AND DROPPED: per-screen event variety via a ?screen=N URL
+ *   parameter. It was built, then removed the same round, because the owner's
+ *   Yodeck setup is ONE screen sent out to many TVs — there is no per-TV URL
+ *   to put a parameter in. Every TV shows the same thing, which he is fine
+ *   with. Do not re-propose it without first confirming the setup changed.
  *
  * v1.2.0: (a) TWO fallback lines instead of one, so a day with nothing on it
  *   still FLIPS rather than showing the same sentence to itself forever.
@@ -187,6 +208,7 @@
     var holidays = [];    // [{ monthday, text }]
     var fallbackText = DEFAULT_FALLBACK_TEXT;
     var fallbackText2 = DEFAULT_FALLBACK_TEXT_2;
+
 
     var tickerItems = [];
     var tickerItemsDateKey = null;
@@ -378,6 +400,38 @@
 
     // --- Ticker content -----------------------------------------------------
 
+    /**
+     * Deterministic seed for the event pick, from the date alone: every TV
+     * running this page lands on the same events in the same order.
+     */
+    function seedFor(today) {
+        var key = dateKey(today);
+        var seed = 0;
+        for (var c = 0; c < key.length; c++) seed = (seed * 31 + key.charCodeAt(c)) % 100000;
+        return seed;
+    }
+
+    /**
+     * "Bill Finger's Birthday" -> "Happy Bill Finger's Birthday!". Every name in
+     * the owner's list was written to take "Happy" in front. Rows flagged in
+     * column D (memorials — Patriot Day) are shown exactly as written. Also
+     * tolerates a name that already carries its own "Happy" or "!", so a row
+     * typed the long way round does not come out "Happy Happy …!!".
+     */
+    function headlineFor(event) {
+        if (event.noHappy) return event.name;
+        var name = event.name.replace(/!+\s*$/, '');
+        if (/^happy\b/i.test(name)) return name + '!';
+        return 'Happy ' + name + '!';
+    }
+
+    /** An event's cards: the headline, then its context if it has one. */
+    function cardsFor(event) {
+        var cards = [headlineFor(event)];
+        if (event.context) cards.push(event.context);
+        return cards;
+    }
+
     function buildTickerItems(now) {
         var items = [];
         var today = startOfDay(now);
@@ -413,23 +467,23 @@
             });
         }
 
-        // Fill to two so the band always has something to flip to. Holidays
-        // first, then the fallback line, and only ever as many as are needed:
-        // padding one child's name with four wacky holidays gets the priority
-        // backwards.
-        if (items.length < MIN_TICKER_ITEMS) {
+        // v1.3.0 event rules, by how many birthdays the day already has:
+        //   2+  -> no events; the kids fill the loop
+        //   1   -> ONE event (plus its context card): that kid is a third of a
+        //          three-card loop, which the owner chose over repeating the name
+        //   0   -> EVERY event listed for the date
+        // Order and, on one-birthday days, WHICH event, are seeded by the date:
+        // fixed all day, and identical on every TV.
+        var birthdayCount = items.length;
+        if (birthdayCount < MIN_TICKER_ITEMS) {
             var matches = holidays.filter(function (h) { return h.monthday === monthDayKey(today); });
             if (matches.length) {
-                // Deterministic, seeded by the full date: both pages agree, it
-                // does not change on reload, and a date with three listed
-                // holidays rotates through different pairs in different school
-                // years while staying fixed within any one day.
-                var seed = 0;
-                var key = dateKey(today);
-                for (var c = 0; c < key.length; c++) seed = (seed * 31 + key.charCodeAt(c)) % 100000;
-                var offset = seed % matches.length;
-                for (var k = 0; k < matches.length && items.length < MIN_TICKER_ITEMS; k++) {
-                    items.push(matches[(offset + k) % matches.length].text);
+                var offset = seedFor(today) % matches.length;
+                var wanted = birthdayCount === 0 ? matches.length : 1;
+                for (var k = 0; k < wanted; k++) {
+                    cardsFor(matches[(offset + k) % matches.length]).forEach(function (card) {
+                        items.push(card);
+                    });
                 }
             }
         }
@@ -645,9 +699,16 @@
             var rows = stripHeader(await fetchCsv(url), function (r) {
                 return normalizeMonthDay(r[0]) !== null;
             });
+            // v1.3.0: month/day, name, context (optional), no-Happy (optional —
+            // anything at all in column D means "show the name as written").
             holidays = rows.map(function (r) {
-                return { monthday: normalizeMonthDay(r[0]), text: (r[1] || '').trim() };
-            }).filter(function (h) { return h.monthday && h.text; });
+                return {
+                    monthday: normalizeMonthDay(r[0]),
+                    name: (r[1] || '').trim(),
+                    context: (r[2] || '').trim(),
+                    noHappy: (r[3] || '').trim() !== ''
+                };
+            }).filter(function (h) { return h.monthday && h.name; });
             logLoad('holidays', rows.length, holidays.length);
         } catch (err) {
             console.warn('[rc/ticker] holidays sheet fetch failed:', err);
@@ -780,6 +841,7 @@
         scheduleConfigOverride = options.scheduleConfigOverride || null;
 
         if (!root) throw new Error('right-column.js: no mount element given');
+
         root.innerHTML = buildMarkup();
 
         if (scheduleConfigOverride) {
@@ -818,7 +880,7 @@
     }
 
     var SignageRightColumn = {
-        VERSION: '1.2.0',
+        VERSION: '1.3.0',
         init: init,
         // Exposed for the Node tests in tests/right-column.test.mjs — these are
         // the pure parts, and they are where the real logic lives.
@@ -832,7 +894,18 @@
             buildTickerItems: buildTickerItems,
             isSchoolDay: isSchoolDay,
             fitSizeFor: fitSizeFor,
+            headlineFor: headlineFor,
             setData: function (b, c, h, f, fac, f2) {
+                // Test fixtures may use the pre-1.3.0 {monthday, text} shape;
+                // normalise so they read as a name with no context.
+                h = (h || []).map(function (e) {
+                    return {
+                        monthday: e.monthday,
+                        name: e.name || e.text,
+                        context: e.context || '',
+                        noHappy: !!e.noHappy
+                    };
+                });
                 birthdays = b || [];
                 facultyBirthdays = fac || [];
                 fallbackText2 = f2 || DEFAULT_FALLBACK_TEXT_2;
