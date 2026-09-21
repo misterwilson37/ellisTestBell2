@@ -123,13 +123,13 @@ test('balancedChunks: fewer names than lead days leaves later days empty', () =>
 test("today's birthday is wished today, plainly", () => {
     setData({ birthdays: [{ name: 'Maya R.', monthday: '09/17' }] });
     const items = I.buildTickerItems(d(2026, 9, 17));      // a Thursday
-    assert.ok(items.includes('Happy Birthday, Maya R.!'));
+    assert.ok(items.includes('Happy Birthday,\nMaya R.!'));
 });
 
 test('a weekend birthday is wished early on the Friday', () => {
     setData({ birthdays: [{ name: 'Devon W.', monthday: '09/19' }] });  // Saturday
     const friday = I.buildTickerItems(d(2026, 9, 18));
-    assert.ok(friday.includes('Happy Early Birthday, Devon W.!'));
+    assert.ok(friday.includes('Happy Early Birthday,\nDevon W.!'));
     // …and not on the Thursday, which is outside the one-day lead window.
     const thursday = I.buildTickerItems(d(2026, 9, 17));
     assert.ok(!thursday.some(x => x.includes('Devon W.')));
@@ -150,7 +150,7 @@ test('Thanksgiving birthdays spread across the week, in date order, no duplicate
     // Six names over five lead days: the first day takes two, the rest one each.
     assert.deepEqual(week.map(x => x.length), [2, 1, 1, 1, 1]);
 
-    const order = week.flat().map(x => x.replace('Happy Early Birthday, ', '').replace('!', ''));
+    const order = week.flat().map(x => x.replace('Happy Early Birthday,\n', '').replace('!', ''));
     assert.deepEqual(order, ['A.', 'B.', 'C.', 'D.', 'E.', 'F.']);
     assert.equal(new Set(order).size, 6);
 });
@@ -273,7 +273,7 @@ test('one birthday takes half the rotation, not a quarter of it', () => {
     });
     const items = I.buildTickerItems(d(2026, 6, 4));
     assert.equal(items.length, 2);
-    assert.equal(items[0], 'Happy Birthday, Solo S.!');
+    assert.equal(items[0], 'Happy Birthday,\nSolo S.!');
 });
 
 test('nothing at all: the band flips between the TWO fallbacks, not one twice', () => {
@@ -305,7 +305,7 @@ test('ticker sizing never grows as lines get longer, and has a floor', () => {
         assert.ok(current <= previous, `size grew at length ${n}`);
         previous = current;
     }
-    assert.ok(size('Go Ellis') > size('Happy Early Birthday, Ms. Vandermeulen!'));
+    assert.ok(size('Go Ellis') > size('Happy Early Birthday,\nMs. Vandermeulen!'));
     assert.equal(I.fitSizeFor('x'.repeat(400)), '5.25cqw');   // floor, never 0
 });
 
@@ -313,8 +313,8 @@ test('the longest routine outputs of this feature all get a real size', () => {
     // Faculty entries are the long ones: a title AND a full surname. If any of
     // these came back at the largest step, it would overflow the band.
     const longest = [
-        'Happy Early Birthday, Ms. Vandermeulen!',
-        'Happy Birthday, Mr. Featherstonehaugh!',
+        'Happy Early Birthday,\nMs. Vandermeulen!',
+        'Happy Birthday,\nMr. Featherstonehaugh!',
         'Ellis — 4 Houses, 1 Home',
     ];
     for (const line of longest) {
@@ -324,7 +324,7 @@ test('the longest routine outputs of this feature all get a real size', () => {
 
 test('faculty are wished exactly like students', () => {
     setData({ faculty: [{ name: 'Mr. Wilson', monthday: '09/17' }] });
-    assert.ok(I.buildTickerItems(d(2026, 9, 17)).includes('Happy Birthday, Mr. Wilson!'));
+    assert.ok(I.buildTickerItems(d(2026, 9, 17)).includes('Happy Birthday,\nMr. Wilson!'));
 });
 
 test('faculty count toward the fill-to-two rule, so no holiday is pulled in', () => {
@@ -378,7 +378,7 @@ test('one birthday + an event with context: three cards, the kid appears once', 
     setData({ birthdays: [{ name: 'Maya R.', monthday: '02/08' }], holidays: [FINGER] });
     const items = I.buildTickerItems(d(2027, 2, 8));
     assert.deepEqual(items, [
-        'Happy Birthday, Maya R.!',
+        'Happy Birthday,\nMaya R.!',
         "Happy Bill Finger's Birthday!",
         'He created all of the recognizable aspects of Batman.',
     ]);
@@ -428,4 +428,39 @@ test('the event pick is seeded by the date alone, unchanged since v1.2.0', () =>
     const expected = 'Happy ' + events[seed % events.length].name + '!';
     assert.ok(I.buildTickerItems(d(2027, 2, 8)).includes(expected));
     assert.deepEqual(I.buildTickerItems(d(2027, 2, 8)), I.buildTickerItems(d(2027, 2, 8)));
+});
+
+// --- v1.4.0: the break after the comma --------------------------------------
+
+test('birthday cards break after the comma, name on its own line', () => {
+    setData({ birthdays: [{ name: 'Suzie Q.', monthday: '09/17' }] });
+    assert.ok(I.buildTickerItems(d(2026, 9, 17)).includes('Happy Birthday,\nSuzie Q.!'));
+});
+
+test('early wishes break after the comma too', () => {
+    setData({ birthdays: [{ name: 'Devon W.', monthday: '09/19' }] });
+    assert.ok(I.buildTickerItems(d(2026, 9, 18)).includes('Happy Early Birthday,\nDevon W.!'));
+});
+
+test('a broken card is sized by its LONGEST line, so neither line wraps', () => {
+    // Calibrated from the live screen: ~21 characters per line fit at 8cqw.
+    // "Happy Birthday," is 15 and "Suzie Q.!" is 9, so the largest step fits.
+    assert.equal(I.fitSizeFor('Happy Birthday,\nSuzie Q.!'), '9.5cqw');
+    // "Happy Early Birthday," is 21 — too long for 9.5cqw or 8cqw on one line.
+    assert.equal(I.fitSizeFor('Happy Early Birthday,\nMr. Wilson!'), '6.5cqw');
+    // A long surname on the second line drives the size, not the greeting.
+    assert.ok(parseFloat(I.fitSizeFor('Happy Birthday,\nMr. Featherstonehaugh!'))
+            < parseFloat(I.fitSizeFor('Happy Birthday,\nSuzie Q.!')));
+});
+
+test('cards without a break are sized exactly as before', () => {
+    assert.equal(I.fitSizeFor('Go Ellis'), '9.5cqw');
+    assert.equal(I.fitSizeFor('Happy National Donut Day!'), '8cqw');
+});
+
+test('holidays and context never get the forced break', () => {
+    setData({ holidays: [{ monthday: '02/08', name: "Bill Finger's Birthday",
+                           context: 'He created all of the recognizable aspects of Batman.' }] });
+    const items = I.buildTickerItems(d(2027, 2, 8));
+    assert.ok(items.every(x => !x.includes('\n')));
 });

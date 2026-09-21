@@ -39,7 +39,11 @@ day and some entries need explaining. Context is its OWN CARD after the
 headline, never a second line; the ticker adds "Happy <name>!" itself; no-
 birthday days show every event. Per-screen variety (?screen=N) was built and
 REMOVED — his Yodeck is one screen fanned out to many TVs, so there is no per-TV
-URL. Do not re-propose it. SW 1.42.0, 118/118.
+URL. Do not re-propose it. Then v1.4.0: birthday cards break AFTER THE COMMA
+(the live screen split "Suzie" / "Q.!"), and broken cards size by their longest
+line — calibrated from that real wrap (~21 chars/line at 8cqw), the first
+sizing number in this file that came from the actual TV rather than arithmetic.
+SW 1.43.0, 123/123.
 Round 11, "Tenor" — see §10.)
 // prev: **6.25.1 (SILENT BELLS RANG THE DEFAULT
 BELL. The sound dropdowns have offered "Silent / None" since 5.32/5.33 (module

@@ -2,6 +2,24 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## signage/right-column.js v1.4.0 — the line break goes after the comma
+(Sibling surface; app unchanged at 6.26.0. CSS v1.2.0, SW 1.43.0.)
+
+On the live screen, birthday cards wrapped wherever the text ran out:
+`Happy Birthday, Suzie` / `Q.!` — **splitting a child's name across two
+lines.** Birthday and early-birthday cards now carry an explicit break after the
+comma, so the greeting sits on line one and the name on line two, and CSS
+`white-space: pre-line` honours it.
+
+**Cards with a break are sized by their longest line**, so neither line wraps
+again. **Calibrated from that same screen, not from font arithmetic:** the bad
+wrap showed ~21 characters fitting per line at 8cqw, and the per-line steps
+scale from it. Ordinary birthdays now render at the LARGEST step (neither line
+is long); early wishes come out one step smaller, because "Happy Early
+Birthday," is itself 21 characters. Holidays and context cards are untouched —
+they have no forced break and size exactly as before. **49/49 in the ticker
+suite, 123/123 overall.**
+
 ## dashboard-config.html v1.5.2 — the Quick Links pointed at files that don't exist
 (Sibling surface; app unchanged at 6.26.0. No SW bump — this page is
 intentionally not cached.)

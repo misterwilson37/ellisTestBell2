@@ -1,6 +1,14 @@
 /**
  * Ellis Web Bell — Signage Right Column (behaviour)
- * Version: 1.3.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ * Version: 1.4.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ *
+ * v1.4.0: birthday cards break AFTER THE COMMA — "Happy Birthday," on one
+ *   line, the name on the next — instead of wherever the text happened to
+ *   wrap. At 8cqw the live screen showed "Happy Birthday, Suzie" / "Q.!",
+ *   splitting a child's name across lines. Cards with an explicit break are
+ *   now sized by their LONGEST LINE so that neither line wraps again.
+ *   CALIBRATED AGAINST THE REAL SCREEN, not font arithmetic: that same wrap
+ *   showed ~21 characters per line at 8cqw, and PER_LINE_STEPS scale from it.
  *
  * v1.3.0: the holiday list grew to 2+ events for every calendar day, several
  *   of which mean nothing without a sentence of context ("Who is Gygax?").
@@ -180,8 +188,31 @@
         { max: Infinity, size: '5.25cqw' }
     ];
 
+    /**
+     * v1.4.0: for cards with an explicit line break, the goal is different —
+     * each line must fit on ONE line, so size by the longest line. Calibrated
+     * from the live screen: at 8cqw, "Happy Birthday, Suzie" (21 characters)
+     * fit on a line and the "Q.!" after it did not. The other steps scale from
+     * that in proportion to font size, rounded down to leave a margin.
+     */
+    var PER_LINE_STEPS = [
+        { max: 17, size: '9.5cqw' },   // "Happy Birthday,"  "Ms. Vandermeulen!"
+        { max: 20, size: '8cqw' },
+        { max: 25, size: '6.5cqw' },   // "Happy Early Birthday,"
+        { max: Infinity, size: '5.25cqw' }
+    ];
+
     function fitSizeFor(text) {
-        var length = (text || '').length;
+        text = text || '';
+        if (text.indexOf('\n') !== -1) {
+            var longest = text.split('\n').reduce(function (m, line) {
+                return Math.max(m, line.length);
+            }, 0);
+            for (var p = 0; p < PER_LINE_STEPS.length; p++) {
+                if (longest <= PER_LINE_STEPS[p].max) return PER_LINE_STEPS[p].size;
+            }
+        }
+        var length = text.length;
         for (var i = 0; i < FIT_STEPS.length; i++) {
             if (length <= FIT_STEPS[i].max) return FIT_STEPS[i].size;
         }
@@ -437,7 +468,7 @@
         var today = startOfDay(now);
 
         birthdaysOn(monthDayKey(today)).forEach(function (b) {
-            items.push('Happy Birthday, ' + b.name + '!');
+            items.push('Happy Birthday,\n' + b.name + '!');
         });
 
         if (isSchoolDay(today)) {
@@ -462,7 +493,7 @@
                 if (!names.length) return;
 
                 balancedChunks(names, leadDays.length)[index].forEach(function (name) {
-                    items.push('Happy Early Birthday, ' + name + '!');
+                    items.push('Happy Early Birthday,\n' + name + '!');
                 });
             });
         }
@@ -880,7 +911,7 @@
     }
 
     var SignageRightColumn = {
-        VERSION: '1.3.0',
+        VERSION: '1.4.0',
         init: init,
         // Exposed for the Node tests in tests/right-column.test.mjs — these are
         // the pure parts, and they are where the real logic lives.

@@ -1,6 +1,10 @@
 /**
  * Ellis Web Bell — Signage Right Column (styles)
- * Version: 1.1.0 (app release v6.26.0)
+ * Version: 1.2.0 (app release v6.26.0)
+ *
+ * v1.2.0: white-space: pre-line on the ticker text, so the line break
+ * right-column.js v1.4.0 puts after "Happy Birthday," is honoured. Ordinary
+ * spaces still collapse and wrap exactly as before.
  *
  * v1.1.0: the ticker's font size is now set per line by right-column.js
  * (FIT_STEPS) rather than fixed at 8cqw here. A 25%-of-TV column fits roughly
@@ -131,6 +135,8 @@
     justify-content: center;
     text-align: center;
     padding: 0 4cqw;
+    /* Honour the explicit break after "Happy Birthday," (right-column.js v1.4.0). */
+    white-space: pre-line;
     /* Overridden per line by right-column.js; this is the starting value only. */
     font-size: 8cqw;
     font-weight: 700;
