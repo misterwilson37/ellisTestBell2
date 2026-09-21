@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Config v1.5.2</title>
-    <!-- Dashboard Config v1.5.2 -->
+    <title>Dashboard Config v1.6.0</title>
+    <!-- Dashboard Config v1.6.0 -->
+    <!-- v1.6.0: (a) "Minimum events per day" select (tickerMinEvents), a floor
+         under the ticker's birthday-first rule. Default saves as ABSENT, which
+         the ticker reads as 0 — exactly the old behaviour. (b) "Preview a date"
+         — opens signage/dashright.html?date=YYYY-MM-DD so any day's ticker can
+         be checked without editing a URL by hand. -->
     <!-- v1.5.2: FIXED the Quick Links — "Launch TV Dashboard" and "Dashboard
          Setup" both pointed at /dashboard.html, which does not exist; the
          signage pages live in signage/. Added "Right Column Only" for
@@ -433,6 +438,32 @@
                     </p>
                 </div>
                 <div class="field">
+                    <label>Minimum events per day</label>
+                    <select id="tickerMinEvents">
+                        <option value="">0 — birthdays first (default)</option>
+                        <option value="1">At least 1</option>
+                        <option value="2">At least 2</option>
+                        <option value="3">At least 3</option>
+                        <option value="all">All events, every day</option>
+                    </select>
+                    <p class="help">
+                        Normally a day with two or more birthdays shows no events, one birthday shows one, and none shows them all.
+                        This is a floor under that rule, never a cap — "At least 1" still shows every event on a day with no birthdays.
+                    </p>
+                </div>
+                <div class="field">
+                    <label>Preview a date</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <input type="date" id="tickerPreviewDate" style="flex:1; min-width:160px;">
+                        <button type="button" id="tickerPreviewBtn" class="btn-primary" style="white-space:nowrap;">👁 Preview this day</button>
+                    </div>
+                    <p class="help">
+                        Opens the right column showing that day's ticker — birthdays, early wishes, closures and events — with an amber
+                        PREVIEW badge. Uses the settings as last <strong>saved</strong>, so Save first if you just changed something.
+                        Nothing here changes what the TVs show.
+                    </p>
+                </div>
+                <div class="field">
                     <label>Fallback line 1</label>
                     <input type="text" id="tickerFallbackText" placeholder="Ellis — 4 Houses, 1 Home">
                     <p class="help">
@@ -484,14 +515,29 @@
             <div style="margin-top: 32px; text-align: center;">
                 <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
                 <div style="margin-top: 12px; font-size: 11px; color: #666;">
-                    Dashboard Config v1.5.2
+                    Dashboard Config v1.6.0
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Dashboard Config v1.5.2
+        // Dashboard Config v1.6.0
+
+        // v1.6.0: "Preview a date". Plain navigation — nothing is saved.
+        (function wirePreview() {
+            const input = document.getElementById('tickerPreviewDate');
+            const button = document.getElementById('tickerPreviewBtn');
+            if (!input || !button) return;
+            const now = new Date();
+            input.value = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0');
+            button.addEventListener('click', () => {
+                if (!input.value) { input.focus(); return; }
+                window.open('signage/dashright.html?date=' + encodeURIComponent(input.value), '_blank');
+            });
+        })();
         
         // v1.0.0: Firebase config comes from shared firebase-config.js
         // (loaded via <script src="firebase-config.js"> in <head>).
@@ -613,6 +659,7 @@
                     document.getElementById('holidaysSheetCsvUrl').value = data.holidaysSheetCsvUrl || '';
                     document.getElementById('tickerFallbackText').value = data.tickerFallbackText || '';
                     document.getElementById('tickerFallbackText2').value = data.tickerFallbackText2 || '';
+                    document.getElementById('tickerMinEvents').value = data.tickerMinEvents || '';
                 }
             } catch (error) {
                 console.error('Error loading config:', error);
@@ -652,7 +699,8 @@
             // is a pre-existing affordance defect of the same shape, left alone
             // here because changing it is not this release's job.
             ['birthdaysSheetCsvUrl', 'facultyBirthdaysSheetCsvUrl', 'closuresSheetCsvUrl',
-             'holidaysSheetCsvUrl', 'tickerFallbackText', 'tickerFallbackText2'].forEach(id => {
+             'holidaysSheetCsvUrl', 'tickerFallbackText', 'tickerFallbackText2',
+             'tickerMinEvents'].forEach(id => {
                 const value = document.getElementById(id).value.trim();
                 config[id] = value || firebase.firestore.FieldValue.delete();
             });

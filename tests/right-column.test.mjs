@@ -295,32 +295,7 @@ test('one holiday and no birthdays: fallback line 1 takes the second slot', () =
     assert.deepEqual(I.buildTickerItems(d(2026, 6, 4)), ['Happy Only One!', 'Line One']);
 });
 
-test('ticker sizing never grows as lines get longer, and has a floor', () => {
-    const size = (s) => parseFloat(I.fitSizeFor(s));
-    // Monotonic across the whole range: a longer line must never come back
-    // larger, whatever the breakpoints are tuned to.
-    let previous = Infinity;
-    for (let n = 1; n <= 200; n++) {
-        const current = size('x'.repeat(n));
-        assert.ok(current <= previous, `size grew at length ${n}`);
-        previous = current;
-    }
-    assert.ok(size('Go Ellis') > size('Happy Early Birthday,\nMs. Vandermeulen!'));
-    assert.equal(I.fitSizeFor('x'.repeat(400)), '5.25cqw');   // floor, never 0
-});
 
-test('the longest routine outputs of this feature all get a real size', () => {
-    // Faculty entries are the long ones: a title AND a full surname. If any of
-    // these came back at the largest step, it would overflow the band.
-    const longest = [
-        'Happy Early Birthday,\nMs. Vandermeulen!',
-        'Happy Birthday,\nMr. Featherstonehaugh!',
-        'Ellis — 4 Houses, 1 Home',
-    ];
-    for (const line of longest) {
-        assert.notEqual(I.fitSizeFor(line), '9.5cqw');
-    }
-});
 
 test('faculty are wished exactly like students', () => {
     setData({ faculty: [{ name: 'Mr. Wilson', monthday: '09/17' }] });
@@ -442,25 +417,232 @@ test('early wishes break after the comma too', () => {
     assert.ok(I.buildTickerItems(d(2026, 9, 18)).includes('Happy Early Birthday,\nDevon W.!'));
 });
 
-test('a broken card is sized by its LONGEST line, so neither line wraps', () => {
-    // Calibrated from the live screen: ~21 characters per line fit at 8cqw.
-    // "Happy Birthday," is 15 and "Suzie Q.!" is 9, so the largest step fits.
-    assert.equal(I.fitSizeFor('Happy Birthday,\nSuzie Q.!'), '9.5cqw');
-    // "Happy Early Birthday," is 21 — too long for 9.5cqw or 8cqw on one line.
-    assert.equal(I.fitSizeFor('Happy Early Birthday,\nMr. Wilson!'), '6.5cqw');
-    // A long surname on the second line drives the size, not the greeting.
-    assert.ok(parseFloat(I.fitSizeFor('Happy Birthday,\nMr. Featherstonehaugh!'))
-            < parseFloat(I.fitSizeFor('Happy Birthday,\nSuzie Q.!')));
-});
 
-test('cards without a break are sized exactly as before', () => {
-    assert.equal(I.fitSizeFor('Go Ellis'), '9.5cqw');
-    assert.equal(I.fitSizeFor('Happy National Donut Day!'), '8cqw');
-});
 
 test('holidays and context never get the forced break', () => {
     setData({ holidays: [{ monthday: '02/08', name: "Bill Finger's Birthday",
                            context: 'He created all of the recognizable aspects of Batman.' }] });
     const items = I.buildTickerItems(d(2027, 2, 8));
     assert.ok(items.every(x => !x.includes('\n')));
+});
+
+// --- v1.4.1: the sheets re-fetch without a page reload ----------------------
+
+import { readFileSync } from 'node:fs';
+
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+function stubFetch(handler) {
+    const calls = [];
+    globalThis.fetch = async (url) => { calls.push(url); return handler(url, calls.length); };
+    return calls;
+}
+
+test('init() actually SCHEDULES the hourly re-fetch — the v1.4.0 bug', () => {
+    // The constant existed for four versions with nothing using it. Pin the
+    // wiring itself, not just the constant, so it cannot go quiet again.
+    const src = readFileSync(new URL('../signage/right-column.js', import.meta.url), 'utf8');
+    assert.match(src, /setInterval\(refreshTickerSheets,\s*SHEET_REFRESH_MS\)/);
+    assert.equal(I.SHEET_REFRESH_MS, 60 * 60 * 1000);
+});
+
+test('a re-fetch hits all four configured sheets again', async () => {
+    const calls = stubFetch(() => ({ ok: true, text: async () => 'h1,h2\n' }));
+    I.applyTickerUrls({
+        birthdaysSheetCsvUrl: 'https://t/refetch-b', facultyBirthdaysSheetCsvUrl: 'https://t/refetch-f',
+        closuresSheetCsvUrl: 'https://t/refetch-c', holidaysSheetCsvUrl: 'https://t/refetch-h',
+    });
+    await tick(); await tick();
+    assert.equal(calls.length, 4);
+    I.refreshTickerSheets();
+    await tick(); await tick();
+    assert.equal(calls.length, 8);
+    for (const u of ['b', 'f', 'c', 'h']) {
+        assert.equal(calls.filter(c => c === 'https://t/refetch-' + u).length, 2);
+    }
+});
+
+test('an opt-out made in the sheet reaches the TV on the next re-fetch', async () => {
+    // First load: two kids. Then one family opts out and the published feed
+    // drops that row. After a re-fetch, and with NO reload, the name is gone.
+    let roster = 'name,monthday\nMaya R.,09/17\nDevon W.,09/17\n';
+    stubFetch(() => ({ ok: true, text: async () => roster }));
+    I.setData([], [], [], 'F1', [], 'F2');
+    I.applyTickerUrls({ birthdaysSheetCsvUrl: 'https://t/optout' });
+    await tick(); await tick();
+    assert.ok(I.buildTickerItems(d(2026, 9, 17)).some(x => x.includes('Devon W.')));
+
+    roster = 'name,monthday\nMaya R.,09/17\n';
+    I.refreshTickerSheets();
+    await tick(); await tick();
+    const after = I.buildTickerItems(d(2026, 9, 17));
+    assert.ok(!after.some(x => x.includes('Devon W.')), 'opted-out name still on screen');
+    assert.ok(after.some(x => x.includes('Maya R.')));
+});
+
+test('a failed re-fetch keeps the last good data instead of blanking the band', async () => {
+    let fail = false;
+    stubFetch(() => {
+        if (fail) throw new Error('network down');
+        return { ok: true, text: async () => 'name,monthday\nKeep K.,09/17\n' };
+    });
+    I.applyTickerUrls({ birthdaysSheetCsvUrl: 'https://t/keep' });
+    await tick(); await tick();
+    fail = true;
+    I.refreshTickerSheets();
+    await tick(); await tick();
+    assert.ok(I.buildTickerItems(d(2026, 9, 17)).some(x => x.includes('Keep K.')));
+});
+
+// --- v1.5.0: minimum events, and the ?date= preview -------------------------
+
+const EVENTS3 = ['Alpha', 'Beta', 'Gamma'].map(n => ({ monthday: '09/21', name: n }));
+const KIDS2 = [{ name: 'A.', monthday: '09/21' }, { name: 'B.', monthday: '09/21' }];
+const eventsIn = (items) => items.filter(x => /^Happy (Alpha|Beta|Gamma)!$/.test(x)).length;
+
+function withMin(min, opts) {
+    setData(opts);
+    I.setMinEvents(min);
+    const items = I.buildTickerItems(d(2026, 9, 21));
+    I.setMinEvents('');                        // never leak into other tests
+    return items;
+}
+
+test('default (absent) floor is exactly the old birthday-first rule', () => {
+    assert.equal(eventsIn(withMin('', { birthdays: KIDS2, holidays: EVENTS3 })), 0);
+    assert.equal(eventsIn(withMin('0', { birthdays: KIDS2, holidays: EVENTS3 })), 0);
+});
+
+test("two birthdays + 'At least 1' shows one event — today's actual screen", () => {
+    assert.equal(eventsIn(withMin('1', { birthdays: KIDS2, holidays: EVENTS3 })), 1);
+});
+
+test("'At least 2' and 'All' on a two-birthday day", () => {
+    assert.equal(eventsIn(withMin('2', { birthdays: KIDS2, holidays: EVENTS3 })), 2);
+    assert.equal(eventsIn(withMin('all', { birthdays: KIDS2, holidays: EVENTS3 })), 3);
+});
+
+test('the floor never exceeds what the date actually has', () => {
+    assert.equal(eventsIn(withMin('3', { birthdays: KIDS2, holidays: EVENTS3.slice(0, 1) })), 1);
+});
+
+test('a floor is never a CAP: no-birthday days still show every event', () => {
+    assert.equal(eventsIn(withMin('1', { holidays: EVENTS3 })), 3);
+});
+
+test('birthdays always come first, whatever the floor', () => {
+    const items = withMin('all', { birthdays: KIDS2, holidays: EVENTS3 });
+    assert.ok(items[0].includes('A.') && items[1].includes('B.'));
+});
+
+test('parseMinEvents: sane values only, junk means default', () => {
+    assert.equal(I.parseMinEvents('all'), 'all');
+    assert.equal(I.parseMinEvents('ALL'), 'all');
+    assert.equal(I.parseMinEvents('2'), 2);
+    for (const junk of ['', null, undefined, 'lots', '-1', '0']) {
+        assert.equal(I.parseMinEvents(junk), 0);
+    }
+});
+
+test('parsePreviewDate: a real date only', () => {
+    assert.equal(I.parsePreviewDate('?date=2026-11-18').getTime(), d(2026, 11, 18).getTime());
+    assert.equal(I.parsePreviewDate('?tv&date=2026-11-18').getTime(), d(2026, 11, 18).getTime());
+    assert.equal(I.parsePreviewDate(''), null);                  // every real TV
+    assert.equal(I.parsePreviewDate('?date=11/18/2026'), null);
+    assert.equal(I.parsePreviewDate('?date=2026-02-31'), null);  // no silent rollover
+});
+
+// --- v1.6.0: the card layout engine -----------------------------------------
+// A fake font where every character is 55 units wide at REF 100 and metrics
+// are Urbanist-like, so the geometry is exact and the tests are deterministic.
+
+const TOOLS = { width: I.FALLBACK_WIDTH, metrics: I.FALLBACK_METRICS };
+const GEOM = { avail: 900, halfH: 100, fill: 80 };
+const plan = (text, geom = GEOM) => I.planCard(text, geom, TOOLS);
+const inkHeight = (p) => (p.k - 1) * p.lh + (TOOLS.metrics.asc + TOOLS.metrics.desc) * p.px / 100;
+
+test('every card is split into exactly two halves: the hinge never cuts a line', () => {
+    for (const text of ["Happy New Year's Day!", 'Go Ellis', 'Happy Birthday,\nSuzie Q.!',
+        'Asimov wrote nearly 500 books and invented the Three Laws of Robotics.']) {
+        const p = plan(text);
+        assert.equal(p.lines.length, 2 * p.k, text);
+    }
+});
+
+test("the owner's example: New Year's Day splits at the balanced break", () => {
+    assert.deepEqual(plan("Happy New Year's Day!").lines, ['Happy New', "Year's Day!"]);
+});
+
+test('a birthday keeps its break after the comma, whatever the balance', () => {
+    assert.deepEqual(plan('Happy Birthday,\nSuzie Q.!').lines, ['Happy Birthday,', 'Suzie Q.!']);
+    assert.equal(plan('Happy Birthday,\nSuzie Q.!').k, 1);
+});
+
+test('splitBalanced really minimises the widest line (checked by brute force)', () => {
+    const words = 'Run Up the Flagpole & See If Anyone Salutes Day'.split(' ');
+    const w = (s) => s.length;
+    const got = Math.max(...I.splitBalanced(words, 2, w).map(w));
+    let best = Infinity;
+    for (let j = 1; j < words.length; j++) {
+        best = Math.min(best, Math.max(w(words.slice(0, j).join(' ')), w(words.slice(j).join(' '))));
+    }
+    assert.equal(got, best);
+});
+
+test('splitBalanced never loses or reorders a word', () => {
+    const words = 'Mary Shelley published Frankenstein in 1818 anonymously at age 20'.split(' ');
+    for (const n of [2, 4]) {
+        assert.deepEqual(I.splitBalanced(words, n, (s) => s.length).join(' ').split(' '), words);
+    }
+});
+
+test('a single word goes in the top half and the bottom is left empty', () => {
+    assert.deepEqual(plan('Hanukkah').lines, ['Hanukkah', '']);
+});
+
+test('the text always fits: width, and 80% of the half height', () => {
+    for (const text of ["Happy New Year's Day!", 'Happy Run Up the Flagpole & See If Anyone Salutes Day!',
+        'Asimov wrote nearly 500 books and invented the Three Laws of Robotics.',
+        'Happy Early Birthday,\nMr. Featherstonehaugh!']) {
+        const p = plan(text);
+        const widest = Math.max(...p.lines.map(I.FALLBACK_WIDTH)) * p.px / 100;
+        assert.ok(widest <= GEOM.avail + 0.01, 'too wide: ' + text);
+        assert.ok(inkHeight(p) <= GEOM.fill + 0.01, 'too tall: ' + text);
+    }
+});
+
+test('short cards all land at the same size, because height caps them', () => {
+    assert.equal(plan("Happy New Year's Day!").px, plan('Happy Pi Day!').px);
+    assert.equal(plan('Happy Birthday,\nSuzie Q.!').px, plan('Go Ellis').px);
+});
+
+test('long text shrinks, but only as far as it must', () => {
+    const shortPx = plan("Happy New Year's Day!").px;
+    const longPx = plan('Asimov wrote nearly 500 books and invented the Three Laws of Robotics.').px;
+    assert.ok(longPx < shortPx);
+});
+
+test('two lines per half is chosen only when it gives larger text', () => {
+    // A tall, narrow tile makes four short lines beat two long ones.
+    const tall = { avail: 400, halfH: 400, fill: 320 };
+    const p = plan('Asimov wrote nearly 500 books and invented the Three Laws of Robotics.', tall);
+    assert.equal(p.k, 2);
+    // ...and on the real, wide, short band it stays one line per half.
+    assert.equal(plan('Asimov wrote nearly 500 books and invented the Three Laws of Robotics.').k, 1);
+});
+
+test('the nudge is the same for one or two lines per half', () => {
+    const one = plan("Happy New Year's Day!");
+    const scale = one.px / 100, M = TOOLS.metrics;
+    assert.equal(one.nudge.toFixed(6), ((M.fd - M.fa + M.asc - M.desc) / 2 * scale).toFixed(6));
+});
+
+test('names do not hop: every birthday name line gets the same nudge', () => {
+    const a = plan('Happy Birthday,\nSuzie Q.!'), b = plan('Happy Birthday,\nMaya R.!');
+    assert.equal(a.nudge, b.nudge);
+    assert.equal(a.px, b.px);
+});
+
+test('empty text does not crash the layout', () => {
+    assert.doesNotThrow(() => plan(''));
 });

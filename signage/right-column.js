@@ -1,6 +1,41 @@
 /**
  * Ellis Web Bell — Signage Right Column (behaviour)
- * Version: 1.4.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ * Version: 1.6.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ *
+ * v1.6.0: THE FLIP, REBUILT with the owner over four rounds of live mockups.
+ *   (a) FIXED: the top flap never fell (parked at -90deg idle AND flipping),
+ *       so every flip was half an animation.
+ *   (b) STYLE D, his pick: each card is a lighter tile on the dark band with a
+ *       dark hinge gap, and the falling flap darkens as it tips while the
+ *       landing one brightens — the motion cue that makes a flip readable when
+ *       only a name changes.
+ *   (c) EVERY CARD IS SPLIT AT THE HINGE — planCard() — so letters never sit
+ *       across it; the balanced word break is measured in the real font.
+ *   (d) EVERY HALF IS INK-CENTRED: equal space above the tallest letter and
+ *       below the deepest descender, from a FIXED reference so names do not
+ *       hop between kids.
+ *   (e) SIZE IS MEASURED, NOT GUESSED: the largest that fits width and 80% of
+ *       the half. FIT_STEPS / PER_LINE_STEPS / fitSizeFor are gone.
+ *
+ * v1.5.0: (a) MINIMUM EVENTS, a config-page setting (tickerMinEvents: absent =
+ *   0, or 1/2/3/"all"). The birthday-first rules decide how many events a day
+ *   shows; this is a FLOOR under them, never a ceiling. Absent or 0 is exactly
+ *   the v1.4.1 behaviour. Asked for because a two-birthday day hid every event
+ *   and the owner could not see what events looked like on the real screen.
+ *   (b) PREVIEW ANY DATE with ?date=YYYY-MM-DD. The ticker computes that day
+ *   instead of today — birthdays, early wishes, closures, events — while the
+ *   clock, scores and flip timing stay real. For checking Thanksgiving week
+ *   in September. Shows a loud PREVIEW badge so a preview URL left in a Yodeck
+ *   playlist by mistake cannot pass for the real day.
+ *
+ * v1.4.1: FIXED — the four ticker sheets were fetched ONCE, at page load, and
+ *   never again. SHEET_REFRESH_MS was declared from v1.0.0 and never wired to
+ *   anything. Yodeck players do not reload on their own, so on a real TV an
+ *   edit to any sheet — a new student, a corrected holiday, AN OPT-OUT — would
+ *   never have reached the screen. The day rolling over was unaffected (the
+ *   sheets cover the whole year and the date is re-checked every 250ms); only
+ *   EDITS were stranded. All four now re-fetch hourly. A failed re-fetch keeps
+ *   the last good data rather than blanking the band.
  *
  * v1.4.0: birthday cards break AFTER THE COMMA — "Happy Birthday," on one
  *   line, the name on the next — instead of wherever the text happened to
@@ -167,56 +202,117 @@
     var DEFAULT_FALLBACK_TEXT = 'Ellis — 4 Houses, 1 Home';
     var DEFAULT_FALLBACK_TEXT_2 = 'Have a delightful day!';
 
-    /**
-     * Font size by line length, in cqw against the column. The band holds
-     * roughly three wrapped lines, and a fixed size either wastes the space on
-     * short lines or overflows on long ones. Breakpoints, not a smooth curve:
-     * a continuous fit would make every flip a slightly different size, which
-     * reads as jitter on a wall.
-     */
+    // --- Card layout (v1.6.0) -------------------------------------------------
     //
-    // Sizing arithmetic these were derived from, for whoever tunes them next:
-    // at 8cqw in a 25%-of-TV column the glyphs run ~0.52em wide, so a line
-    // holds ~22 characters and the 12% band holds not quite three of them.
-    // Hence ~44 characters is the comfortable two-line ceiling at 8cqw. THESE
-    // ARE ESTIMATES, NOT MEASUREMENTS — the real check is a long faculty name
-    // on the actual frame.
-    var FIT_STEPS = [
-        { max: 20, size: '9.5cqw' },   // "Go Ellis", "Happy Birthday, A.!"
-        { max: 34, size: '8cqw' },     // "Happy Early Birthday, Mr. Wilson!" (33)
-        { max: 50, size: '6.5cqw' },   // "Happy Early Birthday, Ms. Vandermeulen!" (39)
-        { max: Infinity, size: '5.25cqw' }
-    ];
+    // Every card is split into TWO HALVES at the hinge — one line per half, or
+    // two per half for long text — so the hinge always falls BETWEEN lines and
+    // never through letters. The owner's test for "centred": the gap above the
+    // tallest letter equals the gap below the deepest descender, in EACH half.
+    //
+    // This replaces v1.2.0-v1.4.0's FIT_STEPS / PER_LINE_STEPS, which were
+    // size tables guessed from font arithmetic. Everything here is MEASURED in
+    // the font the screen actually loaded, which matters because the owner's
+    // Mac has Century Gothic and the Yodeck players almost certainly fall back
+    // to Urbanist. Worked out in four rounds of live mockups with the owner;
+    // his verdict on the result was "a thousand times better, no notes".
+
+    var REF_PX = 100;          // metrics are measured once at 100px and scaled
+    var FILL = 0.8;            // text ink may use 80% of a half's height
+    var PAD_CQW = 2;           // horizontal padding inside the tile, each side
+    var HINGE_CQW = 0.8;       // the dark gap between the halves
+    var TICKER_FONT = '"Century Gothic", "Urbanist", "Questrial", sans-serif';
+
+    // Used only where canvas measurement is unavailable (very old engines, the
+    // Node/jsdom test harness). Roughly Urbanist Bold at 100px.
+    var FALLBACK_METRICS = { fa: 95, fd: 25, asc: 75, desc: 22 };
+    var FALLBACK_WIDTH = function (str) { return (str || '').length * 55; };
+    // Layout geometry to split lines against when the page is not laid out.
+    var NOMINAL_GEOM = { avail: 91, halfH: 11.3, fill: 11.3 * FILL };
 
     /**
-     * v1.4.0: for cards with an explicit line break, the goal is different —
-     * each line must fit on ONE line, so size by the longest line. Calibrated
-     * from the live screen: at 8cqw, "Happy Birthday, Suzie" (21 characters)
-     * fit on a line and the "Q.!" after it did not. The other steps scale from
-     * that in proportion to font size, rounded down to leave a margin.
+     * Splits words into exactly n lines so the WIDEST line is as narrow as
+     * possible — "Happy New / Year's Day!", not "Happy / New Year's Day!".
+     * Exhaustive over break points (a card is a few dozen words at most), with
+     * widths measured by widthFn so the balance is true in the real font rather
+     * than by character count. Fewer words than lines pads with empty lines.
      */
-    var PER_LINE_STEPS = [
-        { max: 17, size: '9.5cqw' },   // "Happy Birthday,"  "Ms. Vandermeulen!"
-        { max: 20, size: '8cqw' },
-        { max: 25, size: '6.5cqw' },   // "Happy Early Birthday,"
-        { max: Infinity, size: '5.25cqw' }
-    ];
-
-    function fitSizeFor(text) {
-        text = text || '';
-        if (text.indexOf('\n') !== -1) {
-            var longest = text.split('\n').reduce(function (m, line) {
-                return Math.max(m, line.length);
-            }, 0);
-            for (var p = 0; p < PER_LINE_STEPS.length; p++) {
-                if (longest <= PER_LINE_STEPS[p].max) return PER_LINE_STEPS[p].size;
+    function splitBalanced(words, n, widthFn) {
+        var m = words.length;
+        if (m <= n) {
+            var padded = words.slice();
+            while (padded.length < n) padded.push('');
+            return padded;
+        }
+        var widthMemo = {};
+        function lineWidth(i, j) {
+            var key = i + ',' + j;
+            if (!(key in widthMemo)) widthMemo[key] = widthFn(words.slice(i, j).join(' '));
+            return widthMemo[key];
+        }
+        var best = {}, cut = {};
+        function solve(i, lines) {
+            var key = i + '|' + lines;
+            if (key in best) return best[key];
+            if (lines === 1) return (best[key] = lineWidth(i, m));
+            var bestVal = Infinity, bestCut = -1;
+            for (var j = i + 1; j <= m - lines + 1; j++) {
+                var v = Math.max(lineWidth(i, j), solve(j, lines - 1));
+                if (v < bestVal) { bestVal = v; bestCut = j; }
             }
+            cut[key] = bestCut;
+            return (best[key] = bestVal);
         }
-        var length = text.length;
-        for (var i = 0; i < FIT_STEPS.length; i++) {
-            if (length <= FIT_STEPS[i].max) return FIT_STEPS[i].size;
+        solve(0, n);
+        var out = [], at = 0;
+        for (var l = n; l > 1; l--) {
+            var next = cut[at + '|' + l];
+            out.push(words.slice(at, next).join(' '));
+            at = next;
         }
-        return FIT_STEPS[FIT_STEPS.length - 1].size;
+        out.push(words.slice(at).join(' '));
+        return out;
+    }
+
+    /**
+     * Plans one card: which lines go in which half, and the font size.
+     *   geom:  { avail: usable line width, halfH: one half's height, fill }
+     *   tools: { width(str) at REF_PX, metrics {fa, fd, asc, desc} at REF_PX }
+     * Birthday cards carry an explicit break after the comma and keep it; every
+     * other card is split at the most balanced word break. Long text may go two
+     * lines per half, chosen only when that gives visibly LARGER text (3%).
+     * Size = the largest that fits both the width and FILL of the half height,
+     * so short cards all land at the same size and long ones shrink only as
+     * far as they must.
+     */
+    function planCard(text, geom, tools) {
+        var M = tools.metrics;
+        var width = tools.width;
+        var options;
+        if (text.indexOf('\n') !== -1) {
+            var parts = text.split('\n');
+            options = [{ k: 1, lines: [parts[0], parts.slice(1).join(' ')] }];
+        } else {
+            var words = text.split(/\s+/).filter(Boolean);
+            options = [{ k: 1, lines: splitBalanced(words, 2, width) }];
+            if (words.length >= 4) options.push({ k: 2, lines: splitBalanced(words, 4, width) });
+        }
+        var pick = null;
+        options.forEach(function (o) {
+            var widest = Math.max.apply(null, o.lines.map(function (l) { return width(l); }).concat([1]));
+            var pxByWidth = REF_PX * geom.avail / widest;
+            var inkEm = ((o.k - 1) * (M.fa + M.fd) + M.asc + M.desc) / REF_PX;
+            var pxByHeight = geom.fill / inkEm;
+            o.px = Math.max(1, Math.min(pxByWidth, pxByHeight));
+            if (!pick || o.px > pick.px * 1.03) pick = o;
+        });
+        var scale = pick.px / REF_PX;
+        // Line height = the font's own ascent + descent, so one line's box is
+        // exactly its metrics. The nudge then moves the reference ink box (tallest
+        // ascender to deepest descender) to the centre of its half. Derived in
+        // the round-11 notes; it is the same for any number of lines per half.
+        pick.lh = (M.fa + M.fd) * scale;
+        pick.nudge = (M.fd - M.fa + M.asc - M.desc) / 2 * scale;
+        return pick;
     }
 
     // --- Module state -------------------------------------------------------
@@ -239,6 +335,13 @@
     var holidays = [];    // [{ monthday, text }]
     var fallbackText = DEFAULT_FALLBACK_TEXT;
     var fallbackText2 = DEFAULT_FALLBACK_TEXT_2;
+
+    // v1.5.0: floor on events per day. 0 (the default) is the birthday-first
+    // rule unchanged; 'all' shows every event every day.
+    var minEvents = 0;
+
+    // v1.5.0: ?date=YYYY-MM-DD. null on every real TV.
+    var previewDay = null;
 
 
     var tickerItems = [];
@@ -506,16 +609,21 @@
         // Order and, on one-birthday days, WHICH event, are seeded by the date:
         // fixed all day, and identical on every TV.
         var birthdayCount = items.length;
-        if (birthdayCount < MIN_TICKER_ITEMS) {
-            var matches = holidays.filter(function (h) { return h.monthday === monthDayKey(today); });
-            if (matches.length) {
-                var offset = seedFor(today) % matches.length;
-                var wanted = birthdayCount === 0 ? matches.length : 1;
-                for (var k = 0; k < wanted; k++) {
-                    cardsFor(matches[(offset + k) % matches.length]).forEach(function (card) {
-                        items.push(card);
-                    });
-                }
+        var matches = holidays.filter(function (h) { return h.monthday === monthDayKey(today); });
+        if (matches.length) {
+            // The birthday-first rule...
+            var byRule = birthdayCount >= MIN_TICKER_ITEMS ? 0
+                       : birthdayCount === 0 ? matches.length
+                       : 1;
+            // ...with v1.5.0's configured floor under it. Never a ceiling: a
+            // floor of 1 on a no-birthday day still shows every event.
+            var floor = minEvents === 'all' ? matches.length : minEvents;
+            var wanted = Math.min(matches.length, Math.max(byRule, floor));
+            var offset = seedFor(today) % matches.length;
+            for (var k = 0; k < wanted; k++) {
+                cardsFor(matches[(offset + k) % matches.length]).forEach(function (card) {
+                    items.push(card);
+                });
             }
         }
 
@@ -548,13 +656,100 @@
 
     // --- Ticker rendering (the split-flap) ----------------------------------
 
+    var measureCtx = null;      // null = not tried yet, false = unavailable
+    var metricsCache = null;
+    var planCache = {};
+
+    /** Width and metrics in the font this screen actually loaded. */
+    function measureTools() {
+        if (measureCtx === null) {
+            try {
+                var canvas = document.createElement('canvas');
+                measureCtx = (canvas.getContext && canvas.getContext('2d')) || false;
+            } catch (e) {
+                measureCtx = false;
+            }
+        }
+        if (!measureCtx) return { width: FALLBACK_WIDTH, metrics: FALLBACK_METRICS };
+        var font = '700 ' + REF_PX + 'px ' + TICKER_FONT;
+        if (!metricsCache) {
+            measureCtx.font = font;
+            var ref = measureCtx.measureText('Hg');
+            if (typeof ref.fontBoundingBoxAscent !== 'number' ||
+                typeof ref.actualBoundingBoxAscent !== 'number') {
+                metricsCache = FALLBACK_METRICS;
+            } else {
+                metricsCache = {
+                    fa: ref.fontBoundingBoxAscent,
+                    fd: ref.fontBoundingBoxDescent,
+                    asc: measureCtx.measureText('HBbdfhklt').actualBoundingBoxAscent,
+                    desc: measureCtx.measureText('gjpqy').actualBoundingBoxDescent
+                };
+            }
+        }
+        return {
+            width: function (str) { measureCtx.font = font; return measureCtx.measureText(str).width; },
+            metrics: metricsCache
+        };
+    }
+
+    /** The real tile geometry, or null before layout (hidden page, test DOM). */
+    function currentGeom() {
+        var ticker = root && root.querySelector('.rc-ticker');
+        var flap = root && root.querySelector('.rc-flap');
+        if (!ticker || !flap || !ticker.clientWidth || !flap.clientHeight) return null;
+        var w = ticker.clientWidth;
+        var halfH = flap.clientHeight / 2 - (HINGE_CQW / 100 * w) / 2;
+        return { avail: flap.clientWidth - 2 * (PAD_CQW / 100 * w), halfH: halfH, fill: FILL * halfH };
+    }
+
+    function renderCard(el, text) {
+        var geom = currentGeom();
+        var key = text + '|' + (geom ? Math.round(geom.avail) + 'x' + Math.round(geom.halfH) : 'nominal');
+        var plan = planCache[key] || (planCache[key] = planCard(text, geom || NOMINAL_GEOM, measureTools()));
+
+        el.textContent = '';
+        el.setAttribute('data-text', text);
+        // Without real geometry the lines are still split per half; sizes fall
+        // back to the stylesheet's cqw default.
+        el.style.fontSize = geom ? plan.px.toFixed(2) + 'px' : '';
+        el.style.lineHeight = geom ? plan.lh.toFixed(2) + 'px' : '';
+
+        [plan.lines.slice(0, plan.k), plan.lines.slice(plan.k)].forEach(function (group) {
+            var half = document.createElement('div');
+            half.className = 'rc-hb';
+            if (geom) half.style.setProperty('--rc-nudge', plan.nudge.toFixed(2) + 'px');
+            var block = document.createElement('i');
+            group.forEach(function (line) {
+                var row = document.createElement('div');
+                // textContent, never innerHTML: names come from a spreadsheet.
+                row.textContent = line || '\u00a0';
+                block.appendChild(row);
+            });
+            half.appendChild(block);
+            el.appendChild(half);
+        });
+    }
+
     function setFlapText(role, text) {
         var el = root.querySelector('[data-flap="' + role + '"]');
-        if (!el) return;
-        el.textContent = text;
-        // Per-span, not per-band: mid-flip the outgoing and incoming halves
-        // hold different strings and may want different sizes.
-        el.style.fontSize = fitSizeFor(text);
+        if (el) renderCard(el, text);
+    }
+
+    /**
+     * Re-measure and re-render all four layers. Needed when the webfont
+     * finishes loading (the first render may have measured a fallback font)
+     * and when the screen changes size.
+     */
+    function relayoutTicker() {
+        metricsCache = null;
+        planCache = {};
+        if (!root) return;
+        var layers = root.querySelectorAll('[data-flap]');
+        for (var i = 0; i < layers.length; i++) {
+            var t = layers[i].getAttribute('data-text');
+            if (t !== null) renderCard(layers[i], t);
+        }
     }
 
     function showTickerText(text, animate) {
@@ -576,20 +771,29 @@
         setFlapText('top-next', text);
         setFlapText('back-next', text);
 
-        flap.classList.remove('rc-flipping');
-        void flap.offsetWidth;            // restart the transition
+        // v1.6.0 FIX: through v1.5.0 the top flap was parked edge-on both
+        // before AND during the flip, so it never visibly fell — only the
+        // bottom half moved, and a card whose first line did not change barely
+        // looked like it flipped. Now: snap it flat covering the old top half
+        // (rc-armed, no transition), force a reflow, THEN animate it down.
+        flap.classList.remove('rc-flipping', 'rc-armed');
+        void flap.offsetWidth;
+        flap.classList.add('rc-armed');
+        void flap.offsetWidth;
         flap.classList.add('rc-flipping');
 
         shownText = text;
         setTimeout(function () {
-            flap.classList.remove('rc-flipping');
+            flap.classList.remove('rc-flipping', 'rc-armed');
             setFlapText('bottom-current', text);
             setFlapText('front-current', text);
         }, 520);
     }
 
     function updateTicker(now) {
-        refreshTickerItems(now);
+        // v1.5.0: content comes from the preview day when one is set; the flip
+        // timing always follows the real clock.
+        refreshTickerItems(previewDay || now);
         if (!tickerItems.length) return;
         // Wall-clock derived, so every page showing this column flips to the
         // same item at the same instant.
@@ -747,6 +951,42 @@
         invalidateTickerItems();
     }
 
+    /**
+     * v1.4.1: re-fetch every configured ticker sheet. Called hourly from init()
+     * — which is the fix: this was declared-but-unused for four versions, so
+     * sheet edits only ever reached a TV that happened to reload.
+     */
+    function refreshTickerSheets() {
+        if (sheetUrls.birthdays) loadBirthdays(sheetUrls.birthdays);
+        if (sheetUrls.faculty) loadFacultyBirthdays(sheetUrls.faculty);
+        if (sheetUrls.closures) loadClosures(sheetUrls.closures);
+        if (sheetUrls.holidays) loadHolidays(sheetUrls.holidays);
+    }
+
+    /** "1"/"2"/"3" -> number, "all" -> 'all', anything else -> 0 (the default). */
+    function parseMinEvents(raw) {
+        var v = String(raw == null ? '' : raw).trim().toLowerCase();
+        if (v === 'all') return 'all';
+        var n = parseInt(v, 10);
+        return (n > 0 && n < 100) ? n : 0;
+    }
+
+    /** ?date=2026-11-18 -> that local day, or null. Strict: junk is ignored. */
+    function parsePreviewDate(search) {
+        try {
+            var raw = new URLSearchParams(search || '').get('date');
+            if (!raw) return null;
+            var m = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return null;
+            var day = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            // Reject 2026-02-31 and friends, which Date would silently roll over.
+            if (day.getMonth() !== Number(m[2]) - 1) return null;
+            return day;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function applyTickerUrls(data) {
         var next = {
             birthdays: (data.birthdaysSheetCsvUrl || '').trim(),
@@ -761,6 +1001,9 @@
 
         var nextFallback = (data.tickerFallbackText || '').trim() || DEFAULT_FALLBACK_TEXT;
         if (nextFallback !== fallbackText) { fallbackText = nextFallback; invalidateTickerItems(); }
+
+        var nextMin = parseMinEvents(data.tickerMinEvents);
+        if (nextMin !== minEvents) { minEvents = nextMin; invalidateTickerItems(); }
 
         var nextFallback2 = (data.tickerFallbackText2 || '').trim() || DEFAULT_FALLBACK_TEXT_2;
         if (nextFallback2 !== fallbackText2) { fallbackText2 = nextFallback2; invalidateTickerItems(); }
@@ -842,6 +1085,7 @@
                         '<div class="rc-flap-half rc-flap-bottom"><span data-flap="bottom-current"></span></div>' +
                         '<div class="rc-flap-half rc-flap-top rc-flap-front"><span data-flap="front-current"></span></div>' +
                         '<div class="rc-flap-half rc-flap-bottom rc-flap-back"><span data-flap="back-next"></span></div>' +
+                        '<div class="rc-flap-hinge"></div>' +
                     '</div>' +
                 '</div>' +
                 '<div class="houses-area" id="houses-area">' + houseCards + '</div>' +
@@ -873,7 +1117,19 @@
 
         if (!root) throw new Error('right-column.js: no mount element given');
 
+        previewDay = parsePreviewDate(global.location && global.location.search);
+
         root.innerHTML = buildMarkup();
+        if (previewDay) {
+            // Loud on purpose: a preview URL left in a Yodeck playlist must
+            // never pass for the real day on a hallway screen.
+            var badge = document.createElement('div');
+            badge.className = 'rc-preview-badge';
+            badge.textContent = 'PREVIEW ' + monthDayKey(previewDay) + '/' + previewDay.getFullYear();
+            root.querySelector('.rc-ticker').appendChild(badge);
+            console.warn('[rc/ticker] PREVIEW DATE ' + dateKey(previewDay) +
+                ' — the ticker is showing a different day than today');
+        }
 
         if (scheduleConfigOverride) {
             scheduleConfig = scheduleConfigOverride;
@@ -907,11 +1163,29 @@
         // The ticker flips on its own cadence, not the clock's: at 5s a card a
         // 1s tick would be up to a second late every time.
         setInterval(function () { updateTicker(new Date()); }, 250);
+        // v1.6.0: the first cards may be measured before the webfont arrives;
+        // re-measure once it does, and whenever the screen changes size.
+        try {
+            if (document.fonts) {
+                document.fonts.ready.then(relayoutTicker);
+                if (document.fonts.addEventListener) {
+                    document.fonts.addEventListener('loadingdone', relayoutTicker);
+                }
+            }
+        } catch (e) { /* layout still works, just measured in the fallback font */ }
+        var resizeTimer = null;
+        global.addEventListener && global.addEventListener('resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(relayoutTicker, 200);
+        });
+        // v1.4.1: sheet edits (a new student, an opt-out) reach the TV within
+        // the hour without a page reload.
+        setInterval(refreshTickerSheets, SHEET_REFRESH_MS);
         tick();
     }
 
     var SignageRightColumn = {
-        VERSION: '1.4.0',
+        VERSION: '1.6.0',
         init: init,
         // Exposed for the Node tests in tests/right-column.test.mjs — these are
         // the pure parts, and they are where the real logic lives.
@@ -924,8 +1198,17 @@
             upcomingClosureRuns: upcomingClosureRuns,
             buildTickerItems: buildTickerItems,
             isSchoolDay: isSchoolDay,
-            fitSizeFor: fitSizeFor,
             headlineFor: headlineFor,
+            splitBalanced: splitBalanced,
+            planCard: planCard,
+            FALLBACK_METRICS: FALLBACK_METRICS,
+            FALLBACK_WIDTH: FALLBACK_WIDTH,
+            parseMinEvents: parseMinEvents,
+            parsePreviewDate: parsePreviewDate,
+            setMinEvents: function (v) { minEvents = parseMinEvents(v); invalidateTickerItems(); },
+            applyTickerUrls: applyTickerUrls,
+            refreshTickerSheets: refreshTickerSheets,
+            SHEET_REFRESH_MS: SHEET_REFRESH_MS,
             setData: function (b, c, h, f, fac, f2) {
                 // Test fixtures may use the pre-1.3.0 {monthday, text} shape;
                 // normalise so they read as a name with no context.

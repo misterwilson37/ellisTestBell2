@@ -2,6 +2,100 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## signage/right-column.js v1.6.0 — the flip, rebuilt
+(Sibling surface; app unchanged at 6.26.0. CSS v1.4.0, SW 1.46.0. **The .js and
+.css must ship together** — the new script builds markup the old stylesheet
+cannot lay out.)
+
+Designed with the owner over four rounds of live, animated mockups in the chat,
+each one answering what the last one exposed. His verdict on the result: "a
+thousand times better. No notes."
+
+- **FIXED: the top flap never fell.** Through v1.5.0 it was parked at -90deg in
+  both the idle and the flipping rule, so every flip was half an animation —
+  only the bottom moved, and a card whose first line didn't change barely read
+  as a flip at all. A new `.rc-armed` step snaps it flat over the outgoing top
+  half with no transition, forces a reflow, and only then lets it fall.
+- **Style D**, the owner's pick of four: each card is a lighter tile on the dark
+  band with a dark hinge gap, and the falling flap darkens as it tips away while
+  the landing flap brightens. That shading is the motion cue that makes a flip
+  visible from a hallway when only a name changes.
+- **Every card is split AT the hinge** (`planCard`). Letters never sit across
+  the gap — "Happy New Year's Day!" on one line was unreadable with the hinge
+  through it. Cards split at the most balanced word break, measured in the real
+  font (`Happy New / Year's Day!`, not `Happy / New Year's Day!`); long text may
+  go two lines per half, but only when that gives visibly larger text. Birthday
+  cards keep their break after the comma.
+- **Every half is ink-centred** to the owner's own test: the gap above the
+  tallest letter equals the gap below the deepest descender, in each half. The
+  reference is fixed (tallest ascender to deepest descender in the font), not
+  each card's own letters, so names do not hop up and down between kids.
+- **Size is measured, not guessed.** The largest size that fits both the width
+  and 80% of the half's height. Short cards all land at the same size; long ones
+  shrink only as far as they must. `FIT_STEPS`, `PER_LINE_STEPS` and
+  `fitSizeFor` are gone, along with the four tests that pinned them.
+- **Measured on each screen**, because fonts differ: the owner's Mac has Century
+  Gothic and the Yodeck players almost certainly fall back to Urbanist. Layout
+  re-runs when the webfont finishes loading and when the screen resizes.
+  Where canvas measurement is unavailable it degrades to fixed estimates rather
+  than failing, and card text is set with `textContent`, never `innerHTML`.
+
+Verified: 13 new layout tests (every card has exactly two halves, the balanced
+split checked against brute force, nothing ever overflows width or height,
+names don't hop), plus a live DOM check confirming the flip passes through the
+armed-but-not-yet-falling state and clears afterwards. **Honest limit:** that DOM
+check runs without a real layout engine or real fonts, so final sizing is
+verified on the owner's TV, not here. **144/144.**
+
+## signage/right-column.js v1.5.0 — minimum events, and preview any date
+(Sibling surface; app unchanged at 6.26.0. CSS v1.3.0, config v1.6.0, SW 1.45.0.)
+
+**Minimum events per day** (`tickerMinEvents`, config page dropdown: 0 / 1 / 2 /
+3 / all). A FLOOR under the birthday-first rule, never a cap — "at least 1"
+still shows every event on a no-birthday day. Default saves as absent, which
+reads as 0: exactly the old behaviour. Asked for because a two-birthday day hid
+every event and the owner couldn't see what events looked like on the screen.
+
+**Preview any date**: `signage/dashright.html?date=YYYY-MM-DD` computes that
+day's ticker — birthdays, early wishes, closures, events — while the clock,
+scores and flip timing stay real. The config page gets a date picker and a
+"Preview this day" button so nobody types the URL. **An amber PREVIEW badge sits
+on the ticker**, because a preview URL left in a Yodeck playlist by mistake must
+never pass for the real day. Strict parsing: `2026-02-31` is rejected rather than
+silently rolling into March.
+
+**FOUND, NOT YET FIXED IN THIS RELEASE — the flip has only ever run half its
+animation.** A split-flap is two motions: the top half falls, then the bottom
+swings down. The top-half flap was parked edge-on both before AND during the
+flip (the idle rule and the flipping rule both said rotateX(-90deg)), so on the
+TV the top half snaps and only the bottom moves. With only a name changing,
+that reads as nearly nothing. Fixed in the next release together with the
+owner's chosen tile style.
+
+## signage/right-column.js v1.4.1 — the ticker sheets now actually re-fetch
+(Sibling surface; app unchanged at 6.26.0. SW 1.44.0.)
+
+**FIXED: the four ticker sheets loaded once, at page load, and never again.**
+`SHEET_REFRESH_MS` was declared in v1.0.0 and nothing ever used it. Found when
+the owner noticed his Yodeck players never reload the page on their own — which
+means that on a real TV, **an edit to any sheet would never have reached the
+screen. That includes an opt-out**: a family asks to be left off, the row comes
+out of the published feed, and the name keeps showing indefinitely. The day
+rolling over was unaffected — the sheets cover the whole year and the date is
+re-checked every 250ms — so only edits were stranded.
+
+All four sheets now re-fetch hourly. A failed re-fetch keeps the last good data
+rather than blanking the band. Four new tests, one of which checks the
+scheduling line itself rather than the constant, since the constant is exactly
+what existed while the bug did; it was confirmed to FAIL with the fix removed.
+**127/127.**
+
+**Operational note, the reason this surfaced:** Yodeck does not reload a web
+page unless a Refresh Interval is set on it. The page's own timers keep the
+clock, the scores, the day rollover and (now) the sheets current, but **new code
+only arrives on a reload** — so after any push, the TVs keep running the old
+version until they are refreshed.
+
 ## signage/right-column.js v1.4.0 — the line break goes after the comma
 (Sibling surface; app unchanged at 6.26.0. CSS v1.2.0, SW 1.43.0.)
 

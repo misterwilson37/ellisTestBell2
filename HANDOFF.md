@@ -43,7 +43,23 @@ URL. Do not re-propose it. Then v1.4.0: birthday cards break AFTER THE COMMA
 (the live screen split "Suzie" / "Q.!"), and broken cards size by their longest
 line — calibrated from that real wrap (~21 chars/line at 8cqw), the first
 sizing number in this file that came from the actual TV rather than arithmetic.
-SW 1.43.0, 123/123.
+Then v1.4.1, A REAL BUG: the ticker sheets loaded ONCE and never re-fetched —
+SHEET_REFRESH_MS was declared in v1.0.0 and never wired. Yodeck does NOT reload
+pages on its own, so sheet edits, including OPT-OUTS, would never have reached
+a TV. Now hourly. KNOW THIS ABOUT HIS TVs: in-page timers keep data current, but
+NEW CODE ONLY ARRIVES ON A RELOAD — after any push, tell him to refresh the TVs
+(or rely on a Yodeck Refresh Interval if he has set one). Then v1.5.0:
+MINIMUM EVENTS (config floor under the birthday-first rule, never a cap) and
+?date=YYYY-MM-DD PREVIEW with an amber badge + a config-page date picker. Then
+v1.6.0, THE FLIP REBUILT: the top flap had never fallen (parked at -90deg idle
+AND flipping); now .rc-armed snaps it flat first. STYLE D (tile + hinge gap +
+shading). EVERY card split AT the hinge by planCard() at the balanced word break,
+EVERY half ink-centred from a fixed ascender/descender reference, size MEASURED
+in the screen's own font. METHOD THAT WORKED, reuse it: iterate visual design
+with LIVE ANIMATED MOCKUPS in the chat (Visualizer) before touching the repo —
+four rounds, each exposing the next problem (half-flip, centring, the hinge
+through one-line text), and the owner approved the result with "no notes".
+SW 1.46.0, 144/144.
 Round 11, "Tenor" — see §10.)
 // prev: **6.25.1 (SILENT BELLS RANG THE DEFAULT
 BELL. The sound dropdowns have offered "Silent / None" since 5.32/5.33 (module

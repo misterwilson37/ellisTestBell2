@@ -1,6 +1,14 @@
 /**
  * Ellis Web Bell — Signage Right Column (styles)
- * Version: 1.2.0 (app release v6.26.0)
+ * Version: 1.4.0 (app release v6.26.0)
+ *
+ * v1.4.0: the ticker is rebuilt as STYLE D (tile, hinge gap, shading), the
+ * flip's missing first half is restored (.rc-armed), and every card is laid
+ * out as two half-blocks split at the hinge. Pairs with right-column.js
+ * v1.6.0; the two must ship together.
+ *
+ * v1.3.0: .rc-preview-badge for right-column.js v1.5.0's ?date= preview —
+ * amber, top-left of the ticker, deliberately impossible to miss.
  *
  * v1.2.0: white-space: pre-line on the ticker text, so the line break
  * right-column.js v1.4.0 puts after "Happy Birthday," is honoured. Ordinary
@@ -84,9 +92,10 @@
 /* ---- 1. Birthday / holiday ticker (12%) -------------------------------- */
 
 .rc-ticker {
+    position: relative;   /* anchors .rc-flap and .rc-preview-badge */
     height: 12%;
     overflow: hidden;
-    background: linear-gradient(180deg, var(--slate-bg) 0%, #1a1a1a 100%);
+    background: var(--slate-bg);
     container-type: inline-size;
     font-family: 'Century Gothic', 'Urbanist', 'Questrial', sans-serif;
     color: #fff;
@@ -95,20 +104,22 @@
     perspective: 60cqw;
 }
 
-/* The split-flap. Four copies of the text, two clipped halves each:
-     .rc-flap-top    (static) shows the NEXT text's top half, revealed as the
-                     front flap falls away
-     .rc-flap-bottom (static) shows the CURRENT text's bottom half, covered as
-                     the back flap swings up
-     .rc-flap-front  animates 0 -> -90deg, showing CURRENT's top half
-     .rc-flap-back   animates 90deg -> 0, showing NEXT's bottom half
-   Whole-line, not per-character: per-character means ~30 elements animating
-   in lockstep every five seconds forever on a player that is not fast, and
-   from across a hallway it reads identically. */
+/* v1.4.0 — STYLE D, the owner's pick from four live mockups: a lighter tile on
+   the dark band, a dark gap at the hinge, and shading on the moving flaps.
+
+   Four layers, two clipped halves each:
+     .rc-flap-top    (static) the NEXT card's top half, revealed as the front
+                     flap falls away
+     .rc-flap-bottom (static) the CURRENT card's bottom half, covered as the
+                     back flap lands
+     .rc-flap-front  CURRENT's top half: flat, then falls 0 -> -90deg
+     .rc-flap-back   NEXT's bottom half: swings 90deg -> 0
+   Every card is split AT the hinge by right-column.js (planCard), so each half
+   holds whole lines and the gap never cuts through letters. All sizes are cqw
+   against the ticker, so the tile looks the same on every TV. */
 .rc-flap {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    inset: 1.8cqw 2.4cqw;
     transform-style: preserve-3d;
 }
 
@@ -119,69 +130,122 @@
     height: 50%;
     overflow: hidden;
     backface-visibility: hidden;
+    background: #2b3242;
 }
 
-/* Each half contains a text block the full height of the band, so the text is
-   centred on the WHOLE ticker in both halves and the halves clip it. This is
-   also why wrapped text works: the split falls where it falls, which is the
-   split-flap look. */
+.rc-flap-top { top: 0; border-radius: 2.1cqw 2.1cqw 0 0; }
+.rc-flap-bottom { bottom: 0; border-radius: 0 0 2.1cqw 2.1cqw; }
+
+/* Each layer holds the WHOLE card (height 200% of a half = the full tile),
+   laid out as two half-blocks separated by the hinge; each half of the tile
+   then clips to its own half-block. */
 .rc-flap-half > span {
     position: absolute;
     left: 0;
     right: 0;
     height: 200%;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 0 4cqw;
-    /* Honour the explicit break after "Happy Birthday," (right-column.js v1.4.0). */
-    white-space: pre-line;
-    /* Overridden per line by right-column.js; this is the starting value only. */
-    font-size: 8cqw;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0 2cqw;           /* PAD_CQW in right-column.js — keep in step */
+    box-sizing: border-box;
     font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: 0.01em;
+    /* Replaced per card by right-column.js with a MEASURED px size and the
+       font's own line height; these only apply before layout. No
+       letter-spacing: the canvas measurement would not see it, and every
+       width calculation would be wrong by that much. */
+    font-size: 8cqw;
+    line-height: 1.2;
 }
 
-.rc-flap-top { top: 0; }
 .rc-flap-top > span { top: 0; }
-
-.rc-flap-bottom { bottom: 0; }
 .rc-flap-bottom > span { bottom: 0; }
 
-/* A hairline at the hinge, the way a real board has a gap between the halves. */
-.rc-flap-top { border-bottom: 1px solid rgba(0, 0, 0, 0.45); }
+/* One half of a card. Height = half the tile minus half the hinge
+   (HINGE_CQW in right-column.js). */
+.rc-hb {
+    height: calc(50% - 0.4cqw);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
+/* The nudge moves the fixed reference ink box — tallest ascender to deepest
+   descender — to the exact centre of its half. Computed per font size by
+   right-column.js; zero until then. */
+.rc-hb > i {
+    display: block;
+    font-style: normal;
+    text-align: center;
+    transform: translateY(var(--rc-nudge, 0px));
+}
+
+.rc-hb > i > div { white-space: nowrap; }
+
+.rc-flap-hinge {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(50% - 0.4cqw);
+    height: 0.8cqw;
+    background: #0b0d12;
+    z-index: 3;
+}
+
+/* Idle: both moving flaps parked edge-on, out of sight. */
 .rc-flap-front {
     transform-origin: bottom center;
-    transform: rotateX(0deg);
+    transform: rotateX(-90deg);
+    filter: brightness(1);
     z-index: 2;
 }
 
 .rc-flap-back {
     transform-origin: top center;
     transform: rotateX(90deg);
+    filter: brightness(0.4);
     z-index: 2;
 }
 
-/* .rc-flipping is added for one animation cycle, then removed once the static
-   halves have been updated to the new text. If the transition never fires
-   (reduced motion, an old engine), the text still swaps — the flip is
-   decoration, the swap is the feature. */
-.rc-flipping .rc-flap-front {
-    transform: rotateX(-90deg);
-    transition: transform 0.25s cubic-bezier(0.4, 0, 1, 1);
+/* Step 1, .rc-armed: snap the front flap FLAT over the old top half, with no
+   transition. Through v1.3.0 this step did not exist — the front flap was
+   parked at -90deg in both states, so it never visibly fell. */
+.rc-armed .rc-flap-front {
+    transform: rotateX(0deg);
+    transition: none;
 }
 
+/* Step 2, .rc-flipping: the front flap falls and darkens as it tips away... */
+.rc-armed.rc-flipping .rc-flap-front {
+    transform: rotateX(-90deg);
+    filter: brightness(0.4);
+    transition: transform 0.25s ease-in, filter 0.25s ease-in;
+}
+
+/* ...then the back flap lands and brightens. If transitions never fire, the
+   text still swaps — the flip is decoration, the swap is the feature. */
 .rc-flipping .rc-flap-back {
     transform: rotateX(0deg);
-    transition: transform 0.25s cubic-bezier(0, 0, 0.2, 1) 0.25s;
+    filter: brightness(1);
+    transition: transform 0.25s ease-out 0.25s, filter 0.25s ease-out 0.25s;
 }
 
-/* Idle state: the animating flaps are parked out of sight behind the statics. */
-.rc-flap:not(.rc-flipping) .rc-flap-front { transform: rotateX(-90deg); }
-.rc-flap:not(.rc-flipping) .rc-flap-back { transform: rotateX(90deg); }
+/* ?date= preview marker. Amber and on top of the flap, because a preview URL
+   accidentally left in a Yodeck playlist must never pass for the real day. */
+.rc-preview-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 5;
+    background: #f59e0b;
+    color: #111;
+    font-family: -apple-system, sans-serif;
+    font-weight: 700;
+    font-size: 3.2cqw;
+    letter-spacing: 0.04em;
+    padding: 0.6cqw 2cqw;
+    border-bottom-right-radius: 1.5cqw;
+}
 
 /* ---- 2. House scoreboard (71%) ----------------------------------------- */
 
