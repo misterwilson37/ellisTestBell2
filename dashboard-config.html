@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Config v1.6.0</title>
-    <!-- Dashboard Config v1.6.0 -->
+    <title>Dashboard Config v1.7.0</title>
+    <!-- Dashboard Config v1.7.0 -->
+    <!-- v1.7.0: ANNOUNCEMENTS — five slots, each with text (live counter,
+         confirmation on Save past 90 characters), a tile colour (house presets,
+         Dolly pink, or any colour), a frequency, start/end dates and an on/off
+         switch, plus a status label (Showing now / Scheduled / Expired — free to
+         reuse / Off). Saved as the config doc's `announcements` array, which the
+         TVs already listen to live. The preview is right-column.js's own
+         mountPreview(), so it renders exactly as the TVs do. -->
     <!-- v1.6.0: (a) "Minimum events per day" select (tickerMinEvents), a floor
          under the ticker's birthday-first rule. Default saves as ABSENT, which
          the ticker reads as 0 — exactly the old behaviour. (b) "Preview a date"
@@ -48,6 +55,11 @@
 
     <!-- Shared Firebase config (v1.0.0: extracted from inline) -->
     <script src="firebase-config.js"></script>
+    <!-- v1.7.0: the announcement preview runs the TVs' own ticker code, so it
+         cannot drift from what the hallway shows. -->
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="signage/right-column.css">
+    <script src="signage/right-column.js"></script>
     
     <style>
         :root {
@@ -287,6 +299,18 @@
             text-decoration: underline;
         }
     </style>
+    <style>
+        /* v1.7.0: announcement slots */
+        .ann-slot { background: var(--dark-grey); border: 1px solid #333; border-radius: 10px; padding: 14px 16px; margin-top: 12px; }
+        .ann-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+        .ann-row input[type="text"] { flex: 1; min-width: 220px; }
+        .ann-pill { font-size: 12px; padding: 3px 10px; border-radius: 6px; }
+        .ann-count { font-size: 13px; min-width: 56px; text-align: right; }
+        .ann-sw { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #555; cursor: pointer; padding: 0; }
+        .ann-sw.on { outline: 3px solid var(--carolina-blue); outline-offset: 2px; }
+        .ann-lbl { font-size: 13px; color: #a0a0a0; }
+        #annPreview { width: 100%; max-width: 480px; aspect-ratio: 1 / 0.27; border-radius: 4px; overflow: hidden; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -480,6 +504,20 @@
                 </div>
             </div>
             
+            <!-- Announcements Section (v1.7.0) -->
+            <div class="section">
+                <h2>📣 Announcements</h2>
+                <p class="help" style="margin-bottom:12px;">
+                    Up to five messages shown in the ticker on top of the normal birthdays and events — reminders, local
+                    celebrations, schedule changes. <strong>They reach the TVs within seconds of Save</strong>, no reload needed.
+                    Set dates and they switch themselves on and off; leave dates blank to show until you switch it off.
+                    Once a slot says <em>Expired</em>, it's free to reuse.
+                </p>
+                <div id="annPreview" aria-label="Announcement preview"></div>
+                <p class="help" id="annLoop" style="margin-top:6px;"></p>
+                <div id="annSlots"></div>
+            </div>
+
             <!-- Save Button -->
             <button class="btn-primary" id="saveBtn" onclick="saveConfig()">Save Configuration</button>
             
@@ -515,14 +553,158 @@
             <div style="margin-top: 32px; text-align: center;">
                 <a href="index.html" style="color: var(--carolina-blue); text-decoration: none;">← Back to Bell Schedule</a>
                 <div style="margin-top: 12px; font-size: 11px; color: #666;">
-                    Dashboard Config v1.6.0
+                    Dashboard Config v1.7.0
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Dashboard Config v1.6.0
+        // Dashboard Config v1.7.0
+
+        // ---- v1.7.0: announcements -------------------------------------------
+        const ANN_SLOTS = 5, ANN_SOFT = 60, ANN_HARD = 90;
+        const ANN_COLORS = [
+            ['Accomodore', '#ffffff'], ['Callidus', '#d1d5db'], ['Princeps', '#4b9cd3'],
+            ['Vevaios', '#111827'], ['Pink', '#f472b6']
+        ];
+        const ANN_DEFAULT_COLOR = '#4b9cd3';
+        let annSlots = [];
+        let annPreview = null;
+
+        function blankSlot() {
+            return { on: false, text: '', color: ANN_DEFAULT_COLOR, mode: 'once', start: '', end: '' };
+        }
+
+        function todayIso() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getDate()).padStart(2, '0');
+        }
+
+        // Same rule as the ticker's isAnnouncementActive(), read the same way.
+        function slotStatus(s) {
+            const t = todayIso();
+            if (!s.on || !s.text.trim()) return ['Off', '#2a2a2a', '#a0a0a0'];
+            if (s.start && t < s.start) return ['Scheduled', '#1e3a5f', '#8fc3e8'];
+            if (s.end && t > s.end) return ['Expired — free to reuse', '#2a2a2a', '#777'];
+            return ['Showing now', '#14532d', '#86efac'];
+        }
+
+        function refreshAnnouncementPreview() {
+            if (!annPreview) return;
+            annPreview.update(annSlots);
+            const seq = annPreview.sequence();
+            document.getElementById('annLoop').textContent = seq.length
+                ? 'Loop: ' + seq.map(c => c.text.replace('\n', ' ')).join('  ·  ') +
+                  '   (3 seconds a card here, 5 on the TVs; the preview ignores dates)'
+                : '';
+        }
+
+        function renderAnnouncementSlots() {
+            const host = document.getElementById('annSlots');
+            host.textContent = '';
+            annSlots.forEach((s, k) => {
+                const card = document.createElement('div');
+                card.className = 'ann-slot';
+                card.innerHTML =
+                    '<div class="ann-row" style="margin-top:0">' +
+                        '<label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" data-f="on"> Slot ' + (k + 1) + '</label>' +
+                        '<span class="ann-pill" data-st></span><span style="flex:1"></span>' +
+                        '<select data-f="mode" style="width:auto">' +
+                            '<option value="once">Once per loop</option>' +
+                            '<option value="every">Every other card</option>' +
+                            '<option value="take">Takes over the band</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="ann-row"><input type="text" data-f="text" maxlength="200" placeholder="Pep rally today — different bell schedule!"><span class="ann-count" data-cnt></span></div>' +
+                    '<div class="ann-row"><span class="ann-lbl">Tile</span><span data-sw style="display:flex;gap:8px;"></span>' +
+                        '<input type="color" data-f="color" style="width:40px;height:32px;padding:2px;" title="Any colour"></div>' +
+                    '<div class="ann-row"><span class="ann-lbl">From</span><input type="date" data-f="start" style="width:auto">' +
+                        '<span class="ann-lbl">through</span><input type="date" data-f="end" style="width:auto">' +
+                        '<span class="ann-lbl">(blank = until switched off)</span></div>';
+
+                // Values set as properties, never spliced into the HTML above.
+                card.querySelector('[data-f="on"]').checked = s.on;
+                card.querySelector('[data-f="mode"]').value = s.mode;
+                card.querySelector('[data-f="text"]').value = s.text;
+                card.querySelector('[data-f="color"]').value = s.color;
+                card.querySelector('[data-f="start"]').value = s.start;
+                card.querySelector('[data-f="end"]').value = s.end;
+
+                const swatches = card.querySelector('[data-sw]');
+                const markSwatches = () => swatches.querySelectorAll('.ann-sw').forEach(b =>
+                    b.classList.toggle('on', b.dataset.color === s.color));
+                ANN_COLORS.forEach(([name, hex]) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'ann-sw';
+                    b.style.background = hex;
+                    b.dataset.color = hex;
+                    b.title = name;
+                    b.setAttribute('aria-label', name);
+                    b.addEventListener('click', () => {
+                        s.color = hex;
+                        card.querySelector('[data-f="color"]').value = hex;
+                        markSwatches();
+                        refreshAnnouncementPreview();
+                    });
+                    swatches.appendChild(b);
+                });
+                markSwatches();
+
+                const refreshMeta = () => {
+                    const [label, bg, fg] = slotStatus(s);
+                    const pill = card.querySelector('[data-st]');
+                    pill.textContent = label; pill.style.background = bg; pill.style.color = fg;
+                    const n = s.text.trim().length, c = card.querySelector('[data-cnt]');
+                    c.textContent = n + ' / ' + ANN_SOFT;
+                    c.style.color = n <= ANN_SOFT ? '#86efac' : n <= ANN_HARD ? '#fbbf24' : '#f87171';
+                    c.title = n > ANN_HARD ? 'Over ' + ANN_HARD + ': you will be asked to confirm on Save' : '';
+                };
+                card.querySelectorAll('[data-f]').forEach(input => {
+                    const f = input.dataset.f;
+                    const evt = (f === 'text' || f === 'color') ? 'input' : 'change';
+                    input.addEventListener(evt, () => {
+                        s[f] = input.type === 'checkbox' ? input.checked
+                             : f === 'color' ? input.value.toLowerCase()
+                             : input.value;
+                        if (f === 'color') markSwatches();
+                        refreshMeta();
+                        refreshAnnouncementPreview();
+                    });
+                });
+                refreshMeta();
+                host.appendChild(card);
+            });
+        }
+
+        function loadAnnouncements(raw) {
+            const list = Array.isArray(raw) ? raw : [];
+            annSlots = [];
+            for (let k = 0; k < ANN_SLOTS; k++) {
+                const src = list[k] || {};
+                const slot = blankSlot();
+                slot.on = src.on === true;
+                slot.text = String(src.text || '');
+                slot.color = /^#[0-9a-f]{6}$/i.test(src.color || '') ? src.color.toLowerCase() : ANN_DEFAULT_COLOR;
+                slot.mode = ['once', 'every', 'take'].includes(src.mode) ? src.mode : 'once';
+                slot.start = /^\d{4}-\d{2}-\d{2}$/.test(src.start || '') ? src.start : '';
+                slot.end = /^\d{4}-\d{2}-\d{2}$/.test(src.end || '') ? src.end : '';
+                annSlots.push(slot);
+            }
+            renderAnnouncementSlots();
+            refreshAnnouncementPreview();
+        }
+
+        (function mountAnnouncementPreview() {
+            try {
+                annPreview = window.SignageRightColumn.mountPreview(document.getElementById('annPreview'));
+            } catch (e) {
+                console.warn('[config] announcement preview unavailable:', e);
+            }
+            loadAnnouncements([]);   // blank slots until the config doc arrives
+        })();
 
         // v1.6.0: "Preview a date". Plain navigation — nothing is saved.
         (function wirePreview() {
@@ -660,6 +842,7 @@
                     document.getElementById('tickerFallbackText').value = data.tickerFallbackText || '';
                     document.getElementById('tickerFallbackText2').value = data.tickerFallbackText2 || '';
                     document.getElementById('tickerMinEvents').value = data.tickerMinEvents || '';
+                    loadAnnouncements(data.announcements);
                 }
             } catch (error) {
                 console.error('Error loading config:', error);
@@ -667,6 +850,13 @@
         }
         
         async function saveConfig() {
+            // v1.7.0: long announcements need a second look before they go up.
+            const tooLong = annSlots.filter(s => s.on && s.text.trim().length > ANN_HARD);
+            if (tooLong.length && !confirm(
+                tooLong.length + ' announcement' + (tooLong.length > 1 ? 's are' : ' is') +
+                ' over ' + ANN_HARD + ' characters and will be small on the TVs. Save anyway?')) {
+                return;
+            }
             const btn = document.getElementById('saveBtn');
             btn.disabled = true;
             showStatus('status', 'Saving...', 'loading');
@@ -704,6 +894,12 @@
                 const value = document.getElementById(id).value.trim();
                 config[id] = value || firebase.firestore.FieldValue.delete();
             });
+            // v1.7.0: all five slots, empty ones included, so a slot keeps its
+            // place. The whole array is written at once — merge replaces arrays.
+            config.announcements = annSlots.map(s => ({
+                on: !!s.on, text: s.text.trim(), color: s.color, mode: s.mode,
+                start: s.start || '', end: s.end || ''
+            }));
             
             try {
                 await configRef.set(config, { merge: true });

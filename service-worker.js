@@ -1,7 +1,9 @@
 /**
  * Ellis Web Bell - Service Worker
- * Version: 1.46.0
+ * Version: 1.47.0
  *
+ * v1.47.0 changelog (2026-09, app 6.26.0 unchanged): no new CORE_ASSETS — cache
+ *   bump for right-column.js v1.7.0 / right-column.css v1.5.0 (announcements).
  * v1.46.0 changelog (2026-09, app 6.26.0 unchanged): no new CORE_ASSETS — cache
  *   bump for right-column.js v1.6.0 / right-column.css v1.4.0 (the rebuilt
  *   flip). The two files MUST arrive together: the new script builds markup
@@ -186,7 +188,7 @@
  *   to fetch them).
  */
 
-const CACHE_VERSION = '1.46.0';
+const CACHE_VERSION = '1.47.0';
 // v1.8.0: derived — bumping CACHE_VERSION is the ONLY bump needed; the
 // activate handler evicts every cache whose name differs from this one.
 const CACHE_NAME = 'ellis-web-bell-' + CACHE_VERSION;

@@ -2,6 +2,44 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## signage/right-column.js v1.7.0 — announcements
+(Sibling surface; app unchanged at 6.26.0. CSS v1.5.0, config v1.7.0, SW 1.47.0.)
+
+**Up to five announcements**, typed on the config page, shown in the ticker on
+top of the normal birthdays and events — local celebrations ("Happy Dolly Day!
+9/25 — get it?"), reminders, schedule changes. Designed from a live mockup the
+owner called "the coolest".
+
+- **Live, not polled.** Saved to the config doc the TVs already listen to, so an
+  announcement reaches every screen within seconds of Save — faster than the
+  5-minute scores or the hourly sheets — and switching one off removes it just
+  as fast. No reload.
+- **Dates plus a switch.** Start and end dates (inclusive) turn announcements on
+  and off by themselves, so nobody has to remember to take "Pep rally —
+  different schedule!" down; blank dates mean "until switched off". Each slot
+  shows its status — Showing now, Scheduled, Expired — free to reuse, Off — the
+  owner's own idea being that an expired slot is simply recycled.
+- **Per-announcement frequency**, because "it depends on the day": once per loop
+  (leads the rotation), every other card (before every normal card, several
+  taking turns), or take over the band (nothing else while active). Only the
+  last ever removes birthdays and events.
+- **Per-announcement tile colour**: the four house colours from the scoreboard,
+  Dolly pink, or any colour. The text colour picks itself by WCAG luminance, and
+  a near-black tile gets a faint edge so it doesn't vanish into the band.
+- **A live character counter** (green to 60, amber to 90, red past it) and a
+  confirmation on Save for anything over 90.
+- **The preview is the ticker itself.** The config page loads right-column.js
+  and calls its new `mountPreview()`, which drives the same renderer and the same
+  `composeRotation()` as the TVs — so the preview cannot drift from the hallway.
+  It ignores dates by design; "Preview a date" shows the real schedule.
+- Text is set with `textContent` throughout; markup typed into an announcement
+  renders as plain characters.
+
+Verified: 11 new unit tests, a browser-simulated run of the real config page (15
+checks, including declining the over-90 confirmation saving nothing) and of the
+TV path (a Save reaching a TV live, and switching it off removing it). Two harness
+bugs were found and fixed along the way, neither in the shipped code. **155/155.**
+
 ## signage/right-column.js v1.6.0 — the flip, rebuilt
 (Sibling surface; app unchanged at 6.26.0. CSS v1.4.0, SW 1.46.0. **The .js and
 .css must ship together** — the new script builds markup the old stylesheet

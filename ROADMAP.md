@@ -15,13 +15,13 @@ When they disagree, HANDOFF.md wins — and fix this file.
 
 | | |
 |---|---|
-| Latest built version | **6.26.0** (app), **1.46.0** (service worker), **v1.6.0** (right-column.js) |
+| Latest built version | **6.26.0** (app), **1.47.0** (service worker), **v1.7.0** (right-column.js) |
 | Live on alpha (owner's channel) | **everything he has received** — he pushes on receipt, so 6.25.1 as of round 11's start |
 | Outgoing delta (round 11) | **6.26.0** — signage right column extracted + birthday ticker |
 | Beta channel (CDC teacher) | 6.4.0 |
 | Building channel (bells domain) | 5.69.5 backport |
 | School channel (~50 faculty) | 5.79.x |
-| Tests | 144/144, 41 modules |
+| Tests | 155/155, 41 modules |
 
 **The table above is what this round BUILT, not a guess about his channel.**
 He posts everything on receipt, so whatever zip you were handed is live — see
@@ -231,6 +231,20 @@ school is shut and glues the flanking weekends on itself. Listing the weekends
 as well, or listing a break as Wed–Sun when it really starts Monday, produces a
 different set of closure runs and therefore different lead windows. A unit test
 pins both readings so the behaviour is at least visible.
+
+## 5c. "TV editor" user level (future — owner's idea, round 11)
+
+Today only admins can post announcements, because they live in the admin-gated
+config doc — fine while the owner is the only admin. If someone else (a front-
+office secretary, a club sponsor) should post announcements without touching the
+schedules, scores sheet or anything else, this is **smaller than it sounds**:
+Firestore rules can let a second class of user write the config doc **only when
+the sole field changed is `announcements`** —
+`request.resource.data.diff(resource.data).affectedKeys().hasOnly(['announcements'])`
+— with a `tv_editors/{uid}` collection mirroring `admins/{uid}`. The config page
+would then hide every other section for that role. No schema change: the
+announcements array is already self-contained. Not started; logged so it isn't
+reinvented.
 
 ## 5b. "Add a temp bell" inside the bell modal — SPEC SETTLED, NOT BUILT
 

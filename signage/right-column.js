@@ -1,6 +1,19 @@
 /**
  * Ellis Web Bell — Signage Right Column (behaviour)
- * Version: 1.6.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ * Version: 1.7.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ *
+ * v1.7.0: ANNOUNCEMENTS — up to five, typed on the config page and saved to
+ *   the config doc the TVs already LISTEN to live, so they appear within
+ *   seconds of Save: faster than the 5-minute scores or the hourly sheets.
+ *   Each has text, its own tile colour (text colour picks itself by
+ *   brightness), a start/end date and an on/off switch — dates so nobody has
+ *   to remember to switch "Pep rally — different schedule!" off — and its own
+ *   frequency: once per loop (leads the rotation), every other card (between
+ *   every normal card), or take over the band (nothing else while active).
+ *   Birthdays and events are never removed by the first two. Designed from a
+ *   live mockup the owner called "the coolest". composeRotation() is the one
+ *   rotation rule; the config page's preview calls the same function through
+ *   mountPreview(), so the preview cannot drift from the TVs.
  *
  * v1.6.0: THE FLIP, REBUILT with the owner over four rounds of live mockups.
  *   (a) FIXED: the top flap never fell (parked at -90deg idle AND flipping),
@@ -340,6 +353,10 @@
     // rule unchanged; 'all' shows every event every day.
     var minEvents = 0;
 
+    // v1.7.0: normalised announcement slots from the config doc.
+    var announcements = [];
+    var announcementsKey = '[]';
+
     // v1.5.0: ?date=YYYY-MM-DD. null on every real TV.
     var previewDay = null;
 
@@ -532,6 +549,86 @@
         });
     }
 
+    // --- Announcements (v1.7.0) --------------------------------------------
+
+    var MAX_ANNOUNCEMENTS = 5;
+    var ANNOUNCEMENT_MODES = { once: true, every: true, take: true };
+
+    /**
+     * Cleans whatever the config doc holds into a safe list. Anything
+     * malformed degrades to a harmless default rather than throwing: this runs
+     * on every hallway TV, and one bad slot must not take the band down.
+     */
+    function normalizeAnnouncements(raw) {
+        if (!Array.isArray(raw)) return [];
+        var isoDate = /^\d{4}-\d{2}-\d{2}$/;
+        return raw.slice(0, MAX_ANNOUNCEMENTS).map(function (a) {
+            a = a || {};
+            var color = String(a.color || '').trim().toLowerCase();
+            return {
+                on: a.on === true,
+                text: String(a.text || '').trim(),
+                color: /^#[0-9a-f]{6}$/.test(color) ? color : '',
+                mode: ANNOUNCEMENT_MODES[a.mode] ? a.mode : 'once',
+                start: isoDate.test(a.start || '') ? a.start : '',
+                end: isoDate.test(a.end || '') ? a.end : ''
+            };
+        });
+    }
+
+    /** On, has text, and today falls inside its dates (both inclusive). */
+    function isAnnouncementActive(a, dayKey) {
+        if (!a || !a.on || !a.text) return false;
+        if (a.start && dayKey < a.start) return false;
+        if (a.end && dayKey > a.end) return false;
+        return true;
+    }
+
+    /**
+     * THE rotation rule, used by the TVs and by the config-page preview alike.
+     *   base: [{text, color}] — birthdays, events, fallbacks, in order
+     *   active: announcements already known to be showing today
+     * Any "take" announcement replaces everything. Otherwise "once" ones lead
+     * the base, and "every" ones are placed before EVERY card of that, cycling
+     * if there are several — so they come round every other card.
+     */
+    function composeRotation(base, active) {
+        function card(a) { return { text: a.text, color: a.color || '' }; }
+        var take = active.filter(function (a) { return a.mode === 'take'; });
+        if (take.length) return take.map(card);
+        var seq = active.filter(function (a) { return a.mode === 'once'; }).map(card).concat(base);
+        var every = active.filter(function (a) { return a.mode === 'every'; });
+        if (!every.length) return seq;
+        var out = [];
+        seq.forEach(function (c, i) { out.push(card(every[i % every.length])); out.push(c); });
+        return out;
+    }
+
+    /** WCAG relative luminance of #rrggbb, 0 (black) to 1 (white). */
+    function luminance(hex) {
+        var n = parseInt(hex.slice(1), 16);
+        var ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (v) {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+    }
+
+    /** Dark text on light tiles (Accomodore white, Callidus grey), else white. */
+    function textColorFor(hex) {
+        return luminance(hex) > 0.4 ? '#111827' : '#ffffff';
+    }
+
+    /** The day's full rotation: base cards plus whatever announcements apply. */
+    function buildRotation(now) {
+        var today = startOfDay(now);
+        var base = buildTickerItems(today).map(function (t) { return { text: t, color: '' }; });
+        var key = dateKey(today);
+        return composeRotation(base, announcements.filter(function (a) {
+            return isAnnouncementActive(a, key);
+        }));
+    }
+
     // --- Ticker content -----------------------------------------------------
 
     /**
@@ -644,7 +741,7 @@
     function refreshTickerItems(now) {
         var key = dateKey(now);
         if (key === tickerItemsDateKey) return;
-        tickerItems = buildTickerItems(now);
+        tickerItems = buildRotation(now);
         tickerItemsDateKey = key;
         shownIndex = -1;
     }
@@ -703,7 +800,22 @@
         return { avail: flap.clientWidth - 2 * (PAD_CQW / 100 * w), halfH: halfH, fill: FILL * halfH };
     }
 
-    function renderCard(el, text) {
+    function renderCard(el, text, color) {
+        // v1.7.0: announcements carry their own tile colour. It goes on the
+        // HALF, not the whole tile, because mid-flip the outgoing and incoming
+        // cards occupy different halves and may be different colours.
+        var half = el.parentElement;
+        el.setAttribute('data-color', color || '');
+        if (color) {
+            half.style.background = color;
+            el.style.color = textColorFor(color);
+            // A near-black tile vanishes into the dark band without an edge.
+            half.classList.toggle('rc-flap-dark', luminance(color) < 0.03);
+        } else {
+            half.style.background = '';
+            el.style.color = '';
+            half.classList.remove('rc-flap-dark');
+        }
         var geom = currentGeom();
         var key = text + '|' + (geom ? Math.round(geom.avail) + 'x' + Math.round(geom.halfH) : 'nominal');
         var plan = planCache[key] || (planCache[key] = planCard(text, geom || NOMINAL_GEOM, measureTools()));
@@ -731,9 +843,9 @@
         });
     }
 
-    function setFlapText(role, text) {
+    function setFlapText(role, item) {
         var el = root.querySelector('[data-flap="' + role + '"]');
-        if (el) renderCard(el, text);
+        if (el) renderCard(el, item.text, item.color);
     }
 
     /**
@@ -748,13 +860,16 @@
         var layers = root.querySelectorAll('[data-flap]');
         for (var i = 0; i < layers.length; i++) {
             var t = layers[i].getAttribute('data-text');
-            if (t !== null) renderCard(layers[i], t);
+            if (t !== null) renderCard(layers[i], t, layers[i].getAttribute('data-color') || '');
         }
     }
 
-    function showTickerText(text, animate) {
+    function itemKey(item) { return item.text + '\u0000' + (item.color || ''); }
+
+    function showTickerText(item, animate) {
         var flap = root.querySelector('.rc-flap');
-        if (!flap || text === shownText) return;
+        if (!flap || (shownText !== null && itemKey(item) === itemKey(shownText))) return;
+        var text = item;
 
         if (!animate || shownText === null) {
             shownText = text;
@@ -1002,6 +1117,14 @@
         var nextFallback = (data.tickerFallbackText || '').trim() || DEFAULT_FALLBACK_TEXT;
         if (nextFallback !== fallbackText) { fallbackText = nextFallback; invalidateTickerItems(); }
 
+        var nextAnn = normalizeAnnouncements(data.announcements);
+        var nextAnnKey = JSON.stringify(nextAnn);
+        if (nextAnnKey !== announcementsKey) {
+            announcements = nextAnn;
+            announcementsKey = nextAnnKey;
+            invalidateTickerItems();
+        }
+
         var nextMin = parseMinEvents(data.tickerMinEvents);
         if (nextMin !== minEvents) { minEvents = nextMin; invalidateTickerItems(); }
 
@@ -1055,6 +1178,18 @@
 
     // --- Markup -------------------------------------------------------------
 
+    /** The split-flap itself — shared by the TV column and the config preview. */
+    function flapMarkup() {
+        return '' +
+            '<div class="rc-flap">' +
+                '<div class="rc-flap-half rc-flap-top"><span data-flap="top-next"></span></div>' +
+                '<div class="rc-flap-half rc-flap-bottom"><span data-flap="bottom-current"></span></div>' +
+                '<div class="rc-flap-half rc-flap-top rc-flap-front"><span data-flap="front-current"></span></div>' +
+                '<div class="rc-flap-half rc-flap-bottom rc-flap-back"><span data-flap="back-next"></span></div>' +
+                '<div class="rc-flap-hinge"></div>' +
+            '</div>';
+    }
+
     function buildMarkup() {
         var houseCards = HOUSE_ORDER.map(function (house) {
             return '' +
@@ -1079,15 +1214,7 @@
 
         return '' +
             '<div class="rc-column">' +
-                '<div class="rc-ticker">' +
-                    '<div class="rc-flap">' +
-                        '<div class="rc-flap-half rc-flap-top"><span data-flap="top-next"></span></div>' +
-                        '<div class="rc-flap-half rc-flap-bottom"><span data-flap="bottom-current"></span></div>' +
-                        '<div class="rc-flap-half rc-flap-top rc-flap-front"><span data-flap="front-current"></span></div>' +
-                        '<div class="rc-flap-half rc-flap-bottom rc-flap-back"><span data-flap="back-next"></span></div>' +
-                        '<div class="rc-flap-hinge"></div>' +
-                    '</div>' +
-                '</div>' +
+                '<div class="rc-ticker">' + flapMarkup() + '</div>' +
                 '<div class="houses-area" id="houses-area">' + houseCards + '</div>' +
                 '<div class="clock-area">' +
                     '<div id="main-clock">--:--:-- --</div>' +
@@ -1104,9 +1231,78 @@
         updateTicker(now);
     }
 
+    var layoutWatched = false;
+
+    /**
+     * v1.6.0: the first cards may be measured before the webfont arrives;
+     * re-measure once it does, and whenever the screen changes size.
+     */
+    function watchLayout() {
+        if (layoutWatched) return;
+        layoutWatched = true;
+        try {
+            if (document.fonts) {
+                document.fonts.ready.then(relayoutTicker);
+                if (document.fonts.addEventListener) {
+                    document.fonts.addEventListener('loadingdone', relayoutTicker);
+                }
+            }
+        } catch (e) { /* layout still works, just measured in the fallback font */ }
+        var resizeTimer = null;
+        if (global.addEventListener) {
+            global.addEventListener('resize', function () {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(relayoutTicker, 200);
+            });
+        }
+    }
+
+    // --- Config-page preview (v1.7.0) ----------------------------------------
+
+    var PREVIEW_BASE = [
+        { text: 'Happy Birthday,\nSuzie Q.!', color: '' },
+        { text: 'Happy World Optimism Day!', color: '' }
+    ];
+    var PREVIEW_ROTATE_MS = 3000;
+    var mode = null;   // 'tv' or 'preview' — one per page, never both
+
+    /**
+     * Mounts a ticker-only preview for dashboard-config.html, driven by the
+     * SAME renderer and the SAME composeRotation() as the TVs, so what the
+     * editor shows cannot drift from what the hallway shows. Dates are ignored
+     * on purpose — the point is to see an announcement before its day; the
+     * "Preview a date" button shows the real schedule.
+     * Returns { update(slots) } to call whenever a slot is edited.
+     */
+    function mountPreview(el) {
+        if (mode === 'tv') throw new Error('right-column.js: preview and TV column cannot share a page');
+        mode = 'preview';
+        root = el;
+        el.innerHTML = '<div class="rc-ticker" style="height:100%">' + flapMarkup() + '</div>';
+        watchLayout();
+        var seq = [], at = 0;
+        setInterval(function () {
+            if (seq.length < 2) return;
+            at = (at + 1) % seq.length;
+            showTickerText(seq[at], true);
+        }, PREVIEW_ROTATE_MS);
+        return {
+            update: function (slots) {
+                var showing = normalizeAnnouncements(slots).filter(function (a) { return a.on && a.text; });
+                seq = composeRotation(PREVIEW_BASE, showing);
+                at = 0;
+                shownText = null;
+                if (seq.length) showTickerText(seq[0], false);
+            },
+            sequence: function () { return seq.slice(); }
+        };
+    }
+
     // --- Init ---------------------------------------------------------------
 
     function init(options) {
+        if (mode === 'preview') throw new Error('right-column.js: preview and TV column cannot share a page');
+        mode = 'tv';
         if (!global.SignageScheduleUtils) {
             throw new Error('schedule-utils.js must load before right-column.js');
         }
@@ -1163,21 +1359,7 @@
         // The ticker flips on its own cadence, not the clock's: at 5s a card a
         // 1s tick would be up to a second late every time.
         setInterval(function () { updateTicker(new Date()); }, 250);
-        // v1.6.0: the first cards may be measured before the webfont arrives;
-        // re-measure once it does, and whenever the screen changes size.
-        try {
-            if (document.fonts) {
-                document.fonts.ready.then(relayoutTicker);
-                if (document.fonts.addEventListener) {
-                    document.fonts.addEventListener('loadingdone', relayoutTicker);
-                }
-            }
-        } catch (e) { /* layout still works, just measured in the fallback font */ }
-        var resizeTimer = null;
-        global.addEventListener && global.addEventListener('resize', function () {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(relayoutTicker, 200);
-        });
+        watchLayout();
         // v1.4.1: sheet edits (a new student, an opt-out) reach the TV within
         // the hour without a page reload.
         setInterval(refreshTickerSheets, SHEET_REFRESH_MS);
@@ -1185,8 +1367,9 @@
     }
 
     var SignageRightColumn = {
-        VERSION: '1.6.0',
+        VERSION: '1.7.0',
         init: init,
+        mountPreview: mountPreview,
         // Exposed for the Node tests in tests/right-column.test.mjs — these are
         // the pure parts, and they are where the real logic lives.
         _internals: {
@@ -1199,6 +1382,17 @@
             buildTickerItems: buildTickerItems,
             isSchoolDay: isSchoolDay,
             headlineFor: headlineFor,
+            normalizeAnnouncements: normalizeAnnouncements,
+            isAnnouncementActive: isAnnouncementActive,
+            composeRotation: composeRotation,
+            buildRotation: buildRotation,
+            luminance: luminance,
+            textColorFor: textColorFor,
+            setAnnouncements: function (list) {
+                announcements = normalizeAnnouncements(list);
+                announcementsKey = JSON.stringify(announcements);
+                invalidateTickerItems();
+            },
             splitBalanced: splitBalanced,
             planCard: planCard,
             FALLBACK_METRICS: FALLBACK_METRICS,

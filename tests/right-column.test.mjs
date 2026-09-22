@@ -646,3 +646,87 @@ test('names do not hop: every birthday name line gets the same nudge', () => {
 test('empty text does not crash the layout', () => {
     assert.doesNotThrow(() => plan(''));
 });
+
+// --- v1.7.0: announcements --------------------------------------------------
+
+const A = (over) => ({ on: true, text: 'Pep rally!', color: '#4b9cd3', mode: 'once', start: '', end: '', ...over });
+const BASE2 = [{ text: 'B1', color: '' }, { text: 'B2', color: '' }];
+const texts = (seq) => seq.map(c => c.text);
+
+test('normalise: bad colours, modes and dates degrade safely; max five slots', () => {
+    const got = I.normalizeAnnouncements([
+        A({ color: 'pink', mode: 'shout', start: '9/25', end: 'soon' }),
+        A(), A(), A(), A(), A({ text: 'sixth' }),
+    ]);
+    assert.equal(got.length, 5);
+    assert.deepEqual([got[0].color, got[0].mode, got[0].start, got[0].end], ['', 'once', '', '']);
+    assert.deepEqual(I.normalizeAnnouncements('not a list'), []);
+    assert.equal(I.normalizeAnnouncements([{ on: 'yes', text: 'x' }])[0].on, false);   // only true is on
+});
+
+test('active: switch, dates inclusive at both ends, blank dates open-ended', () => {
+    const day = '2026-09-25';
+    assert.ok(I.isAnnouncementActive(A({ start: day, end: day }), day));
+    assert.ok(!I.isAnnouncementActive(A({ start: day, end: day }), '2026-09-24'));
+    assert.ok(!I.isAnnouncementActive(A({ start: day, end: day }), '2026-09-26'));
+    assert.ok(I.isAnnouncementActive(A(), '2031-01-01'));                 // no dates
+    assert.ok(!I.isAnnouncementActive(A({ on: false }), day));            // switched off
+    assert.ok(!I.isAnnouncementActive(A({ text: '' }), day));             // empty slot
+});
+
+test('once per loop: announcements lead, nothing removed', () => {
+    assert.deepEqual(texts(I.composeRotation(BASE2, [A({ text: 'X' })])), ['X', 'B1', 'B2']);
+});
+
+test('every other card: an announcement before every normal card', () => {
+    assert.deepEqual(texts(I.composeRotation(BASE2, [A({ text: 'X', mode: 'every' })])),
+        ['X', 'B1', 'X', 'B2']);
+});
+
+test('two every-other announcements take turns', () => {
+    const seq = I.composeRotation(BASE2, [A({ text: 'X', mode: 'every' }), A({ text: 'Y', mode: 'every' })]);
+    assert.deepEqual(texts(seq), ['X', 'B1', 'Y', 'B2']);
+});
+
+test('take over: only the takeover announcements, everything else gone', () => {
+    const seq = I.composeRotation(BASE2, [A({ text: 'T', mode: 'take' }), A({ text: 'X' }), A({ text: 'E', mode: 'every' })]);
+    assert.deepEqual(texts(seq), ['T']);
+});
+
+test('modes mix: once leads, every interleaves through all of it', () => {
+    const seq = I.composeRotation(BASE2, [A({ text: 'O' }), A({ text: 'E', mode: 'every' })]);
+    assert.deepEqual(texts(seq), ['E', 'O', 'E', 'B1', 'E', 'B2']);
+});
+
+test('announcements keep their colour; normal cards stay default', () => {
+    const seq = I.composeRotation(BASE2, [A({ text: 'X', color: '#f472b6' })]);
+    assert.equal(seq[0].color, '#f472b6');
+    assert.equal(seq[1].color, '');
+});
+
+test('text colour picks itself: dark on white and grey, white on slate, pink, blue', () => {
+    assert.equal(I.textColorFor('#ffffff'), '#111827');   // Accomodore
+    assert.equal(I.textColorFor('#d1d5db'), '#111827');   // Callidus
+    assert.equal(I.textColorFor('#111827'), '#ffffff');   // Vevaios
+    assert.equal(I.textColorFor('#f472b6'), '#ffffff');   // Dolly pink
+    assert.equal(I.textColorFor('#4b9cd3'), '#ffffff');   // Princeps
+});
+
+test("Dolly Day: shows on Friday the 25th, not Thursday, not Saturday", () => {
+    setData({ birthdays: [{ name: 'Maya R.', monthday: '09/25' }] });
+    I.setAnnouncements([A({ text: 'Happy Dolly Day! 9/25 — get it?', color: '#f472b6', mode: 'every',
+        start: '2026-09-25', end: '2026-09-25' })]);
+    const on = (day) => texts(I.buildRotation(d(2026, 9, day))).some(t => t.includes('Dolly'));
+    assert.ok(on(25));
+    assert.ok(!on(24));
+    assert.ok(!on(26));
+    // ...and the birthday is still there on the day, which only a takeover removes.
+    assert.ok(texts(I.buildRotation(d(2026, 9, 25))).some(t => t.includes('Maya R.')));
+    I.setAnnouncements([]);
+});
+
+test('no announcements: the rotation is exactly the old ticker', () => {
+    setData({ birthdays: [{ name: 'Maya R.', monthday: '09/17' }] });
+    I.setAnnouncements([]);
+    assert.deepEqual(texts(I.buildRotation(d(2026, 9, 17))), I.buildTickerItems(d(2026, 9, 17)));
+});

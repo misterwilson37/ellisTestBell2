@@ -59,7 +59,16 @@ in the screen's own font. METHOD THAT WORKED, reuse it: iterate visual design
 with LIVE ANIMATED MOCKUPS in the chat (Visualizer) before touching the repo —
 four rounds, each exposing the next problem (half-flip, centring, the hinge
 through one-line text), and the owner approved the result with "no notes".
-SW 1.46.0, 144/144.
+Then v1.7.0, ANNOUNCEMENTS: five slots on the config page (text + counter,
+colour with auto-contrast text, per-slot frequency once/every/take-over,
+start/end dates + switch, status label). Stored as `announcements` in the
+config doc the TVs LISTEN to — live within seconds, no reload. The config-page
+preview is right-column.js's own mountPreview() + composeRotation(), so it
+cannot drift from the TVs. Future "TV editor" role is logged in ROADMAP §5c.
+HARNESS LESSONS (both bit this round, neither was a code bug): inlining a JS
+file into test HTML breaks at any "</script" in its comments — escape it; and
+never treat a first theory as the answer, the "$ in replacement strings" guess
+was wrong and a quick check proved it. SW 1.47.0, 155/155.
 Round 11, "Tenor" — see §10.)
 // prev: **6.25.1 (SILENT BELLS RANG THE DEFAULT
 BELL. The sound dropdowns have offered "Silent / None" since 5.32/5.33 (module
