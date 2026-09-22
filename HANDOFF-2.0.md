@@ -4,9 +4,10 @@
 
 | | |
 |---|---|
-| **Versions** | app 2.4.0 · store 1.4.1 · queue 1.3.0 · celebrate 0.2.0 · config 1.2.0 · import-transform 1.0.2 · css 0.61.0 · html 0.52.1 · import.html 1.0.2 · whereis.html 1.5.0 · rules 1.2.1 · functions 1.3.1 · stage-merge.test 1.0.0 · move.test 1.1.0 · outrider.test 1.1.0 · waiting.test 1.0.0 · typed-date.test 1.0.0 · version-check 1.9.0 · browser-test 1.0.0 · manifest 0.2.0 |
+| **Versions** | app 2.5.0 · store 1.4.2 · queue 1.4.0 · celebrate 0.2.0 · config 1.2.0 · import-transform 1.0.2 · css 0.61.0 · html 0.52.2 · import.html 1.0.2 · whereis.html 1.5.0 · rules 1.2.1 · functions 1.3.1 · stage-merge.test 1.0.0 · move.test 1.1.0 · outrider.test 1.1.0 · waiting.test 1.1.0 · typed-date.test 1.0.0 · version-check 1.9.0 · browser-test 1.0.0 · manifest 0.2.0 |
 | 🆕 **KATIE'S HANDWRITTEN LIST, 2026-09-22** | All ten items built in one drop (app 2.3.0 · store 1.4.0 · queue 1.2.0). **The data-touching one is item 10:** "after end" follow-ups now wait for the real finish, and **`runRepeg()` converts the old, planned-end-dated ones automatically on her next load** — no console step. §0v. |
 | 🆕 **HER FEEDBACK ON IT, SAME DAY** | app 2.4.0: **every date field can be typed** (📅 still opens the phone's calendar); **▸ on a Today project row opens its whole pipeline to tick in any order**; clock-in reads **▶ Clock in**; 📋 **remembers its date chip per project**. §0w — and it corrects two things §0v got wrong. |
+| 🆕 **WAITING ON… IS FOR LIVE PROJECTS** | app 2.5.0 · queue 1.4.0. Follow-ups for projects that **haven't started** stay off it (they're on the card); a **finished** project's dated follow-up shows there with its date until it's due. Katie's rule, §0x. |
 | 🧪 **THERE IS A BROWSER HARNESS NOW** | `browser-test/` boots the REAL app in headless Chrome on an in-memory Firestore. It found three bugs this session that unit tests, lint and reading could not. **Run it before any UI drop.** Its README says how. |
 | ⚠️ **THERE IS NO STAGING** | **Handing Jake a file IS deploying it.** He uploads each drop to the GitHub web portal as it arrives; Pages serves `main`; the app is live at that moment. There is no review branch, no soak, no staging URL. **Anything in this repo is what Katie is running right now.** See the box below — this cost a whole session of wrong advice.
 | **Passing** | BASE-1…6, 8 · KEYS-3, 7, 8 · **TIER-1, 2, 3, 5** |
@@ -1158,6 +1159,55 @@ repoints. **One sentence from him closes this either way; do not infer it.**
 
 ---
 
+### 0x. 🆕 WAITING ON… IS FOR LIVE PROJECTS (app 2.5.0 · queue 1.4.0 · store 1.4.2 pin · html 0.52.2 pin) — Cyanea
+
+Katie, a second round on 2.3.0. First: *"I like being able to see the tasks
+associated with a project. That's super helpful."* (§0v item 4 — keep it.)
+Then the problem 2.3.0 caused:
+
+> *"In the 'waiting on' queue, I now see 'Follow-up/finalize' for 4 reports,
+> three of which are Alabama Farmers reports for next year. As in, they won't
+> even start until April of 2027. That list is going to get cluttered beyond
+> the point of usefulness if it holds onto things for 9+ months before they
+> even go live."*
+
+and the rule, in her words — **this is the spec; do not re-derive it:**
+
+> *"the 'waiting on' queue could be helpful if it shows outside-the-pipeline
+> tasks for active and/or completed projects, i.e., I published a project 5
+> days ago so it's out of my queue but I shouldn't forget that I plan to
+> follow up with the client in 9 more days. I do NOT want to see that I plan
+> to follow up 14 days after a project I tentatively plan to publish a year
+> from now. Those sorts of outside-of-pipeline tasks are better reviewed in
+> the card for that particular project."*
+
+**How hers got there:** her next-year projects had "after end" outriders
+already dated from next year's planned end (2.1/2.2). 2.3.0's automatic
+re-peg correctly moved them to "wait for the real finish" — and Waiting on…
+showed every waiting follow-up, however far off its project was. The
+browser walk reproduces exactly that path.
+
+**What `buildQueue` does now** (queue 1.4.0, `waiting.test.mjs` 1.1.0) for a
+task that came OUT of a project — found by `afterProjectId`, `fromProjectId`,
+an old 🎆 spawn's `spawnedTaskId`, or an old outrider's `out_<pid>_` id:
+- **waiting on a project that hasn't started** (by the viewed day) → not in
+  Waiting on…. Still on the card's "Tasks from this project".
+- **waiting on a running project** → there, as before.
+- **dated, not due yet, project FINISHED** → there, flagged `upcoming`, sorted
+  after the genuinely-waiting ones, soonest first; the row reads *"due Thu,
+  Oct 1 (in 9 days) — follow-up to AFICC Bonnie, finished Thu, Sep 17"*. On
+  its day it leaves Waiting on… and enters the queue. **This half is new
+  behaviour, not a filter:** before 2.5.0 such a task was on no screen until
+  its day — the gap she described.
+- Tasks that came from no project: untouched. The week view's horizon skips
+  `upcoming` ones (they're dated — they're on the grid).
+
+**⚠️ One judgment call, flagged to Jake:** a finished project's follow-up
+shows for as long as it takes to come due. For "9 more days" that's right;
+a check-in set six months after publishing would sit there for six months.
+Her words cover "5 days ago"; if a long one shows up and bothers her, the
+fix is a cap (e.g. only the next 30 days) — **ask her before adding one.**
+
 ### 0w. 🆕 KATIE'S FEEDBACK ON 2.3.0 — SAME DAY (app 2.4.0 · queue 1.3.0 · css 0.61.0 · html 0.52.1 · store 1.4.1) — Cyanea
 
 She used 2.3.0 within the hour and sent three notes. **Two of them correct
@@ -2259,6 +2309,7 @@ Jake, at the end of a very long day: *"Given that literally every iteration of o
 
 | Date | Instance | What happened |
 |---|---|---|
+| 2026-09-22 (later still) | Opus 5.5 · **Cyanea** (fifth sitting) | **WAITING ON… IS FOR LIVE PROJECTS, §0x (app 2.5.0 · queue 1.4.0 · waiting.test 1.1.0 · walk-feedback 1.1.0).** Katie: next year's Alabama Farmers follow-ups cluttering Waiting on…, nine months before those projects start; and a finished project's follow-up should be visible *before* it's due. Both built as her rule states it; sabotage-checked (6 of 25 fail without it). The one call left open — how far ahead a finished project's follow-up should show — is flagged in §0x rather than decided. |
 | 2026-09-22 (later) | Opus 5.5 · **Cyanea** (fourth sitting) | **KATIE'S SAME-DAY FEEDBACK ON 2.3.0, §0w (app 2.4.0 · queue 1.3.0 · css 0.61.0 · html 0.52.1 · store 1.4.1 pin-only · typed-date.test 1.0.0 · version-check 1.9.0 · browser-test walk-feedback 1.0.0).** Typed dates on every date field (the real ask behind §0v's item 3, which the chips had only half met), ▸ to tick stages out of order from Today (§0v's item 9 — **Claude had suggested the pop-up editor might satisfy it; Katie: "misses the point"; recorded in §0w.4 as the lesson**), "▶ Clock in" instead of a fourth clock face, and the duplicate chip remembered per project. **The harness paid for itself again:** the invisible date input made the first-run due-date hint land on the text box, and on phones every hint that couldn't fit beside its field landed on it — pre-existing, found only because the new test typed into the field after the hint appeared. 123 browser checks, 180 unit checks across two time zones, all green. |
 | 2026-09-22 | Opus 5 → Opus 5.5 · **Cyanea** | **KATIE'S HANDWRITTEN LIST — all ten items, §0v (app 2.3.0 · store 1.4.0 · queue 1.2.0 · css 0.60.0 · html 0.52.0 · outrider.test 1.1.0 · waiting.test 1.0.0 · version-check 1.8.0 · browser-test 1.0.0).** **Name:** *Octopus cyanea*, the day octopus — the one that hunts in daylight, the one divers actually see. A session driven by a note about the Today pane and the things Katie looks at every day. **One conversation, three sittings; the model changed from Opus 5 to Opus 5.5 for the third — one name throughout, per Jake's rule.** Asked two questions before building (items 3 and 10); **Katie answered both herself**, and both answers changed the design — item 3 is not a text box at all, and item 10's "will it fix Bonnie?" is why the re-peg runs itself. **Bugs found that nobody reported:** Waiting on… parking whole tiers every weekend (her item 6, but the cause was 0.21.0), Pipeline "+ New" throwing since 2.1.1, Duplicate dropping 🎆/↳/outriders, `dupConfirm` never syncing outriders, and the DST double-count in `addAllowedDays`. **Built `browser-test/`** — the real app on an in-memory Firestore in headless Chrome — **and it found three more** that unit tests, lint and reading all missed: drag lost pointer capture after one step, tall rows dragged a half-row late, the Today ⏱ was smaller than its neighbours. **Lesson worth inheriting: "parse-clean ≠ wired" has a third term — wired ≠ usable. Look at a screenshot.** |
 | 2026-08-03 | Opus 5 · **Cirrothauma** (sixth sitting) | **SOFT DELETE — §0k.3 BUILT (app 2.2.0 · store 1.3.0), §0u.** A project's ✕ sets `deletedAt`/`deletedBy` instead of destroying the document; sessions and ticked stages stay reachable through it, so nobody's work or credit dies to somebody else's bad afternoon. **⚠️ NOT a revert of 0.28.0 and a successor will read it as one** — orphaning the ledger and destroying it are both wrong, and this is the third answer. **The design decision worth inheriting: `subscribeProjects` now calls back `(living, all)`, with `living` FIRST so a thoughtless caller gets the safe list.** `S.projects` is living and drives every display surface; `S.projectsAll` includes the binned and is read by exactly six ledger sites (`projName`, the report name, the rollup, the CSV, the running-timer bar, `octodoBinned`). Each was audited by line. A display surface reading `projectsAll` re-shows a binned project; a ledger surface reading `projects` prints "another project" against real hours, which is 0.28.0's orphan failure by another door. **The confirm copy changed with the behaviour** — it still names the hours, because that is what identifies the right project, but no longer says they cannot be recovered, because that is now false and a scary-but-false warning teaches people to click through warnings. **⚠️ TWO PIECES LEFT DELIBERATELY, both recorded rather than quietly skipped:** (1) no restore SCREEN — there is undo and `octodoBinned()`, and **the dialog promises only undo**, because promising a Settings tab that does not exist is how a user stops believing dialogs; (2) **the RULES were not changed**, so the hard delete is still permitted to the same people it always was. §0k.3 wants it owner-only, that is a rules change, and rules changes run through `rules-test/` before the console per 1.2.0/1.2.1's mistake — the emulator was not reachable here. **§0k.3 must not be recorded as fully closed until HARDDEL-RULES lands, ideally together with TIER-MEMBER-ROLES.** |

@@ -1,6 +1,6 @@
 # TESTS — what still needs running
 
-**Version 3.3.0 · current as of 2026-09-22, later (Cyanea)**
+**Version 3.4.0 · current as of 2026-09-22, later still (Cyanea)**
 
 > ⚠️ **EVERYTHING IN THIS FILE IS ALREADY LIVE.** There is no staging: Jake
 > uploads each drop on receipt and GitHub Pages serves it immediately, so a
@@ -167,6 +167,7 @@ cannot prove: her real Android, her real data. **Each is one minute.**
 | **DRAG-1** | ✎⋮ on any project, drag a stage by its **⋮⋮** grip | The row follows her finger and the page does NOT scroll; Save stages keeps the order |
 | **TYPE-1** | In a date box, type **10/15**, then **fri**, then **+2w** — no calendar | Each turns into the right date; nonsense like "banana" turns the box red and won't save. Tapping 📅 still opens the phone's own calendar |
 | **EXPAND-1** | ▸ on a project's row in Today, tick a stage that is NOT the next one | It saves; the list stays open; the row still names the next unticked stage |
+| **WAIT-2** | Open Today on her real board | **No** Alabama Farmers 2027 follow-ups in Waiting on…; a project she finished recently shows its follow-up there as "due … (in N days)". Next year's are still on their cards (open **Later** in the projects pane) |
 | **CLOCK-1** | Find "▶ Clock in" on a Today project row | She knows what it is without hovering |
 | **DUP-1** | 📋 on Laundry — it should open already on **+1 week** — pick **+2 weeks**, create; then 📋 on Laundry again | The second time it opens on +2 weeks by itself. A work project still opens on +1 year |
 | **WAIT-1** | Look at Today on **Saturday** | Waiting on… is empty or nearly so — no work tasks from next week |
@@ -524,8 +525,8 @@ so they arrive in the repo for the next session, and they gate every drop.
 | `node stage-merge.test.mjs` | 34 assertions on the merge rule that decides whether somebody's finished work survives. Extracted live from `store.js`, so it cannot drift. Verified by sabotage: re-introducing the defect turns it red. |
 | `node outrider.test.mjs` | 61 assertions: outriders, and (1.1.0) follow-ups waiting for the real finish, the re-peg plan, and the working-day arithmetic both ways. **Run with `TZ=America/Chicago`** — in UTC the daylight-saving bug it guards cannot happen. |
 | `node typed-date.test.mjs` | 42 assertions: what a typed date may look like (10/15, 1015, Oct 15, fri, +2w…), how a missing year is filled, and that impossible dates are refused rather than rolled over. |
-| `node waiting.test.mjs` | 14 assertions: Waiting on… on a Saturday holds only what is dated TO Saturday (Katie's "only appears on weekends"). Sabotage-checked: 5 fail on queue 1.1.0. |
-| `browser-test/walk-*.test.mjs` | **The real app in headless Chrome on an in-memory Firestore.** 123 checks across Katie's ten items and her feedback, including phone-sized touch runs (`PHONE=1` for the feedback walk). Found five bugs nothing else could. Its README says how to run it and what trips you up. |
+| `node waiting.test.mjs` | 25 assertions: Waiting on… on a Saturday holds only what is dated TO Saturday (Katie's "only appears on weekends"), and (1.1.0) holds a project's follow-ups only while that project is running or finished. Sabotage-checked both times. |
+| `browser-test/walk-*.test.mjs` | **The real app in headless Chrome on an in-memory Firestore.** 127 checks across Katie's ten items and her feedback, including phone-sized touch runs (`PHONE=1` for the feedback walk). Found five bugs nothing else could. Its README says how to run it and what trips you up. |
 
 ---
 

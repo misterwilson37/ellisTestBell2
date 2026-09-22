@@ -1,11 +1,14 @@
 // ============================================================
 // Tentacalendar — queue.js
-// Version 1.3.0
+// Version 1.4.0
 //
 // Pure scheduling logic: priority, pipelines, week and clock geometry,
 // holidays. Has never known Firestore exists — that is why it is testable.
 //
 // RECENT:
+// 1.4.0 — WAITING ON… IS FOR LIVE PROJECTS (Katie). A follow-up waiting on a
+//          project that hasn't started yet is left off (it's on the card);
+//          a finished project's DATED follow-up shows, `upcoming`, until due.
 // 1.3.0 — parseTypedDate: every date field can be TYPED (Katie, on Android,
 //          whose picker cannot be). 10/15 · Oct 15 · fri · +2w · 1015 …
 //          typed-date.test.mjs.
@@ -45,7 +48,7 @@
 //    Verify with `node version-check.mjs` before handing anything over.
 // ============================================================
 
-export const QUEUE_VERSION = "1.3.0";
+export const QUEUE_VERSION = "1.4.0";
 
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -702,14 +705,62 @@ export function buildQueue({ tasks, events, tiers, projects = [], now, viewDay, 
   // --- Tasks ---
   const active = [];
   const waiting = [];
+  const upcoming = [];
   const doneToday = [];
+  /**
+   * ⚠️ 1.4.0 — WAITING ON… IS FOR LIVE PROJECTS, NOT NEXT YEAR'S. Katie,
+   * after 1.2.0 parked "after end" follow-ups there:
+   *
+   *   "I now see 'Follow-up/finalize' for 4 reports, three of which are
+   *    Alabama Farmers reports for next year. As in, they won't even start
+   *    until April of 2027. That list is going to get cluttered beyond the
+   *    point of usefulness if it holds onto things for 9+ months before they
+   *    even go live."
+   *
+   * and what she DOES want there:
+   *
+   *   "I published a project 5 days ago so it's out of my queue but I
+   *    shouldn't forget that I plan to follow up with the client in 9 more
+   *    days. I do NOT want to see that I plan to follow up 14 days after a
+   *    project I tentatively plan to publish a year from now. Those sorts of
+   *    outside-of-pipeline tasks are better reviewed in the card."
+   *
+   * So, for a task that came OUT of a project:
+   *   · waiting on a project that has NOT STARTED (by the viewed day)
+   *     → not here at all. The card's "Tasks from this project" has it.
+   *   · waiting on a project that is running → here, as in 1.2.0.
+   *   · DATED, not due yet, and its project is FINISHED → here, flagged
+   *     `upcoming`, until the day it is due and moves into the queue. Before
+   *     this it was invisible until that day — the gap she described.
+   * Tasks that did not come from a project are untouched.
+   */
+  const projById = {};
+  const spawnedBy = {};
+  for (const p of projects) {
+    projById[p.id] = p;
+    for (const st of p.stages || []) if (st && st.spawnedTaskId) spawnedBy[st.spawnedTaskId] = p.id;
+  }
+  const sourceProject = t => {
+    const pid = t.afterProjectId || t.fromProjectId || spawnedBy[t.id] ||
+      (String(t.id).startsWith("out_") ? String(t.id).slice(4).split("_")[0] : null);
+    return pid ? projById[pid] || null : null;
+  };
+  const notStartedYet = p => p && p.startDate != null && startOfDay(p.startDate) > dayStart;
   for (const t of tasks) {
     if (hidden(t.tierId)) continue;
     if (t.completedAt) {
       if (t.completedAt >= dayStart && t.completedAt < dayEnd) doneToday.push(t);
       continue;
     }
-    if (t.dueAt == null) { waiting.push(t); continue; }
+    if (t.dueAt == null) {
+      if (t.afterProjectId && notStartedYet(projById[t.afterProjectId])) continue;   // 1.4.0
+      waiting.push(t);
+      continue;
+    }
+    if (t.dueAt >= dayEnd) {                                                         // 1.4.0
+      const p = sourceProject(t);
+      if (p && projectFinishedAt(p) != null) upcoming.push({ ...t, upcoming: true, sourceProjectId: p.id });
+    }
     /**
      * ⚠️ 0.21.0 — D61 USED TO MAKE THIS TASK DISAPPEAR FROM THE WHOLE APP.
      *
@@ -818,6 +869,10 @@ export function buildQueue({ tasks, events, tiers, projects = [], now, viewDay, 
 
   doneToday.sort((a, b) => b.completedAt - a.completedAt);
   waiting.sort((a, b) => rankOf(a.tierId) - rankOf(b.tierId));
+  // 1.4.0 — finished projects' coming follow-ups go after the things that
+  // are genuinely waiting, soonest first: they are reminders, not blockers.
+  upcoming.sort((a, b) => a.dueAt - b.dueAt);
+  waiting.push(...upcoming);
 
   return { pinned, items, waiting, doneToday, banners, passedEvents };
 }
@@ -1235,7 +1290,8 @@ export function buildWeek({ tasks, events, tiers, projects = [], now, anchorDay,
   // available work. Calling both "inventory for the week" would invite Katie
   // to plan around things that aren't hers to plan.
   const waiting = buildQueue({ tasks, events, tiers, projects, now, viewDay: today, hiddenTierIds })
-    .waiting.map(t => ({
+    .waiting.filter(t => !t.upcoming)   // 1.4.0 — dated; the week grid already shows them
+    .map(t => ({
       id: t.id, title: t.title, tierId: t.tierId,
       tier: tierById[t.tierId] || null,
       // 1.2.0 — a follow-up waiting on a PROJECT's finish is just as

@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <!-- ============================================================
      Tentacalendar — index.html
-     Version 0.52.1
+     Version 0.52.2
 
      The whole UI. One page, no templating.
 
      RECENT:
+     0.52.2 — no markup change; pin moves to app 2.5.0.
      0.52.1 — no markup change; pins move to app 2.4.0 and css 0.61.0 (typed
         dates and the Today ▸ are built by app.js around the existing inputs).
      0.52.0 — Katie's handwritten list (Cyanea): duplicate modal gets date-
@@ -70,7 +71,7 @@
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="stylesheet" href="tentacalendar.css?v=0.61.0">
 </head>
-<body data-html-version="0.52.1">
+<body data-html-version="0.52.2">
 
   <!-- D37: pixel drift transforms THIS wrapper, never <body> — a transformed
        ancestor becomes the containing block for position:fixed descendants,
@@ -1080,6 +1081,6 @@
        The .help-toggle class marks sections that become collapsible on first visit. -->
   <!-- These will be populated by app.js based on help definitions. -->
 
-  <script type="module" src="app.js?v=2.4.0"></script>
+  <script type="module" src="app.js?v=2.5.0"></script>
 </body>
 </html>

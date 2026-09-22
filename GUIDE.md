@@ -90,7 +90,9 @@ One stage per project can be marked the **hurrah** — the moment the thing actu
 
 **Steps that fall outside the project's dates** — send the engagement letter two weeks before it starts, invoice a week after it ends — leave the pipeline and become ordinary tasks, so a project doesn't clog your list before it has begun or after it's done. Open a project's stages (✎⋮) or expand its card and they're listed underneath as **Tasks from this project**, so you can still review the whole thing in one place.
 
-**A step *after the end* waits for the real end.** It sits in **Waiting on…** saying *"5 working days after this project is finished"* until you actually finish — the hurrah, if it has one — and only then gets its date. Publish a week late and the invoice moves a week with you, without you touching it.
+**A step *after the end* waits for the real end.** Once the project is under way it sits in **Waiting on…** saying *"5 working days after this project is finished"*, and only when you actually finish — the hurrah, if it has one — does it get its date. Publish a week late and the invoice moves a week with you, without you touching it. After you finish, it stays in Waiting on… with its date (*"due Thu, Oct 1 — in 9 days"*) so you don't forget it, and moves into your list on the day.
+
+**Projects that haven't started yet keep their follow-ups to themselves** — next year's reports don't clutter Waiting on… for nine months. Look for them on the project's own card.
 
 **Handy things on a project:**
 

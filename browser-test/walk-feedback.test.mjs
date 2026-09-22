@@ -1,5 +1,5 @@
 // ============================================================
-// browser-test/walk-feedback.test.mjs — Version 1.0.0
+// browser-test/walk-feedback.test.mjs — Version 1.1.0
 //
 // Katie's first feedback on 2.3.0 (app 2.4.0):
 //   · clock-in looked like a reschedule button → "▶ Clock in"
@@ -99,6 +99,33 @@ await page.click("#__ds", { clickCount: 3 }); await page.keyboard.type("banana")
 await page.click("#dup-yes"); await sleep(300);
 ok(await page.evaluate(() => !document.querySelector("#dup-modal").hidden), "an unreadable date keeps the modal open instead of copying with old dates");
 await page.click("#dup-no"); await sleep(150);
+
+console.log("\n— Waiting on… is for live projects (app 2.5.0 · queue 1.4.0) —");
+{
+  const { stageScheduledAt } = await import("../queue.js");
+  const stg = (n, o = {}) => ({ sid: n, name: n, direction: "none", anchor: "start", offsetDays: 0, completedAt: null, dueAt: null, ...o });
+  const alfa = { ...base, name: "Alabama Farmers 2027", color: "#fab005", tierId: work.id, startDate: new Date(2027, 3, 1).getTime(), endDate: new Date(2027, 4, 14).getTime(), stages: [stg("Publish", { hurrah: true })] };
+  await put(page, `${P}/projects/pAF`, alfa);
+  await put(page, `${P}/projects/pBon`, { ...base, name: "AFICC Bonnie", color: "#4dabf7", tierId: work.id, startDate: day(-20), endDate: day(10),
+    stages: [stg("Publish", { hurrah: true, completedAt: day(-5, 15) })] });
+  const tk = (title, dueAt, o = {}) => ({ title, tierId: work.id, dueAt, escalation: { every: 1, unit: "days" }, notes: "", projectId: null, completedAt: null, completedBy: null, parentTaskId: null, offsetDays: null, createdBy: "katie@example.com", createdAt: 1, ...o });
+  // How hers most likely got there: a 2.2-era outrider dated from next year's planned end, then 2.3's re-peg.
+  await put(page, `${P}/tasks/out_pAF_f1`, tk("Follow-up/finalize — Alabama Farmers 2027", stageScheduledAt(alfa, { direction: "after", anchor: "end", offsetDays: 14 }, work.allowedDays)));
+  await put(page, `${P}/tasks/tBonFU`, tk("Follow up with client — AFICC Bonnie", day(9, 9), { fromProjectId: "pBon" }));
+  await sleep(5500);   // the automatic re-peg runs ~4s after data settles
+  const af = await get(page, `${P}/tasks/out_pAF_f1`);
+  ok(af.dueAt === null && af.afterProjectId === "pAF", "the re-peg parks next year's follow-up (as it did on her board)…");
+  const wt = await page.evaluate(() => document.querySelector("#waiting").hidden ? "" : document.querySelector("#waiting-list").innerText);
+  ok(!/Alabama Farmers/.test(wt), "…but Waiting on… does NOT show it — April 2027 hasn't started");
+  ok(/Follow up with client — AFICC Bonnie/.test(wt) && /in 9 days/.test(wt) && /follow-up to AFICC Bonnie, finished/.test(wt),
+     "a finished project's follow-up 9 days out IS there, saying when: " + (wt.split("\n").find(l => /in 9 days/.test(l)) || "(missing)"));
+  await page.evaluate(() => { const t = [...document.querySelectorAll("#projects-panel button")].find(b => /Later/.test(b.textContent)); if (t && !document.querySelector('.project-card[data-project-id="pAF"]')) t.click(); });
+  await sleep(300);
+  await page.evaluate(() => { const c = document.querySelector('.project-card[data-project-id="pAF"]'); if (c && !c.querySelector(".linked-tasks")) c.querySelector(".project-head").click(); });
+  await sleep(300);
+  const card = await page.evaluate(() => document.querySelector('.project-card[data-project-id="pAF"] .linked-tasks')?.innerText || "");
+  ok(/Follow-up\/finalize/.test(card), "next year's follow-up is still on its project's card — where she said it belongs");
+}
 
 if (phone) {
   await page.evaluate(() => document.querySelector("#project-form").scrollIntoView());

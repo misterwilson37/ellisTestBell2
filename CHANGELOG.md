@@ -23,6 +23,23 @@ references in the code, so treat this as a dictionary rather than a history.
 
 ---
 
+## 🆕 Waiting on… is for live projects — app 2.5.0 · queue 1.4.0 · store 1.4.2 · html 0.52.2 (2026-09-22, Cyanea)
+
+`HANDOFF-2.0.md` §0x has Katie's rule verbatim.
+
+- **queue 1.4.0** — `buildQueue`: a follow-up waiting on a project that has
+  not started (by the viewed day) is left out of `waiting`; a finished
+  project's dated, not-yet-due follow-up is added to it with `upcoming:
+  true` and `sourceProjectId`, after the others, soonest first. Source found
+  by `afterProjectId`, `fromProjectId`, an old 🎆's `spawnedTaskId`, or an old
+  `out_<pid>_` id. `buildWeek`'s horizon skips `upcoming`.
+- **app 2.5.0** — the `upcoming` row in Waiting on…: *"due … (in N days) —
+  follow-up to X, finished …"*, with ✓ ✎ ✕.
+- **store 1.4.2 · html 0.52.2** — pins only.
+- **Tests:** `waiting.test` 1.1.0 (14 → 25), `walk-feedback` 1.1.0 (28).
+
+---
+
 ## 🆕 Katie's same-day feedback — app 2.4.0 · queue 1.3.0 · css 0.61.0 · html 0.52.1 · store 1.4.1 (2026-09-22, Cyanea)
 
 `HANDOFF-2.0.md` §0w has her notes verbatim.

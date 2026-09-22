@@ -1,10 +1,13 @@
 // ============================================================
 // Tentacalendar — app.js  (2.0 / OCTODO LINE)
-// Version 2.4.0
+// Version 2.5.0
 //
 // Rendering, interaction, views. Ported from 1.x with four seams changed.
 // All Firebase access goes through store.js; no Firestore calls here.
 //
+// 2.5.0 — Waiting on… shows a finished project's coming follow-ups ("due
+//          Sep 30 (in 9 days) — follow-up to …") and no longer shows ones
+//          for projects that haven't started (queue 1.4.0; Katie).
 // 2.4.0 — KATIE'S FIRST FEEDBACK ON 2.3.0 (Cyanea). Every date field can be
 //          TYPED (makeTypeable; 📅 still opens the phone's calendar). ▸ on a
 //          Today project row opens its whole pipeline to tick in ANY order
@@ -51,7 +54,7 @@
 //    Verify with `node version-check.mjs` before handing anything over.
 // ============================================================
 
-export const APP_VERSION = "2.4.0";
+export const APP_VERSION = "2.5.0";
 
 import { CONFIG_VERSION, CALENDAR_ROBOT } from "./config.js?v=1.2.0";
 import {
@@ -77,7 +80,7 @@ import {
   isRouteError, isStageGone, routingSnapshot,                      // 0.24.0 / 0.26.0
   saveTierSkin, syncOutriders,                                                    // 0.25.0
   repegFollowUps                                                   // 1.4.0 — Katie's item 10
-} from "./store.js?v=1.4.1";
+} from "./store.js?v=1.4.2";
 import {
   buildQueue, projectProgress, remainingWork, normalizeStage, nextDeadline,
   isDayAllowed, addAllowedDays, allowedNeighbors, setDeadlineHour,
@@ -87,8 +90,9 @@ import {
   rollupSessions, rollupToCSV, sessionsToCSV,
   splitOutriders, stageEffectiveDate,                               // 1.1.0 — §0h
   outriderStageFromTask,                                            // 1.2.0 — item 1
-  parseTypedDate                                                    // 1.3.0 — typed dates
-} from "./queue.js?v=1.3.0";
+  parseTypedDate,                                                   // 1.3.0 — typed dates
+  projectFinishedAt                                                 // 1.4.0 — the upcoming row
+} from "./queue.js?v=1.4.0";
 import { celebrate, CELEBRATE_VERSION } from "./celebrate.js?v=0.2.0";
 
 const $ = sel => document.querySelector(sel);
@@ -2590,6 +2594,34 @@ function renderWaiting(waiting) {
         notes: t.notes || "",
         noteKey: t.id
       });
+      list.append(row);
+      continue;
+    }
+
+    // 2.5.0 — a FINISHED project's follow-up that is dated but not due yet
+    // (queue 1.4.0). Katie: "I published a project 5 days ago so it's out of
+    // my queue but I shouldn't forget that I plan to follow up with the
+    // client in 9 more days." It moves into the queue on its day, by itself.
+    if (t.upcoming) {
+      const proj = (S.projectsAll || S.projects).find(x => x.id === t.sourceProjectId);
+      const fin = proj ? projectFinishedAt(proj) : null;
+      const days = Math.round((startOfDayTs(t.dueAt) - startOfDayTs(Date.now())) / DAY_MS);
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.addEventListener("change", ev => { setTaskDone(t.id, true); celebrate(1, clickPoint(ev)); });
+      rowScaffold(row, {
+        lead: cb, tier,
+        mainHTML: `<strong>${esc(t.title)}</strong><span class="sub">due ${fmtDay(t.dueAt)}` +
+          `${days > 0 ? ` (in ${days} day${days === 1 ? "" : "s"})` : ""} — follow-up to ` +
+          `${esc(proj ? proj.name : "a finished project")}${fin ? `, finished ${fmtDay(fin)}` : ""}</span>`,
+        buttons: [
+          iconBtn("✎", "Edit this task", () => startTaskEdit(t)),
+          ...(canDeleteDoc(t) ? [iconBtn("✕", "Delete", () => deleteTask(t.id))] : [])
+        ],
+        notes: t.notes || "",
+        noteKey: t.id
+      });
+      row.classList.add("upcoming-row");
       list.append(row);
       continue;
     }
