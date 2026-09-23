@@ -1,160 +1,81 @@
-# 🐙 Tentacalendar 2.0 — *Octodo*
+# Ellis Web Bell
 
-A planning board that takes deadlines seriously, now for more than one household.
+A real-time, synchronized school bell schedule and timer system. Built for a school running three rotating schedules; used daily by ~50 faculty. Hosted on GitHub Pages (see CNAME), backed by Firebase (Auth, Firestore, Storage).
 
-**Development:** [misterwilson37.github.io/octodo](https://misterwilson37.github.io/octodo)
-**Production (1.x, still live):** [tentacalendar.misterwilson.org](https://tentacalendar.misterwilson.org)
+## Surfaces
 
-This repository is the multi-user rebuild of [Tentacalendar 1.x](https://github.com/misterwilson37/tentacalendar). The 1.x app is a real, in-daily-use application built for exactly two people who share a life; it has one workspace called `primary` and a two-address allowlist, which is the correct design for a household and an impossible one for anybody else.
+| File | What it is | Firebase SDK | Notes |
+|---|---|---|---|
+| `index.html` + `src/js/` | The main teacher-facing app: countdown, schedule editing, quick bells, queues, themes, PiP, broadcast, share codes | v11 modular (ES modules) | Native ES modules since 6.0.0 — src/js/ IS production, entry point `src/js/main.js` |
+| `clock.html` | Multi-schedule grid clock (up to 3x3) for Yodeck TV kiosks | v9 compat | Relative-bell math comes from the shared `bell-engine.js` as of v1.5.0 (its old local copy had silently diverged). As of v1.8.0 each bell plays ITS OWN sound, honouring "Silent / None"; the setup screen's picker is the fallback. Configured entirely by URL params (`a1`…`a9` are the per-column audio toggles) — so any new param must default to today's behaviour or saved clock URLs change meaning |
+| `old.html` | Legacy self-contained clock for old iPads / Kindle Fires (iOS 9-era browsers) | None — raw Firestore REST API, **unauthenticated** | ES5 only, no modules. This is why `personal_schedules` must stay publicly readable in firestore.rules |
+| `dashboard-config.html` | Admin tool for the signage dashboard config | v9 compat | Intentionally not cached by the service worker |
+| `signage/` | dashboard.html, dashright.html, dashclock.html + crest PNGs for TVs | v9 compat | **IS in this repo** (the older "not in this snapshot" note was wrong). As of 6.26.0 the right column is NO LONGER duplicated: it lives once in `right-column.css` + `right-column.js` and both pages mount it — do not re-inline it. The column is ticker / house cards / clock, top to bottom. House scores and the three birthday-ticker sheets all come from published Google Sheet CSVs whose URLs live in the dashboard config. Size in `cqw`, never `vw`/`vh`: that bug has been fixed twice |
 
-2.0 keeps the entire application and replaces the floor it stands on.
+## ⚠️ The Build Rule (the one people forget)
 
----
+As of **6.0.0** the app is native ES modules: `index.html` loads
+`src/js/main.js` and the browser resolves the import graph. **`src/js/ IS
+production — there is no `script.js` and no JS build step.** Edit a module,
+run the verification battery (`cd build && npm run check:esm && npm run lint
+&& npm test`), commit, push.
 
-## Sharing, at two sizes
+One file remains **generated** — never edit it directly:
 
-There is **one** sharing mechanism, offered at two sizes, and it is worth knowing which you want.
+1. **`tailwind.css`** is compiled from the Tailwind classes found in
+   `index.html` + `src/js/*.js`. Using a never-before-used class requires
+   `cd build && npm run build:css` or the new element renders unstyled.
 
-**Share a whole board.** ⚙️ ▸ People. You hand somebody a key to your workspace and they can switch to it from the header chip. They see everything: your tiers, your tasks, your projects, your calendars. This is how a colleague looks at your school board, and how a parent looks at a child's.
+Full workflow, symptoms, and gotchas: **`build/README-BUILD.md`**. Project continuity (roadmap, invariants, session-handoff context): **`HANDOFF.md`**.
+After touching `bell-engine.js`, run `cd build && npm test`.
 
-**Share one tier.** ⚙️ ▸ Tiers ▸ 🤝. That tier — and its tasks, its projects and their clocked time — moves onto a small workspace of its own that you both hold, and it then appears **inside both of your queues** alongside your own tiers. Nobody switches anywhere; it is simply part of both days.
+## Shared infrastructure
 
-The split matters more than it looks. Without it, the day somebody shares a busy work calendar, eighty of their tasks interleave into your today list and you stop opening the app. With it: *a shared **tier** merges into your queue; a shared **board** is somewhere you visit.*
+- `bell-engine.js` — the SINGLE implementation of the pure time/schedule math (formatting, time↔seconds, next-bell lookup, relative-bell resolution), shared by the main app AND clock.html via a plain `<script>` tag. Hand-edited, covered by `tests/bell-engine.test.mjs`. Keep it pure: no DOM, no Firebase, no app globals.
+- `src/js/` — the 41 production ES modules (39 feature modules + `state.js` shared mutable state + `main.js` entry point). The filenames say what lives where; `build/README-BUILD.md` has the ownership map. Adding a module = also add it to `service-worker.js` CORE_ASSETS + `src/js/main.js`.
+- `signage/right-column.css` + `signage/right-column.js` — the SINGLE home for the TV right column (ticker, house scoreboard, clock), shared by `signage/dashboard.html` and `signage/dashright.html`. Plain `<script>`/`<link>`, no build step, same pattern as `schedule-utils.js`. Both files carry a `Version:` line that module 25's status view reads.
+- `tests/` — unit tests for the engine, the signage schedule utils, and the right column's calendar math. Run with `cd build && npm test`. No packages needed.
+- `firebase-config.js` — the ONLY place the Firebase config lives. Every surface loads it before its own logic.
+- `firestore.rules` — security rules. Read the comments before changing; `old.html`'s unauthenticated REST reads and the share-code feature both depend on specific carve-outs.
+- `service-worker.js` — offline caching for the main app, clock, and signage. Bump `CACHE_NAME` whenever `CORE_ASSETS` changes.
+- `tailwind.css` — COMPILED file, do not hand-edit. Regenerate via `build/` (see `build/README-BUILD.md`) whenever a never-before-used Tailwind class is added to index.html or any src/js/ module.
+- `styles.css` — non-Tailwind styles: warning animations, admin/kiosk/simplified mode visibility, modal z-index map.
+- `CHANGELOG.md` — release history for the main app. Add new version notes there, not in module headers.
 
-A shared tier follows you into a house where somebody who lives there also holds a key to it — so the tier you share with Katie is still there when you are looking at Katie's board, and the one you share with a colleague is not. And each person ranks it in their own day: the tier is shared, the priority is not.
+## Data model (Firestore)
 
-Visiting somebody's board shows you **their** ordering, including of the tier you share — because the point of looking at someone's board is an honest picture of their load, and a priority that is secretly yours is not that.
+```
+artifacts/{appId}/
+  public/data/
+    schedules/{scheduleId}      # shared schedules (admin-writable)
+    share_codes/{code}          # 6-char codes -> { ownerId, scheduleId, ... }
+    config/{configId}           # signage/dashboard config (admin-writable)
+    admins/{uid}                # presence of doc = admin
+  users/{uid}/
+    personal_schedules/{id}     # publicly READABLE (old.html + following)
+    following/{...}             # owner-only
+    quick_bell_broadcast/...    # owner-only
+```
 
-Bringing a tier back is the same machinery pointed the other way, and it is one button.
+`config/schedule_calendar` was reserved for the (parked) day-type calendar. Shared schedule docs may carry a `temporaryShift {seconds, date, setAt}` field — the v5.74.0 emergency shift, self-expiring by date. Admin status = a doc with your uid exists in `admins/`. The in-app "Toggle Admin" button only changes what the UI shows; Firestore rules are the actual enforcement.
 
----
+## Security invariants (do not regress)
 
-## The permission model, in two words
+1. Any user-controlled string interpolated into an `innerHTML` template goes through `escapeHtml()` (from `bell-engine.js`, destructured in `src/js/00-header.js` and imported from there). This includes bell/period/schedule names, custom icon text, and uploaded file names/nicknames. `data-*` attributes written through `escapeHtml` read back as the raw value via `.dataset`, so lookups still match.
+2. `getBellId()` (in `bell-engine.js`) builds identity strings, not HTML — its quote-replace is intentional and must not be "fixed" to escapeHtml (it would change stored bell IDs). A unit test pins this behavior.
+3. Shared-schedule and config writes are admin-gated in firestore.rules, not in the client.
 
-Everything in this app's sharing model is **owner** and **member**. It is worth understanding before reading any code, because there is no third *concept* — only four sizes of key.
+## Cleanup roadmap (agreed order)
 
-A workspace is **a house, not a photocopy.** There is one house. Everything in it — tasks, tiers, projects — exists exactly once. People holding keys walk into the *same* house, so a task checked off vanishes from every screen watching it within a second. There is never a second copy to fall out of sync.
-
-- **Owner** holds the deed. Only an owner hands out and takes back keys.
-- **Member** holds a key, in one of four sizes.
-
-The four are split by *what a document is*, not by one blanket verb — which was the bug in rules 1.1.1, where a single catch-all clause meant "can edit this board's tasks" and "can repoint this board at a different Google Calendar" were the same permission:
-
-| | `viewer` | `helper` | `editor` | `owner` |
-|---|---|---|---|---|
-| Read everything; react on the activity feed (kudos) | ● | ● | ● | ● |
-| **The list** — tasks, projects, sessions | | ● | ● | ● |
-| Delete from the list — *only what they created* | | ● | ● | ● |
-| Delete anything on the list | | | ● | ● |
-| **The setup** — tiers, settings, calendar ids | | | ● | ● |
-| **The people** — members, the workspace document | | | | ● |
-
-`helper` exists for the person pitching in rather than running the place: they can work the list and tidy up after themselves, and cannot reconfigure the board. `createdBy` is immutable on update for every role — without that, a helper could relabel someone else's task as their own and delete it, and the restriction would be undone by the permission next to it.
-
-The role table rendered in the app's People tab is the same table. **If you change one, change both**, or the UI becomes a promise the server breaks.
-
-Every case is that model pointed one of two directions:
-
-| Situation | Shape |
-|---|---|
-| Katie's board; a colleague's board | **They hold their own deed** and invite others in |
-| A child's or student's board | **An adult holds the deed**, the resident holds a key flagged `minor` |
-
-A *dependent* workspace is not a special code path — it is an ordinary workspace whose resident is not its owner. The `minor` flag is read by the security rules to refuse two specific things: leaving your own board, and clearing the flag that stops you.
-
-**Isolation is by path, not by field.** Each workspace is its own document tree. Someone who is not a member cannot construct a query that reaches into one — not filtered out, *absent from the path*. That property is the reason 2.0 is a separate Firebase project rather than a schema change to 1.x.
-
----
-
-## What is here
-
-| File | Role |
-|---|---|
-| `index.html` | The whole UI. One page, no templating. |
-| `app.js` | Rendering, interaction, views. ~7,700 lines, ported from 1.x with four seams changed. |
-| `store.js` | **Every** Firebase call. Auth, workspace bootstrap, subscriptions, CRUD. Nothing here touches the DOM. |
-| `queue.js` | Pure scheduling logic — priority, pipelines, week/clock geometry, holidays. Has never known Firestore exists. |
-| `celebrate.js` | The confetti, the parade, the fireworks. |
-| `config.js` | The only hand-edited file. Firebase identifiers. |
-| `tentacalendar.css` | One stylesheet. |
-| `functions/` | The hourly Cloud Run job: pulls Google Calendar into `eventsCache`, mirrors tasks out. Deployed separately; the Admin SDK bypasses the rules below. |
-| `firestore-2.0.rules` | **The security model.** Lives in the Firebase console; kept here so the two cannot drift. |
-| `import.html` + `import-transform.js` | The 1.x migration. The page is a form and a batch writer; **all the logic is in the transform**, as pure functions over plain objects, which is the only reason it can be tested. |
-| `whereis.html` | A read-only diagnostic. Prints every board you hold a key to, every tier and which board it lives in, and flags any task sitting in a different board from its own tier. Writes nothing. Prefer it over the Firebase console for any "where does this live" question — the console's subcollection list is a sample, not an inventory. |
-| `rules-test/` | The emulator suite. 42 assertions over the rules and the import. |
-| `*.test.mjs` | Plain-Node tests, no dependencies: `stage-merge` (whose finished work survives a stage edit), `move` (moving a task chain between boards), `outrider` (steps outside a project's window, and follow-ups waiting for the real finish), `waiting` (what a tier's day off shows), `typed-date` (what a typed date may look like). |
-| `browser-test/` | **The real app in headless Chrome on an in-memory Firestore** — every button clicked for real, desktop and phone-sized. See its README. |
-| `version-check.mjs` | Every file carries its version twice; this proves the two agree, and that every `?v=` pin points at them. Gates every drop. |
-| `manifest.json`, `icon-*.png` | PWA install. |
-
-**Documentation, and which to read:**
-
-| Document | Answers |
-|---|---|
-| `GUIDE.md` | **For people who are going to USE it, not build it.** What a tier is, why the queue refuses to be reordered, how sharing works. Hand this to anyone you give the link to. |
-| `HANDOFF-2.0.md` | **Start here if you're building.** What is built, what is next, what to test, and the platform landmines you need before writing a line. |
-| `TENTACALENDAR-2.0-DESIGN.md` | Why the architecture is shaped this way. Schema, rules, sharing, cost, migration runbook. Decisions are **E-rows**. |
-| `SETUP-2.0.md` | Standing up the Firebase project, repo and DNS from a browser. Already done; kept for reproduction. |
-
-1.x's `HANDOFF.md` lives in the *other* repository and is **not** history — 113 of its 140 decision rows are cited by comments in the code shipped here. Treat it as a dictionary: when a comment says `// D37`, look up D37. Do not read it front to back.
-
----
-
-## Stack
-
-Deliberately small and dependency-free.
-
-| Layer | Choice |
-|---|---|
-| Frontend | Vanilla ES modules. No framework, no build step, no bundler. |
-| Data | Firebase Firestore (web SDK v11.6.1, from CDN) |
-| Auth | Firebase Auth, Google sign-in. **No allowlist** — anyone may sign up and gets their own workspace. |
-| Hosting | GitHub Pages |
-| Calendar sync | Google Cloud Run (Node) on an hourly Cloud Scheduler trigger. Built; see `functions/`. |
-
-**There is no `npm install` and no build.** The files you edit are the files that ship. That is a design choice, not an omission: it means the app can be maintained from a browser on a locked-down school laptop, which is the environment it was built in.
-
----
-
-## Running it yourself
-
-You need your own Firebase project — this one's identifiers are in `config.js` and its data is not yours.
-
-1. Follow `SETUP-2.0.md`. It is a browser-only walkthrough: create the project, enable Google auth, create Firestore, publish the rules, register a web app.
-2. Put your own `firebaseConfig` block into `config.js`.
-3. Publish `firestore-2.0.rules` in the Firebase console. **Do not skip this** — a project in test mode is a public database.
-4. Serve the files from anywhere static. GitHub Pages needs no configuration beyond enabling it.
-
-**Before handing over any file: `node version-check.mjs`.** It reads every source file's banner against the constant in its code, every `?v=` pin against its target, the handoff's version table against all of them, and — since 1.5.0 — the size of each file's comment header. That last one exists because the headers had grown into full changelogs (949 lines in `app.js`) which put a version banner 980 lines from the constant it must agree with; they drifted four times and the last one cost a deploy. Old entries live in `CHANGELOG.md`, verbatim. `node stage-merge.test.mjs` and `node move.test.mjs` extract real functions out of `store.js` and assert against them — they do not re-implement anything, and a rename fails the run rather than quietly passing.
-
-**Testing the rules.** `firestore-2.0.rules` is the one file where a mistake is silent and expensive, and the Firebase console no longer carries an inline simulator — its "Develop & Test" button now just points at the Emulator Suite docs. There is a suite for this: `cd rules-test && npm install && npm test`. It tests a **copy**, so `cp ../firestore-2.0.rules ./firestore.rules` before every run, and check that file's declared version against what is actually published in the console. A rules file that lives in two places will disagree with itself, and the stale copy is the one a newcomer reads and believes. The two rules bugs this project has shipped were both of a kind a three-line test would have caught.
-
-⚠️ **`rules-test/import.test.mjs` is not currently wired up, and its 18 assertions have plausibly never run.** It imports `./import-transform.js` from inside `rules-test/`, where no such file exists — the README above tells you to copy the *rules* file in and never mentions the transform — and `npm test` runs `rules.test.mjs` only. This is worth knowing precisely because the importer's own header cites that suite as evidence it works. What actually happened is that a real 245-document migration succeeded on the day, which is good evidence and is not the same thing as a test. Fix is small: copy the module in alongside the rules file and add a script. Do not mark it done without a green run.
-
-⚠️ **Every path in this project must be relative** (`./store.js`, never `/store.js`). It is served from a subpath during development and a domain root in production; an absolute path works in one and 404s in the other, which makes it broken only *in between* — the worst possible timing for a bug.
-
----
-
-## Status
-
-**Built:** the app on a multi-tenant database, auto-created personal workspaces, the board switcher, membership and the four roles, dependent workspaces, calendar sync in both directions, **shared tiers with per-person priority**, and a skippable onboarding layer (splash, tours, hints, help panels).
-
-**Migrated, for real:** on 2026-08-02 the 1.x household board moved onto 2.0 — 245 documents, in one run, with no dry rehearsal. There was never a throwaway account to practise on, and the reason that was an acceptable bet is that **1.x is still live and untouched**: a failed import costs a wiped 2.0 board and nothing else. The risk that mattered was never in the code — an export holds calendar **ids** and cannot hold calendar **permissions**, and 2.0 runs under a different service account, so calendars are re-shared by hand or the tiers import perfectly and stay empty forever, silently.
-
-**Built since (2026-08-03):** **soft delete for projects** — the ✕ no longer destroys clocked hours or somebody else's ticked stages — and **outrider stages**: a step that falls outside a project's dates becomes its own task instead of clogging the pipeline.
-
-**Built 2026-09-22 (app 2.3.0) — Katie's handwritten list,** ten notes from the person who uses this every day: duplicate any project with one-tap date shifts; save a project's stages as a template; see a project's tasks beside its stages; drag stages to reorder; hide tiers on the year view; clock in from Today; edit in a pop-up where you tapped; and **follow-ups that wait for the day a project really finishes**, rather than the day it was planned to. Two long-standing bugs went with it — the weekend Waiting on… list, and a daylight-saving slip in the date arithmetic. `HANDOFF-2.0.md` §0v has the whole list in her words.
-
-**The same day (app 2.4.0), her feedback on it:** every date can now be **typed** as well as picked — on Android the calendar was the only way in; **▸ on a project in Today** opens its whole pipeline to tick stages in any order; clock-in says **▶ Clock in**; and Duplicate remembers how far ahead each project usually goes.
-
-**Not built yet:** the activity feed and kudos. A **super-admin panel** to export and wipe a user, which the migration plan above quietly assumes exists.
-
-**Per-user tier colours and names** shipped: on a shared tier the name and colour you type are yours alone, so renaming *ELA 8* to *ELA* on your screen does not rename it on anybody else's.
-
-**Version 2.0.0 shipped on 2026-08-02.** The bar was set a fortnight earlier — *two people sign in separately, see separate boards, and visit each other's* — and it was cleared before Katie migrated; the number was held back until the code had been read file by file rather than merely used. `store.js` and `queue.js` went to **1.0.0** in the same drop, which is the same statement one floor down: `0.y.z` means *the shape may still change*, and it does not.
-
-⚠️ **2.0.0 means audited, not finished.** It was cut after a full source read that removed six dead functions and found one header 191 lines long — not after the test list emptied. `TESTS.md` still holds around twenty items nobody has deliberately walked. The badge in the header reports exactly what is running.
-
----
-
-*Built with Claude, one named instance at a time. The names are in the session logs.* 🐙
+1. ~~Changelog extraction, escapeHtml, service-worker offline fix, rules tightening~~ (done, v5.70.0)
+2. ~~Self-host a compiled Tailwind CSS~~ (done, v5.71.0 — see `build/README-BUILD.md` for the rebuild workflow; Tone.js self-hosting still open)
+3. ~~Split script.js; extract shared `bell-engine.js` + unit tests~~ (done, v5.72.0 — script.js is now built from 21 chunks in `src/js/`; the engine is shared with clock.html and covered by 30 tests; the 15,000-line v4.05 IIFE is gone; six latent ReferenceErrors found by lint were fixed)
+4. ~~Stage-2 modularization~~ (done, **6.0.0** — src/js/ converted to 29 native ES modules; script.js retired, no JS build step; 103 cross-module-written variables moved to `src/js/state.js`; 239 raw `console.log` calls migrated to `safeLog`; per-module lint + `npm run check:esm` linker/TDZ verification replace the old drift check)
+5. Day-type calendar — PARKED (v5.74.0). One global schedule/day is the wrong model for a school running six schedules at once; the revival needs teacher groups (grade/role) with per-group day-type mapping. Design sketch in `src/js/20-schedule-calendar.js`; the pure resolver + tests are kept.
+6. ~~Emergency schedule shift~~ (done, v5.74.0 — admin shifts a base schedule ±minutes for today only; ripples through all relative bells everywhere; self-expires at midnight; all three display surfaces apply it)
+7. ~~Edit audit log~~ (done, v5.75.0 — append-only by rule; admin viewer; 16 instrumented sites)
+8. ~~Signage pages full-depth fix~~ (done, v5.76.0 — shared schedule-utils.js; relative bells finally resolve on TVs; shifts honored; 10 tests)
+9. ~~Clock drift warning~~ (done, v5.77.0 — hourly NTP-style measurement; dismissible banner over 45s; warn-only by design)
+10. ~~Notification backup ring~~ (done, v5.78.0 — opt-in, per-device, hidden-tab-only, one hook covers all ring paths)
+11. ~~Status/health view~~ (done, v5.79.0 — tap the footer version number; Copy Report for support)
+12. Remaining: housekeeping (Tone.js self-host, modal templating, CACHE_NAME automation); per-teacher/group calendar last

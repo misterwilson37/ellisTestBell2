@@ -1,2932 +1,2118 @@
-# Changelog — Octodo (Tentacalendar 2.0)
-
-Per-file version history, moved out of the source headers on 2026-07-29.
-
-**Why this file exists.** The headers had grown into full changelogs — 296
-lines in `store.js`, **949 in `app.js`**, going back to 0.7.0. Two costs, both
-paid: you scrolled past a book to reach the first line of code, and the version
-banner ended up **980 lines away from the constant it must agree with**, which
-is how they drifted apart four separate times. The last drift cost a deploy —
-Jake opened `store.js`, saw the version he already had, and reasonably
-concluded nothing had been sent.
-
-Each source file now carries a short header with the current version, the last
-couple of entries, and its constant **on the very next line**. Everything older
-lives here.
-
-⚠️ **Run `node version-check.mjs` before handing over any file.** It checks
-every banner against its constant and every `?v=` pin against its target.
-
-Nothing has been deleted. The entries below are verbatim, including the
-reasoning essays folded into them — several are cited by `// D…` and `// E…`
-references in the code, so treat this as a dictionary rather than a history.
-
----
-
-## 🆕 Waiting on… is for live projects — app 2.5.0 · queue 1.4.0 · store 1.4.2 · html 0.52.2 (2026-09-22, Cyanea)
-
-`HANDOFF-2.0.md` §0x has Katie's rule verbatim.
-
-- **queue 1.4.0** — `buildQueue`: a follow-up waiting on a project that has
-  not started (by the viewed day) is left out of `waiting`; a finished
-  project's dated, not-yet-due follow-up is added to it with `upcoming:
-  true` and `sourceProjectId`, after the others, soonest first. Source found
-  by `afterProjectId`, `fromProjectId`, an old 🎆's `spawnedTaskId`, or an old
-  `out_<pid>_` id. `buildWeek`'s horizon skips `upcoming`.
-- **app 2.5.0** — the `upcoming` row in Waiting on…: *"due … (in N days) —
-  follow-up to X, finished …"*, with ✓ ✎ ✕.
-- **store 1.4.2 · html 0.52.2** — pins only.
-- **Tests:** `waiting.test` 1.1.0 (14 → 25), `walk-feedback` 1.1.0 (28).
-
----
-
-## 🆕 Katie's same-day feedback — app 2.4.0 · queue 1.3.0 · css 0.61.0 · html 0.52.1 · store 1.4.1 (2026-09-22, Cyanea)
-
-`HANDOFF-2.0.md` §0w has her notes verbatim.
-
-- **queue 1.3.0** — `parseTypedDate`: 10/15 · 10/15/26 · 1015 · Oct 15 ·
-  15 oct · fri · tomorrow · +2w · 2026-10-15. Month first. Missing year =
-  this year unless >60 days gone. Impossible dates → null, never rolled.
-- **app 2.4.0** — `makeTypeable` on every date field: a text box, then 📅,
-  with the real date input invisibly on the 📅 (so the phone's calendar
-  still opens). `typedDatesValid` guards the Duplicate and ⏰ buttons.
-  `buildStageList` extracted from `projectCard`; ▸/▾ on Today project rows
-  uses it (`tc-today-expanded`). Clock-in: "▶ Clock in" / "▶ in" instead of
-  ⏱. `dupDefaultShift`/`rememberDupShift`: the date chip remembered per
-  project name, years stripped (`tc-dup-shift`). `visibleAnchor` for tours
-  and hints; hints that can't fit beside a field go below it instead of on
-  it. Header: 2.0.0 retired to this file.
-- **css 0.61.0** — `.typed-date` family (the 📅 and the invisible input
-  share one box, measured 41.6 × 34 px at +0,+0), `.today-stages`,
-  `.popover-hint.stacked`.
-- **html 0.52.1** — no markup change; pins. **store 1.4.1** — pin only.
-- **Tests:** `typed-date.test` 1.0.0 (42), `version-check` 1.9.0,
-  `browser-test/walk-feedback` 1.0.0 (24, desktop and `PHONE=1`); two
-  older walks bumped to 1.1.0 for the new clock label and Laundry's default.
-
----
-
-## 🆕 Katie's handwritten list — app 2.3.0 · store 1.4.0 · queue 1.2.0 · css 0.60.0 · html 0.52.0 (2026-09-22, Cyanea)
-
-Ten notes from the primary user, all built; `HANDOFF-2.0.md` §0v has each in
-her words beside what shipped. By file:
-
-- **queue 1.1.1** — Waiting on… no longer fills every weekend. The off-day
-  test ran before the due-today test, so a Saturday parked every dated task
-  of every Mon–Fri tier. Only a task dated TO the off day waits there now.
-- **queue 1.2.0** — pure answers for follow-ups that wait for the real
-  finish: `waitsForFinish`, `projectFinishedAt` (the 🎆 tick, else the
-  project's completion), `afterFinishDue`, `allowedDaysBetween`,
-  `outriderStageFromTask`, `repegPlan`. **And `addAllowedDays` steps
-  calendar days** — 24-hour steps counted the clocks-go-back Sunday twice
-  on 7-day tiers.
-- **store 1.4.0** — an "after end" outrider becomes an undated task
-  (`afterProjectId`, `afterProjectWd`, `afterProjectDueSet`); `setStageDone`
-  dates those when the project finishes and rewinds only the untouched ones
-  when it un-finishes. `repegFollowUps` converts the ones 1.1.0 dated from
-  the planned end. New fields: `fromStage` on every outrider task (so
-  Duplicate can rebuild the stage), `fromProjectId` on every project-born
-  task (so the project can list it). Header: 1.0.0 retired to this file.
-- **app 2.3.0** — 📋 Duplicate on every project with one-tap date chips,
-  carrying 🎆, its ↳ +Nd and the outriders; Save stages as a template; tasks
-  listed under their project; ⋮⋮ drag in both stage editors; year-view tier
-  chips (their own set); ⏱ and ✎ on Today rows; project and task edits pop
-  up in place; `runRepeg()` fixes old follow-ups automatically. **Fixed:**
-  Pipeline "+ New type" had thrown since 2.1.1; `dupConfirm` never ran
-  `syncOutridersFor`. `plusOneYear()` removed (the chips replace it).
-  Header: 1.46.0 retired to this file.
-- **css 0.60.0** — the grip (`touch-action: none` is load-bearing), date
-  chips, linked-task rows, year chips; `.row-clock`; **every row glyph
-  button one width** (⏰ and 📋 are wider characters than ✎).
-- **html 0.52.0** — markup for all of the above; `#task-edit-modal` is LAST
-  in the document on purpose (it must paint over ✎⋮).
-- **Tests:** `outrider.test` 1.1.0 (24 → 61), new `waiting.test` 1.0.0 (14),
-  `version-check` 1.8.0, and **new `browser-test/` 1.0.0** — the real app in
-  headless Chrome on an in-memory Firestore, 75 checks. It found three bugs
-  before they shipped: drag lost pointer capture after one step, tall rows
-  dragged a half-row late, and the Today ⏱ was smaller than its neighbours.
-
----
-
-## 🆕 Soft delete — app 2.2.0 · store 1.3.0 (2026-08-03, Cirrothauma)
-
-§0k.3. A project's ✕ sets `deletedAt`/`deletedBy` instead of destroying the
-document: it leaves the timeline, agenda and project pane, and its sessions and
-ticked stages stay reachable through it. **Not a revert of store 0.28.0** —
-orphaning the ledger and destroying it are both wrong, and soft delete is the
-third answer.
-
-`subscribeProjects` now calls back `(living, all)`. `S.projects` is living;
-`S.projectsAll` includes the binned and is read **only** by the ledger
-(`projName`, Time Report, CSV, the running-timer bar). The confirm copy no
-longer says the hours die, because they do not.
-
-⚠️ Two pieces left on purpose: no restore screen (undo, plus `octodoBinned()`
-from the console — and the dialog promises only what exists), and **the rules
-were not changed**, so the hard delete is still permitted to the same people.
-That needs the emulator. Handoff §0u.
-
----
-
-## ✅ SAVE-1 — app 2.1.1 · import-transform 1.0.2 (2026-08-03, Cirrothauma)
-
-`import-transform.js` synthesised a project type with **no `id`**;
-`openSettings` copied `id: undefined` into the document it writes on every
-settings save, and `setDoc` refuses undefined field values. It presented as a
-tier-tab failure because the pipeline draft is built on OPEN and saved
-unconditionally. Full account in handoff §0t.
-
-Fixed in both app.js (mints an id, healing already-imported boards on the next
-save) and the importer (so future imports never carry it). The same missing id
-also made that pipeline unselectable in New Project, silently.
-
----
-
-<!-- store.js 1.1.0 header entry, retired 2026-08-03 (Cirrothauma). Verbatim. -->
-
-```
-1.1.0 — syncOutriders: §0h. A stage anchored outside [startDate, endDate]
-         leaves the pipeline and becomes a task, carrying a ticked stage's
-         completedAt/completedBy VERBATIM. BUILD -> VERIFY -> STRIP, and it
-         refuses to strip anything if any task failed. Idempotent by
-         deterministic task id (out_<projectId>_<sid>), so it is safe to
-         re-run over live data; an existing task is adopted, never
-         overwritten. ⚠️ Imports queue.js so the predicate has one home.
-```
-
-## 🆕 Outriders — app 2.1.0 · store 1.1.0 · queue 1.1.0 (2026-08-03, Cirrothauma)
-
-Handoff §0h's requirement, built; full notes in §0s. In one sentence: **a stage
-anchored outside `[startDate, endDate]` leaves the pipeline and becomes a
-task**, which is the −N twin of the hurrah's +N `spawnDays`.
-
-- `queue.js` gains `isOutrider` / `splitOutriders` — **the predicate and
-  nothing else**, pure enough that `outrider.test.mjs` imports it directly
-  rather than extracting it from source text (24 assertions).
-- `store.js` gains `syncOutriders`, which does all the writing: **build →
-  verify → strip, refusing to strip anything if a single task write failed.**
-  Idempotent by deterministic task id `out_<projectId>_<sid>`; an existing
-  task is adopted, never overwritten; a ticked stage becomes a COMPLETED task
-  carrying its original `completedAt`/`completedBy` verbatim.
-- `store.js` **now imports `queue.js`** so the predicate has exactly one home.
-- `app.js` calls it after create, edit, bar drag and stage edit, and exposes
-  `octodoOutriders()` for the one-off sweep (dry run by default).
-- `app.js`'s `isLater` **measures `startDate` again**; the pipeline-window
-  branch and its 1.40.0 rationale are deleted, per §0h's explicit instruction
-  not to preserve them. `projectPipelineWindow` is no longer imported there.
-
-**store 1.2.0 — the fix that made it work at all.** 1.1.0 skipped stages with
-no `sid`, to avoid minting duplicate tasks. But `import-transform.js` rebuilds
-stages from a field list that omits `sid`, so **every imported stage had none
-and the sweep would have skipped all seventeen of Katie's projects** — the
-exact data the feature was built for. `syncOutriders` now stamps missing sids
-and confirms that write before spawning. Found by Jake in the dry run.
-
-⚠️ **The sweep over Katie's existing data has not been run.** Until it is, her
-older projects still show outrider stages and count them in `x/y`.
-
----
-
-## 🗑 Code removed in the 2.0.0 audit (2026-08-02, Cirrothauma)
-
-**Kept verbatim, because "nothing has been deleted" has to stay true of code
-as well as of prose.** Six functions were removed as dead. Each was checked
-against every `.js`, `.html` and `.mjs` in the repo — **including
-`rules-test/`, which the first sweep missed** — before it was cut.
-
-### `queue.js` 1.0.0 — five functions
-
-```js
-export function getDeadlineHour() { return DEADLINE_HOUR; }
-
-export function getClearDeckThreshold() { return CLEAR_DECK_THRESHOLD; }
-
-// Mon–Fri wrappers (pre-D60 API, still used for defaults).
-
-export function isWeekend(ts) {
-  const dow = new Date(ts).getDay();
-  return dow === 0 || dow === 6;
-}
-
-/** Move n WEEKDAYS from ts (n<0 = backward). Weekends don't count. */
-export function addWeekdays(ts, n) {
-  return addAllowedDays(ts, n, WEEKDAYS);
-}
-
-/** Nearest Friday before / Monday after a weekend date. */
-export function weekendNeighbors(ts) {
-  const { prev, next } = allowedNeighbors(ts, WEEKDAYS);
-  return { fri: prev, mon: next };
-}
-```
-
-The two getters: their setters were wired and they never were. The three
-wrappers: the comment called them "still used for defaults" and they were used
-by nothing. D60 replaced the weekend CONCEPT with per-tier `allowedDays`, so a
-wrapper hard-coding Mon–Fri could only answer a question the app had stopped
-asking. `WEEKDAYS` survives as a module-local default inside `allowedSet`.
-
-### `store.js` 1.0.0 — one function
-
-```js
-/** What the owner actually called it — for Settings' "shared as …" line. */
-export function tierSkinOf(wsId, tierId) {
-  const key = `${wsId}:${tierId}`;
-  return { label: TIER_SKINS.labels[key] || null, color: TIER_SKINS.colors[key] || null };
-}
-```
-
-⚠️ **Its comment named a caller that did not exist.** Settings' "shared as …"
-line reads `t.canonName` / `t.canonColor`, which `skinFor()` stamps onto every
-tier it returns precisely so nobody has to look an override up. This is the
-**fifth** comment in this project found more confident than its code, after
-E41's, §0b's, `TIER_RANKS`'s and SKIN-2's. Same shape every time: a true narrow
-statement ("these maps hold the overrides") restated as a broad one ("and this
-is how the UI reads them"), and the broad one is what the next reader believes.
-
-Also un-exported, same version, all three read here and imported nowhere:
-`COMPLETED_WINDOW_DAYS`, `stampNewStages`, `mergeStages`.
-
-### ⚠️ `import-transform.js` — `defaultAnswers()` was NOT removed
-
-It was cut and then **put back**. It looks dead from the app files and is not:
-`rules-test/import.test.mjs` calls it, being the one consumer with no DOM to
-read answers out of. The first sweep searched `app.js`, the HTML pages and the
-two root test harnesses, and did not search `rules-test/`. **A dead-code sweep
-that skips a directory reports the same thing as a sweep that finds nothing.**
-The function now carries a comment saying so, because the next reader will run
-the same grep.
-
-
-
----
-
-## `store.js`
-
-### 1.0.0
-
-<!-- Retired from the header 2026-09-22 (Cyanea) to make room for 1.4.0 inside the budget. Verbatim. -->
-
-```
-1.0.0 — FIRST STABLE. Katie migrated on 2026-08-02 — 245 documents, one
-         run, no rehearsal — so this file has been the only thing standing
-         between a real person and her data for a full day. 0.y.z means
-         "the shape may still change"; it does not, and saying so is what
-         this bump is for. No behaviour changed. What changed is that the
-         EXPORT LIST is now a promise rather than an accident:
-           · tierSkinOf DELETED. It was exported and documented as the
-             source of Settings' "shared as …" line and NOTHING CALLED IT.
-             That line is built from canonName/canonColor, which skinFor()
-             stamps onto every tier it returns. A comment describing a path
-             the code does not take — the fifth in this project, after
-             E41's, §0b's, TIER_RANKS's and SKIN-2's, and the same shape
-             every time.
-           · COMPLETED_WINDOW_DAYS, stampNewStages, mergeStages are no
-             longer exported. All three are read here and imported nowhere.
-             stage-merge.test.mjs is unaffected: it lifts functions out of
-             the source TEXT and strips `export` as it goes.
-```
-
-<!-- Moved out of the source header 2026-08-02 (Thaumoctopus). The header
-     had regrown to 19 entries / 135 lines — the exact shape this file was
-     created to prevent. version-check 1.5.0 now fails when it happens. -->
-
-### 0.29.1
-
-<!-- Retired from the header 2026-08-03 (Cirrothauma) to make room for the
-     1.2.0 entry inside the 60-line budget. Verbatim. -->
-
-```
-0.29.1 — moveTask STRANDED EVERY FOLLOW-UP IT CARRIED. The chain moved
-         board; only the root's tierId was rewritten, so each child landed
-         on the new board still pointing at a tier on the old one. The
-         comment claimed "a follow-up inherits its parent's" tier — true
-         of creation, false of storage: addFollowUp writes an explicit
-         tierId onto the child. Found by Jake in whereis running MOVE-3.
-0.29.0 — THE HURRAH SPAWNS A TASK. A client follow-up at +14 days had to
-         be a pipeline STAGE, so a finished project sat at the top of the
-         to-do list for a fortnight with nothing to do. Ticking a hurrah
-         that carries `spawnDays` now completes the project AND creates an
-         ordinary dated task — which can be rescheduled, escalated and
-         finished on its own terms, none of which a stage can do.
-         `spawnedTaskId` guards against a re-tick minting a second one.
-```
-
-### 0.28.0
-
-<!-- Retired from the header 2026-08-02 (Cirrothauma) to make room for the
-     1.0.0 entry inside the 60-line budget. Verbatim. -->
-
-```
-0.28.0 — §0d CLOSED: A TIER CHANGE ACROSS BOARDS NOW MOVES THE DOCUMENT.
-         updateProject/updateTask routed with wsOf(id) — the board the
-         document was ALREADY on — so changing tierId rewrote the field
-         and left the document behind, where collectTier (source board
-         only) could never see it again. moveProject takes the project AND
-         its sessions; moveTask takes the whole follow-up chain and drops
-         mirroredGcalEventId so the poll re-mirrors on the new board.
-         Same copy → verify → delete order as moveTier.
-         Also: deleteProject now takes its sessions with it. It deleted one
-         document, and every surface reaches a session THROUGH its project,
-         so the ledger of a deleted project became unreachable rows nothing
-         could render and nothing would clean up. Found by whereis's
-         session audit on 2026-07-31, in Jake's live data.
-```
-
-### 0.27.0
-
-```
-0.27.0 — UNSHARE IS OWNER-ONLY, AND deleteAll STOPS LYING.
-         (1) unshareTier refused nothing, so a guest's "bring it back"
-         COPIED the entire tier onto their own board and only THEN hit the
-         rules on the delete — reporting failure after a successful
-         duplication. Now refused up front with the name of the owner.
-         (2) deleteAll commits in BATCHES; each is atomic, the sequence is
-         not. moveTier promised "Nothing was lost" on any delete failure,
-         which is true for one batch and false for two. It now carries the
-         count that DID commit and says which of the two states it is in.
-```
-
-### 0.26.1
-
-```
-0.26.1 — mergeStages() lifted out of setProjectStages as a pure function.
-         BEHAVIOUR IS UNCHANGED — the seam moved so the rule that decides
-         whether somebody's finished work survives can be tested without
-         Firebase. `node stage-merge.test.mjs` reads it out of this file.
-```
-
-### 0.26.0
-
-```
-0.26.0 — SHARED PROJECTS STOP EATING EACH OTHER. Three defects, all of
-         them item 5 meeting code that assumed a board was one person:
-         (1) setProjectStages wrote the stage editor's stale copy of
-         completedAt, so reordering un-ticked whatever your colleague had
-         ticked while the modal was open. It now merges completion from
-         the SERVER — the editor owns shape, the server owns completion.
-         (2) Stages had no stable identity, so every write addressed them
-         by POSITION; `sid` fixes that and rides through reorders free.
-         (3) openSessions() closed EVERYBODY's running clock, because
-         "at most one open session" was written when a board was one
-         person. Now scoped to createdBy == me.
-```
-
-### 0.25.1
-
-```
-0.25.1 — Jake's marker bump after a predecessor shortened this header.
-         NO CODE CHANGE.
-```
-
-### 0.25.0
-
-```
-0.25.0 — Per-user tier colour and name (tierColors/tierLabels on the
-         profile, composite-keyed). skinFor() applies them; canonName
-         and canonColor ride along for Settings' "shared as" line.
-```
-
-### 0.24.0
-
-```
-0.24.0 — THE BOARD ROUTERS REFUSE INSTEAD OF GUESSING. wsOf() and
-         wsOfTier() both used to fall back to the ACTIVE board, so a
-         task typed into a shared tier landed on the author's own and
-         was invisible to everyone else. Both now throw. Every creator
-         stamps the id it mints, which is what makes refusing safe.
-```
-
-```
-// Version 0.26.1 — mergeStages() lifted out of setProjectStages as a pure
-//   function. BEHAVIOUR IS BYTE-IDENTICAL; the seam moved so the rule that
-//   decides whether somebody's finished work survives could be tested at all.
-//   It was born un-runnable — three awaits deep inside a network call — and
-//   `node stage-merge.test.mjs` now reads it straight out of this file by a
-//   brace-matching scan, so the test cannot drift from what ships.
-//   Verified by sabotage: re-introducing the 0.25.x behaviour turns the suite
-//   from 34/0 to 28/6. A suite never seen to fail is decoration.
-//
-// Version 0.26.0 — SHARED PROJECTS STOP EATING EACH OTHER.
-//   Three defects, one shape: item 5 made a board hold more than one person,
-//   and code written when a board WAS one person kept running.
-//
-//   1. setProjectStages WROTE THE EDITOR'S STALE COMPLETION STATE. app.js
-//      builds each stage row from a snapshot taken when the modal OPENED, so
-//      every stage a colleague ticked while it was open came back un-ticked.
-//      Observed live between two accounts: both read 4/8, different four.
-//      The split is now: THE EDITOR OWNS SHAPE, THE SERVER OWNS COMPLETION —
-//      unambiguous, because the editor has no completion control on it and
-//      therefore never has a legitimate opinion about completedAt. Re-reads
-//      at write time; server wins for stages it still has, caller wins for
-//      stages it does not (new, or restored by undo after a delete).
-//      Returns `reconciled` so the save can explain itself.
-//   2. STAGES HAD NO IDENTITY. Every write addressed a stage by POSITION —
-//      a bet that nothing reordered between the render and the click. `sid`
-//      is minted by stampNewStages, backfilled by ensureSids, and rides
-//      through renames and reorders free because the editor spreads the
-//      ORIGINAL stage object. resolveStage REFUSES on a missing sid rather
-//      than falling back to the index: hitting the neighbouring stage is
-//      worse than hitting none. isStageGone exported alongside isRouteError.
-//   3. openSessions() CLOSED EVERYBODY'S CLOCK. No createdBy filter, so
-//      clocking in stopped a colleague's running timer across the boundary.
-//      D112's "at most one open session" was always one per PERSON; it only
-//      looked like one per board because a board used to be one person.
-//      ⚠️ The filter is CLIENT-SIDE deliberately: a second equality clause
-//      wants a composite index, an index is a deploy step, and a deploy step
-//      nobody runs is a bug that ships. The set is a handful of documents.
-//
-// Version 0.25.1 — Jake's marker bump after a predecessor shortened every
-//   header to the short form. Raised on each file touched so that if
-//   removing half the comment lines broke something, the version would say
-//   where to look. NO CODE CHANGE.
-//
-// Version 0.25.0 — PER-USER TIER COLOUR AND NAME.
-//   users/{email}.tierColors + .tierLabels, composite-keyed "wsId:tierId"
-//   exactly as tierRanks is. skinFor() overwrites name/color before a tier
-//   leaves subscribeTiers, so every consumer shows your version for free;
-//   canonName/canonColor ride along for Settings' "shared as …" line. Skins
-//   apply ONLY on your own board, same guard as rankFor.
-//   Also: corrected a comment claiming TIER_RANKS is "kept live by
-//   subscribeMyProfile". NO SUCH FUNCTION EXISTS OR EVER HAS. Both maps
-//   hydrate once at sign-in; one device does not follow another.
-//
-// Version 0.24.0 — THE BOARD ROUTERS REFUSE INSTEAD OF GUESSING.
-//   wsOf() and wsOfTier() both ended `|| ws()`, so an unresolved destination
-//   wrote to the ACTIVE board — a task typed into a shared tier landed on the
-//   author's own board, resolved cleanly, and was invisible to the person it
-//   was for. Both now throw octodo/unrouted. THE FALLBACK WAS IN TWO PLACES,
-//   NOT THE ONE THE HANDOFF NAMED: restoreDoc routes through wsOf and uses
-//   setDoc, which CREATES — that was TIER-10's data-loss case.
-//   Every creator now stamps the id it mints (addTask, addFollowUp, the
-//   recurrence spawn, both project creators, clockIn, logSession), which is
-//   what makes refusing safe; a guess had been standing in for a stamp.
-//   Also: saveTier's catch swallowed everything and blamed permissions;
-//   a latent `rank: undefined` write that would have landed in that catch;
-//   trackShared updated `hidden` without recomputing the merge.
-//   routingSnapshot() exported — window.octodoWhere() in the console.
-//
-// ⚠️ VERSION 0.25.0 AND 0.24.0 WERE FIRST DELIVERED WITH THIS BANNER STILL
-//   READING 0.23.1 WHILE STORE_VERSION READ 0.25.0 — the inverse of defect 3
-//   below, and worse for the one job the banner has: Jake opened the file,
-//   saw an unchanged header, concluded nothing had been sent, and did not
-//   deploy a fix he was waiting on. THE HEADER IS THE DIFF. Anyone reading a
-//   file top-down sees this before they see a constant 276 lines down.
-//   Check both, every time, and see the automated check in HANDOFF §7.
-//
-// Version 0.23.1 — E41 REPAIR. 0.23.0 shipped four defects, two of them in
-// code that had nothing to do with onboarding. Fixed here:
-//
-//   1. saveConfig() WAS DECAPITATED. 0.23.0's edit landed between its first
-//      line and the rest of its body, so the E14 mirror of
-//      pollIntervalMinutes onto the WORKSPACE DOCUMENT silently disappeared.
-//      That is the value the Cloud Run claim query sorts on, so the hourly
-//      calendar poll stopped following the setting the moment 0.23.0 shipped.
-//      Item 7 was closed on 2026-07-27; this reopened it without saying so.
-//   2. THAT ORPHANED BODY LANDED INSIDE markFirstVisitDone(), where it
-//      referenced an undeclared `data` — a ReferenceError on every Skip.
-//   3. STORE_VERSION still read "0.22.0" while this banner read 0.23.0.
-//      The badge is how Jake knows what he is running; a banner that moves
-//      without the constant is worse than no bump at all, because it makes
-//      the badge lie confidently.
-//   4. ONBOARDING STATE WAS ON THE WRONG DOCUMENT. It was written to the
-//      workspace, and firestore.rules 1.2.1 gates workspace-document update
-//      behind canAdmin() — OWNER ONLY. So a helper, an editor, a viewer, and
-//      Nico on his own dependent board all got permission-denied, which made
-//      their welcome splash undismissable on every single load. Worse, the
-//      writes used dot-path keys inside setDoc({merge:true}), and dot paths
-//      are only honoured by updateDoc — setDoc treats them as LITERAL field
-//      names, so even an owner never actually cleared the flag.
-//
-// Onboarding belongs to the PERSON, not the board — you do not re-learn the
-// app because you opened a second workspace. It now lives on users/{email},
-// following E7's tierRanks pattern exactly: a module-level cache hydrated
-// from the profile read that sign-in ALREADY performs, mutated in memory,
-// written back with nested objects rather than dot paths. No new read path,
-// no new subscription, no new rules clause — users/{email} is a document
-// this user is already allowed to write.
-//
-// It also HONOURS the field E16/§10.2 already put there for this exact job:
-// `onboardingDone` gates the splash. 0.23.0 invented a parallel mechanism
-// and ignored the one that was seeded and commented for it.
-//
-// (prev) Version 0.23.0 — E41: onboarding state. Superseded above.
-//
-// (prev) Version 0.22.0 — A STAGE NOW RECORDS WHO MADE IT, NOT JUST WHO FINISHED
-// IT. Jake: "Each person should get credit for what each person checks off,
-// and it should track both when the task/piece of the project was created,
-// as well as when it was completed (alongside who created that piece).
-// Every time."
-//
-// Tasks and project DOCUMENTS already carried all four (createdBy/createdAt/
-// completedBy/completedAt). Project STAGES carried only the completion half —
-// so "Leah added this step and I finished it" was unanswerable, which is
-// exactly the question a shared tier invents.
-//
-// stampNewStages() is applied at the WRITE BOUNDARY. Every stage array in the
-// app reaches Firestore through addProject, addProjectWithStages or
-// setProjectStages, so stamping here catches every caller including ones
-// nobody has written yet.
-//
-// ⚠️ IT ONLY STAMPS STAGES THAT HAVE NO createdBy, AND ONLY WHERE THE CALLER
-// HAS ESTABLISHED THEY ARE NEW. A legacy stage also has no createdBy, and
-// attributing it to whoever next edits the project would be inventing
-// evidence — worse than the blank it replaces, because a blank is honestly
-// unknown and a name is a claim. app.js decides newness (its editor rows know
-// whether they map to an original); addProject/addProjectWithStages do not
-// have to ask, because at creation every stage is new.
-//
-// On Jake's "is it possible to cheat?": yes, and deliberately not defended
-// against. createdBy is immutable in the rules (1.2.1) for TASKS and
-// PROJECTS because it gates deletion; a stage is an array element inside a
-// project document, so rules cannot see it and nothing hangs off it but
-// credit. His call, quoted so nobody re-litigates it: "then we have bigger
-// problems, and this software isn't made for those assholes."
-//
-// (prev) Version 0.21.2 — SIGN IN AS SOMEBODY ELSE. Jake, testing with Nico:
-// "Signs out, but can't sign in as anyone else in Safari. It just remembers
-// what google account is logged into Google."
-//
-// Not Safari remembering, and not a bug in signOut: signInWithPopup with a
-// bare provider asks Google for "the signed-in user", and where that is
-// unambiguous Google answers instantly WITHOUT drawing a chooser. One
-// account on the device therefore means one account in this app, forever,
-// with no visible way to say otherwise. `prompt: "select_account"` makes it
-// ask every time.
-//
-// ⚠️ THIS IS A TESTING BLOCKER AS MUCH AS A FEATURE. Every second-person
-// smoke test (IU, IX-b, IZ, JA) needs two accounts in one browser, so
-// without this the shared-tier work cannot be checked by one person at one
-// desk — which is the only way it CAN be checked right now.
-//
-// (prev) Version 0.21.1 — WHOSE ORDER YOU SEE WHEN VISITING. Jake: "Visiting her
-// should give me a taste of EXACTLY what she looks at — zero differences.
-// Otherwise I wouldn't have an honest picture of her load."
-//
-// 0.21.0 got that right for a person's OWN tiers and wrong for the SHARED
-// one, and the shared one is the case he was asking about. A tier document's
-// `rank` is written by whoever has setup rights, so on a personal board it is
-// reliably the owner's opinion — but BOTH people write a shared tier's
-// document, and the last save wins. Visiting Katie could therefore have shown
-// Family at Jake's rank, sitting in the middle of her board looking like her
-// judgement about her own week.
-//
-// FIXED by putting each person's ordering of a shared tier on THEIR OWN
-// MEMBER ROW in that shared workspace. No rules change: a member row is
-// readable by everyone holding a key to the same workspace and writable only
-// by its own subject, which is exactly the shape this needs and is already
-// what the rules say. users/{email}.tierRanks stays the authority for YOUR
-// view (E7); the member row exists purely to be read by somebody else, which
-// is a thing a private profile can never be.
-//
-// And the person whose order you see when visiting is the RESIDENT, not the
-// deed-holder — on a dependent board (E32) those differ, and it is the
-// child's day that makes his board honest. See viewerEmail() and rankFor().
-//
-// (prev) Version 0.21.0 — ITEM 5: SHARED TIERS. This file now reads from SEVERAL
-// workspaces at once and writes to whichever one a document actually lives
-// on, and app.js's 6,500 lines still believe there is exactly one board.
-// That is E30 being spent a second time, and it is the whole point.
-//
-// FOUR NEW IDEAS, in the order you need them:
-//
-//   1. THE MERGE SET. Every subscription below fans out across a LIST of
-//      workspaces instead of one. The list is the active board plus every
-//      `kind:"shared"` workspace that belongs in this view — see mergeSet()
-//      for the rule, which is Jake's and not the one originally designed.
-//
-//   2. THE OWNERSHIP MAP (`_where`). Merged snapshots record which board
-//      each document came from, so a later write can be aimed at it.
-//      ⚠️ IT IS NEVER PRUNED. A deleted document keeps its entry, because
-//      restoreDoc resurrects by id and would otherwise put it back on the
-//      wrong board. Tombstones are the feature; a few thousand string pairs
-//      is not a memory problem.
-//
-//   3. PER-USER TIER RANK (E7). users/{me}.tierRanks maps "wsId:tierId" to
-//      a number, and subscribeTiers overlays it onto `rank` before app.js
-//      sees it. So app.js:6391 and queue.js:486 keep reading `.rank` and
-//      never learn it stopped being a property of the document.
-//
-//   4. SHARE / UNSHARE = A MOVE, AT THE SAME DOCUMENT IDS. shareTier lifts
-//      a tier and everything pointing at it into a new shared workspace;
-//      unshareTier brings it home. Ids are PRESERVED, which is what keeps
-//      parentTaskId chains, projectId references and the merged view's
-//      uniqueness intact. COPY, VERIFY, THEN DELETE — a failure anywhere
-//      leaves duplicates, which are visible and recoverable, and never
-//      leaves a hole, which is not (Principle 3).
-//
-// (prev) Version 0.20.1 — repin to config 1.2.0 (it now carries CALENDAR_ROBOT).
-// (prev) Version 0.20.0 — item 7 support. nextPollAt is now a NUMBER (0 = never
-// polled, poll now) rather than null: the work queue claims on
-// `nextPollAt <= now`, and null sorts before numbers in Firestore so it
-// would be swept in regardless — a field whose null and whose zero mean the
-// same thing is one fewer case for the next reader. And saveConfig now also
-// writes pollIntervalMinutes onto the WORKSPACE document, which E14 made
-// authoritative because the claim query has to read it. Both copies are
-// written so the settings UI can never be editing a field nobody reads.
-// (prev) Version 0.19.2 — the twin of 0.19.1's bug. 0.19.1 made the one-shot board
-// lookup degrade gracefully and left the LIVE LISTENER beside it with no
-// error handler at all — so a missing index printed one clean sentence from
-// one and forty lines of Firestore internals from the other. onSnapshot takes
-// an error callback and every listener that can fail on an index needs one.
-// (prev) Version 0.19.1 — bootstrap diagnostics + a query that can no longer strand
-// anybody. Nico's first sign-in died on "Missing or insufficient permissions"
-// and the console could only say the bootstrap failed, not WHERE — so this
-// adds a step tag to every stage of resolveWorkspace, and makes the one
-// optional step optional in fact as well as in intent. The rules bug itself
-// is fixed in firestore-2.0.rules 1.1.1.
-// (prev) Version 0.19.0 — E32/E33/E34: HOUSES AND KEYS, and the bug that walking
-// Nico's first sign-in through 0.18.0 exposed.
-//   · THE BUG: a dependent workspace is built for a child BEFORE that child
-//     has ever signed in, so there is no users/{email} document to point at
-//     it — and 0.18.0's resolveWorkspace saw "no home workspace" and would
-//     have cheerfully built Nico a SECOND, personal one that his parents had
-//     never heard of. resolveWorkspace now asks "do I already hold a key
-//     somewhere?" before it builds anything, and adopts a board where it is
-//     flagged as the resident minor. Deliberately ONLY a minor flag adopts:
-//     a colleague sharing a board with a stranger must not rob that stranger
-//     of a house of their own.
-//   · createDependentWorkspace: the same two words (owner / member) aimed
-//     the other way. An adult holds the deed, the child holds a key, and the
-//     child's member row carries minor:true so the rules refuse to let them
-//     hand it back (E33).
-//   · subscribeMyWorkspaces: a collectionGroup query over members where the
-//     document id is your own email — "which houses do I hold keys to."
-//     This is what the board switcher runs on.
-//   · setActiveWorkspace / setPreferredWorkspace: switching boards is a
-//     variable assignment plus a re-subscribe, exactly as E1 promised.
-// (prev) Version 0.18.0 — E1/E5/E30: THE WORKSPACE BECOMES A RUNTIME VALUE.
-// This file is the ENTIRE surface on which 2.0's multi-tenancy lands, and
-// it keeps every exported signature it had at 0.17.0 (E30) — which is why
-// app.js's 5,922 lines and queue.js's 1,206 move across verbatim.
-//   · No allowlist. rules 1.0.0 removed it; isolation is by PATH (E1), so a
-//     client-side email list would now be theatre, not security.
-//   · WORKSPACE_ID (D12's one true workspace) is gone. ACTIVE_WS is resolved
-//     at sign-in from users/{email}.homeWorkspaceId, and created if absent.
-//   · Sign-in bootstraps: users/{email} -> workspaces/{new} -> members/{email}
-//     -> seed tiers + settings. The order is load-bearing; see the comment on
-//     createPersonalWorkspace, which is the one genuine trap in this file.
-//   · completedBy lands on tasks, stages and projects now (E9). The activity
-//     FEED is build item 6; the field is here early because §7.2 is right that
-//     Reflection silently mis-attributes the day a tier is shared, and a
-//     nullable field costs nothing to carry through the migration.
-//   · E16: a new workspace's stage template is BLANK. Katie's thirteen
-//     actuarial stages travel with HER workspace and are never a stranger's
-//     factory default.
-// (prev) Version 0.17.0 — D139: BOUNDED TASK WINDOW (Option A). subscribeTasks no
-// longer streams the whole archive: two merged listeners carry active
-// (completedAt == null) + last-30-days-completed (completedAt >= floor), and
-// fetchCompletedTasks() one-shots a deep-past week on demand. Nothing is
-// deleted; history costs a read only when the week view pages back to it.
-// (prev) Version 0.16.0 — D124: the project-type library. subscribeProjectTypes /
-// saveProjectTypes read/write a settings/projectTypes doc ({types:[{id,name,
-// stages}]}); the existing stageTemplate stays the implicit Default, so live
-// projects are untouched. addProjectWithStages already snapshots explicit
-// stages, so no creation-path change was needed. Rules wildcard covers it.
-// (prev) Version 0.15.0 — D116: writes become undo-informative. clockIn/clockOut/
-// logSession return the ids and bodies they touched; setSessionEnd and
-// restoreDoc (same-id resurrection) join the toolbox.
-// (prev) Version 0.14.0
-// deleteSession + subscribeSessions). One open session max, enforced by
-// the clockIn batch. The rules wildcard already covers the collection.
-// (prev) Version 0.13.0
-// Task schema gains recurrence {every, unit, anchor} + spawnedNextAt;
-// setTaskDone materializes the next occurrence once, spawn-guarded;
-// addInterval does the calendar-correct stepping.
-// (prev) Version 0.12.0
-// climax). setStageDone now reports hurrah + projectHasHurrah so the UI can
-// aim the big celebration at the stage Katie says it belongs to.
-// (prev) Version 0.11.1
-// 0.11.1 (D102): the sign-in allowlist compares LOWERCASE, matching
-// firestore.rules 0.2.0's .lower(). This list is NOT security — the rules
-// are — but if the two disagree the app breaks in a way that looks like a
-// login bug: client stricter = "bounced back to the sign-in screen", rules
-// stricter = "Missing or insufficient permissions". Keep them symmetrical.
-// 0.11.0
-// 0.11.0 (D100): tasks carry estimateMinutes. D93 promoted "estimated time to
-// complete" from nice-to-have to load-bearing: a task time is a DUE date, so
-// with an estimate a task is a real block [due − estimate, due] with a real
-// LENGTH, and that length is the whole answer to "can I fit dinner on
-// Tuesday?". addTask destructures explicitly, so a new field would have been
-// silently DROPPED — which is exactly the kind of nothing that looks like it
-// works. null = unestimated; the clock grid draws those at a default and says
-// so. updateTask already passes arbitrary fields through (D95 only special-
-// cases dueAt), so editing an estimate needed no change there.
-// 0.10.0
-// 0.10.0 (D95): tasks remember being moved — firstDueAt (the original
-// commitment) + rescheduleCount. Counted inside updateTask so EVERY path
-// that changes a due date is caught, including ones not written yet.
-// No migration: firstDueAt ?? dueAt at read time IS the backfill.
-// Only a date that EXISTED can be moved: null → date is scheduling, not
-// rescheduling, and doesn't count.
-// 0.9.0 (D85): seed config gains clearDeckThreshold (0.6) — the point
-// where the queue flips a project from "keep abreast" to "clear the
-// deck." Additive; live DBs never reseed, so readers fall back to 0.6.
-// 0.8.0 (D63): tasks carry an optional `notes` string (title stays
-// short, details expand under the row). Additive — missing = none.
-// 0.7.0: rewindFollowUps (D53 un-complete rewind), addProjectWithStages
-// (D59 duplicate-for-next-year), per-tier allowedDays in seed (D60,
-// Personal seeds 7-day), config seeds deadlineHour 16 + 
-// decisionThresholdDays 2 (D51/D52). Live DBs never reseed — missing
-// fields fall back in readers.
-// 0.6.2: seed template uses dated/undated mix per D50.
-// All Firebase interaction lives here: auth, seeding, live
-// subscriptions, CRUD. Nothing in here touches the DOM.
-// Schema per HANDOFF.md §3.
-// ============================================================
-
-```
-
-
----
-
-## `app.js`
-
-### 2.0.0
-
-<!-- Retired from the header 2026-09-22 (Cyanea). Verbatim. -->
-
-```
-2.0.0 — TENTACALENDAR 2.0. Jake's own definition of what earns the number
-         was set on 2026-07-27 and it was the board switcher (E24); what
-         actually earns it is that on 2026-08-02 Katie migrated 245
-         documents in one run with no rehearsal and used the app all day.
-         1.x remains live and untouched as the fallback.
-         NO BEHAVIOUR CHANGED IN THIS FILE. The number and two `?v=` pins
-         are the whole diff — store.js and queue.js went to 1.0.0 in the
-         same drop and a stale pin would serve Katie the old modules.
-         ⚠️ 2.0.0 MEANS AUDITED, NOT FINISHED. It was cut after a
-         file-by-file read (HANDOFF §0r), not after the test list emptied:
-         TESTS.md still holds ~20 items nobody has deliberately walked, and
-         SAVE-1 is an unexplained crash that is merely visible rather than
-         fixed. Do not read the major bump as a claim about TESTS.md.
-```
-
-### 1.46.0
-
-<!-- Retired from the header 2026-09-22 (Cyanea). Verbatim. -->
-
-```
-1.46.0 — THE FOLLOW-UP OFFER ON PROJECT COMPLETION, which Katie asked for
-         an hour into 2.0. Its own button beside "same time next year?",
-         independent of it: a follow-up on a project that does NOT repeat
-         is the commonest case and hanging it off Create would have made
-         that unreachable. Does not replace the pipeline's ↳ +Nd.
-```
-
-<!-- Moved out of the source header 2026-08-02 (Thaumoctopus). The header
-     had regrown to 19 entries / 135 lines — the exact shape this file was
-     created to prevent. version-check 1.5.0 now fails when it happens. -->
-
-### 1.45.0
-
-<!-- Retired from the header 2026-08-03 (Cirrothauma). Verbatim. -->
-
-```
-1.45.0 — TOUR REPLAY, at last. Settings ▸ foot ▸ "Show me around". It was
-         filed as cosmetic from the first roadmap and stopped being so the
-         moment Katie finished the old tour: markTourCompleted is
-         permanent, so a rewritten tour reaches nobody who has used the
-         app before. Closes Settings THROUGH the guard — a tour that
-         discarded a half-typed tier would be worse than the bug it fixes.
-```
-
-### 1.44.0
-
-<!-- Retired from the header 2026-08-03 (Cirrothauma) to make room for the
-     2.1.1 entry inside the 60-line budget. Verbatim. -->
-
-```
-1.44.0 — KATIE'S FIRST HOUR ON 2.0. (1) Save settings threw partway and
-         therefore never closed the modal nor cleared the dirty snapshot,
-         which is why ✕ still warned; the body is now wrapped so a throw
-         NAMES itself instead of looking like a dead button. (2) The tour
-         stopped at "add a task" — it now runs task → project → stages →
-         the two meeting in one day. (3) Splash copy: it told the user the
-         app decides "instead of letting you." It sorts; it does not
-         decide. (4) Scoped the bare .tier-row query and guarded the lone
-         unguarded pipelineDraft reader.
-```
-
-### 1.43.0
-
-<!-- Retired from the header 2026-08-02 (Cirrothauma) to make room for the
-     2.0.0 entry inside the 60-line budget. Verbatim. -->
-
-```
-1.43.0 — wirePhoneTray(). On a phone ⏻ moves out of the header and down
-         to #phone-tray at the bottom of the page, as 1.x did. It MOVES
-         the node rather than cloning it — a second button means a dead
-         listener on one of them. 600px, matching the CSS block.
-```
-
-### 1.42.0
-
-```
-1.42.0 — fitLine(). "Her screen starts too large every time" had no
-         instrument but a photograph of a phone. The version tooltip and
-         the Settings versions line now say whether the document is wider
-         than the viewport, by how much, and which element is furthest
-         right. Free when nothing is wrong; the DOM walk only runs once
-         the page is already overflowing.
-```
-
-### 1.41.2
-
-```
-1.41.2 — DIRTY-1 ON PROJECTS. 1.41.0 fixed the manufactured-dirt bug in
-         refreshTierSelects and left its two twins untouched — both on
-         Firestore subscriptions, both writing fields in the project form
-         signature. Adding a project changed bestFreeColor()'s answer,
-         which is why the failing repro needed one. §8c #4, again, by the
-         instance that wrote §8c. All three now go through
-         preservingProjectFormState().
-```
-
-### 1.41.1
-
-```
-1.41.1 — DASH-FILL. The timeline year grid left a black band under
-         itself on a tall dashboard pane. The lane fit is clamped to
-         34px, and on a 4K pane with few concurrent projects the
-         surplus was simply discarded. settleYearRows() measures what
-         is actually left below the view and hands it to the rows —
-         D106's idiom, not a new constant. See the function comment.
-```
-
-### 1.41.0
-
-```
-1.41.0 — TWO BUGS FOUND BY JAKE RUNNING THE TESTS.
-         (1) The first ✎ click after a hard refresh warned about unsaved
-         changes on an untouched form: D131 baselines the project form at
-         boot, when #project-tier is still EMPTY, and refreshTierSelects
-         then fills it — a change the user never made. The clean/dirty
-         state now carries ACROSS a programmatic refill.
-         (2) Waiting rows assumed every entry was a follow-up. queue
-         0.21.0 routes off-day dated tasks there, so they get a checkbox
-         and the real reason instead of a "+Nd after:" with no parent.
-```
-
-### 1.40.0
-
-```
-1.40.0 — The 🎆 hurrah carries an optional "↳ +N d" in the stage editor:
-         ticking it finishes the project AND spawns a dated task. Shown
-         only on the hurrah row, because on any other row it is the
-         pipeline step it exists to replace. Later now measures against
-         the PIPELINE WINDOW rather than the start date, so a stage
-         anchored before the start keeps its project visible.
-```
-
-### 1.39.0
-
-```
-1.39.0 — A "LATER" GROUP, so finishing a project actually clears the
-         plate. Duplicate-for-next-year works exactly as designed and
-         handed the reward straight back: the copy appears immediately in
-         the projects panel. Anything starting past a configurable horizon
-         (default 90 days) now folds into a collapsed group beside
-         Finished — same idiom on purpose; a second way to say "present
-         but out of the way" would be one to learn for nothing.
-         Undated projects are NEVER folded: undated means someday, which
-         is the Want-tos tab's job.
-```
-
-### 1.38.0
-
-```
-1.38.0 — Deleting a project now warns that its clocked time goes too
-         (store 0.28.0 stopped orphaning it), with the hours in the
-         confirm. Time somebody spent is the thing worth warning about.
-```
-
-### 1.37.0
-
-```
-1.37.0 — THE SHARE PANEL KNOWS WHO OWNS THE TIER. A guest was shown
-         "Bring it back to my board" and the ✕ that takes somebody's key
-         away. Jake pressed the first one, got a permission error AFTER the
-         copy had run, and said the obvious thing: "if a user doesn't have
-         the ability to steal a tier, they probably shouldn't think they
-         have an option." Both controls are now owner-only, and a guest
-         gets the one decision that IS theirs — Leave this tier.
-```
-
-### 1.36.0
-
-```
-1.36.0 — THE BADGE TELLS YOU WHEN YOU ARE RUNNING OLD CODE. D130 watched
-         ONE stamp (index.html's) and so could not see a stale ?v= pin —
-         the file uploads, index loads fresh, and it then asks for a URL
-         the browser already has. checkDeployedVersions() reads every
-         module's banner FROM THE SERVER, cache bypassed, first chunk only,
-         and compares it to the constant this tab is running. Stale rows go
-         in the tooltip and turn the badge amber. Jake: "Isn't the whole
-         point of the hover the version check? Why would I want to open a
-         new page?" — so it is in the hover, not a new page.
-```
-
-### 1.35.1
-
-```
-1.35.1 — A REFUSED TICK NOW REPAINTS. The checkbox flips itself — that is
-         the browser's default, not ours — so when store.js refuses a
-         stage write, nothing is written, no snapshot arrives, render() is
-         never called, and the tick sits there looking saved. The one
-         screen whose job is to say what is done cannot show a state that
-         never reached the server. Found by reviewing 1.35.0, not by
-         running it.
-```
-
-### 1.35.0
-
-```
-1.35.0 — YOUR CLOCK IS YOURS. openSessionNow() returned the first open
-         session in the MERGED view, so a colleague's running timer drew
-         as yours with a ⏹ that would have stopped it from your screen.
-         projectClockedMs now returns {mine, team} and the badge reads
-         "Σ 1h / 31h" when somebody else has logged time — Jake: those
-         are different questions. Stage writes address by sid (store
-         0.26.0) instead of by position, and a save that had to keep
-         somebody else's ticks says so instead of doing it quietly.
-```
-
-### 1.34.2
-
-```
-1.34.2 — Repoint only: ./store.js?v= and ./queue.js?v= were still asking
-         for 0.25.0 / 0.20.0 while those files were 0.25.1 / 0.20.1, so
-         the browser kept serving what it already had and the upload
-         looked like a deploy without being one.
-```
-
-### 1.34.1
-
-```
-1.34.1 — Jake's marker bump. A predecessor stripped this header down to
-         the short form; the patch was raised on every file it touched so
-         that if removing half the comment lines broke something, the
-         version would say which files to suspect. NO CODE CHANGE.
-```
-
-### 1.34.0
-
-```
-1.34.0 — Per-user tier colour and name, UI half. ⚠️ THE WHOLE FEATURE
-         IS ONE BRANCH IN THE SETTINGS SAVE LOOP: on a shared row,
-         name and color are deleted from the payload before saveTier
-         and sent to saveTierSkin instead. Lose that delete and the
-         propagation bug returns looking identical.
-```
-
-### 1.33.0
-
-```
-1.33.0 — Global unhandledrejection listener, so store 0.24.0's routing
-         refusals reach a person instead of the console. tierChip()
-         picks its own foreground (was black on black). Role dropdown
-         ascending. window.octodoWhere() for live routing diagnosis.
-```
-
-```
-// Version 1.36.0 — THE BADGE TELLS YOU WHEN YOU ARE RUNNING OLD CODE.
-//   D130 watched ONE stamp (index.html's data-html-version), which catches an
-//   ordinary deploy and is blind to a stale ?v= pin — index.html is never
-//   cached, so it loads fresh and then asks for a URL the browser already
-//   holds. The fix is live and the tab runs the old code, silently. That cost
-//   an evening on 2026-07-30.
-//   checkDeployedVersions() fetches EVERY module's banner from the server
-//   with the cache bypassed, reads only the first chunk (not 300KB of app.js
-//   hourly to look at line 3), and compares against the constant this tab is
-//   running. Stale rows land in the tooltip; the badge turns amber.
-//   ⚠️ Nearly built as a separate checkup.html. Jake: "Isn't the whole point
-//   of the hover the version check? Why would I want to open a new page?"
-//   A check you have to remember to open is a check that does not get run.
-//
-// Version 1.35.1 — A REFUSED TICK NOW REPAINTS. The checkbox flips itself
-//   (browser default), so when store.js refuses a stage write nothing is
-//   written, no snapshot arrives, render() is never called, and the tick sits
-//   there looking saved. The one screen whose job is to say what is done
-//   could show a state that never reached the server. Fixed in onStageToggle
-//   and in the global unhandledrejection backstop. Found by REVIEWING 1.35.0
-//   while it sat unuploaded, not by running it.
-//
-// Version 1.35.0 — YOUR CLOCK IS YOURS, AND YOUR TICKS SURVIVE.
-//   openSessionNow() returned the first open session in the MERGED view, so
-//   a colleague's running timer drew as yours — with a ⏹ that would have
-//   stopped their clock from your screen. Scoped to currentEmail().
-//   projectClockedMs returns {mine, team}; the badge reads "Σ 1h / 31h" only
-//   when somebody else has logged time, so a solo project is unchanged.
-//   Jake set the rule: "if I spend 30 hours on a project and my colleague
-//   spends 1, that's a very different thing than both of us spending 31."
-//   The time report still rolls up EVERYONE — that is the billable surface,
-//   and sessionsToCSV already emitted createdBy.
-//   stageRef() turns a positional index into {sid, index} at CLICK time
-//   (fresher than the render that drew the control) for every setStageDone
-//   and setStageDue call. A stages save that had to keep somebody else's
-//   ticks now says so rather than doing it quietly. isStageGone joins
-//   isRouteError in the global unhandledrejection handler.
-//
-// Version 1.34.2 — Repoint only: ./store.js?v= and ./queue.js?v= were still
-//   asking for 0.25.0 / 0.20.0 while those files were 0.25.1 / 0.20.1, so the
-//   browser kept serving what it already had and an upload looked like a
-//   deploy without being one. Found by version-check.mjs, which until this
-//   day did not exist despite six files instructing the reader to run it.
-//
-// Version 1.34.1 — Jake's marker bump after the headers were shortened.
-//   NO CODE CHANGE.
-//
-// Version 1.34.0 — PER-USER TIER COLOUR AND NAME (UI half).
-//   Settings ▸ Tiers: on a SHARED row the name and colour you type are YOURS.
-//   ⚠️ THE WHOLE FEATURE IS ONE BRANCH IN THE SETTINGS SAVE LOOP — name and
-//   color are deleted from the payload before saveTier and sent to
-//   saveTierSkin instead. Lose that delete in a refactor and the propagation
-//   bug returns looking identical. Everything else (kind, days, carryover,
-//   calendar id, rank) is a property of the tier and still goes to the doc.
-//   "shared as «name»" + the owner's colour dot renders under every shared
-//   row. Empty the name box to clear your override and get theirs back.
-//
-// Version 1.33.0 — ROUTING REFUSALS BECOME VISIBLE; TWO OLD DEFECTS.
-//   A global unhandledrejection listener: nearly every store call here is a
-//   bare .then() with no .catch(), so store 0.24.0's refusals would have been
-//   console lines nobody reads — the same silent-failure shape as the bug
-//   being fixed, one layer up. One net, so no call site can forget.
-//   tierChip() now picks its own foreground (Rec. 709 luma, 0.55 threshold):
-//   .chip hardcodes near-black text and this set only background, so a black
-//   tier was black on black. Prerequisite for 1.34.0, not a follow-up.
-//   Role dropdown runs ascending — least power first, destructive end last.
-//   window.octodoWhere() exposed for live routing diagnosis.
-//
-// ⚠️ 1.34.0 AND 1.33.0 WERE FIRST DELIVERED WITH THIS BANNER STILL READING
-//   1.32.1 WHILE APP_VERSION READ 1.34.0. See store.js's banner for what that
-//   cost. THE HEADER IS THE DIFF.
-//
-// Version 1.32.1 — E41 REPAIR. 1.32.0 shipped the onboarding system in a
-// state where no part of it could complete. Fixed here:
-//
-//   1. FINISHING A TOUR THREW. The Next handler called endTour(), which nulls
-//      currentTour, and then read currentTour.tourId on the following line.
-//      TypeError every time, so markTourCompleted() was never reached and no
-//      tour could ever be recorded as done. Split into finishTour(): record
-//      first, tear down second.
-//   2. #task-escalate DOES NOT EXIST. The escalation tour step and its hint
-//      both pointed at it; the real ids are #task-esc-n / #task-esc-unit.
-//      The step highlighted nothing and the hint was unreachable code.
-//   3. A MISSING OR HIDDEN TARGET DREW THE BOX AT 0,0. getBoundingClientRect
-//      on a display:none element returns zeros, so any step aimed inside a
-//      closed modal pointed confidently at the top-left corner of the screen.
-//      Such a step is now skipped with a console warning that names the
-//      selector — a broken tour should be findable, not merely quiet.
-//   4. NO SCROLL. The highlight is position:fixed and read from the viewport,
-//      so a target below the fold got a highlight below the fold.
-//   5. LISTENERS ACCUMULATED. The backdrop gained a click handler on every
-//      step, and the splash buttons were bound inside a function called from
-//      a Firestore snapshot — which re-fires on every workspace change. Both
-//      are now bound exactly once, in wireOnboarding().
-//   6. THE POPOVER GUESSED ITS OWN SIZE (380x200) and could sit half off the
-//      bottom. It is measured now, and clamped to the viewport on both axes.
-//   7. STATE MOVED TO THE PERSON. See store.js 0.23.1: it was on the
-//      workspace document, which the rules let only an owner write, so the
-//      splash was undismissable for every helper, editor, viewer and
-//      dependent. It reads through onboardingState() now.
-//
-// (prev) Version 1.32.0 — E41: onboarding. Superseded above.
-//
-// (prev) Version 1.31.0 — A STAGE RECORDS WHO ADDED IT. Jake: "Each person should
-// get credit for what each person checks off, and it should track both when
-// the task/piece of the project was created, as well as when it was
-// completed (alongside who created that piece). Every time."
-//
-// The stage editor is the ONLY place a stage can be added to a project that
-// already exists, and it is the only place that can tell a NEW stage from an
-// old one — `row.dataset.orig` is -1 for a row with no original behind it.
-// store.js cannot make that distinction and must not guess: a legacy stage
-// also has no createdBy, and stamping it with whoever edits next would
-// invent evidence rather than record it (see store.js 0.22.0).
-//
-// Existing rows need nothing: 1.30.1 already carries the whole stage
-// forward, so a createdBy written today survives every later edit. Those two
-// changes are the same fix seen from both ends.
-// (prev) Version 1.30.1 — EDITING A PROJECT'S STAGES WAS ERASING WHO COMPLETED
-// THEM. Found by Jake from console data, and his read of it was reasonable
-// and wrong in an instructive way: Tomlinson's stage completions carried
-// completedBy and his did not, so it looked like the stamp depended on WHO.
-// setStageDone writes `completedBy = whoami()` unconditionally, so that could
-// not be it — and the field was ABSENT rather than null, which means
-// something removed it afterwards.
-//
-// saveStages() rebuilt each stage from the form and carried forward an
-// ALLOWLIST of two fields, `completedAt` and `dueAt`. Everything else on the
-// stage was dropped, completedBy included. So every stage edit silently
-// rewrote history: the stage stayed ticked and the credit vanished. The real
-// split in his data was TIME, not person — his completions happened before
-// the last stage edit and hers after it. Had she gone first the evidence
-// would have pointed at her.
-//
-// FIXED by carrying the whole stage and overriding only what the editor
-// owns. An allowlist of preserved fields is a list that goes stale the next
-// time a stage gains one — this is the second thing E9 put on a stage and
-// the first one it lost.
-//
-// ⚠️ `hurrah` MUST STILL BE STRIPPED BEFORE THE SPREAD. D109 says the editor
-// OWNS that flag (it is button state, not carried), so a stale `hurrah: true`
-// surviving the spread would resurrect a climax the user had just turned off.
-//
-// ⚠️ ALREADY-LOST STAMPS ARE NOT RECOVERABLE. The value is gone from the
-// document; nothing knows what it was. This stops the bleeding only.
-// (prev) Version 1.30.0 — TIER ORDER IS A POSITION, NOT A NUMBER YOU TYPE. Jake,
-// after a colleague shared a tier with him: "it came in as 4/4. I changed it
-// to 3 without changing my 3, and it just... stayed there? I think the arrows
-// should move it up and down in the queue rather than change the number."
-//
-// He is right, and the reason is worth writing down because the old control
-// was fine for four years and stopped being fine the moment item 5 shipped.
-// A typed rank only works while ONE person authors every number. A shared
-// tier arrives carrying a rank chosen by somebody who has never seen your
-// board, so the first thing it does is collide — and a text box has no way
-// to express "put this above that" except by asking you to renumber your own
-// tiers around a guest.
-//
-// ▲▼ instead, and rank is assigned 1..N FROM DOM POSITION on save. Ties stop
-// being an error to report and become a state that cannot be constructed,
-// which is the better answer to his "it should kick back an error": the best
-// error message is the one that can never fire. Opening ⚙️ ▸ Tiers and
-// saving now also NORMALISES any collision already in the data.
-//
-// The arrows match .st-up/.st-down on stage rows exactly (D104: one grammar).
-// (prev) Version 1.29.1 — Z: repin to store 0.21.1 (whose tier order you see when
-// visiting somebody's board). No app-side change; the pin has to move or D49
-// bites — a ?v= on a <script> tag does not cache-bust the imports inside it.
-// (prev) Version 1.29.0 — ITEM 5, THE UI HALF. Almost nothing here changed, which
-// is the report: store.js 0.21.0 merges N boards and routes every write to
-// whichever one a document lives on, and the 6,500 lines below still believe
-// there is exactly one workspace. That is E30 spent a second time.
-//   · tierEditorRow gains a 🤝 and toggleSharePanel — an inline strip under
-//     one tier row. Built in JS rather than in index.html because tier rows
-//     are themselves JS-built and there may be any number of them; a single
-//     markup panel would have to be MOVED around the DOM, and D37 has
-//     already taught this project what moving a container costs.
-//   · Everything in that panel writes IMMEDIATELY, not on Settings ▸ Save.
-//     Sharing moves documents between boards. Letting it look undoable by
-//     closing a modal would be a lie about what just happened.
-//   · The version badge names every merged board, because "which workspaces
-//     am I actually reading?" is the first question when a shared tier
-//     misbehaves — and ?ws= takes an id straight off that line.
-// (prev) Version 1.28.0 — D143: the default due time is the next hour, not 09:00,
-// and cancelTaskEdit() stops blanking the due date. Jake asked whether the
-// Today button should also move the time; it shouldn't — a date button that
-// changes a neighbouring field is a button you stop trusting — but the
-// complaint underneath it was about the DEFAULT, and that was worth fixing.
-// The blank-date bug was found while looking: form.reset() restores declared
-// defaults, #task-date declares none, and the field is required.
-// (prev) Version 1.27.0 — THE HELPER ROLE REACHES THE UI, plus D141/D142 on the task
-// form. firestore.rules 1.2.1 added a fourth role and this is the half that
-// makes it usable: "Can help" in the People dropdown, and the Tiers/Pipeline/
-// Timing panes dimmed for anyone who cannot write them. myRole/canWorkList/
-// canSetUp/canDeleteDoc mirror the rules clause for clause — the ✕ on a task
-// is now ABSENT rather than failing when a helper looks at somebody else's
-// task, because a button that errors after the click reads as a bug.
-// D141: a "Now" button beside Time, the twin of D140's "Today" beside Due
-// date — Chrome's native picker has neither. D142: Est. min moved off the
-// three-across row onto its own line with the input beside the label; two
-// native date/time inputs and a number field could not share 340px, which is
-// why the first two looked squeezed.
-// (prev) Version 1.26.0 — E40: the OUTBOUND calendar walkthrough. 1.25.0 explained
-// how to see your appointments; nothing explained how to get your tasks onto
-// a calendar, which is the half that actually makes a phone buzz — this app
-// sends no notifications of its own and never has (§5, "Expectation set with
-// Katie"). Both walkthroughs now render from one function.
-// (prev) Version 1.25.0 — E39: the connect-a-calendar walkthrough, in the app.
-// SETUP-PHASE3-2.0.md is the OPERATOR's one-time guide — Jake, once, in a
-// console nobody else can reach. There was nothing at all for the other
-// twenty people, and he spotted it: "it sure looks like something that's not
-// going to work for anyone else." The six clicks now live beside the field
-// they fill, and the service-account address is shown with a copy button
-// instead of being something he has to paste into a chat window per person.
-// (prev) Version 1.24.0 — E38, three fixes from Jake's first real use of item 4.
-//   1. DEPENDENTS DON'T GET DEPENDENTS. A minor could see and use the
-//      create-a-board form. Jake: "that's just asking kids to mess with one
-//      another and lock them out of things." He's right, and the form is now
-//      hidden from anyone flagged minor on any board they hold. HONESTY: this
-//      is a UI gate, not a rules one — see the comment on the check.
-//   2. A BOARD CAN BE RENAMED. There was no way to fix a board's name in the
-//      app at all; the only route was the Firebase console.
-//   3. THE PLACEHOLDER LIED. "Board name" showed a grey "Nico", which reads
-//      as filled-in — so Jake submitted an empty field and got a board named
-//      after the email's local part. Placeholders now read as instructions,
-//      the name auto-fills from the address as you type, and the fallback
-//      derives "Nico" from "nico.m.wilson" instead of using it whole.
-//   Plus: a dependent board you own says "you hold the deed" in the switcher
-//   rather than "yours", which was true and misleading at once.
-// (prev) Version 1.23.3 — a Z: repin to store 0.20.0 (item 7 made the workspace
-// document authoritative for pollIntervalMinutes, so saveConfig now writes
-// both copies). No app-layer behaviour change.
-// (prev) Version 1.23.2 — a Z. Two fixes in the People list: the tags reused the
-// existing .badge class, which means DANGER, so "holds the deed" rendered as
-// grey-on-red; and a member who is not an owner could see WHO held keys but
-// not WHAT those keys opened, because the role only appeared inside the
-// owner-only <select>. A dependent should be able to read his own board's
-// access list — that is the whole point of showing it to him.
-// (prev) Version 1.23.1 — a Z: the E17 screen told Nico "connection hiccup" when the
-// truth was a rules bug. A blocked screen that guesses wrong about WHY is
-// only marginally better than the silent bounce it replaced, so
-// permission-denied now gets its own honest sentence.
-// (prev) Version 1.23.0 — E32/E34: THE BOARD SWITCHER, which by Jake's own
-// definition (E24) is what makes this 2.0. Houses and keys, on screen:
-//   · a header chip naming the board you are standing in, marked "visiting"
-//     when you hold a key to a house you do not own;
-//   · a menu of every board you hold a key to (subscribeMyWorkspaces);
-//   · a People tab: hand out keys, take them back, change what they open,
-//     and create a dependent board for someone who does not own it.
-// THE STRUCTURAL CHANGE is subscribeBoard(): the eight per-board listeners
-// left onSignedIn and became a function that can be torn down and re-run, so
-// switching boards is teardown + reassign + resubscribe. The board LIST is
-// deliberately NOT in it — it belongs to the user, not to any one board, so
-// it subscribes once and survives every switch.
-// Also scoped the settings-tab selector to #settings-modal. It was a bare
-// `.tab-btn`, which also matches D126's Have-tos/Want-tos bar, so clicking
-// Want-tos called switchSettingsTab(undefined) and hid every settings pane.
-// LATENT, never visible, because openSettings() calls switchSettingsTab
-// ("tiers") on every open and repaired it — but a fourth tab was about to be
-// added to the same unscoped query.
-// (prev) Version 1.22.0 — E30: the port. This file is 1.21.0 with FOUR seams moved
-// and not one line of feature code touched, which is the entire point:
-// store.js absorbed the workspace (E30), so app.js and queue.js cross to a
-// multi-tenant database unchanged. The seams are the import ?v= pins, the
-// version banner, watchAuth's new third callback, and onBlocked() below.
-// A Y per D94 — the E17 screen is something that exists that didn't before.
-// NOT 2.0.0: per Jake's own definition that is the day he and Katie sign in
-// separately and he can toggle to her board. Same shape as D67 defining
-// 1.0.0 as the dashboard; the app ran 0.x for months before earning it.
-// (prev) Version 1.21.0 — D140: a "Today" shortcut beside the task due-date field.
-// The native date picker is the browser's, not ours — no button can be added
-// inside it — so the shortcut lives next to the input instead.
-// (prev) Version 1.20.0 — D139: BOUNDED TASK WINDOW (Option A). The task
-// subscription no longer streams the whole archive on every boot — store.js
-// carries active + last-30-days-completed live, and the week view fetches a
-// deep-past week's completed tasks on demand (tasksForWeek + a per-week
-// cache), so nothing is deleted and old reflections still render, but you
-// only pay a read when you actually page back to them. Confirmed reason,
-// not cost panic: writes had already dropped 92% (D135) — this is the
-// bounded-subscription SHAPE we want multi-user to inherit. The D136 census
-// now reports the live window, so it ticks down as intended.
-// (prev) Version 1.19.0 — D137: THE ALERTER. Jake, on the escalation glow: "it
-// getting redder every hour does nothing." D3 built a real escalation
-// engine and then whispered its results in colour. This makes the SAME
-// engine audible: a task speaks on ITS OWN per-task escalation cadence,
-// so no new schedule was invented and no new setting can be wrong.
-// Three channels, one master switch, ALL PER-DEVICE (D107's rule): an
-// in-page toast (the load-bearing one — a fullscreen kiosk may never
-// paint an OS notification, but it always paints its own page), a
-// synthesized Web Audio chime (no asset to host or 404), and the OS
-// notification. Reads through buildQueue for TODAY — never S.viewDay,
-// never raw S.tasks — so hidden tiers (D47), off-days (D61), timeless
-// want-tos (D126) and pipeline windows (D48) are all honoured for free
-// instead of by a second copy of the rules (D98). Announcements are
-// keyed per MOMENT and persisted, so D130's auto-refresh cannot make a
-// deadline speak twice; the first pass after load is always silent, so
-// opening the app on a bad day does not detonate.
-// (prev) Version 1.18.0 — D136: THE DOCUMENT CENSUS. Every figure in the cost
-// conversation was modelled; the app knows the truth, because it already
-// subscribes to all eight collections and can just count what arrived.
-// The version tooltip and the ⚙️ Settings footer now read e.g.
-// "412 docs/load (tasks 189 · sessions 44 · events 90 · projects 21 ·
-// tiers 6)" — that total IS the per-page-load billed read cost, per
-// device. It exists because subscribeTasks/subscribeSessions are
-// UNFILTERED (every boot re-reads all completed history, forever), and
-// watching this number climb is what will tell Jake WHEN windowing stops
-// being optional, instead of me estimating it from writes-per-day.
-// Read-only, counts documents already received, costs nothing extra.
-// reportVersions() is re-run from the config callback so the tooltip
-// isn't frozen at the zeros it held before any snapshot landed.
-// ------------------------------------------------------------
-// (prev) Version 1.17.0 — D134: ESCAPE CLOSES THE TOPMOST MODAL. Jake, wanting
-// to scroll through the un-dating sweep faster: "the equivalent of
-// clicking the x — no save," and if something changed, confirm. The
-// confirm half cost nothing: the handler never closes anything itself,
-// it CLICKS THE MODAL'S OWN CANCEL BUTTON, so every D129/D131 guard,
-// every bit of state cleanup (fuTarget/clockMode/S.dupTarget) and every
-// special case (stages returning you to the dup form) is reused rather
-// than re-implemented — a second copy of "close" is precisely the D98
-// drift trap. Decision modals map to their NO-OP answer, not a raw hide
-// (uncheck → "oops", weekend → "back"), so nothing is left hidden-but-
-// unresolved with S.uncheckTarget stranded. Topmost = LAST OPEN IN DOM
-// ORDER, because every shell shares z-index 50 and paint order is
-// document order; that's self-maintaining, and the ship-check now
-// asserts every .modal-shell has an Escape entry so modal #12 can't
-// arrive without one. With no modal open, Escape presses the update
-// banner's "Later" (same rule: it answers the thing in your way, via
-// that button, so the don't-re-nag bookkeeping still runs). 25
-// behavioral assertions. Version is a Y, not the .1 Jake offered:
-// D94 says Y = something exists that didn't before, and this is his own
-// rule outranking an offhand number.
-// ------------------------------------------------------------
-// (prev) Version 1.16.0 — D132 + D133, the two halves of "things that keep
-// going." D132: CHAINED FOLLOW-UPS authored at task creation. The New
-// Task form grows a builder ("And then…") of task-plus-N rows, each with
-// a title, an offset, and — from row 2 on — an anchor: after the previous
-// step, or after this task. NO SCHEMA CHANGE and no store.js change: D4
-// already models a follow-up as dueAt:null + parentTaskId, and setTaskDone
-// already materializes every waiting child of whatever just completed, so
-// "previous step" (parent the row above) yields a sequential chain and
-// "after this task" (parent the root) yields D4's fan-out, both for free.
-// Writes must be SEQUENTIAL — a prev-anchored row can't exist before its
-// parent's id does. Create-only: the builder hides during ✎ edit, since ↳
-// already owns adding follow-ups to a task that exists. 16 behavioral
-// assertions on the parenting math, including the case that bites — a
-// prev-anchored row after a root-anchored one hangs off the ROW ABOVE,
-// not the last sequential link. D133: ✋ END THE SERIES on any recurring
-// task. §5c filed this as a chain feature; it isn't — D111's cactus
-// already repeats forever, the only missing verb was stop, and it has to
-// live on the task (she discovers "that was the last one") rather than as
-// a count at creation. recurrence:null is the whole mechanism; the task
-// survives and still wants checking off. Undoable (D116).
-// ------------------------------------------------------------
-// (prev) Version 1.15.0 — D131: the D129 unsaved-changes guard now covers the
-// PROJECT FORM too (Jake asked for it, and it doubles as the live test of
-// D130's update check — deploy this, and the NEXT deploy is what an open
-// tab will detect). The form is a persistent inline PANEL, not a modal, so
-// D129 had left it out pending a UX call; the call is: guard the two real
-// abandon paths — the Cancel button (on an edit) and startProjectEdit
-// replacing the form when you click ✎ on a project while unsaved content
-// sits there — plus the year-view modal's ✕. markClean re-baselines after
-// every open / reset / save, so an untouched form or a freshly-launched one
-// never nags, and the auto-suggested color on reset isn't counted dirty
-// (the baseline captures it post-reset). cancelProjectEdit gained an
-// {saved:true} opt so its post-save internal calls skip the prompt. 5
-// behavioral assertions incl. the half-typed-new-project switch-away and
-// the auto-color edge. app.js-only; no markup/CSS/schema change.
-// ------------------------------------------------------------
-// Version 1.14.0 — D130: UPDATE CHECK (a Y). Katie hit the tub bug on a
-// stale cache — a running tab had no way to know a newer version shipped.
-// Now: 1min after boot, then hourly, checkForUpdate() re-fetches index.html
-// cache-BUSTED (?_v=Date.now() + no-store; without it the browser hands back
-// the same stale file and the check is theater) and reads its
-// data-html-version — the one stamp Jake bumps on EVERY deploy, so there's
-// no second source of truth to drift (the deciding reason over a separate
-// version.json, and Jake's own instinct: "don't you compare the index to
-// something?" — yes, and it already carries its version). If the server's
-// html version differs from BOOT_HTML_VERSION (captured once at load, not
-// re-read from the DOM), a bottom banner shows with a 30s countdown that
-// auto-refreshes; Refresh-now reloads immediately, Later dismisses until the
-// NEXT real deploy (a different version passes the guard again). Silent when
-// offline, when boot version is unknown, or when already counting down. The
-// banner lives OUTSIDE #drift-wrap (D127) so it can't mysteriously float.
-// ------------------------------------------------------------
-// Version 1.13.0 — D128 (blank project type) + D129 (unsaved-changes
-// guard), both a Y. D128: a built-in "Blank (no stages)" option in the
-// project-type picker, via a __blank__ sentinel routed through
-// addProjectWithStages with []. For the projects that match no template
-// (Jake's tub — a bathtub has no "engagement letter") and the natural
-// home for someday/want-to projects, which shouldn't inherit Katie's
-// actuarial stages. No stages = nothing to compute deadlines from, which
-// also sidesteps the whole relative-date-on-null class of nonsense. The
-// sentinel isn't a stored type, so it can't be renamed/deleted and always
-// sits in the list; the Settings ▸ Pipeline editor is untouched (nothing
-// to edit in "blank"). D129: an unsaved-changes guard on editing modals.
-// Jake edited a want-to's stages, hit ✕ to discard (what he wanted), and
-// noticed the app never checked — got lucky discard was the intent.
-// Snapshot-on-open / compare-on-close dirty check (his call: warn ONLY on
-// real edits, so edit-then-revert reads clean); one signature fn per
-// editor, guardedClose() does the compare + confirm. Wired for the stage
-// editor (✎⋮), Settings, and the follow-up modal — each marks clean on
-// open, guards every close path, clears on save. The project form is
-// deliberately NOT wired yet: it's a persistent inline PANEL, not a
-// modal, so "close" isn't a single clear action — its signature fn is
-// written and ready, pending a UX call from Jake. Every field selector
-// checked against real markup before wiring (several first-guess
-// selectors were wrong — .t-dow not .t-day, cfg-* ids, fu-n/fu-unit).
-// ------------------------------------------------------------
-// Version 1.12.0 — D120: THE TIME REPORT (a Y). Katie's question — "can it
-// roll up by day/week/month/quarter/year" — answered without ever asking
-// the fiscal-vs-calendar question that was parked for her: the report's
-// date range is arbitrary (Starts/Ends fields), and month/quarter/year
-// buckets step FORWARD from wherever Starts is set (queue.js's
-// reportPeriods, built on the existing calendar-correct addMonths). Start
-// Jan 1 for calendar periods, Jul 1 for fiscal ones, or any custom window
-// for a specific engagement — same code, no setting to get wrong. Opens
-// from a new 📊 button in the Projects panel header (all projects) or by
-// clicking any project's Σ total (pre-filtered to that one, with a "show
-// all projects" escape hatch in the modal itself). Two CSV exports: the
-// rollup (spreadsheet-ready decimal hours, project × period) and the raw
-// session ledger (UN-split — an actuary gets her own intervals, not our
-// bucketing decisions). All the bucketing/splitting/CSV logic lives in
-// queue.js 0.20.0 as pure functions, verified with 19 verbatim assertions
-// against the real module (calendar AND fiscal-style ranges, midnight-
-// crossing session splits, open-session handling, CSV comma-escaping)
-// before this file ever touched it. No store.js or schema change — reads
-// the existing sessions ledger (D112) exactly as it already is.
-// ------------------------------------------------------------
-// Version 1.11.1 — D126 FIX (a Z): the Projects sidebar wasn't filtering
-// by have-tos/want-tos mode — Jake, from a screenshot, found a someday
-// project sitting in the sidebar on the Have-tos tab too. renderProjects
-// now reads through the same projectsForMode() choke point wantTosShuffle
-// and renderWantTos already used (three separate tier-lookups collapsed
-// into one — timelessTier()). The NOW bar's project lookup stays
-// deliberately UNFILTERED: a running timer is "what you're doing right
-// now" and shouldn't vanish because you flipped tabs to browse.
-// ------------------------------------------------------------
-// Version 1.11.0 — HAVE-TOS / WANT-TOS (D126, a Y). Katie's parking lot for
-// dateless someday-projects. A tier can be marked ⏳ timeless in Settings ▸
-// Tiers (radio-exclusive, same shape as D109's 🎆 — checking one unchecks
-// the rest); the project form reads that flag live off #project-tier
-// (syncProjectDateRequirement) and hides/un-requires the date fields, or
-// drops them to null on save. A new .tab-bar atop #queue-panel (reusing the
-// settings tabs' own class) swaps the whole panel body between the existing
-// date-driven agenda (#havetos-panel, untouched in substance) and the new
-// #wanttos-panel — the timeless tier's projects rendered with the same
-// projectCard() the sidebar uses, "cards with their checklists" per the
-// design. projWhen() replaces every direct fmtDay(p.startDate) with a
-// null-safe "Someday" fallback (projectCard, the color-collision hint).
-// 🔁 duplicate-for-next-year hides on a timeless project (no year to bump).
-// CONTAINMENT lives mostly in queue.js 0.19.0 now (buildQueue/buildWeek skip
-// timeless-tier projects outright; stageScheduledAt refuses to compute a
-// date from null project dates regardless of a stage's own direction) — the
-// one app.js-side choke point is the year view's single `projs` filter,
-// which now excludes timeless-tier projects explicitly rather than trusting
-// the epoch-math coincidence that happened to already keep them off-screen.
-// S.todoMode is session-only by design (never localStorage) — Jake's own
-// containment lever: it always boots to have-tos, so landing on the real
-// work is never one stale toggle away. No store.js change: saveTier and
-// addProject already pass whatever object they're handed straight through.
-// ------------------------------------------------------------
-// Version 1.10.0 — PROJECT-TYPE LIBRARY (D124, a Y). The single stage
-// template becomes a LIBRARY: a "Project type" picker on the new-project
-// form snapshots the CHOSEN pipeline (Default = the old stageTemplate, or
-// any named type) via the existing addProjectWithStages — zero creation-path
-// risk. Settings ▸ Pipeline gains a #pipeline-target selector + New/Rename/
-// Delete; the one stage editor now edits whichever pipeline is selected,
-// held in an in-memory draft that switch-syncs so unsaved edits survive a
-// hop, and Save persists Default → saveStageTemplate and the rest →
-// saveProjectTypes. Existing projects keep their own snapshot; nothing
-// migrates. The holiday-card pipeline Jake wanted is now just a type he
-// builds once and picks — the bridge toward types beyond Katie's default.
-// ------------------------------------------------------------
-// Version 1.9.0 — HOLIDAYS ON THE WALL AND THE WEEK (D123, a Y). A per-device
-// "★ Holidays" toggle (new Overlay group in BOTH the year and week .view-ctls,
-// the D104 grammar) overlays US federal holidays, computed client-side in
-// queue.js (holidaysForRange). Three surfaces, one shared preference
-// (tc-holidays, default OFF): the year GRID/wall marks the day cell (accent
-// dot + the holiday name in its title); the year TIMELINE drops an accent tick
-// in the day-texture loop (title on hover); the week DAY-HEADS gain a small
-// labelled line (abbr) with the full name in the head's title. holidayMapFor()
-// caches per render window so the same Map serves every surface. No new data,
-// no calendar sharing, works offline — D75's "gated behind integration" is moot.
-// ------------------------------------------------------------
-// Version 1.8.0 — THE NOW BAR (D122, the Y) + THE PARADE GETS A NAME
-// (D121). D122, Katie's ask: the top of the Projects list carries a bar
-// showing the CURRENT project and how long she's been on it — project
-// color on the edge, name, "since 2:14 PM", and a live H:MM:SS second
-// hand (a 1-second interval that touches ONE text node, never render()).
-// Tap it → the clock-out dialog. It only exists while a timer runs, and
-// it rides the 🗂 pane reparenting to the wall for free. ALSO the D119
-// finish: the 🕰 was still a full-size .icon-btn wrapping onto its own
-// row ("the same size it was before the move" — Jake); it now wears
-// .clock-btn like its siblings, and all three clock controls live in one
-// .clock-cluster that right-aligns and wraps as a UNIT, never the 🕰
-// alone. D121: onStageToggle hands the project's NAME to celebrate(3)
-// for the ticker-tape banner (celebrate.js 0.2.0 — the parade itself
-// lives there).
-// ------------------------------------------------------------
-// Version 1.7.0 — THE YEAR EXPANDS ON CLICK (D117, a Y) + the clock slims
-// down (D119) + three modals escape drift-wrap (D118). D117: Jake's actual
-// ask, decoded — the hover title was always fine; he wanted the WEEK
-// strip's answer in the year: click a tight bar → it opens to readable
-// height WITH its name (several at once, unlike hover), click again →
-// back. Same session-only Set discipline as weekExpanded, cleared on size
-// change; D115's click-popover AND its ±5px hitbox are retired at Jake's
-// call ("I can see how those overlapping fields would complicate things").
-// D118: clock/followup/yv-project modals lived INSIDE #drift-wrap, whose
-// transform re-roots position:fixed to the PAGE box — scrolled down, a
-// "centered" modal floated above the viewport (Jake's clock-out bug).
-// They join the other six outside, where D37's rule always said overlays
-// live. D119: the clock controls ride the dates/weight line now — ⏱ in /
-// ⏹ elapsed, Σ, 🕰 — a whole row of vertical space returned to the cards.
-// ------------------------------------------------------------
-// Version 1.6.0 — UNDO EVERYWHERE IT'S WELL-DEFINED, PLUS REDO (D116) — a Y.
-// Jake: "undo is always good, as is redo." Two stacks now; every entry
-// carries both directions, captured at commit time; Ctrl/Cmd-Z undoes,
-// Ctrl/Cmd-Shift-Z or Ctrl-Y redoes; a new action kills the redo stack
-// (the old future is gone). Covered: task edits, task deletes (SAME-ID
-// resurrection via restoreDoc so parentTaskId chains survive), due-date
-// saves AND clears (task + stage), stage-editor saves (whole-array swap),
-// project edits, year-bar drags, estimate drags, and all three clock ops
-// (in / out / manual log — store returns what it touched). EXCLUDED on
-// principle, argued and accepted: completion toggles — celebrations,
-// follow-up materialization, and cactus spawns hang off them, and the
-// D53 uncheck modal is already the better undo. Multi-user honesty: undo
-// restores YOUR before-state; a mid-flight edit by the other person loses.
-// ------------------------------------------------------------
-// Version 1.5.0 — UNDO + the all-nighter + the tap toggle (D113/D114/D115).
-// D114 (the Y): Ctrl/Cmd-Z undoes drag commits — year-bar moves/stretches
-// and clock-estimate grips capture their before-state and restore through
-// normal store writes (both screens see it); native undo in text fields
-// untouched; stack of 30. D113: the clock dialogs ask WHEN with a full
-// datetime-local — Katie's all-nighters and multi-day forgets are one
-// honest field; the yesterday-guessing helper is deleted. D115: tapping a
-// year bar a second time closes its popover, and every bar carries an
-// invisible ±5px vertical hitbox — a 2px hairline is a statement, not a
-// tap target; "tap for details" is now true at every size.
-// ------------------------------------------------------------
-// Version 1.4.0 — THE CLOCK (D112) — a Y. Katie's billable-hours paper,
-// replaced. Fixed-price projects billed on assumed hours; the ledger's job
-// is next year's ask. Every project card (Today view AND the dashboard's
-// 🗂 pane — same reparented DOM, zero extra work) wears a clock row that
-// survives collapse: ⏱ Clock in / ⏹ elapsed, a lifetime Σ, and 🕰 manual
-// log. Jake's three sentences, implemented as written: clock-in on B while
-// A runs is a SILENT switch (one batched commit closes A and opens B at
-// the same instant — one open session max, by construction); clock-out
-// opens a dialog with an editable end time (the "actually I stopped at
-// 2:30" guesstimate) and Cancel (the misclick eraser); 🕰 logs a backdated
-// session and truncates an overlapping running timer where it starts.
-// Cross-midnight times mean yesterday; ends clamp to now and to their own
-// starts. The rules wildcard already covers the sessions collection — no
-// console re-paste.
-// ------------------------------------------------------------
-// Version 1.3.0 — THE CHRISTMAS CACTUS (D111) — a Y. Recurring, checkable
-// tasks, exactly as specced in §5c with every decision already captured:
-// a task may carry recurrence {every, unit, anchor}; checking it off lands
-// it in Done-today AND materializes the next occurrence (a full new task,
-// recurrence included — the cactus keeps needing water). Anchor default =
-// completion ("you just watered it → 3 weeks from now"), per-task toggle
-// for schedule-anchored. spawnedNextAt guards against double-planting on
-// re-checks; un-checking leaves the spawn (simplest honest, follow-ups'
-// own words). Escalation still nags the CURRENT instance only. The unit
-// ladder is harmonized everywhere per Jake's aside ("a century-later
-// follow-up feels amusing"): recurrence + escalation get calendar-correct
-// months/years/decades/centuries; follow-up offsets get day-average
-// equivalents. Queue rows wear ↻. Amends D20 narrowly — this is a task
-// that re-plants itself, not a GCal-style engine.
-// ------------------------------------------------------------
-// Version 1.2.1 — TWO D105 WOUNDS (D110) — a Z. (1) Boot with "dash"
-// persisted skipped enterDash(): S.view already read "dash" from
-// localStorage, so the flag-based wasDash was true and the panes never
-// assembled — flags flipped, week-view showed under a lit 🐙. setView now
-// derives assembly from the DOM (dashHomes.length): boot-safe, idempotent,
-// self-healing. (2) renderYear()'s pre-dashboard guard (S.view !== "year")
-// silently refused every repaint of the year PANE — buttons fired, state
-// changed, nothing drew; the pane was a frozen snapshot of the last solo
-// render. Guard now admits "dash". Lesson for the ship-check: verifying
-// the fan-out CALLS renderYear is not verifying the callee AGREES —
-// called ≠ willing. Plus: a divider pointerdown mid-drag no longer
-// double-increments the gesture lock.
-// ------------------------------------------------------------
-// Version 1.2.0 — THE BIG HURRAH GOES WHERE IT BELONGS (D109) — a Y. Katie
-// finished the REAL climax of a project today (publishing) and the app
-// saved the fireworks for the follow-up stage, because "last stage = the
-// end" was a wrong model of what a project's end IS. Stages can now carry
-// 🎆 (one per project, set in either stage editor; radio behavior; carried
-// into next-year duplicates with checkmarks reset — the honor persists).
-// A 🎆 stage completing = full level 3, fireworks + the wave, even with
-// follow-ups open; the actual last stage then gets an ordinary level 2.
-// No 🎆 marked = the old last-stage rule, unchanged. The Duplicate-next-
-// year offer still waits for the WHOLE pipeline (that part really is
-// about being done). Firestore never sees hurrah:false — true or absent.
-// ------------------------------------------------------------
-// Version 1.1.1 — the dashboard's ⛶ (D108) — a Z. Every view carried its
-// own fullscreen button except the one that lives on a TV. The dashboard
-// has no nav row, so the header IS its chrome: #hdr-fullscreen sits by ⚙️,
-// dash-only, wired to the shared D96 toggle. (The pane ⛶ buttons always
-// fullscreened the whole wall — but that shouldn't be a thing you have to
-// know.)
-// ------------------------------------------------------------
-// Version 1.1.0 — BURN-IN CARE (D107, a Y) + the strip-overflow fix (D106,
-// riding along). D107, three per-device layers for a wall that runs 15h/day:
-// screen REST during the sleep hours the app already knows (near-black +
-// wandering clock, dashboard only, tap to peek 5 min); idle CHROME DIM
-// (header + dividers fade to 35% after 5 quiet minutes); and a second,
-// wider, ~26-minute drift orbit on top of D37's fast ±2px. D106: BAR_PX
-// modeled bars as fixed pixels, but real height is rem padding + vw-clamped
-// fonts, and vw measures the GLASS, not the pane — on the 4K dashboard the
-// model undershot ~50% and Auto hid two bars behind a scrollbar at every
-// split position. D103 made the budget measured; settleWeekBars() finishes
-// the cost side: the model proposes a size, the layout disposes — overflow
-// steps down a rung until it fits (pins stay honest clipping).
-// ------------------------------------------------------------
-// Version 1.0.0 — THE DASHBOARD (D105, Phase 4) — the X. D67 defined it two
-// months ago: "1.0 ships when the big-screen dashboard layout exists." It
-// exists: a fourth view (🐙, ≥1200px glass only — Jake: "a 4K beast of a
-// screen") that shows year LEFT, week TOP-RIGHT, agenda BOTTOM-RIGHT, all
-// live at once, with draggable pane dividers (persisted per device,
-// dbl-click resets) and a 🗂 toggle that splits the agenda pane two-up with
-// the project pipeline. Architecture: the D68 reparenting trick at kiosk
-// scale — the panes are EMPTY SHELLS and entering the dashboard MOVES the
-// real #year-view/#week-view/#queue-panel into them (comment markers hold
-// their seats at home). Nothing is cloned, so nothing can drift (D98). One
-// new helper, fitAvail(), teaches all three height fits to answer against
-// the pane when inside one and the window otherwise — the solo views are
-// untouched by construction. Divider drags take the D101 gesture lock.
-// Per Jake: from here, fixes are 1.0.z; only a new idea makes 1.1.
-// ------------------------------------------------------------
-// Version 0.38.1 — one grammar, and a splitter that answers (D104) — a Z.
-// The week and year controls said the same three things in two dialects
-// (labels/order/attributes all drifted); both now speak Layout · Window ·
-// Bars with data-layout / data-window / data-size, ahead of the dashboard
-// where the two headers must live side by side. localStorage keys are
-// UNCHANGED on purpose — renaming them would silently reset Jake's and
-// Katie's device choices, which reads as a bug. And the wv-split drag-DOWN
-// deadness is fixed: Auto re-picks the bar size DURING the drag, so the
-// boundary follows the pointer instead of teleporting on release.
-// ------------------------------------------------------------
-// Version 0.38.0 — the tracks fix (D103) — a Z. Two bugs, one wound: the
-// week's SEVEN columns were only ever declared in the stylesheet, so any JS
-// that set grid-template-columns on #wv-grid alone silently divorced the
-// day heads (.wv-strip) from the days. Tidal's past-column compression did
-// exactly that. Tracks are now ONE CSS variable that #wv-grid and every
-// strip read together — they cannot disagree, because there's one number.
-// Also: Auto's budget was fiction. It modelled the strip box as 34% of the
-// board, but my own #tidal-horizon (flex: 0 0 auto — it will NOT shrink)
-// squeezes #wv-strips (flex: 0 1 auto — it will), and the banner rows share
-// that box and were never counted. Auto now measures what's actually left.
-// 0.37.0 — the gesture lock (D101) — a Y: deferred rendering is a
-// thing that didn't exist before. render() is a SNAPSHOT handler, so a drag
-// must DEFER renders, never drop them: skipping would silently discard
-// Katie's live updates. Defer + flush on release, with a 30s safety valve
-// that fails OPEN, because a stuck lock would freeze live sync while looking
-// perfectly healthy — the worst failure this app can have.
-// 0.36.0 — THE CLOCK GRID (D100), layout #3 under Week. Built on D93,
-// NOT D91: a task time is a DUE date, so a task is the block
-// [due - estimate, due] — the runway ENDS at the promise and trails BACKWARD.
-// Only overdue runs forward. Events own [start, end] outright.
-// Dragging a task's TOP edge IS estimating (D93), and that gesture is the
-// point of the layout: "can I fit dinner on Tuesday?" is a question about
-// LENGTH, and until now a task could only ever be a line at a deadline.
-// 0.35.1 — dead-space fix (D99). A past column whose items are all
-// done/moved has an EMPTY .wv-list, and .wv-list is flex:1 — so the empty box
-// claimed the whole column and stranded the cards at the bottom under a field
-// of nothing. The bug only showed on exactly the columns reflection exists
-// for. Now: no items + cards → the cards ARE the column.
-// 0.35.0 — GANTESQUE IS DONE (D98). The 5a-bis victories/put-offs
-// cards now render in GANTESQUE, which is where they were always owed —
-// D97 built them and scoped them to Tidal, leaving the 12-turn-old Gantesque
-// debt still open AND making the two layouts un-comparable, which is the one
-// thing Tidal exists for. The cards are layout-agnostic: reflectionCards()
-// is shared, the engine is dayReflection() in queue.js, and each layout only
-// decides WHERE to hang them. Gantesque keeps its day list and gains the
-// cards beneath it; Tidal REPLACES the list with a Wake. That difference is
-// now the actual thing being compared.
-// 0.34.0 — the Tidal Grid + Reflection (D97) — a Y: two things
-// exist that didn't before. (1) THE CARDS 5a-bis promised and D95 built the
-// data for, which nobody had actually rendered: what a day got DONE and what
-// it put off. (2) TIDAL, layout #2 under Week (D90: Gantesque is the LAYOUT,
-// the view stays "Week") — anchor shelf (events: fixed time, not ours) over
-// the flow (tasks + stages: ours to arrange), and past days become a Wake.
-// The two are one engine: the Wake IS the put-offs card.
-// Gantesque is untouched — renderWeekColumns() is the 0.33.0 code verbatim,
-// and it hands the grid tracks back to the stylesheet so Tidal's computed
-// column widths can't leak into it.
-// COST ON THE RECORD: the anchor/flow split breaks D43's chronological
-// interleave (a 9 AM task sits below a noon meeting). That's the thesis —
-// events own time, tasks own a deadline (D93) — and why it's a sibling.
-// 0.33.0 — "on the wall" (D96) — a Y: Today had no ⛶ at all.
-// 0.33.0: one shared toggleFullscreen() for all three views (week and
-// year each had their own copy — which is how Today got forgotten), with
-// webkit* fallbacks because the target is an OLD Android tablet: year's
-// copy would have THROWN there, week's would have failed silently.
-// Pairs with manifest.json (html 0.25.0): Add to Home Screen kills the
-// address bar, ⛶ kills the rest, and Android screen-pinning locks it
-// down needing nothing from us.
-// Version 0.32.0 — "it remembers being moved" (D95) — a Y: this is new.
-// 0.32.0: tasks carry firstDueAt + rescheduleCount (store 0.10.0). The
-// hover shows "↻ moved 4× · first due Jul 10"; anything moved 3+ times
-// wears a quiet mark, because a task that keeps sliding is the question
-// worth asking. No migration — firstDueAt ?? dueAt IS the backfill.
-// Version 0.31.1 — "spend the glass" (D94) — a Z, not a Y (D94 rule):
-// old ideas finally behaving, not new ones. Draggable projects/days
-// split (double-click resets); Auto now refits the bars into whatever
-// share you chose instead of assuming a third. Row time+title finally
-// share a centre line.
-// Version 0.31.0 — "click to read, click to fold" (D92)
-// 0.31.0: D91 expanded a bar on click and left no way back (Jake). Now
-// one rule, no timing: at compact sizes a click TOGGLES expand/collapse
-// and the expanded bar grows a ✎ to act; at readable sizes a click acts
-// directly. "If you can read it, clicking acts; if you can't, clicking
-// makes it readable." The hover says which one you'll get.
-// Version 0.30.0 — "the board actually makes room" (D91)
-// 0.30.0: D90's density edit NEVER LANDED — my patch script built a list
-// of replacements, applied three by hand and never iterated the list, so
-// weekBarSize/setWeekSize were called but never defined and dataset.size
-// was never set. node --check parses; it does not notice a call to a
-// function nobody wrote. Jake found it in one click. Now: the functions
-// exist, Auto is HEIGHT-aware (measure the board, give the columns ~60%),
-// and #week-view is pinned to the space under the header — height:100%
-// against a parent with no height resolved to auto, which is why the
-// columns walked off the bottom. First click on a too-small bar expands
-// it; the second acts.
-// Version 0.29.0 — "the board makes room" (D90)
-// 0.29.0: HEIGHT. Eleven project bars pushed the day columns off the
-// screen — #wv-sizes (Auto/▮/▪/▁/🧵) thins them, Auto stepping down as
-// the list grows so the columns always get room. Banners pack DENSE (a
-// 2-event Friday was taking a 3rd row because CSS grid's sparse cursor
-// never walks backward — Jake and Katie both spotted the wasted row).
-// Rows are clickable → reschedule; the deadline block finally hovers
-// (I had written its tooltip and then killed it with pointer-events:
-// none). NAV-SLOTS in all three views: "back to now" sits on the side
-// matching its direction of travel and the arrows NEVER move — three
-// clicks forward is three clicks forward (Jake, app-wide design flag).
-// Version 0.28.0 — "Gantesque" (D89) — Jake's five, from real data
-// 0.28.0: (1) project bars sort by PRIORITY, not the alphabet. (2) dates
-// get a header row ABOVE the strips, where a date is expected. (3) the
-// load bar is GONE: it showed "this day has 40% as many items as the
-// busiest day" while looking exactly like a progress bar — two items,
-// none done, 40% red, and Jake rightly asked what it meant. Words now.
-// (4) the view toggle is a labeled 3-way switch (a glyph that needs a
-// hover to explain itself is a failed control). (5) week-start modes:
-// Today+6 / Sun–Sat / Mon–Sun, remembered per device — the past columns
-// are for reflection, not waste (Jake corrected me). Also: an EXPIRED
-// project whose window has passed no longer vanishes from the board.
-// Version 0.27.0 — "the week" (D88)
-// 0.27.0: THIRD VIEW. day → week → year cycles on one button. The week is
-// seven QUEUE columns, not a clock: a task due at 4 PM is a deadline, not
-// an appointment, and every computed stage deadline lands at deadlineHour,
-// so a time grid would paint a wall of 4 PM collisions that don't exist.
-// Spans (projects w/ stage pips, all-day events) ride the top strips;
-// dated things live in columns. Per-day LOAD BAR — the one thing a week
-// says that a day can't: "Thursday is going to hurt, and it's Monday."
-// Rolling today+6 by default (a kiosk shouldn't spend four columns on
-// history every Friday); ◀ ▶ page, "back to now" returns to rolling.
-// Read-only v1 — drag lands once the layout is proven. queue ?v= → 0.13.0.
-// Version 0.26.0 — "clear the deck, grouped" (D86)
-// 0.26.0: queue ?v= → 0.12.0. D85's blended weight made a U (a 30%-done
-// project outranked a 65%-done one); D86 replaces it with two piles —
-// past-threshold beats catch-up, always. No UI change: same ⚙️ Pipeline
-// setting, same fraction, better sort.
-// Version 0.25.0 — "clear the deck" (D85)
-// 0.25.0: new ⚙️ Pipeline setting — "Clear-the-deck at N% complete"
-// (#cfg-cleardeck, stored as clearDeckThreshold fraction). Below it the
-// queue favors your least-finished projects; at/above it a project flips
-// to "just finish it." Wired to queue.js via setClearDeckThreshold on the
-// config subscription (same pattern as deadlineHour). Tiebreaker only.
-// Version 0.24.0 — "kick it down the road" (D84)
-// 0.24.0: Jake's revised decision — the decision modal now offers BOTH
-// reschedules: 🕐 stays the one-tap next-working-day-9AM, and a new 📅
-// opens the due dialog for "way down the road" (any date + time). The
-// due dialog is generalized: S.dueTarget is now {kind:"stage"|"task",…}
-// and dueSave/dueClear branch — clearing a task's due shelves it to
-// Waiting (a legit third option: 'not now, maybe ever').
-// Version 0.23.1 — "the clock says where" (D83)
-// 0.23.1: decision-modal rows now SAY the 🕐 plan in the sub line
-// ("🕐 → Mon, Jul 13 9 AM") instead of hiding it in a hover tooltip —
-// phones have no hover, and Jake read the silent auto-reschedule as
-// "the modal just closes." Behavior unchanged: 🕐 IS the reschedule.
-// Version 0.23.0 — "time passes, follow-ups flex" (D82, Otto's finale)
-// 0.23.0:
-//  · Passed timed events sink into an EARLIER TODAY box (dimmed,
-//    struck time) instead of loitering in the live queue — today's
-//    view only; past/future days show everything in place.
-//  · Follow-ups get a real dialog (two prompt()s retired) with an
-//    amount + minutes/hours/days/weeks unit. Storage stays offsetDays
-//    (fractional — store.js's materialization already multiplies), so
-//    store.js is untouched. Waiting rows display "+45m/+2h/+3d/+1w".
-// Version 0.22.0 — "the mirror has a home" (D81)
-// 0.22.0: ⚙️ Settings → Calendar gains "Mirror tasks to calendar ID"
-// (config.mirrorCalendarId), consumed by functions 0.2.0's hourly
-// reconcile. Blank = off. The function refuses polled calendars
-// (loop guard); the hint says so too.
-// Version 0.21.0 — "things that are happening" (D80)
-// 0.21.0:
-//  · All-day events render as an ambient BANNER STRIP above the queue
-//    (tier-tinted pills, "Zoo Camp · day 3/5"), not as 12:00 AM rows —
-//    the shape Jake described: not tasks, not appointments, just truth
-//    to glance at. No checkbox, no pin, no expiry; multi-days show
-//    their span; hover shows the full date range. Timed events remain
-//    queue anchors exactly as designed since D3.
-// Version 0.20.0 — "phone chrome" (D78)
-// 0.20.0:
-//  · ＋ in the header (phone widths only) scrolls straight to the
-//    Add-a-task form and focuses the title (keyboard up, ready to
-//    type). If you're in the year view it swaps to Today first — the
-//    form lives there. No modal, per Jake: just the shortcut.
-//  · "Log out", in words, at the very bottom (phone only); the ⏻
-//    mystery-square hides at those widths.
-// Version 0.19.2 — "the ghost is the preview" (D77)
-// 0.19.2 (Jake: "it ends up where it's supposed to, but it strays
-// into May first"):
-//  · The pointer-following chip RETIRES. During a drag the original
-//    bar dims in place; the ghosts — now TINTED in the project's own
-//    color — are the entire moving preview. Nothing strays anywhere;
-//    the transform/width preview code (source of two rounds of visual
-//    bugs) is deleted outright.
-// Version 0.19.1 — "the resolver learns left from right" (D76)
-// 0.19.1 (BUGFIX, Jake's mid-drag screenshot):
-//  · D73's date resolver measured only VERTICAL distance to rows — but
-//    D72 put three months side-by-side, so April's week row "won" for
-//    pointers inside June (same y-band, DOM order), x clamped to
-//    April's edge, and EVERY horizontal position resolved to the same
-//    date → horizontal drags dead, vertical ±7s fine. Now true 2D
-//    distance; inside a rect is distance zero for that rect alone.
-//  · Ghosts clipped to weeks but not MONTHS, so a shared spillover
-//    week (May 31–Jun 6 lives in both May's and June's blocks) lit up
-//    twice. Lanes now carry data-clip-s/e; ghosts draw only where the
-//    bar will actually render.
-// Version 0.19.0 — "the ghost knows where it lands" (D74)
-// 0.19.0:
-//  · DROP GHOSTS: while dragging, dashed accent slots render at body
-//    level in EVERY row the new dates cross — the landing zone is
-//    visible truth, matching the nav label. The lifted chip still
-//    follows the pointer; the ghost is where it lands. Ghosts survive
-//    mid-drag re-renders (they're body-level fixed, and the rowMap
-//    rects remain valid).
-// Version 0.18.0 — "carry it anywhere" (D73)
-// 0.18.0:
-//  · CROSS-ROW DRAGGING: drags hit-test against every week/row
-//    rectangle (captured at grab time), so "what date is under the
-//    pointer" replaces horizontal pixel math. Move a bar from the 12th
-//    up a row to the 5th, across months, or between Gantt quarters —
-//    the bar lifts and follows the pointer; the nav label reads live
-//    dates; release commits with the usual working-day snapping.
-//    Edge-drags use the same date math (width preview stays in-row;
-//    the label guides).
-// Version 0.17.0 — "Katie's quarters" (D72)
-// 0.17.0:
-//  · The Annual is QUARTERS: 4 rows × 3 months (Katie caught the 3×4
-//    orientation error). Wider months serve the future kiosk column.
-//  · PER-QUARTER uniform week heights (Jake's idea): each row of
-//    months sizes to ITS OWN max weekly concurrency — July's 9-project
-//    pileup only taxes Q3; empty quarters collapse. Fit math solves GL
-//    across the actual quarter mix, so today's load lands ~6px bars in
-//    a NORMAL window (fullscreen no longer required).
-// Version 0.16.0 — "nickel and dime" (D71)
-// 0.16.0:
-//  · Annual reclaims its pixels: dow row dropped (weekend shading +
-//    day numbers carry the structure), month chrome estimate honest
-//    (26px), lane padding trimmed, auto floor now GL 3 → 2px hairline
-//    bars. Jake's real numbers (≈1070px, 10 lanes, 6-week Aug) now
-//    land at GL 3 with ~145px slack; ⛶ fullscreen buys GL 4.
-//  · FIT-MATH BUG: measurements were viewport-space, so rendering
-//    while scrolled inflated avail and bars GREW after you scrolled.
-//    Now document-space (rect.top + scrollY) in Annual AND timeline.
-//  · 🧵 hairline pin (LANE 3 / BAR 2, borderless): see the whole year
-//    as color threads; tap for details; edit at bigger sizes.
-//  · ⛶ fullscreen toggle in the year nav; fullscreenchange re-fits.
-// Version 0.15.0 — "the year that fits" (D70)
-// 0.15.0:
-//  · Annual view (né Year wall) auto-density is now WINDOW-FIT, like
-//    the timeline: month rows share the real screen height, GL clamps
-//    5–14; the floor is 3px borderless hairline bars, so a fully
-//    loaded Katie-year still fits one screen before it ever scrolls.
-//    (Column count mirrors the CSS breakpoints — change together.)
-//  · Annual week heights are UNIFORM (global max concurrency), so the
-//    12 calendars line up like a real wall instead of July towering
-//    over an empty August (Jake). Stacked Months keeps per-week fit.
-//  · Bar labels appear on ANY bar tall enough to hold them (≥16px and
-//    ≥3 days) — the Annual view included, e.g. with ▮ pinned.
-//  · NOT a bug, recorded for posterity: progress fill is positional in
-//    time (D30a) — a May–July project at 25% shows its saturation in
-//    MAY; a July-onward window shows only ghost. Jan–Dec reveals it.
-// Version 0.14.0 — "the whole year on the wall" (D69)
-// 0.14.0:
-//  · YEAR WALL layout (the view Jake was picturing all along): 12 mini
-//    month calendars in a 4×3 grid — the wall of calendars. New
-//    default; ▦▦/▦/▬ toggle. Zooming a wall month renders it big
-//    (stacked-month styling). Wall bars never carry inline labels —
-//    hover/tap/legend speak. Wall auto-density runs one notch thinner.
-//  · BAR SIZE control (Jake): Auto (per-layout judgment, incl. the
-//    timeline's window fit) or pinned ▮ 20px / ▪ 10px / ▁ 5px bars —
-//    persisted per device (tc-year-barsize).
-// Version 0.13.0 — "the wall calendar" (D68)
-// 0.13.0:
-//  · MONTH-GRID layout (Jake's "traditional view"): months stacked,
-//    Sun–Sat columns, weeks as rows; bars clip per week ∩ month with
-//    per-week lane packing (gcal-style), same drag/stretch/tap/fill.
-//    Toggle (▦ Month grid ⇄ ▬ Timeline) left of the mode buttons;
-//    grid is the default, choice persists (tc-year-layout). The
-//    days-in-a-row layout now has its name in the UI: a Gantt chart.
-//  · Timeline bars size to the WINDOW: total lanes share the real
-//    vertical space (clamped 9–34px lanes), re-flowing on resize —
-//    2K gets thick bars, phones get readable slivers.
-//  · ＋ New project FAB (bottom-right of the year view) reparents the
-//    REAL project form into a modal — listeners, color assistant, and
-//    working-day interception ride along — and returns it on close.
-// Version 0.12.0 — "days are key" (D66)
-// 0.12.0:
-//  · Day texture in BOTH year rows and month zoom: weekend shading
-//    blocks, faint day gridlines, stronger Monday week lines (month
-//    boundaries remain strongest). Compact grids shed day lines first.
-//  · Adaptive bar density for Katie's real concurrency: ≤4 lanes =
-//    full 20px bars with inline labels; ≤9 = half-height 10px; beyond
-//    = quarter-height 5px. Thin bars drop inline labels — hover titles,
-//    tap popovers, and the legend carry the names (Jake's suggestion).
-//  · Rows now size to the lanes they actually use (a quiet quarter is
-//    a short quarter) while every project keeps its one global lane.
-// Version 0.11.0 — "PHASE 2: the year view" (D65)
-// 0.11.0:
-//  · Header 📅 toggles between Today and a quarter-aligned year view:
-//    4 rows × 3 months, three anchor modes (Jan–Dec / quarter-first /
-//    month-first, D31), ◀▶ pages 12 months, "back to now" resets.
-//  · Project bars (D30a): pale ghost of the project color saturating
-//    left-to-right by pipeline %, continuous across quarter rows via
-//    per-segment gradient clipping; global lane packing keeps each
-//    project on ONE lane all year; today line; legend + tap-for-details
-//    popover (D27); labels hide on narrow grids (container query).
-//  · Drag to move, edge-drag to stretch (D32): document-level pointer
-//    listeners survive re-renders; live date readout in the nav label;
-//    release snaps to the tier's working days (start fwd / end back,
-//    order-guarded — same rules as the form and 🔁 duplicate).
-//  · Tap a month name to zoom it full-width with day ticks (D18);
-//    ◀▶ then steps one month; "◱ whole year" returns.
-//  · View + anchor mode persist per device (tc-view / tc-year-mode).
-// Version 0.10.0 — "the encore" (Katie's notes field, D63)
-// 0.10.0:
-//  · Tasks get an optional NOTES field: short title in the row, details
-//    behind a ▸ toggle underneath (tap the title or the chevron).
-//  · Row layout v2 (the phone smoking-gun screenshot): queue/waiting/
-//    done rows are now two lines — [checkbox + title] over [tier chip +
-//    actions] — so long titles wrap as prose instead of one-word
-//    columns squeezed beside four buttons. Shared rowScaffold builder.
-// Version 0.9.0 — "the goodbye release" (Inky's last)
-// 0.9.0:
-//  · D62 rev: dup modal gains "✎⋮ Review the pipeline first…" — edits
-//    next year's stage list BEFORE anything is created (stages editor
-//    borrowed via the "@dup" target; dup modal hides and returns).
-//  · Snooze row: remind me in 1 day / 1 week / 1 month (30d alone was
-//    too blunt).
-//  · Un-dater broadened: remnants come in TWO flavors — after/end/0
-//    (Katie's window experiments) AND after/start/0 (the 0.6.0/0.6.1
-//    editors' default, per the D50 caveat). v0.8.0 only caught "end";
-//    Jake's screenshot showed the other half untouched. Now any
-//    After + 0wd row converts, either anchor.
-// Version 0.8.0 — "the smoke-test release"
-// 0.8.0:
-//  · D61: queue hides a tier's items on days outside its allowedDays
-//    (Katie's weekend queue is clear of Work; cards still show all).
-//  · D62: duplicate-for-next-year is a REVIEW FORM — name (with the
-//    year token auto-bumped, e.g. resv2606 → resv2706), dates, color,
-//    tier, workload all editable before creation; "Remind me in a
-//    month" snoozes it into a real task instead.
-//  · Date/time fields: task due defaults to today; clicking any
-//    date/time input opens the native picker (showPicker) where the
-//    browser supports it, instead of demanding the tiny icon.
-//  · Stage-editor rows: undated stages now GHOST their anchor/offset
-//    controls (visibility, not display) so columns stay aligned — the
-//    "name field ate the row" report was the layout collapsing into
-//    the vacancy left by display:none.
-// Version 0.7.0 — "the exit-checklist release"
-// 0.7.0:
-//  · DECISION MODAL v2 (D57): rows are LIVE (re-derived from real
-//    state every render), ✓ completes the ACTIVE stage (the old code
-//    completed the deadline stage — Jake's "still on the first phase"
-//    bug), 🕐 replaces ↷ and reschedules the overdue DEADLINE to the
-//    tier's next allowed day 9 AM, modal auto-closes when emptied.
-//  · Collapsible project cards + pinned header buttons + finished
-//    projects folded into their own section (D56).
-//  · Un-complete-parent rewind modal, 3 options (D53).
-//  · Duplicate-for-next-year: completion prompt + 🔁 card button (D59).
-//  · Settings split into tabs; deadline hour (D51) + decision
-//    threshold (D52) settable; per-tier allowed-day toggles (D60);
-//    tier color conflict assistant (D55).
-//  · ⓘ popover fix (D58): a tap inside a <label> re-dispatches a
-//    click to the label's control, and THAT second click closed the
-//    popover in the same instant it opened. preventDefault() stops
-//    the forwarding. (Jake: "the i doesn't show anything.")
-// 0.6.x: D50 undated stages, D49 versioned module imports, D43–D48
-// priority engine v2 + modals + filters.
-// ============================================================
-
-```
-
-
----
-
-## `functions/index.js`
-
-<!-- Moved out of the source header 2026-08-02 (Thaumoctopus), verbatim.
-     The header was 191 lines; version-check 1.5.0 now enforces the budget. -->
-
-<!-- 2026-08-02 (Cirrothauma): the budget was still being FAILED — the trim
-     above had recorded the intent and left the header at 191 lines. Finished
-     it: 191 -> 57 lines, and 1.3.1 is the bump that carries it. The 1.2.1
-     block below existed ONLY in that header and was nearly lost with it;
-     everything else was already here. Also removed a line that appeared
-     twice in a row ("0.3.0: PHASE 3 IS COMPLETE..."), which is what a header
-     nobody can see in one screen produces. -->
-
-### 1.2.1
-
-```
-(prev) Version 1.2.1 (E14 queue · E37 guard · E40 ws tags)
-
-1.2.1 — the mirror's "not configured" message pointed at "⚙️ Settings →
-Calendar". THERE IS NO CALENDAR TAB; it is Timing, and the carryover's
-message twelve lines below already said so. This is D84's error, which was
-corrected in the docs in July and never in the string a user actually sees.
-Caught in Jake's first live curl. Both messages now name the tab that
-exists AND the walkthrough that explains it.
-```
-
-### 1.2.0
-
-```
-1.1.0 tagged every mirrored event `tcApp=octodo` and nothing else, then
-listed by that tag and DELETED any event whose task it could not find. One
-app, many workspaces — so if two workspaces ever pointed at the SAME mirror
-calendar, each run would see the other's events as orphans and delete them.
-Every hour. This is the identical failure the 1.x/2.0 tag split was written
-to prevent (E36), one level further down, and it was still open.
-
-Fixed by adding `tcWs: <workspaceId>` to every written event and to the
-list filter (privateExtendedProperty repeats and ANDs). Each workspace now
-sees and prunes only its own events, which turns "two people share one
-mirror calendar" from a mutual-deletion machine into something that simply
-works — a household might well want exactly that.
-
-⚠️ FREE ONLY BECAUSE NOTHING IS DEPLOYED YET. An event written by 1.0.0 or
-1.1.0 carries no tcWs, so it would fall outside the new filter, become
-invisible, and never be pruned. There are no such events today. If this
-ever changes after a real deploy, the migration is a one-off pass that
-lists by tcApp alone and stamps tcWs onto anything missing it.
-
-(prev) Version 1.1.0 (E14 work queue + E37 calendar guard)
-
-1.1.0 — ⚠️ CLOSES A REAL HOLE THAT 1.0.0 SHIPPED WITH, found by Jake
-asking whether a colleague could end up with HIS calendar. He could have
-ended up with worse: a colleague could have TAKEN it.
-
-  THE HOLE. The service account is PROJECT-WIDE. When Jake shares his
-  calendar with the robot so his own poll works, he grants that robot
-  access for EVERY workspace in the project — the grant lives on Google's
-  side and knows nothing about workspaces. 1.0.0 then read whatever
-  calendar id a tier happened to name, with no check that the workspace
-  was entitled to it. So any signed-up user could type
-  jacob.v.wilson@gmail.com into their own Home tier and pull his entire
-  calendar into their queue. Firestore isolation (E1) is airtight and
-  completely beside the point here: the leak is on the CALENDAR side.
-
-  THE GUARD (E37). A bare email address is somebody's primary calendar,
-  and it is guessable — so it may only be polled by a workspace that
-  person is a MEMBER of. Everything else (…@group.calendar.google.com and
-  friends) is an opaque random id nobody can guess, so it passes; those
-  are secondary calendars whose id is itself the secret.
-
-  WHAT THIS IS AND IS NOT. It is a real fix for the guessable case, which
-  is the one that matters, and it is defence in depth rather than a proof
-  of ownership — path A cannot prove ownership, because sharing a calendar
-  with a robot leaves no record of WHO shared it. **The complete answer is
-  path B (E13): per-user OAuth, where each person authorises their own
-  calendar and no shared robot exists.** Until then this guard plus a
-  trusted user base is the honest position, and it is written down here so
-  nobody has to rediscover it.
-
-(prev) Version 1.0.0 (E14, the multi-tenant work queue)
-
-1.0.0 — WHAT CHANGED FROM 1.x's 0.4.0, AND WHAT DELIBERATELY DID NOT.
-
-DID NOT CHANGE, and re-deriving any of it by accident would be, in the
-design doc's own words, "a catastrophe wearing a rewrite's clothes":
-  · D135's poll reconcile — deterministic {tierId}_{gcalEventId} doc ids,
-    write-only-what-changed, syncedAt deliberately absent. This took
-    writes from 1,500/day to 116/day. It is carried across verbatim.
-  · D81's mirror ledger — the CALENDAR is the ledger, keyed by tcTaskId;
-    no task-doc writes, honest dueAt only, and the loop guard that refuses
-    to mirror into a calendar some tier polls.
-  · D87's carryover — no hour trigger, because "due before today began" is
-    true whenever it runs, so no cron hiccup can silently skip a morning.
-  · The separate tag namespace between mirror and carryover, so two jobs
-    can write to ONE calendar and stay mutually invisible.
-
-CHANGED:
-  1. THE WORK QUEUE (E14). 0.4.0 hardcoded `WS = "primary"`. A serial loop
-     over every workspace would eventually exceed the request timeout, and
-     its failure mode is silent — the last user in the loop never gets
-     polled and nobody finds out. Instead: claim a bounded batch of
-     workspaces whose nextPollAt is due, oldest first, process each with
-     its own try/catch, and re-stamp. Timeout-safe by construction,
-     self-healing after an outage (the overdue are simply the oldest), and
-     load spreads itself because stamps land at staggered times.
-  2. THE TAG NAMESPACE IS `octodo`, NOT `tentacalendar`. This is the whole
-     answer to "can both apps share a calendar during the migration."
-     The mirror LISTS by exact-match on tcApp, then DELETES any tagged
-     event whose task it cannot find — so two apps sharing one tag would
-     take turns deleting each other's work, every hour. Distinct tags make
-     them mutually invisible, exactly as D87 already made the carryover
-     invisible to the mirror. 1.x keeps its tag and is not touched.
-     ⚠️ A COMBINED TAG ("octodo tentacalendar") CANNOT WORK: the list
-     filter is exact-match, so such an event is invisible to BOTH apps
-     rather than visible to both. The tag records OWNERSHIP, and ownership
-     has to be binary for the prune step to be safe.
-  3. pollIntervalMinutes is read from the WORKSPACE document (E14 needs it
-     queryable), falling back to settings/config and then 60.
-  4. ?ws=<id> runs one workspace only — the testing door 0.4.0 never
-     needed, and the first thing anyone will want when a poll misbehaves.
-
-Deploy: Google Cloud Console inline editor (no CLI). See SETUP-PHASE3-2.0.md.
-
-(prev) Version 0.4.0 (D135, the poll reconcile)
-0.4.0: pollCalendars RECONCILES instead of replacing. It used to delete
-every cached event and re-write all of them under new auto-ids every
-hour regardless of change — ~180 document changes pushed to every open
-tab per run, ~2,900 billed reads per tab per day, scaling with users.
-Now: docs are keyed {tierId}_{gcalEventId} (what HANDOFF §3 always
-specified; the code had drifted to auto-ids, which is WHY nothing could
-be compared), only genuinely-changed events are written, and only
-vanished ones deleted. syncedAt was REMOVED from the payload — it was
-never read anywhere, and being Date.now() it would have made every doc
-differ every run and defeated the whole fix. Legacy auto-id docs delete
-themselves on the first run (they're not in the wanted set). Same
-discipline mirrorTasks has used since 0.2.0. No client change needed:
-nothing keys off an event's doc id, and eventsCache is read-only display.
-0.3.0: PHASE 3 IS COMPLETE. Third job, ?job=carryover (and in "all"):
-0.3.0: PHASE 3 IS COMPLETE. Third job, ?job=carryover (and in "all"):
-a task in a ❗ midnightCarryover tier that was due before today began
-and still isn't checked gets "❗ <task>" on today's calendar at
-config.carryoverWriteHour (default 9), tomato colorId 11 — D14, the
-"nothing silently disappears" promise. Deliberately NOT hour-triggered:
-"due before today started" is true whenever it runs, so the first
-waking tick (~06:07, past the 22–6 sleep gate) writes the 9 AM landing
-and no cron hiccup can skip a morning. Its own tag namespace
-(tcApp=octodo-carryover) so the mirror — same calendar, keyed by
-tcTaskId — can't see these and patch the ❗ back to the due time.
-Reconciles TODAY only: create / re-time / delete-when-done; history stands.
-0.2.0: one service, two jobs, routed by ?job= — "poll" (default),
-"mirror", or "all" (what the Scheduler should call). The mirror
-reconciles dated, incomplete tasks onto a DEDICATED write-shared
-calendar (cfg.mirrorCalendarId): create missing, patch drifted
-(title/time), delete completed/deleted/undated. Events are tagged
-with extendedProperties.private.tcTaskId, so the CALENDAR is the
-sync ledger — no task-doc writes, no schema changes. Honest due
-times only (escalation theater stays in the app). 30-min blocks.
-LOOP GUARD: refuses to mirror into any calendar attached to a tier.
-Scope widened readonly → calendar (rw).
-0.1.1: an UNSET POLL_SECRET now refuses everything with a distinct
-message (previously undefined === undefined let header-less requests
-through an unset lock — Jake's "did I miss the variables?" question
-exposed it). The JSON report now includes tz + localHour, so one
-curl verifies BOTH env vars.
-
-pollCalendars: reads Google Calendar events for every anchor tier
-with a gcalCalendarId and mirrors them into eventsCache. The web
-client has subscribed to eventsCache since v0.1.0 — no client
-changes needed; events appear in the queue the moment this runs.
-
-Deploy: Google Cloud Console inline editor (no CLI — Jake's school
-Mac has no admin rights). See SETUP-PHASE3.md. Plain
-functions-framework style on purpose: it's what the console's
-Cloud Run functions editor expects.
-
-Env vars (set in the console):
-  POLL_SECRET  — shared secret; requests must send x-poll-secret
-  TZ           — America/Chicago (makes all Date math Nashville-local,
-                 including all-day event midnights and sleep hours)
-
-Auth to Calendar: the function's runtime service account, using
-Application Default Credentials. Jake & Katie SHARE their calendars
-with that service account's email ("See all event details") — no
-OAuth dance, no token storage.
-```
-
-## `queue.js`
-
-### 1.0.0
-
-<!-- Retired from the header 2026-09-22 (Cyanea). Verbatim. -->
-
-```
-1.0.0 — FIRST STABLE. Not a rewrite: a declaration. This file has run a
-         real person's day since Katie migrated on 2026-08-02, and 0.y.z
-         means "the shape may still change," which stopped being true.
-         Five DEAD functions removed in the same breath, because a 1.0
-         promises an API and these were never part of one:
-           · getDeadlineHour, getClearDeckThreshold — setters got wired,
-             getters never did. Both values are read through the module
-             locals by the functions that need them.
-           · isWeekend, addWeekdays, weekendNeighbors — pre-D60 Mon–Fri
-             wrappers. D60 replaced the weekend CONCEPT with per-tier
-             allowedDays (isDayAllowed / addAllowedDays / allowedNeighbors)
-             and these three were left behind describing a rule the app no
-             longer has. Nothing called them, here or anywhere.
-         WEEKDAYS is no longer exported — it survives as the Mon–Fri
-         default inside allowedSet, which is its only remaining reader.
-```
-
-```
-// Version 0.20.0 — D120: THE TIME REPORT engine. reportPeriods() steps
-// day/week/month/quarter/year buckets FORWARD from an arbitrary range's
-// own start (via addMonths — now exported — for calendar-correct month
-// math), not from a calendar epoch: start a range Jan 1 and quarters/
-// years land calendar-aligned, start it Jul 1 and they land fiscal-
-// aligned, same code either way. This is the actual answer to the
-// fiscal-vs-calendar question parked for Katie back at D120 — don't
-// pick one, let the range be arbitrary and both fall out for free.
-// rollupSessions() buckets the sessions ledger into those periods,
-// SPLITTING any session that crosses a boundary (a 10pm-2am session
-// gives 2h to each side of midnight — decide once, split at boundaries,
-// never guess which side "owns" it); open sessions count to `now`.
-// rollupToCSV/sessionsToCSV round out the "CSV export of BOTH the
-// rollup AND the raw sessions" the spec asked for — raw stays UN-split,
-// the respectful export for an actuary building her own models. 19
-// verbatim assertions against this exact module (not reimplemented)
-// before wiring into app.js — a 20th line in the same script was
-// self-contradictory (asserted a string both did and didn't appear),
-// caught as a script bug rather than chased as a product one.
-// (prev) Version 0.19.0 — D126: TIMELESS CONTAINMENT. Katie's want-tos projects
-// carry null startDate/endDate on purpose (D126, app.js/store.js) — this
-// file is the deadline spine, so it's the one place that MUST refuse to
-// turn "no dates" into an accidental date. Two structural guards, not one:
-// (1) stageScheduledAt returns null outright when project.startDate or
-// .endDate is null, REGARDLESS of a stage's own direction/offset — a
-// timeless project's stages read as undated weight no matter what a
-// pipeline template says, so a mis-set directional stage can't silently
-// compute an epoch-anchored (1970) deadline. (2) buildQueue AND buildWeek's
-// project loops both additionally skip any project on a timeless tier
-// outright — belt and suspenders, and load-bearing in buildWeek's case:
-// its own "nothing silently disappears" rescue (a project whose window
-// is entirely in the past still gets a bar stretched to today, D89) would
-// otherwise read a timeless project's epoch-zero window as "deeply
-// overdue" and paint a bar from 1970 to today. dayReflection needed no
-// extra guard — guard (1) alone makes its put-off path see `null` and
-// skip; its victory path is left open on purpose, since finishing a
-// someday-project stage today is a real, dated accomplishment worth
-// showing in the daily reflection even though the project itself isn't.
-// (prev) Version 0.18.0 — D123: US federal holidays, client-computed. usFederalHolidays(year)
-// is a pure per-year function (fixed dates + floating rules — MLK 3rd Mon Jan,
-// Memorial last Mon May, Thanksgiving 4th Thu Nov, …), Juneteenth from 2021;
-// holidaysForRange(a,b) → a day-keyed Map for a render window. Local Date math
-// throughout so a holiday lands on the day the wall draws. Observed on the true
-// date (no Sat/Sun→Monday shift — a planning wall should SHOW that July 4 is a
-// Saturday, not hide it). No new dependencies; no infrastructure (D75 moot).
-// (prev) Version 0.17.0 — D111: nextNag speaks the harmonized unit ladder
-// (months/years/decades/centuries step calendar-correct via addMonths).
-// (prev) Version 0.16.0
-// 0.16.0 (D100): THE CLOCK GRID's geometry — clockBlocks() + weekClockWindow().
-// Built on D93, NOT on D91's diagram, and the difference is the whole point:
-// a task time is a DUE date, so a task's block ENDS at its deadline and its
-// runway trails BACKWARD — [due − estimate, due]. D91 drew it forward to
-// midnight, which says "start this at 6 PM" when the truth is "have this done
-// by 6 PM". Only the OVERDUE state extends forward, from the deadline to now,
-// because that's the one thing that really is growing. Events are the other
-// animal entirely: they own [start, end] outright (D93/D80) — nothing to
-// estimate, nothing to infer.
-// 0.15.0 (D97): REFLECTION — dayReflection() answers the two questions a
-// past day is actually for: what got DONE (victories) and what got PUT OFF.
-// Both were promised by 5a-bis and neither was derivable from buildWeek's
-// columns, because (a) `expired` is gated on viewingToday by design, so a
-// past column's items are ALL expired:false — a Wake filtering on it renders
-// nothing, forever; (b) a task moved off Tuesday is not IN Tuesday's items
-// at all (buildQueue filters on the CURRENT dueAt), so the evidence of the
-// put-off lives only in firstDueAt; and (c) doneToday was computed per-day
-// by buildQueue all along and then thrown away. Reflection scans the raw
-// task/project arrays against the day instead. Cols gain victories/putOffs;
-// buildWeek returns `waiting` so a layout can show pending inventory.
-// 0.14.1 (D90): spans carry activeStageIndex — the clickable bar needs
-// it to open the due dialog on the right stage.
-// 0.14.0 (D89): projectSpans now sort by PRIORITY, not the alphabet —
-// expired first, then next deadline, then the D86 piles (Jake: "projects
-// should be in priority order"; ten bars sorted A–Z said nothing about
-// what matters). Spans carry deadlineAt/expired/nextStageName. Also
-// weekAnchorFor(): Sun–Sat / Mon–Sun / rolling today+6, because
-// reflecting on the week just gone IS how you plan the next one — the
-// past columns aren't dead space (Jake corrected me on this).
-// 0.13.0 (D88): buildWeek() — N honest days (one buildQueue per column,
-// so expiry/off-days/the D86 piles all come free) + the two spanning
-// strips: projectSpans (bars with stage pips) and bannerSpans (one bar
-// per all-day event). Projects DON'T repeat down the columns: D48 rides
-// them through their whole window, which would render a 3-month project
-// seven times — a stage row lands only on its deadline day (plus today
-// if expired), and the SPAN goes up top where a span belongs. Also
-// addDaysLocal(): calendar day-stepping, because ts+DAY_MS repeats a
-// date across DST fall-back and would drop a day from the week.
-// 0.12.0 (D86): the clear-deck tiebreaker is now GROUPED, not blended.
-// D85 multiplied workload by pct-or-1-pct, which made a U: urgency rose
-// at both ends and SAGGED in the middle, so a 30%-done project outranked
-// a 65%-done one (Jake: "too confusing"). Now two piles split at
-// CLEAR_DECK_THRESHOLD, pile first: past-threshold (MOST done first),
-// then catch-up (LEAST done first), then tasks/events. Workload only
-// breaks an exact-pct tie — heavier first. Four equal projects at T=60%
-// sort 95 → 65 → 30 → 40. Still tiebreaker ONLY (Jake's option A).
-// 0.11.0 (D85): CLEAR-THE-DECK priority — first cut, the blended weight
-// superseded by D86 above. setClearDeckThreshold/the config rail land here.
-// 0.10.0 (D82): timed events whose window has PASSED (end — or start
-// +1h grace when endless — is behind now) leave the live list for a
-// passedEvents array, TODAY only; viewing other days shows everything
-// in place (a past day is all "passed"; a future day, none).
-// 0.9.0 (D80): ALL-DAY events split out of the chronological queue
-// into a BANNERS list — "things that are happening" (Zoo Camp week,
-// parents in town) vs "things to go to at a time." Banners carry
-// day-N-of-M span math (all-day ends are EXCLUSIVE, per Google), sort
-// tier-rank-then-start, respect hidden tiers, never pin, never expire,
-// and never demand a checkbox. Timed events are unchanged: queue rows
-// at their slot, pinned in their lead window, aging off at midnight.
-// 0.8.0 (D61): the queue respects tier working days — when the VIEWED
-// day isn't in a tier's allowedDays, that tier's tasks and project
-// stages don't appear (Katie's Saturday is clear of Work items; the
-// project cards still show everything, and Monday brings it all back,
-// including the decision modal). Events/anchors are unaffected, as
-// are Done-today and Waiting.
-// 0.7.0 (D51/D60): configurable deadline hour (default 16 = 4 PM,
-// set from settings via setDeadlineHour) + per-tier ALLOWED DAYS.
-// "Weekday math" is now "working-day math": every tier declares
-// which days of the week count (default Mon–Fri). Stage offsets,
-// pipeline windows, date interception, and reschedule targets all
-// count only the owning tier's allowed days. isWeekend/addWeekdays/
-// weekendNeighbors remain as Mon–Fri wrappers for compatibility.
-// 0.6.0 (D50): UNDATED stages are first-class — direction:"none".
-// ============================================================
-
-```
-
-
----
-
-## `tentacalendar.css`
-
-```
-/* Version 0.57.0 — #version.stale: the amber "this tab is running code older
-   than the server has" state for app 1.36.0. Amber not red — nothing is
-   broken, but nothing you are looking at can be trusted either. */
-```
-
-
-```
-/* ============================================================
-   Tentacalendar — tentacalendar.css
-   Version 0.55.1  (banner and --tc-version move together, ALWAYS —
-   0.22.0 shipped with this banner still reading 0.21.1. Jake caught it.
-   AND THEN 0.55.0 DID IT AGAIN: banner 0.55.0, --tc-version still 0.54.0.
-   The warning was two lines above the mistake. If you are bumping this
-   file, the bump is TWO edits, and the second one is at :root.)
-   0.55.1 (E41 repair): the block below was written against --card,
-   --bg-alt and --accent-dim, which do not exist. Remapped to --panel,
-   --panel-2 and --accent, and --tc-version corrected.
-   (prev) 0.55.0 (E41 — onboarding): .onboarding-overlay, .welcome-splash-card,
-   .tour-highlight, .tour-popover, .popover-hint, .help-panel and related.
-   Complete visual system for welcome splash, step-by-step tours with overlays,
-   contextual popovers, and expandable help panels.
-   (prev) 0.54.0 (tier order by position): .t-move / .t-pos replace the .t-rank
-   number box. Reuses .st-move's exact geometry because it IS that control
-   — stacked ▲▼ moving a row in a list — and D104 says one grammar. .t-rank
-   is gone from the stylesheet as well as the markup; a rule for an element
-   that no longer exists is the kind of thing a later reader treats as a
-   clue.
-   (prev) 0.53.0 (item 5, shared tiers): .t-share is the handshake on every tier
-   row and .tier-share is the strip that opens under it. Deliberately built
-   from the SAME vocabulary as .person-row / .person-tag — this is the same
-   idea (who holds a key) at tier size rather than board size, and D104 says
-   one grammar. NOT reusing .person-row itself: that block is a flex row
-   inside a list, and this is a panel. Borrowing a class for its shape while
-   inheriting its meaning is exactly what cost 0.48.1 a round trip.
-   (prev) 0.52.0 (helper role + D142): .pane-locked / .locked-note dim a pane the
-   current role cannot write while leaving it legible, .role-matrix styles
-   the four-role table in People, and .est-label puts Est. min on one line
-   with its field beside it instead of stacked under a squeezed column.
-   (prev) 0.51.0 (E40): #mirror-connect shares #cal-connect's rules rather than
-   growing a second dialect for the same object (D104).
-   (prev) Version 0.50.0  (banner and --tc-version move together, ALWAYS —
-   0.22.0 shipped with this banner still reading 0.21.1. Jake caught it.)
-   0.50.0 (E39): #cal-connect, the collapsed calendar walkthrough, and
-   .robot-row which has to hold a very long service-account address next
-   to a button without pushing the settings modal wide (D66 again).
-   (prev) Version 0.49.0  (banner and --tc-version move together, ALWAYS —
-   0.22.0 shipped with this banner still reading 0.21.1. Jake caught it.)
-   0.49.0 (E38): #ws-rename-row aligns its button with the input instead of
-   with the label above it. Nothing else.
-   (prev) Version 0.48.1  (banner and --tc-version move together, ALWAYS —
-   0.22.0 shipped with this banner still reading 0.21.1. Jake caught it.)
-   0.48.1: .person-tag replaces .person-row .badge. `.badge` ALREADY EXISTED
-   and means DANGER — background: var(--danger), bold, near-black text. My
-   rule set colour and border but not background, so specificity handed the
-   People rows grey text on a red pill: unreadable, and semantically wrong,
-   since "holds the deed" is a fact and not a warning. Reusing a class for
-   its SHAPE while inheriting its MEANING is the trap here; D104's "one
-   grammar" argues for reusing a vocabulary, not for borrowing a word that
-   already means something else.
-   (prev) Version 0.48.0  (banner and --tc-version move together, ALWAYS —
-   0.22.0 shipped with this banner still reading 0.21.1. Jake caught it.)
-   0.48.0 (E34): the board switcher — .board-chip in the header (colour dot,
-   board name, caret) and .board-menu beneath it. .board-chip.visiting marks
-   a board you hold a key to but do not own, which is the "identifier in the
-   corner" that tells you whose house you are standing in. The menu is
-   position:absolute inside a position:relative wrapper rather than fixed,
-   so it rides the header and needs nothing from D37's drift rules.
-   (prev) Version 0.47.0  (banner and --tc-version move together, ALWAYS —
-   0.22.0 shipped with this banner still reading 0.21.1. Jake caught it.)
-   0.47.0 (E17, OCTODO LINE): #blocked-screen joins #auth-screen on the one
-   selector they share, so "signed in with nowhere to go" inherits the exact
-   centering and card the sign-in screen already had — D104's one-grammar
-   lesson applied to a new surface instead of inventing a second dialect.
-   Plus .blocked-detail, a quiet monospace line for the technical reason.
-   Two rules; everything else is 1.x's 0.45.1 byte for byte.
-   ⚠️ 0.46.0 IS SKIPPED DELIBERATELY AND FOREVER. At the 1.x origin that URL
-   has doubled bytes cached against it (see the 1.x 0.45.2 note); it was
-   never a version any file declared, only a ?v= that index.html requested
-   by mistake. Octodo is a different origin with a clean cache, so 0.46.0
-   would be technically safe here — and would still be a number meaning two
-   different things in two repos during the dual-fix window (E27). Not worth
-   the saved digit.
-   0.45.1 (D138): phone overflow fix. On <=600px the two .nav-slots may
-   shrink (min-width:0; flex:1 1 0) instead of holding 7.5rem each — that
-   fixed floor was forcing the whole queue panel wider than a 360px
-   viewport, clipping every row and word-stacking the date. Patch, not
-   minor: no feature, one broken layout made correct. CSS only.
-   0.45.0 (D137): the alerter. #alert-toast (top-centre, z-index 141 so a
-   deploy banner at 140 can never bury an alert) + three level tints
-   (--alert-due/-nag/-soon) and a width for the volume slider. The
-   kiosk-idle override is load-bearing: D107 fades the wall's chrome
-   after 5 idle minutes, and an alarm that fades is not an alarm.
-   0.44.0 (D132): the follow-up chain builder in the New Task form —
-   .fu-chain-head, .fu-chain-row and its fuc-* children. Rows carry a
-   left border and panel-2 fill so the "and then, and then" indent is
-   visible as shape, not just implied by a dropdown. No new tokens.
-   0.43.0 (D130): #update-banner — a fixed bottom bar (z-index 140, above
-   modals so it's reachable even with Settings open), shown when the hourly
-   version check finds a newer deploy. Reuses --panel-2/--accent; no new
-   tokens. Outside #drift-wrap in the markup (D127).
-   0.42.0 (D120): the Time Report. .report-card widens the modal for a
-   table (920px vs the usual 640px); .report-controls, #report-table
-   (header/footer weight via border, right-aligned number columns, first
-   column left-aligned and allowed to wrap), .report-swatch (the project-
-   color dot). .clock-total.clickable adds the pointer cursor + hover —
-   the base .clock-total keeps cursor:default for the (now rarer) case
-   where a project has no logged time and the span isn't rendered at all.
-   0.41.0 (D126): have-tos/want-tos. .t-timeless-label mirrors .t-carry-label
-   for the tier editor's new ⏳ checkbox. Everything else — the .tab-bar
-   toggle atop #queue-panel, the want-tos header, the want-tos project
-   cards — reuses existing classes (.tab-bar/.tab-btn, .day-nav, .hint,
-   .project-card) on purpose: D104's "one control grammar" lesson applied
-   to a whole new surface instead of inventing a parallel one.
-   0.40.0 (D125): phone fit + dash scroll. text-size-adjust:100% stops
-   mobile Chrome font-boosting (was ballooning the day header ~2x and
-   breaking "Today — Sat, Jul 18" one-word-per-line); .day-nav h2 gains
-   min-width:0 and phones get slimmer panel padding. And #dash-bottom >
-   section now align-self:stretch — #projects-panel's base align-self:start
-   was collapsing it to content height in the dash row, defeating its own
-   overflow-y (the agenda scrolled, the pipeline didn't).
-   0.39.0 (D124): project-type library controls — #pipeline-picker-row
-   alignment, .mini:disabled (Default can't be renamed/deleted), and the
-   #project-type-label picker on the new-project form.
-   0.38.0 (D123): the US-federal-holiday overlay — --holiday amber, the
-   .yvg-day.yvg-holiday dot on month/wall calendars, .yv-holiday-mark tick
-   on the timeline, .wv-holname ★ label on the week day heads, and the
-   #wv-overlays/#yv-overlays control groups sharing the .ctl-group family.
-   0.37.0 (D121/D122): #parade-banner/.parade-text (the ticker-tape
-   parade's gold name card — z 99: above the night face, UNDER the
-   confetti so the paper falls in front of the words), .now-bar family
-   (Katie's current-project bar with the live second hand), and
-   .clock-cluster — the D119 finish: the three clock controls right-align
-   and wrap as one unit; the 🕰 finally matches its siblings' size.
-   0.36.0 (D117/D119): .yv-bar.forced-full (click-to-expand, outranks the
-   size rules; D115 hitbox reverted), .project-dates goes flex with the
-   inline clock controls (.clock-row retired).
-   0.35.1 (D115): .yv-bar::after — the invisible ±5px tap hitbox.
-   0.35.0 (D112): .clock-row/.clock-btn(.running)/.clock-total — the
-   billable clock on project cards.
-   0.34.1 (D111): .rec-badge — the quiet ↻ on recurring queue rows.
-   0.34.0 (D109): .st-hurrah — the 🎆 stage toggle, ember/gold.
-   0.33.0 (D107): burn-in care — #screen-rest night face (wandering clock,
-   near-black not pure #000), body.kiosk-idle chrome dim (opacity-only, no
-   layout shift).
-   0.32.0 (D105, PHASE 4): THE DASHBOARD — pane geometry (#dashboard-view
-   flex shells, --dash-cols/--dash-rows shares), .dash-split dividers
-   (wv-split's two-axis siblings), 🗂 corner toggle, the ≥1200px gate on
-   the 🐙 button, and in-pane overrides (#year-view sheds its 1500px solo
-   cap; the FAB hides — adding projects lives on the other screens).
-   0.31.1 (D104): ONE control grammar — shared .view-nav/.view-ctls/
-   .ctl-group/.ctl-label family replaces the parallel .wv-modes/.wv-sizes
-   and .yv-layouts/.yv-modes/.yv-sizes sets. Two families doing one job
-   is the D98 parity-drift trap in CSS form; the dashboard is why now.
-   0.27.0 (D95): .well-travelled — a quiet mark on a task that's been
-   moved 3+ times. Not a scolding; a question.
-   0.26.1 (D94): .wv-split (drag the projects/days boundary) + .wv-row
-   time and title finally share a centre line. Z, not Y — old ideas
-   behaving, not new ones (Jake's versioning rule, D94).
-   0.26.0 (D92): .wv-edit — the ✎ on an expanded bar, so click can mean
-   expand/collapse without stranding the edit path.
-   0.25.0 (D91): #week-view height is pinned from JS (100% against a
-   parent with no height resolved to auto — that's why the day columns
-   walked off the bottom); .forced-full for a bar clicked open at compact
-   sizes; #wv-projects[data-size="full"] is now explicit.
-   0.24.0 (D90): .nav-slot (fixed-width, so ◀ ▶ never move when "back to
-   now" appears — all three views); #wv-projects[data-size] bar heights;
-   .wv-strip packs DENSE (grid's sparse cursor never backtracks, so a
-   2-event Friday claimed a 3rd row); .wv-dl hovers again (pointer-events
-   none had killed its own tooltip); .clickable affordance.
-   0.23.0 (D89): .wv-dayhead row (dates at the TOP), .view-switch labeled
-   3-way, .wv-modes week-start buttons, .wv-dl deadline blocks. The
-   .wv-load meter is GONE — it looked like progress and wasn't.
-   0.22.1 (D89): week type re-scaled for the real screen — a 55" 4K
-   WHITEBOARD at 4 feet, not a wall at 8. Caps raised so full-width
-   (~548px columns) uses the room instead of stranding tiny text in it.
-   0.22.0 (D88): #week-view — two spanning strips over seven queue
-   columns; clamp() type, min-width:0 on every text-bearing flex child.
-   0.21.1 (D84): #cfg-mirror-cal sizes to its row (flex:1, min 12rem).
-   0.21.0 (D82): .past-event rows (dimmed, struck time) in the
-   #earlier box; #earlier heading matches waiting/done.
-   0.20.0 (D80): #allday-strip + .banner pills — tier-tinted, ambient,
-   above the queue; "things that are happening" get a shelf of their
-   own instead of impersonating midnight appointments.
-   0.19.0 (D78): phone chrome — #jump-add and #signout-bottom exist
-   only inside the 1000px stacked-layout query (where the scroll pain
-   lives); there the header's ⏻ square hides and "Log out" appears in
-   words at the very bottom.
-   0.18.1 (D77): .yv-bar.dragging dims in place (the ghost IS the
-   preview now — no more chip straying over neighboring months).
-   0.18.0 (D74): .yv-ghost — the drag drop-preview: dashed accent
-   slots at body level (position:fixed) showing exactly where the
-   dragged dates land, in every row they cross.
-   0.17.0 (D72, Katie's catch): the Annual is QUARTERS — 4 rows × 3
-   months (was 3×4). Breakpoints now 850/520 → 3/2/1 columns,
-   MIRRORED in renderYearGrid (change together).
-   0.16.0 (D71): Annual compaction — dow row is skipped by JS in wall
-   mode, month padding/lane clearance tightened (.yvg-lanes margin 13px
-   in wall), so the fit math's 26px/month chrome estimate is honest.
-   0.15.0 (D70): .yv-bar.thin (borderless — a 1px border is most of a
-   3px hairline bar) for the Annual view's window-fit density floor.
-   NOTE: the Annual column breakpoints below (1150/850/520) are
-   MIRRORED in renderYearGrid's window-fit math — change both together.
-   0.14.0 (D69): YEAR WALL — #yv-grid.yv-wall lays the 12 .yvg-month
-   blocks in a 4-column grid (3 rows of 4, Jake's wall of calendars),
-   with compact head/dow/day typography; container queries step the
-   wall to 3/2/1 columns as it narrows (1 column ≈ the stacked Months
-   layout, a graceful phone fallback). .yv-sizes control beside the
-   other toggles.
-   0.13.0 (D68): month-grid layout (.yvg-*: month blocks, Sun–Sat dow
-   header, week rows with a day-cell backdrop + bar lanes on top,
-   weekend/out-of-month/today cell states), .yv-layouts toggle beside
-   the mode buttons, ＋ New project FAB (fixed bottom-right), and the
-   project-form modal card. Timeline bar heights moved to JS
-   window-height sizing (inline), so no fixed .yv-bar height here.
-   0.12.0 (D66 + form-overflow fix): THE ENDS BOX, finally — .form-row
-   labels are flex:1 with min-width:auto, and a flex item won't shrink
-   below its content's min width; two native date inputs exceed the
-   340px panel, so Ends hung off the right edge (a SECOND bug behind
-   the same screenshot as the 0.8.0 stagger). min-width:0 on the label
-   and its controls ends the saga. Year view: .yv-month gets
-   flex-basis:0 so header widths are truly day-proportional (labels
-   were drifting off the gridlines); day texture everywhere — faint
-   day lines, stronger Monday week lines, weekend shading blocks;
-   adaptive bar density (full 20px ≤4 lanes / half 10px ≤9 / quarter
-   5px beyond, labels only at full height — hover/tap carry names);
-   compact query sheds day lines first, week lines on very narrow.
-   0.11.0 (D65, PHASE 2): year view — .yv-nav/.yv-modes, quarter rows
-   (.yv-row: month headers flex-grown by day count, .yv-lanes with
-   absolutely positioned .yv-bar segments), D30a ghost/fill via inline
-   gradients, today marker, month gridlines, continuation clipping,
-   drag handles (.yv-handle, touch-action:none), legend, and the D27
-   compact container query (labels hide when the grid is narrow).
-   #popover gains pre-line whitespace for multi-line bar details.
-   0.10.0 (D64): responsive rows — queue/waiting/done lists are size
-   containers; when a list is ≥540px wide the two-line row collapses
-   to ONE line (checkbox · title+time · ▸ · chip · buttons), notes
-   still expanding full-width below. Narrow lists keep the D63
-   two-line layout. Pure CSS (container queries); unsupported
-   browsers just keep the two-line layout.
-   0.9.0 (D63): two-line row layout (.row-2l/.row-top/.row-actions/
-   .row-notes) — long titles wrap as prose instead of one-word phone
-   columns; notes toggle; #task-notes textarea matches inputs.
-   0.8.0: #project-form labels get the SAME column-flex treatment as
-   #task-form (they never had a display rule, so each label's height
-   depended on how its inline contents wrapped — Jake's staggered
-   Starts/Ends screenshot); .snooze-row; .label-line.
-   0.7.0: .st-ghost (undated stages keep their columns via visibility —
-   the "name field ate the row" fix), dup review-form styles.
-   0.6.0 (D56/D52/D60/D58): collapsible project cards — header row
-   never wraps ([chevron][name wraps internally][pinned buttons]),
-   dates on their own .project-dates line, finished-projects toggle;
-   settings tab bar; per-tier day toggles (.t-days); stage-editor row
-   hardening (name field can no longer shove flags/✕ out of view:
-   min-width guards + wrap fallback — Jake's new-stage layout bug).
-   0.5.2: re-release of the project-card header fix + ship-check rule.
-   0.5.x: filter chips, modal-shell system, popover, decision rows.
-   ============================================================ */
-```
-
-
----
-
-## `whereis.html`
-
-```
-     Version 1.4.0 — RETIRES FIVE CONSOLE-DIVING TESTS. TIER-6, TIER-7,
-     SKIN-1, SKIN-2 and BASE-7 all asked for a Firestore console session,
-     some from two accounts. Three new sections read the same facts from one
-     sign-in: per-user tier order and colours beside the canonical values and
-     everybody else's published ranks; every key on every visible board with
-     roles; and a provenance audit that COUNTS the four E9 stamps across every
-     task, project and stage rather than sampling one document.
-     ⚠️ Boards-table header now derived from SUBS. It was a hand-written list
-     beside a SUBS.map() loop, so adding "members" shifted every count one
-     column left, silently. Third instance of this shape in the project after
-     the completedBy keep-list and the ?v= pins.
-     Version 1.3.1 — the version is on the page (Jake: "you didn't put the
-     version anywhere on that page"). version-check.mjs reads the on-page
-     badge as this file's constant so banner and badge cannot drift.
-     Version 1.3.0 — per-stage detail and per-person time.
-     Version 1.2.0 — projects and sessions audited alongside tasks.
-```
-
-## `index.html`
-
-```
-     Version 0.51.3 — no markup change; pin moves to app.js 1.35.0.
-     Version 0.51.2 — no markup change; pins repointed to app.js 1.34.2 and
-     css 0.56.1. The css pin had been left at 0.56.0 against a 0.56.1 file,
-     which is the fault the E41 repair already paid for once (defect 8).
-     Version 0.51.1 — Jake's marker bump after the headers were shortened.
-     NO CHANGE.
-<!-- ============================================================
-     Tentacalendar — index.html
-     Version 0.51.0 (banner and data-html-version move together, always)
-     0.51.0 — NO MARKUP CHANGE. Pins move: app.js 1.34.0, css 0.56.0,
-     store 0.25.0 via app's import. Per-user tier colour and name.
-     (prev) Version 0.50.0 (banner and data-html-version move together, always)
-     0.50.0 — NO MARKUP CHANGE. app.js ?v= -> 1.33.0 and store.js -> 0.24.0
-     (via app's import): the board routers now REFUSE an unresolved
-     destination instead of writing to the active board, the tier chip picks
-     a readable foreground, and the People role dropdown runs ascending.
-     Bumped because data-html-version is the update signal D130 polls, and a
-     ?v= on one tag does not bust another file (D49).
-     (prev) Version 0.49.1 (banner and data-html-version move together, always)
-     0.49.1 — E41 repair pins. 0.49.0 bumped app.js's ?v= but left the
-     STYLESHEET pinned at 0.54.0, so every browser that already held
-     0.54.0 kept serving it and the entire onboarding stylesheet never
-     arrived (D49: a ?v= on one tag does not bust another file). Now
-     css -> 0.55.1, app -> 1.32.1. ⚠️ THREE THINGS MOVE IN THIS FILE ON
-     EVERY DEPLOY: the banner, data-html-version, and any ?v= whose file
-     changed. 0.49.0 moved one of the three.
-     (prev) 0.49.0 — E41: ONBOARDING MARKUP. Welcome splash screen, tour overlay system,
-     contextual popovers, and help panel structure. App.js builds tours and manages
-     state; this file carries markup only. ?v= bumps to 1.32.0 (app.js).
-     0.48.2 (banner and data-html-version move together, always)
-     0.48.0 — repin app.js 1.30.0 / css 0.54.0. Markup still unchanged:
-     the tier reorder arrows are built by app.js, like the rows they sit in.
-     0.47.0 — item 5 (shared tiers). NO MARKUP CHANGE: the share strip is
-     built by app.js under whichever tier row asked for it, because tier
-     rows are themselves JS-built and a single markup panel would have to be
-     moved around the DOM (D37 has already taught this project what moving a
-     container costs). Pins only.
-     0.46.1: app.js ?v= -> 1.28.0 (D143). No markup change; the pin and the
-     banner move anyway, because a stale pin serves a stale file.
-     0.46.0 (helper role + D141/D142): "Can help" joins the invite dropdown,
-     and the four roles are now a TABLE in the People tab rather than a
-     sentence — four of them is one more than prose carries, and every row
-     of that table is a clause in firestore.rules 1.2.1. Four .locked-note
-     paragraphs added (Tiers, Pipeline, Timing, #form-panel); each shows
-     only when app.js puts .pane-locked on its container, so the pane reads
-     as deliberately closed rather than mysteriously broken. D141: a "Now"
-     button beside Time, twin to D140's "Today". D142: the three-across row
-     becomes two-across and Est. min moves to its own line, label left and
-     field right — two native pickers plus a number box could not share a
-     340px panel, which is what made the first two look squeezed.
-     0.45.0 (E40): #mirror-connect — the OUTBOUND half of the calendar
-     story finally explained in the app. The inbound walkthrough (0.44.0)
-     covers "show me my appointments"; this covers "put my tasks on my
-     calendar so my PHONE tells me", which is the half that actually
-     notifies anyone. app -> 1.26.0, css -> 0.51.0, config -> 1.2.0.
-     0.44.0 (E39): #cal-connect — the connect-a-calendar walkthrough, in
-     the app, beside the field it fills. SETUP-PHASE3-2.0 is the OPERATOR's
-     one-time guide; there was nothing at all for the other twenty people,
-     which is what Jake spotted. app -> 1.25.0, css -> 0.50.0,
-     config -> 1.1.0 (it now carries the service-account address).
-     0.43.0 (E38): #ws-rename — a board can be renamed by an owner. There
-     was no way to fix a board's name in the app at all; the only route
-     was the Firebase console. Also: the dependent-board placeholders read
-     like filled-in values (grey "Nico" in an empty field), so they now
-     read as examples and the name auto-fills from the email as you type.
-     app -> 1.24.0, css -> 0.49.0.
-     0.42.3: app -> 1.23.3 (store -> 0.20.0 rides in: the poll interval now
-     also lands on the workspace doc, which the work queue reads). Calendars
-     arrive via functions/index.js 1.0.0 + SETUP-PHASE3-2.0.md — no markup.
-     0.42.2: app -> 1.23.2, css -> 0.48.1 (People tags stop borrowing the
-     danger badge; store -> 0.19.2 rides in). No markup change.
-     0.42.1: app -> 1.23.1 (E17 copy now tells the truth about a rules
-     refusal instead of blaming the network). No markup change.
-     0.42.0 (E32/E34): the BOARD SWITCHER (#board-switch) in the header and a
-     People tab in Settings — invite, revoke, change access, and create a
-     dependent workspace for a child. Pins: app -> 1.23.0, css -> 0.48.0,
-     store -> 0.19.0 via app's import.
-     ---- OCTODO LINE (Tentacalendar 2.0) ----
-     0.41.0 (E17): #blocked-screen — "signed in with nowhere to go" is a real
-     screen now. Nico signed into 1.x, got bounced to the login page, and the
-     only explanation was in a console he'd never open. Reuses .auth-card so
-     it cannot drift from the sign-in screen it stands beside (D104).
-     Pins: app -> 1.22.0, css -> 0.47.0, config -> 1.0.0, manifest -> 0.2.0
-     (store -> 0.18.0 rides in via app's import). No other markup changed:
-     this file is 1.x's 0.40.0 plus one <div>, which is what E30 was for.
-     MANIFEST 0.2.0 is an E4a fix, not a feature: 1.x shipped "id": "/",
-     which is an ABSOLUTE reference. At a domain root that is harmless — it
-     is why nobody ever noticed — but octodo currently serves from the
-     SUBPATH misterwilson37.github.io/octodo, where "/" resolves to the
-     whole github.io host and the PWA identity collides with every other
-     project site there. "./" is correct in BOTH places: it gives /octodo/
-     today and exactly "/" after the flip, which is the same id Katie's
-     installed 1.x PWA already has — so E4's promise that her install
-     survives the switch depends on this one character.
-     0.40.0 (D140): #task-date-today inside the Due date label — a "Today"
-     shortcut, because the native date picker is Chrome's and admits no
-     buttons of ours. app -> 1.21.0, css -> 0.46.0.
-     0.39.2 (D139): no markup change — app ?v= -> 1.20.0 (bounded task
-     window; store.js -> 0.17.0 via app's import) and data-html-version
-     bumped so D130 pushes it to installed PWAs. No new ids, no CSS.
-     0.39.1 (D138): no markup change — css ?v= -> 0.45.1 (the phone
-     overflow fix) and data-html-version bumped so D130's hourly check
-     pushes the new stylesheet to installed PWAs, which have no
-     hard-refresh gesture (D77). This is the delivery vehicle for Katie's
-     fix: her phone should self-heal within the hour of deploy.
-     0.39.0 (D137): THE ALERTER. #alert-toast (outside #drift-wrap, D37/
-     D127 — the wall is often fullscreen, where an OS notification may
-     never paint but our own banner always does) + five per-device
-     controls in Settings > Timing (#cfg-alerts, #cfg-alert-sound,
-     #cfg-alert-notify, #cfg-alert-vol, #alert-test) and #alert-status.
-     They are #cfg-* on purpose: D129's dirty guard captures that prefix
-     generically, so the unsaved-changes check covers them for free.
-     0.38.0 (D136): no markup change — app ?v= → 1.18.0 for the document
-     census in the version tooltip / Settings footer.
-     0.37.0 (D134): no markup change — app ?v= → 1.17.0 for the Escape
-     handler. Bumped because data-html-version is the update signal
-     (D130) and app.js changed; the ?v= is what busts the cache.
-     0.36.0 (D132): the New Task form gains #fu-chain-block — the
-     chained-follow-up builder ("And then…"). Rows are JS-built so
-     add/remove preserves typed values; form.reset() does NOT clear
-     them, which is why cancelTaskEdit clears them by hand. css ?v= →
-     0.44.0, app ?v= → 1.16.0 (D133 rides along in app.js).
-     0.35.1 (D131): app.js ?v= → 1.15.0 only — the unsaved-changes guard now
-     covers the project form. No markup change (the form and its buttons
-     already existed). A Z carrying the bump (D94). AND — this is the first
-     deploy that will exercise D130 end-to-end: any tab already running
-     1.14.0 (D130) will see THIS html version (0.35.1) differ from its boot
-     value and offer the refresh banner. That's the live test Jake wanted.
-     0.35.0 (D130): #update-banner added — a fixed bottom bar (outside
-     #drift-wrap, D127) the hourly version check shows when a newer deploy
-     is live. ⚠️ NOTE: this data-html-version value is ITSELF what the
-     check compares — bumping it is what makes every OTHER running tab
-     notice this deploy. That's the whole mechanism; the version discipline
-     now does double duty. ?v= bumps app.js → 1.14.0, css → 0.43.0.
-     0.34.1 (D128/D129): app.js ?v= → 1.13.0 only. Blank project type is
-     injected by refreshTypeSelect() into the existing #project-type
-     picker (no static markup change), and the unsaved-changes guard uses
-     confirm() (no new modal). So this file only carries the version bump —
-     a Z, the D94 pattern (html moves so the cache busts app.js). No CSS
-     change either.
-     0.34.0 (D120): THE TIME REPORT. A new #report-modal (safely outside
-     #drift-wrap — D127 was a hard-earned lesson, verified with the same
-     div-balance count after adding this). A 📊 button in the Projects
-     panel header opens it for every project; each project's Σ total is
-     now clickable too, pre-filtered to just that one. Minor bump, not a
-     patch — a whole new modal surface, same weight as D111's cactus row
-     or D112's clock modal. ?v= bumps app.js → 1.12.0, css → 0.42.0.
-     0.33.2 (D127): THE REAL D37 FIX. A stray extra closing div, left over
-     from D118's modal-relocation edit, was accidentally acting as
-     #drift-wrap's true closing tag 150 lines later than intended — every
-     modal from #screen-rest through #yv-project-modal (incl. #settings-
-     modal) was structurally still INSIDE #drift-wrap this whole time,
-     D118's own comments notwithstanding. Moved the closing div to where
-     #drift-wrap's own header comment always said it belonged. Found by
-     Jake's screenshot (Settings needing a scroll to reach) plus a ruled-
-     out extensions theory (reproduced in a clean Edge profile) plus a
-     programmatic div-nesting count — not a guess. Full document verified
-     balanced before and after. No CSS or JS change needed; the CSS was
-     already correct, it just never had the DOM structure it assumed.
-     0.33.1 (D126 fix): app.js ?v= → 1.11.1 only — the sidebar mode-filter
-     bug (Jake's screenshot). No markup change; a Z for THIS file, carrying
-     the bump (D94).
-     0.33.0 (D126): HAVE-TOS / WANT-TOS — a new .tab-bar toggle atop
-     #queue-panel (reusing the settings tabs' own class, not a new idiom)
-     switches between #havetos-panel (the existing date-driven agenda,
-     now wrapped as one unit) and the new #wanttos-panel (timeless-tier
-     projects as cards, no day-nav — there's no day to nav). #project-tier
-     gains a change listener; the Starts/Ends row gets id="project-dates-row"
-     so JS can hide it live when the selected tier is marked ⏳ timeless.
-     A Y: a whole new panel + tab strip didn't exist before. ?v= bumps
-     app.js → 1.11.0, css → 0.41.0. No store.js change — saveTier/addProject
-     already pass arbitrary fields through untyped.
-     0.32.7 (D125): css ?v= → 0.40.0 only (phone font-boost fix + dash
-     projects scroll). No markup change.
-     0.32.6 (D124): the project-type LIBRARY — #project-type picker on the
-     new-project form, and the Pipeline tab's #pipeline-target selector +
-     New/Rename/Delete manager (the single stage editor now edits whichever
-     pipeline is selected). ?v= bumps app.js → 1.10.0, css → 0.39.0;
-     store.js → 0.16.0 (subscribeProjectTypes/saveProjectTypes) rides app's import.
-     0.32.5 (D123): the Overlay control group (★ Holidays) added to BOTH the
-     week and year .view-ctls (D104 grammar); ?v= bumps app.js → 1.9.0 and
-     queue.js → 0.18.0 (holidaysForRange). css → 0.38.0.
-     0.32.4 (D121/D122): ?v= bumps only — app.js → 1.8.0 (NOW bar + the
-     parade's name), css → 0.37.0, celebrate → 0.2.0 (rides inside app.js's
-     import). No markup changes: the NOW bar and parade banner are built
-     by JS.
-     0.32.3 (D118): clock/followup/yv-project modals relocated OUTSIDE
-     #drift-wrap — its transform re-rooted their fixed centering to the
-     page, so scrolled-down users got off-screen modals.
-     app ?v= → 1.7.0, css ?v= → 0.36.0.
-     0.32.2 (D116): ?v= bumps only — app → 1.6.0 (store → 0.15.0 rides
-     inside app.js's import).
-     0.32.1 (D113): the clock dialog inputs become datetime-local — the
-     dialog asks WHEN including the day (all-nighter support).
-     app ?v= → 1.5.0, css ?v= → 0.35.1.
-     0.32.0 (D112): the clock — #clock-modal (shared by clock-out and 🕰
-     manual log). The card clock rows are JS-built. app ?v= → 1.4.0,
-     css ?v= → 0.35.0.
-     0.31.0 (D111): the Christmas cactus — ↻ recurrence row in the task
-     form (blank = off), harmonized unit ladders in the escalation and
-     follow-up selects (…years, decades, centuries). app ?v= → 1.3.0.
-     0.30.3 (D110): ?v= bump only — app → 1.2.1.
-     0.30.2 (D109): ?v= bumps only — app → 1.2.0, css → 0.34.0. The 🎆
-     rows are JS-built; no markup here changed.
-     0.30.1 (D108): #hdr-fullscreen — the dashboard's ⛶, in the header,
-     dash-only. app ?v= → 1.1.1.
-     0.30.0 (D107): burn-in care — #screen-rest overlay (outside drift-wrap,
-     D37's rule) + two per-device Timing-tab toggles (🌙 rest / 🕯️ idle dim).
-     app ?v= → 1.1.0, css ?v= → 0.33.0.
-     0.29.0 (D105, PHASE 4): THE DASHBOARD — 🐙 fourth view-switch button
-     + the #dashboard-view pane shells (year left, week top-right, agenda
-     bottom-right, draggable dividers, 🗂 projects toggle). A Y for this
-     file: markup that didn't exist. The APP hits 1.0.0 with it (D67).
-     app ?v= → 1.0.0, css ?v= → 0.32.0.
-     0.28.3 (D104): ONE control grammar — week's two control rows fold
-     into its .view-nav; year's groups reorder to Layout · Window · Bars;
-     both use .view-ctls/.ctl-group/.ctl-label and data-layout /
-     data-window / data-size. Same controls, one dialect, ahead of the
-     dashboard. app ?v= → 0.38.1, css ?v= → 0.31.1.
-     0.25.0 (D96): INSTALLABLE — manifest.json + real PNG icons + the
-     mobile-web-app meta tags, so Add to Home Screen drops the address
-     bar on the old tablet. ⛶ fullscreen added to the AGENDA nav (week
-     and year had it; Today didn't). A Y: these didn't exist before.
-     app ?v= → 0.33.0.
-     0.24.2 (D95): app ?v= → 0.32.0, css ?v= → 0.27.0. A Z for THIS file —
-     nothing new lives in index.html, it's only carrying the bumps (D94).
-     0.24.1 (D94): #wv-split — drag the projects/days boundary. Z not Y:
-     this is an old idea finally working right (Jake's versioning rule,
-     D94). app ?v= → 0.31.1, css ?v= → 0.26.1.
-     0.24.0 (D92): app ?v= → 0.31.0, css ?v= → 0.26.0. No markup change.
-     0.23.0 (D91): app ?v= → 0.30.0, css ?v= → 0.25.0. No markup change —
-     the Bars buttons were always here; their handler never existed.
-     0.22.0 (D90): nav-slots in ALL THREE views — "back to now" no longer
-     shoves ▶ sideways; it sits on the side matching its direction of
-     travel and the arrows never move (Jake: three clicks forward should
-     be three clicks forward). #wv-sizes bar-height control. app → 0.29.0,
-     css → 0.24.0.
-     0.21.0 (D89): dates move to a header row ABOVE the strips (Jake:
-     "duplicate the date at the top — it's expected there"); week-start
-     mode buttons (Today+6 / Sun–Sat / Mon–Sun); the view toggle becomes
-     a LABELED 3-way switch (a cycling glyph needed a hover to explain
-     itself, which is a failed control). app ?v= → 0.28.0, css → 0.23.0.
-     0.20.0 (D88): #week-view — the third view. Two spanning strips
-     (all-day banners, project bars w/ stage pips) over seven queue
-     columns. app ?v= → 0.27.0, css ?v= → 0.22.0 (queue 0.13.0 inside).
-     0.19.0 (D86): clear-deck hint rewritten for the GROUPED model.
-     app ?v= → 0.26.0 (queue 0.12.0 rides inside app). css unchanged.
-     0.18.0 (D85): ⚙️ Pipeline tab gains "Clear-the-deck at N% complete"
-     (#cfg-cleardeck) — the point where the queue flips a project from
-     keep-abreast to just-finish-it. app ?v= → 0.25.0 (queue 0.11.0 +
-     store 0.9.0 ride inside app). css unchanged.
-     0.17.2 (D84): the Mirror field escapes cfg-poll's flex .form-row
-     (three children crammed into one row crushed the poll label into
-     a word-stack — Jake's screenshot). Own block now. app ?v= →
-     0.24.0, css → 0.21.1.
-     0.17.1 (D83): app ?v= → 0.23.1. Reference bump only.
-     0.17.0 (D82): #earlier box (passed events sink here, today only)
-     + #followup-modal (title, amount, minutes/hours/days/weeks unit —
-     retires two prompt()s). css ?v= → 0.21.0, app → 0.23.0, queue →
-     0.10.0.
-     0.16.0 (D81): ⚙️ Settings gains the Mirror calendar ID field
-     (cfg-mirror-cal). app ?v= → 0.22.0; css unchanged.
-     0.15.0 (D80): #allday-strip above the queue — all-day events land
-     here as ambient banners, not 12:00 AM queue rows. css ?v= →
-     0.20.0, app → 0.21.0.
-     0.14.1 (D79): lang="en" → "en-US". Native time pickers take their
-     12/24-hour cycle from the DEVICE setting in Chromium, but engines
-     that consult page language (Firefox family, some webviews) treat
-     bare "en" as ambiguous — en-US pins them to AM/PM. The primary
-     fix for Katie's military-time picker is her phone's "Use 24-hour
-     format" setting (see SETUP.md quick hits).
-     0.14.0 (D78): phone chrome — #jump-add ＋ in the header (scrolls
-     to the task form; swaps to Today view first if needed) and
-     #signout-bottom ("Log out", in words, at the very bottom). Both
-     phone-only via the 1000px stacked-layout query; the ⏻ square
-     hides there. css ?v= → 0.19.0, app → 0.20.0.
-     0.13.5 (D77): css ?v= → 0.18.1, app → 0.19.2. Reference bump only.
-     0.13.4 (D76): app ?v= → 0.19.1. Reference bump only.
-     0.13.3 (D74): css ?v= → 0.18.0, app → 0.19.0. Reference bump only.
-     0.13.2 (D73): hint mentions cross-row drags. app ?v= → 0.18.0.
-     0.13.1 (D72): css ?v= → 0.17.0, app → 0.17.0. Reference bump only.
-     0.13.0 (D71): ⛶ fullscreen button, 🧵 hairline bar pin. css ?v= →
-     0.16.0, app → 0.16.0.
-     0.12.1 (D70): "Year wall" → "Annual" (Jake's rename). css ?v= →
-     0.15.0, app → 0.15.0.
-     0.12.0 (D69): ▦▦ Year wall layout button (new default) + Bars
-     size control (Auto/▮/▪/▁). css ?v= → 0.14.0, app → 0.14.0.
-     0.11.0 (D68): year-view layout toggle (Month grid ⇄ Timeline),
-     ＋ New project FAB, #yv-project-modal shell (the REAL form gets
-     reparented in, listeners intact). css ?v= → 0.13.0, app → 0.13.0.
-     0.10.1: css ?v= → 0.12.0, app ?v= → 0.12.0 (D66 day texture +
-     density; form-overflow fix). Reference bump only.
-     0.10.0 (D65, PHASE 2): year view — header 📅 toggle, #year-view
-     section (nav, mode buttons, grid, legend, empty state, drag hint).
-     css ?v= → 0.11.0, app ?v= → 0.11.0.
-     0.9.1 (D64): css ?v= → 0.10.0 (responsive one-line rows). No markup
-     change — reference bump only.
-     0.9.0 (D63): #task-notes textarea. css ?v= → 0.9.0, app ?v= → 0.10.0.
-     0.8.0 (D62 rev): dup modal gains pipeline-review button + 1d/7d/30d
-     snooze row; project-form labels get task-form column treatment
-     (the staggered Starts/Ends); un-dater covers both remnant flavors.
-     css ?v= → 0.8.0, app.js ?v= → 0.9.0.
-     0.7.0 (D62): duplicate modal is a review FORM (name/dates/color/
-     tier/workload + snooze button). css ?v= → 0.7.0, app.js ?v= → 0.8.0.
-     0.6.0: settings modal split into tabs (Tiers / Pipeline / Timing)
-     with deadline-hour (D51) + decision-threshold (D52) fields and
-     #tier-color-hint (D55); new #uncheck-modal (D53) and #dup-modal
-     (D59); decision-modal hint rewritten for ✓/🕐 (D57); Workload ⓘ
-     gains a hover title (D58). css ?v= → 0.6.0, app.js ?v= → 0.7.0.
-     0.5.x: filter chips, workload, due/stages/weekend/decision modals
-     + shared popover (all OUTSIDE #drift-wrap, D37), D49 ?v= ritual.
-     ============================================================ -->
-```
+# Ellis Web Bell — Changelog
+
+Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
+
+## signage/right-column.js v1.7.0 — announcements
+(Sibling surface; app unchanged at 6.26.0. CSS v1.5.0, config v1.7.0, SW 1.47.0.)
+
+**Up to five announcements**, typed on the config page, shown in the ticker on
+top of the normal birthdays and events — local celebrations ("Happy Dolly Day!
+9/25 — get it?"), reminders, schedule changes. Designed from a live mockup the
+owner called "the coolest".
+
+- **Live, not polled.** Saved to the config doc the TVs already listen to, so an
+  announcement reaches every screen within seconds of Save — faster than the
+  5-minute scores or the hourly sheets — and switching one off removes it just
+  as fast. No reload.
+- **Dates plus a switch.** Start and end dates (inclusive) turn announcements on
+  and off by themselves, so nobody has to remember to take "Pep rally —
+  different schedule!" down; blank dates mean "until switched off". Each slot
+  shows its status — Showing now, Scheduled, Expired — free to reuse, Off — the
+  owner's own idea being that an expired slot is simply recycled.
+- **Per-announcement frequency**, because "it depends on the day": once per loop
+  (leads the rotation), every other card (before every normal card, several
+  taking turns), or take over the band (nothing else while active). Only the
+  last ever removes birthdays and events.
+- **Per-announcement tile colour**: the four house colours from the scoreboard,
+  Dolly pink, or any colour. The text colour picks itself by WCAG luminance, and
+  a near-black tile gets a faint edge so it doesn't vanish into the band.
+- **A live character counter** (green to 60, amber to 90, red past it) and a
+  confirmation on Save for anything over 90.
+- **The preview is the ticker itself.** The config page loads right-column.js
+  and calls its new `mountPreview()`, which drives the same renderer and the same
+  `composeRotation()` as the TVs — so the preview cannot drift from the hallway.
+  It ignores dates by design; "Preview a date" shows the real schedule.
+- Text is set with `textContent` throughout; markup typed into an announcement
+  renders as plain characters.
+
+Verified: 11 new unit tests, a browser-simulated run of the real config page (15
+checks, including declining the over-90 confirmation saving nothing) and of the
+TV path (a Save reaching a TV live, and switching it off removing it). Two harness
+bugs were found and fixed along the way, neither in the shipped code. **155/155.**
+
+## signage/right-column.js v1.6.0 — the flip, rebuilt
+(Sibling surface; app unchanged at 6.26.0. CSS v1.4.0, SW 1.46.0. **The .js and
+.css must ship together** — the new script builds markup the old stylesheet
+cannot lay out.)
+
+Designed with the owner over four rounds of live, animated mockups in the chat,
+each one answering what the last one exposed. His verdict on the result: "a
+thousand times better. No notes."
+
+- **FIXED: the top flap never fell.** Through v1.5.0 it was parked at -90deg in
+  both the idle and the flipping rule, so every flip was half an animation —
+  only the bottom moved, and a card whose first line didn't change barely read
+  as a flip at all. A new `.rc-armed` step snaps it flat over the outgoing top
+  half with no transition, forces a reflow, and only then lets it fall.
+- **Style D**, the owner's pick of four: each card is a lighter tile on the dark
+  band with a dark hinge gap, and the falling flap darkens as it tips away while
+  the landing flap brightens. That shading is the motion cue that makes a flip
+  visible from a hallway when only a name changes.
+- **Every card is split AT the hinge** (`planCard`). Letters never sit across
+  the gap — "Happy New Year's Day!" on one line was unreadable with the hinge
+  through it. Cards split at the most balanced word break, measured in the real
+  font (`Happy New / Year's Day!`, not `Happy / New Year's Day!`); long text may
+  go two lines per half, but only when that gives visibly larger text. Birthday
+  cards keep their break after the comma.
+- **Every half is ink-centred** to the owner's own test: the gap above the
+  tallest letter equals the gap below the deepest descender, in each half. The
+  reference is fixed (tallest ascender to deepest descender in the font), not
+  each card's own letters, so names do not hop up and down between kids.
+- **Size is measured, not guessed.** The largest size that fits both the width
+  and 80% of the half's height. Short cards all land at the same size; long ones
+  shrink only as far as they must. `FIT_STEPS`, `PER_LINE_STEPS` and
+  `fitSizeFor` are gone, along with the four tests that pinned them.
+- **Measured on each screen**, because fonts differ: the owner's Mac has Century
+  Gothic and the Yodeck players almost certainly fall back to Urbanist. Layout
+  re-runs when the webfont finishes loading and when the screen resizes.
+  Where canvas measurement is unavailable it degrades to fixed estimates rather
+  than failing, and card text is set with `textContent`, never `innerHTML`.
+
+Verified: 13 new layout tests (every card has exactly two halves, the balanced
+split checked against brute force, nothing ever overflows width or height,
+names don't hop), plus a live DOM check confirming the flip passes through the
+armed-but-not-yet-falling state and clears afterwards. **Honest limit:** that DOM
+check runs without a real layout engine or real fonts, so final sizing is
+verified on the owner's TV, not here. **144/144.**
+
+## signage/right-column.js v1.5.0 — minimum events, and preview any date
+(Sibling surface; app unchanged at 6.26.0. CSS v1.3.0, config v1.6.0, SW 1.45.0.)
+
+**Minimum events per day** (`tickerMinEvents`, config page dropdown: 0 / 1 / 2 /
+3 / all). A FLOOR under the birthday-first rule, never a cap — "at least 1"
+still shows every event on a no-birthday day. Default saves as absent, which
+reads as 0: exactly the old behaviour. Asked for because a two-birthday day hid
+every event and the owner couldn't see what events looked like on the screen.
+
+**Preview any date**: `signage/dashright.html?date=YYYY-MM-DD` computes that
+day's ticker — birthdays, early wishes, closures, events — while the clock,
+scores and flip timing stay real. The config page gets a date picker and a
+"Preview this day" button so nobody types the URL. **An amber PREVIEW badge sits
+on the ticker**, because a preview URL left in a Yodeck playlist by mistake must
+never pass for the real day. Strict parsing: `2026-02-31` is rejected rather than
+silently rolling into March.
+
+**FOUND, NOT YET FIXED IN THIS RELEASE — the flip has only ever run half its
+animation.** A split-flap is two motions: the top half falls, then the bottom
+swings down. The top-half flap was parked edge-on both before AND during the
+flip (the idle rule and the flipping rule both said rotateX(-90deg)), so on the
+TV the top half snaps and only the bottom moves. With only a name changing,
+that reads as nearly nothing. Fixed in the next release together with the
+owner's chosen tile style.
+
+## signage/right-column.js v1.4.1 — the ticker sheets now actually re-fetch
+(Sibling surface; app unchanged at 6.26.0. SW 1.44.0.)
+
+**FIXED: the four ticker sheets loaded once, at page load, and never again.**
+`SHEET_REFRESH_MS` was declared in v1.0.0 and nothing ever used it. Found when
+the owner noticed his Yodeck players never reload the page on their own — which
+means that on a real TV, **an edit to any sheet would never have reached the
+screen. That includes an opt-out**: a family asks to be left off, the row comes
+out of the published feed, and the name keeps showing indefinitely. The day
+rolling over was unaffected — the sheets cover the whole year and the date is
+re-checked every 250ms — so only edits were stranded.
+
+All four sheets now re-fetch hourly. A failed re-fetch keeps the last good data
+rather than blanking the band. Four new tests, one of which checks the
+scheduling line itself rather than the constant, since the constant is exactly
+what existed while the bug did; it was confirmed to FAIL with the fix removed.
+**127/127.**
+
+**Operational note, the reason this surfaced:** Yodeck does not reload a web
+page unless a Refresh Interval is set on it. The page's own timers keep the
+clock, the scores, the day rollover and (now) the sheets current, but **new code
+only arrives on a reload** — so after any push, the TVs keep running the old
+version until they are refreshed.
+
+## signage/right-column.js v1.4.0 — the line break goes after the comma
+(Sibling surface; app unchanged at 6.26.0. CSS v1.2.0, SW 1.43.0.)
+
+On the live screen, birthday cards wrapped wherever the text ran out:
+`Happy Birthday, Suzie` / `Q.!` — **splitting a child's name across two
+lines.** Birthday and early-birthday cards now carry an explicit break after the
+comma, so the greeting sits on line one and the name on line two, and CSS
+`white-space: pre-line` honours it.
+
+**Cards with a break are sized by their longest line**, so neither line wraps
+again. **Calibrated from that same screen, not from font arithmetic:** the bad
+wrap showed ~21 characters fitting per line at 8cqw, and the per-line steps
+scale from it. Ordinary birthdays now render at the LARGEST step (neither line
+is long); early wishes come out one step smaller, because "Happy Early
+Birthday," is itself 21 characters. Holidays and context cards are untouched —
+they have no forced break and size exactly as before. **49/49 in the ticker
+suite, 123/123 overall.**
+
+## dashboard-config.html v1.5.2 — the Quick Links pointed at files that don't exist
+(Sibling surface; app unchanged at 6.26.0. No SW bump — this page is
+intentionally not cached.)
+
+**"Launch TV Dashboard" and "Dashboard Setup" both 404'd**, and had since before
+round 11: they linked `dashboard.html` relative to this page, which lives at the
+site root, while the dashboard lives in `signage/`. Found by the owner the first
+time he clicked through to test the ticker. Both now point into `signage/`.
+Added a **"Right Column Only"** button for `signage/dashright.html` — the page
+used for the ticker's console check, which until now had no link from anywhere.
+
+## signage/right-column.js v1.3.0 — context cards, and "Happy" added by the ticker
+(Sibling surface; app unchanged at 6.26.0. SW 1.42.0, config v1.5.1 — help text
+only.)
+
+The owner's events list now has 2+ entries for every calendar day, and some of
+them mean nothing without a sentence ("Who is Gygax?"). **The holidays sheet is
+now four columns:** month/day, name, context (optional), no-"Happy" (optional).
+
+- **Context is its own card**, flipped in right after the headline — never a
+  second line on the same card. The band is 12% of the column; a headline plus
+  a sentence in that space shrinks both past readability from across a hallway.
+  One fact per flip: the question lands, and the answer arrives five seconds
+  later.
+- **The ticker adds "Happy <name>!" itself**, because every entry in the list
+  was written to be said that way. Column D opts a row out, for memorials like
+  Patriot Day. A row typed the long way round (`Happy Pi Day!`) is not doubled.
+- **No-birthday days show EVERY event** listed for the date, not just two —
+  there is nobody's airtime to protect. Birthday days are unchanged: one
+  birthday takes ONE event plus its context, so that child is a third of a
+  three-card loop. **Owner's call**, over repeating the name to hold it at half.
+
+**Considered, built, and removed the same round: per-screen variety** via a
+`?screen=N` URL parameter. It worked, but the owner's Yodeck setup is ONE screen
+sent out to many TVs, so there is no per-TV URL to put it in. Every TV shows the
+same thing, which he is fine with. Removed rather than left dormant, so no later
+session tells him to set a parameter that cannot work on his hardware; a note in
+the file header says not to re-propose it unless the setup changes.
+
+Four tests asserted the old behaviour and were updated — three for the new
+"Happy" wrapper, one for the all-events rule, which changed deliberately.
+**118/118.**
+
+## signage/right-column.js v1.2.0 — a second default line, and length-aware sizing
+(Sibling surface; app unchanged at 6.26.0. CSS v1.1.0, SW 1.41.0, config v1.5.0.)
+
+**Two fallback lines**, alternating, so a day with no birthdays and no wacky
+holiday still FLIPS instead of showing one sentence to itself. Defaults are now
+`Ellis — 4 Houses, 1 Home` and `Have a delightful day!` — "One School" came out
+at the owner's request, since it is not part of what anyone at Ellis says. Set
+only one and the old repeat behaviour is what is left.
+
+**The band no longer uses one font size for everything.** Asking whether a
+longer default line would fit surfaced a problem with the feature itself, not
+the default: at a fixed 8cqw a line in a 25%-of-TV column holds about 22
+characters, and **the longest strings this ticker produces are its most routine
+ones** — faculty entries carry a title AND a full surname, so
+`Happy Early Birthday, Ms. Vandermeulen!` is ordinary output, not an edge case.
+Each line now picks its size from its own length (four steps, 9.5cqw down to
+5.25cqw), set per span rather than per band because mid-flip the two halves
+hold different strings. Steps, not a smooth curve: a continuous fit would make
+every flip a slightly different size, which reads as jitter on a wall.
+
+**The step boundaries are arithmetic, not measurement**, and are commented as
+such in the file — they want one look at a long faculty name on the real frame.
+A test pins the property that actually matters regardless of tuning: size never
+grows as length grows, and there is a floor.
+
+## signage/right-column.js v1.1.0 — faculty birthdays, and the fill-to-two fix
+(Sibling surface; the app version is unchanged at 6.26.0. SW CACHE_VERSION
+1.40.0 so TVs actually pick it up. `dashboard-config.html` v1.4.0.)
+
+**Faculty birthdays** from a fourth published CSV (`facultyBirthdaysSheetCsvUrl`),
+pooled with the students: same greeting, same early-wish spreading over breaks,
+same contribution to the two-item minimum. Kept as its own feed and its own tab
+rather than stacked into the student one — the student formula exists to strip
+birth year, surname and opt-outs, and faculty need none of that stripping.
+Display format differs by design: `Mr. Wilson`, not `John S.`
+
+**FIXED: the fill-to-two rule only ever added ONE holiday.** So a day with no
+birthdays showed a single static line with nothing to flip to — the exact
+opposite of the "always a rotation of at least 2" the band exists for. It now
+pulls holidays until it HAS two, then the fallback line, and **never takes more
+than it needs**: on a one-birthday day that kid's name is half the rotation
+rather than a quarter of it. Padding one child's name with four wacky holidays
+gets the priority backwards. Several holidays may now be listed per date; which
+pair is used is seeded by the full date, so a date with three rotates through
+different pairs across school years while staying fixed within any one day.
+
+**Console load diagnostics.** Every sheet load now logs rows-fetched vs
+rows-parsed — `[rc/ticker] closures: 10 rows, 10 parsed`. An unparseable row is
+dropped silently (a date typed `9/4` with no year, a tab that was never actually
+published) and **a TV in a hallway cannot report that**, so the check has to be
+visible from a desk. A mismatch logs at warn level with the likely cause.
+
+Two existing tests asserted the old one-holiday behaviour and were updated
+rather than worked around; what they were really pinning — that the pick is
+deterministic, because two TVs must never disagree — is still pinned. **106/106.**
+
+## V6.26.0 — the signage right column becomes ONE file, and grows a birthday ticker
+(Round 11, "Tenor". App bump is minor and small: module 25 reports two more
+files. The real work is in `signage/`. SW CACHE_VERSION 1.39.0.)
+
+**The column existed twice and had already drifted five ways.** `dashboard.html`
+and `dashright.html` each carried their own copy of the right column's CSS and
+script, and both headers admitted it in comments. Extracted to
+**`signage/right-column.css` + `signage/right-column.js`** (v1.0.0), following
+the `schedule-utils.js` pattern exactly: plain `<script>`, one global, no build
+step. The five drifts found and resolved in the merge:
+
+- **House names were 7cqw in dashboard, 9cqw in dashright.** dashright v1.1.0
+  bumped them after the owner's eyeball test on live hardware; dashboard never
+  got it. **9cqw won** — it is the size he actually approved.
+- **dashright and dashclock named `Urbanist`/`Questrial` and never loaded
+  them.** Only dashboard.html had the Google Fonts `<link>`, so on any player
+  without Century Gothic installed — every Yodeck player — the pages rendered in
+  different typefaces. This is most of why the standalone column never quite
+  matched. Both now load it.
+- **The clock's three period cells used bare `1fr` in dashboard** (no
+  min-content floor, so a long label overflows the row) against
+  `minmax(0, 1fr)` + `min-width: 0` in dashright. Same root cause as the v1.5.2
+  setup-panel fix. minmax won.
+- **`white-space: nowrap` was on the period cells in dashboard and absent in
+  dashright**, so identical text ellipsized on one page and wrapped on the
+  other. nowrap won: a wrapped period name pushes the countdown out of the band.
+- **The root element was `.right` in one file and `.right-column` in the
+  other.** Both are now `.rc-column`.
+
+**NEW: the birthday ticker**, top band of the column, at the owner's request.
+The column now reads ticker (12%) / four house cards (71%) / clock (17%), down
+from clock (20%) / cards (80%) — the clock moved from top to bottom and all
+three previous bands were squeezed rather than the scoreboard absorbing it
+alone. `#main-clock` went 15cqw -> 13cqw because the band lost height while cqw
+text is keyed to width.
+
+**Three published Google Sheet CSVs**, configured in `dashboard-config.html`
+v1.3.0: birthdays (name + month/day), closures (start, end, label), wacky
+holidays (month/day + text). **Student privacy shaped the schema:** the
+published birthday tab is a formula over a PRIVATE roster tab, so the public
+URL never carries a birth year, a full last name, or anyone who opted out — the
+opt-out is enforced at the source, not by this code choosing to skip a row.
+Nothing is written to Firestore, per the standing rule for student data.
+
+**Early wishes, so no kid goes unacknowledged.** On each school day the ticker
+shows today's birthdays plus a share of the birthdays falling in an upcoming
+closure, spread over `min(ceil(closure length / 2), 15)` school days of lead
+time: a weekend on the Friday, Thanksgiving's nine days across the whole
+preceding week, summer across the last three weeks of school. Closure *runs* are
+computed, not read — the sheet lists the weekdays school is shut and the
+flanking weekends are glued on, so a Monday holiday beside a weekend is one
+three-day closure rather than two. Names are dealt out in date order in balanced
+chunks. Everything is a pure function of (sheets, date), which is what lets two
+TVs showing the same column agree on the same name at the same second.
+
+- **The 15-day cap is what makes summer birthdays reachable at all.** Without
+  it they would need ten weeks of runway and simply never be wished. It also
+  means graduating 8th graders get theirs on the way out.
+- **A school day with fewer than two birthdays pulls in that date's wacky
+  holiday**, so the band always rotates; with neither, a configurable fallback
+  line, so it is never empty.
+- **Split-flap rotation, 5s a card**, whole-line rather than per-character:
+  thirty elements animating in lockstep every five seconds forever on a slow
+  player buys nothing readable from across a hallway.
+- **A real CSV parser** replaces the bare `split(',')` the score fetcher uses.
+  Fine for four integers, not fine for names — one `"Smith, Jr."` would shift
+  every column on the row.
+
+**FOUND EN ROUTE, fixed for the new fields only:** `dashboard-config.html`
+deletes null keys from its payload and then calls `set(..., {merge: true})`, so
+**clearing a box and saving does not clear the stored value.** The four ticker
+fields now send `FieldValue.delete()` when blanked, so the ticker can actually
+be switched back off. `canvaUrl` and `housesSheetCsvUrl` still behave the old
+way — same defect, deliberately left alone, and logged in ROADMAP §3 with the
+affordance sweep where it belongs.
+
+**Verification:** §5 battery green. **98/98 tests** (24 new in
+`tests/right-column.test.mjs`, covering the closure-run detection, lead windows,
+chunking, the summer cap and the CSV parser), 41 modules, no rules change, no
+CSS rebuild. Plus a jsdom pass confirming the mounted column's band order,
+element counts and a live clock readout. **One test failure during the build
+was the TEST being wrong, not the code** — its Thanksgiving fixture listed
+Wed–Sun and produced two runs with school days in between; the fixture now
+lists the closed weekdays, which is how the sheet is actually filled in.
+
+## clock.html v1.8.0 — the clock plays each bell's OWN sound
+(Companion to app 6.25.1. Sibling surface; the app version is unchanged at
+6.25.1. SW CACHE_VERSION 1.38.0 so clocks pick it up.)
+
+- **FIX: `playBellSound()` took no argument** and played `config.sound` for
+  every bell it rang, so a bell the teacher had deliberately set to
+  "Silent / None" still rang on the clock. It now takes the bell's own sound and
+  honours `[SILENT]`. Owner's reasoning: if someone has chosen sounds per bell
+  on the website, the clock should play what they chose — silence included.
+- **`config.sound` is now the FALLBACK**, used for any bell with no sound of its
+  own, which is every bell on a never-customised schedule. The setup screen's
+  label changed to say so. Existing setups sound exactly as they did.
+- **Non-URL sounds fall back rather than failing**, mirroring `old.html`'s
+  long-standing guard: the app stores a sound as either a full download URL or a
+  Storage path, and `new Audio(path)` cannot resolve a bare path. On a signage
+  clock a failed load is indistinguishable from a broken bell, so it falls back.
+- **NO new control.** The owner asked for a per-schedule-line silent toggle
+  defaulting to silent; the per-column 🔔 checkbox already does exactly that and
+  already defaults to OFF. Inverting it would flip the meaning of `a1`…`a9`,
+  which are baked into every saved clock URL, silently turning audio ON for
+  anyone holding an old link.
+
+**Verification:** 7 checks against the extracted real function — `[SILENT]`
+plays nothing, a bell's own URL plays that URL, absent/empty/non-URL sounds fall
+back, and a clock with no fallback configured plays nothing instead of throwing.
+§5 battery green (74/74, 41 modules).
+
+## V6.25.1 — A bell set to "Silent / None" rang the DEFAULT bell
+(Owner: "I have a scheduled bell that's supposed to be silent. It's ringing the
+default bell every time (which is very confusing)." Patch bump: pure bug fix.)
+
+**Root cause, one line, no ambiguity.** The sound dropdowns have offered
+"Silent / None" since 5.32/5.33 — module 19 injects `<option value="[SILENT]">`
+into the Default Sounds optgroup of EVERY sound select, schedule bells included.
+`playBell()` never had a case for it. So `[SILENT]` was truthy, skipped the
+empty-soundName guard, and fell through to Case 3, which treats any
+unrecognised soundName as a Firebase Storage path. `ref(state.storage,
+'[SILENT]')` then `getBytes()` fails, the catch fires, and that handler's
+"fall back to default" rings `ellisBell.mp3`. A bell explicitly marked silent
+therefore rang the default bell — the loudest possible wrong answer, and worse
+than either intended outcome.
+
+- **FIX:** `playBell()` returns early on `[SILENT]`, before the synth cases.
+- **The empty-soundName fallback is deliberately UNCHANGED.** An empty sound
+  still rings the default. That asymmetry is intentional: empty means a field
+  was never set, and a bell that goes quiet because of a blank field is a silent
+  failure. `[SILENT]` is an explicit choice and is now honoured as one.
+- **CORROBORATION:** `old.html`, the ES5 legacy surface, has handled `[SILENT]`
+  correctly this whole time (`if (url === '[SILENT]') return;`). So the feature
+  was real and the modular app is what lacks it — either it never made the 6.0.0
+  modularization or it was dropped in it. Worth remembering when a feature
+  "works on the old page but not the app".
+- **NOT fixed, flagged on the roadmap:** `clock.html` ignores per-bell sounds
+  entirely — it plays one configured `config.sound` for every bell — so a silent
+  bell still rings on any clock column with audio enabled. That is a different
+  shape of problem (its audio model, not a missing case) and needs the owner's
+  call before changing.
+- A system notification is still sent for a silent bell (`maybeNotifyBell` is
+  untouched). That seems right — silent means no AUDIO, not invisible — but it
+  is a judgement call, so it is recorded here rather than assumed.
+
+**Verification:** §5 battery green (74/74, 41 modules). Plus a throwaway harness
+that evaluates the REAL `playBell` source against stubs: 7 checks — `[SILENT]`
+plays nothing, never reaches Firebase Storage, and never falls back; while the
+default bell, the built-in synths, the empty-sound fallback and the
+genuinely-broken-URL fallback all still behave exactly as before.
+One file changed. SW CACHE_VERSION 1.37.1.
+
+## V6.25.0 — Named queue steps; skip bells by name instead of blind
+(Owner, on the countdown line: "it feels more helpful for it to say 'hamburger
+time! (queue 1/2)'." And on skipping: "it got confusing to know which bells were
+being cancelled, when all you're saying is 'skip' or 'unskip' bell." Minor bump.)
+
+- **NEW: each queue step can carry a LABEL.** The countdown line now reads
+  `Hamburger time! (Queue 1/2)` rather than a bare `Queue (1/2)`. That line is
+  the same wide row that normally reads "until <bell name>!", so there is room.
+  The label is OPTIONAL and empty falls back to the old bare form, so an
+  existing saved queue is unchanged until it is edited. Labels ride inside the
+  `steps` array, which module 15 stores whole, so no new field to whitelist.
+- **NEW: the bell modal — skip/unskip the next five bells BY NAME.** Each row
+  shows the bell's name and time with its own Skip/Unskip button. A skipped bell
+  STAYS in the list, struck through, because otherwise there is nothing left to
+  press Unskip on. The modal stays open as you toggle, so fixing a mis-skip does
+  not mean reopening it.
+- **REPLACES both old buttons rather than adding a third.** "Skip Bell" hit
+  whichever bell was next and "Unskip" restored whichever was earliest, and
+  neither NAMED the bell until after the fact — precisely the wrong behaviour
+  during a schedule change. The single button now opens the modal, and its label
+  changes to "Skip / Unskip Bells…" while anything is skipped. The owner's
+  constraint was no more chaos on the main screen, so button count went 2 -> 1.
+- **NOT a PiP problem.** Document Picture-in-Picture runs in a separate window,
+  so opening this modal does not disturb a popped-out countdown.
+- `skipNextBell()` now delegates to a new `skipBell(bell)`, so the blind path and
+  the pick-from-a-list path share one implementation and cannot drift. Same
+  occurrence key, so skips still self-clear overnight.
+- **BUGFIX guarded on the way:** `updateMainPageSkipButtons()` opened with
+  `if (!skipBtn || !unskipBtn) return;`. Removing the unskip button would have
+  made that bail out every time, silently hiding the skip button forever. It now
+  guards on the skip button alone.
+
+**Verification:** §5 battery green (74/74, 41 modules). Plus a throwaway jsdom
+harness: 28 checks, including the exact countdown string, the unlabelled-step
+fallback, skipping the SECOND listed bell and asserting its neighbours are
+untouched, the struck-through-but-still-listed state, and the guard bug above.
+**NO CSS rebuild** — `line-through`, `max-h-80` and `last:border-b-0` are all
+absent from the built tailwind.css, so those three are done with inline styles.
+SW CACHE_VERSION 1.37.0.
+
+## V6.24.0 — Save a queue as a Quick Bell
+(Owner: "My class always starts with 15 minutes of typing... immediately after
+is 2.5 minutes of an image of Beethoven... I have the 15 minutes saved as a
+quick bell and the beethoven saved as a quickbell, but I don't have BOTH."
+Minor bump: a new feature. Builds directly on 6.23.0.)
+
+- **NEW: "Save as a Quick Bell" in the Quick Bell Queue modal.** Name the queue,
+  press Save, and it becomes one of the four Quick Bell buttons. Pressing that
+  button runs the whole sequence — each step with its own duration, sound and
+  graphic. The owner's real case: a delayed start now costs one click instead of
+  two, with no chance of forgetting the second half.
+- **A saved queue is an ORDINARY custom quick bell carrying a `steps` array.**
+  No parallel "saved queues" list. It lives in the same four slots, uses the
+  same icon/colour controls in Manage Quick Bells, the same broadcast tick, the
+  same backup/restore, the same Firestore document. Absent or empty `steps`
+  means an ordinary one-shot bell, so every existing quick bell is untouched.
+- **BUGFIX (pre-existing, found on the way): `alwaysBroadcast` did not survive a
+  reload.** The Firestore snapshot handler in module 15 rebuilds each quick bell
+  field by field from a WHITELIST, and `alwaysBroadcast` was never added when
+  V5.65.0 introduced it. The setting is read when rendering the button and when
+  launching, so ticking "broadcasts to all devices" worked until the next
+  refresh and then silently reverted to off. Now carried through — along with
+  `steps` and `queueRepeatTimes`. **The whitelist is commented as such now:** any
+  new quick-bell field must be added THERE as well as at its write site, or it
+  vanishes on reload.
+- **Deliberate limits, both recorded in module 12's header:**
+  (a) the button icon defaults to the FIRST step's graphic and the tooltip
+  duration is the WHOLE run's total — then it is editable in the ordinary
+  manager, so there is no second icon picker in the queue modal;
+  (b) **"until a bell rings" repeat mode is NOT saved.** It targets a bellId from
+  today's resolved schedule, which means nothing tomorrow. A saved queue always
+  repeats by numeric count; the modal says so under the Save field.
+- **The button icon is a DIAGONAL SPLIT of the queue's steps** — half a
+  hamburger, half a Beethoven — rather than whichever graphic happened to be
+  first. Bands are axis-aligned rects inside a clipPath rotated -45deg about the
+  centre; the square's diagonal is 100*sqrt(2), so a band of `DIAG/n` tiles it
+  exactly for any n, and at n=2 it is precisely half and half. A divider stroke
+  between bands keeps two dark graphics reading as two. Steps without an image
+  (the default "Q", custom text) fill their band with the bell's colours and the
+  step number — never a broken `<image>`.
+  **Capped at 3 bands** however many steps: past three, 44px of button divided
+  diagonally is confetti, and the step-count badge already says how many there
+  are. The icon is stored as a `[QUEUE_SPLIT]` SENTINEL, not baked in at save
+  time, so editing a step's graphic later updates the button automatically.
+- **Queue buttons are visually distinct:** a small step-count badge in the corner,
+  and the hover label reads "2 steps / 17m 30s" rather than a bare duration,
+  because the button runs a sequence and one time would understate it.
+- Launch reads the steps from `state.customQuickBells`, NOT from a `data-*`
+  attribute — steps are objects, and round 9's lesson about rebuilding state
+  from rendered DOM applies here too.
+
+**Verification:** §5 battery green (74/74, 41 modules). Plus a throwaway jsdom
+harness driving the real modules against the real DOM: 25 checks, including the
+owner's exact routine saved and relaunched, the 4-slot cap, the no-name refusal,
+and a round trip through module 15's actual mapper source proving `steps`,
+`queueRepeatTimes` and `alwaysBroadcast` now survive a reload while a plain bell
+still loads with `steps: null`. **NO CSS rebuild** (the badge is positioned with
+inline styles precisely to avoid one). NO rules change — `steps` is an additive
+field on an existing user-owned document. SW CACHE_VERSION 1.36.0.
+
+## V6.23.0 — Quick Bell Queue: a graphic per timer, not per queue
+(Owner: "I'd like to be able to add a queue of bells to the quickbells menu. So
+one bell with a graphic followed by another bell with a different graphic. Each
+with its own sound." Minor bump: a new feature.)
+
+**Most of this already existed.** The Quick Bell Queue (V5.55.0) has always run
+a sequence of timers with a DIFFERENT SOUND PER STEP. The missing half was the
+picture: one `queue-visual-select` at the bottom of the modal set a single
+graphic for the entire run, stashed in `state.queueVisual`. So a queue could
+say three different things and show one. "2 minutes to announcements" ->
+"line up" -> "go" was impossible as one queue.
+
+- **NEW: every timer row has its own "Graphic" dropdown**, beside its own
+  "Sound". A queue entry is now a complete little bell:
+  `{durationSeconds, sound, visual}`. Same option set the queue-level control
+  offered — Default "Q", Shared Visuals, My Visuals — and deliberately still no
+  "Upload..." entry: upload lives in the visual library, a queue row picks from
+  what is already there.
+- **The graphic is "before"-mode**, matching the rest of the app: a row's
+  picture is on screen WHILE that row counts down, and swaps the instant that
+  row rings and the next one starts. `advanceQueue()` increments `queueIndex`
+  before starting the next timer, so `queueIndex` always names the running
+  entry and `getQueueVisualHtml()` just reads it.
+- **Module 10 needed NO change.** Its visual key was already
+  `queue:<index>:<repeat>`, so the clock engine re-renders the cue on every
+  advance; it only ever asked `getQueueVisualHtml()` what to draw. This is why
+  the feature came in at five files — the queue's plumbing was right, it just
+  had one variable where it needed an array field.
+- **REMOVED: the queue-level "Visual Cue" control** (`#queue-visual-select` in
+  index.html, and the `queueVisualSelect` const + export in module 02). Keeping
+  it alongside per-row dropdowns would be two controls setting the same thing.
+  `state.queueVisual` SURVIVES but is now write-never: it is read only as a
+  fallback by `getQueueVisualHtml()` for an entry with no `visual` of its own.
+- **Row layout rebuilt** from one wrapping line into three labelled lines
+  (Length / Sound / Graphic) plus a header line carrying "Timer N" and the
+  delete button. The label column is one identical `w-16` on all three lines and
+  the trailing control is one identical `w-8 h-8 flex-shrink-0` on all three —
+  the preview button, the graphic thumbnail, and a same-size spacer on the
+  Length line — so every field begins and ends on the same two vertical rules.
+- **NEW: a 32x32 live thumbnail** of each row's chosen graphic, at the end of
+  the Graphic line. Five rows of identical-looking dropdown labels are hard to
+  proofread before you hit Start; five little pictures are not.
+- `renumberQueueTimerRows()` now finds the label via `.queue-timer-label`
+  instead of `querySelector('span')`. The row contains several spans now (the
+  h/m/s units) and the first one is no longer guaranteed to be the label.
+
+**Verification:** §5 battery green (74/74, 41 modules, check:esm/lint/css/sw all
+OK). Plus a throwaway jsdom harness (round-4 method, not shipped) that drove the
+real module against the real index.html DOM: 24 checks, including a three-step
+queue with three different graphics asserting three DIFFERENT rendered visuals,
+the no-visual backward-compatibility fallback, and the label/trailing-control
+alignment. **NO CSS rebuild needed** — every Tailwind class used was verified
+present in the built tailwind.css. NO rules change, NO new module.
+SW CACHE_VERSION 1.35.0.
+
+## V6.22.0 — The edit modal edits the BASE schedule (shift-rebase data bug)
+(RECONSTRUCTED in round 10 from the HANDOFF header, module 16's inline notes and
+module 14's `pristine` comments. Round 9 shipped this code but never wrote the
+entry, while module 16 tells its reader "see CHANGELOG V6.22.0 before changing
+any of it" — a dangling pointer. If round 9's own account survives anywhere,
+prefer it over this summary.)
+
+- **FIX (data corruption): saving any shared bell during an emergency shift
+  permanently rebased it for everyone.** The edit modal rebuilt its bell from
+  the rendered row's `data-*` attributes, and module 14 renders CALCULATED times
+  — shift and Verb B transforms already folded in. The shared save path writes
+  into `currentSchedule.periods`, the PRISTINE document. So a rename, a sound
+  change, an anchor change — any shared save while a shift was active — wrote
+  the *adjusted* time into the base, silently, for all ~50 users. 6.20.4 made it
+  MORE reachable by instructing admins to tick the confirm and save again.
+  Fixed via `findStoredSharedBell()` (populate the modal from the STORED bell)
+  and `resolveAllBellTimes({pristine: true})` (proximity check in base space).
+- **FIX: the time field is locked for derived bells**, and `updatePeriodsOnEdit`
+  now PRESERVES `relative`. It replaces rather than merges, and shared relative
+  bells do reach the static editor, so saving one flattened it to a fixed bell.
+- **Three fixes the owner reported from the wild:** the roster bulk-template
+  button overlapping its panel; the untagged nudge naming people structurally
+  absent from the roster list it opens; and that nudge's "4 people / 3 names"
+  count mismatch.
+- **LESSON (recorded in HANDOFF §9):** §4.6's "localSchedulePeriods stays
+  pristine" was true of the VARIABLE and false of the SCREEN. Anything rebuilt
+  from rendered DOM is in display space, not storage space.
+
+**Known NOT done:** the same bug exists on the school channel (5.79.x —
+`temporaryShift` landed in v5.74), where the owner is the only admin and so
+exactly the person who can trigger it. Building (5.69.5) predates the shift and
+is unaffected. SW 1.34.0, 74/74, 41 modules, no rules change, no CSS rebuild.
+
+## V6.21.0 — Duplicate a schedule; two affordance/contrast fixes
+(Owner: "I do not see a method of duplicating a schedule as an admin." Plus two
+follow-ups from the 6.20.4 deploy screenshots. Minor bump: a new feature.)
+
+- **NEW: Duplicate Selected Schedule** (Admin Zone, beside Rename). Deep-copies
+  the selected SHARED schedule's periods into a new one, prompts for a name
+  (defaults to "<name> (copy)"), logs a `duplicate-schedule` audit entry, and
+  switches to the new schedule. Previously the only route was export-to-JSON and
+  re-import. Six near-identical schedules run simultaneously here, differing
+  mainly by lunch wave, so this is the common case.
+  **DESIGN DECISION — identities regenerated, anchors preserved.** Every
+  `bellId` and `periodId` in the copy is NEW. `bellId` is the key a teacher's
+  personal overrides, mutes and skips are stored under, so reusing the source's
+  ids would make one teacher's nickname or muted bell on "Lunch A" silently
+  reappear on "Lunch B" — a cross-schedule bleed that would be brutal to
+  diagnose. Relative bells' `parentBellId` values are remapped to the copy's new
+  ids so chains survive. `buildingBellId` anchors ARE kept (an anchor means
+  "this bell IS that intercom moment," which the copy genuinely shares).
+  `temporaryShift` is NOT copied — an emergency shift is a fact about one
+  schedule on one day, never an inherited property. No rules change: the new doc
+  goes to `public/data/schedules` under the existing admin-write rule.
+- **FIX: "Rename Schedule" was greyed out for admins on shared schedules.**
+  `handleRenamePersonalSchedule()` bailed whenever `activePersonalScheduleId`
+  was null — i.e. on every shared schedule — leaving an admin looking at a
+  greyed button on a schedule they are entitled to rename, with no explanation.
+  The button is labelled plainly "Rename Schedule", so it now renames whatever
+  is selected: on a shared schedule it routes to
+  `openRenameSharedScheduleModal()`, which has handled both types since V5.45.1
+  and re-checks admin-mode itself. Same routing the inline pencil has used since
+  v5.68.0. No new authority — this button simply stops being the odd one out.
+- **FIX: banner text unreadable in dark mode.** `#untagged-nudge-banner`
+  (6.15.0) and `#designation-banner` (6.10.0) were built with literal
+  light-palette Tailwind (`bg-blue-100`/`text-blue-900`,
+  `bg-amber-100`/`text-amber-900`) rather than the `--theme-*` variables the app
+  themes through, so in dark mode the background darkened and the near-black
+  text did not. The owner's nudge banner was illegible; the designation banner
+  was equally broken and simply had not fired yet.
+  `#overlap-warning-banner` (`bg-red-600`/`text-white`) is legible in both and
+  is left alone — noted in the CSS so the next reader knows it was checked.
+  Fixed in **styles.css** (hand-written, so no CSS rebuild) with
+  `:root[data-theme="dark"]` overrides; light mode is byte-identical to before.
+- **service-worker.js 1.33.0** (no new modules; cache bump). NO rules change,
+  NO tailwind rebuild (`disabled:opacity-50` / `disabled:cursor-not-allowed`
+  were already compiled), `bell-engine.js` and `old.html` untouched. 74/74.
+
+## V6.20.4 — Admin CAN edit bell times (the four-round OPEN BUG, closed)
+(Owner confirmed the diagnosis live: ticking the checkbox made the time save
+immediately. Root cause was client-side and eight months old, not backend.)
+
+- **THE BUG.** `handleEditBellSubmit` (module 16) gated the ENTIRE shared-bell
+  save path on `wantsToOverrideForAll = isAdmin && overrideCheckbox.checked`.
+  Unticked, it took the personal-override path — and a personal override object
+  has fields for nickname, sound and visual and **no field for time**. An
+  admin's new time was therefore discarded, the modal closed, and
+  `closeEditBellModal()` cleared `editBellStatus` on the way out, so even the
+  "Customization saved." line was never readable. Silence, no error, no change.
+- **WHY ALL THREE CHANNELS.** The gate landed in **V5.66.2**, which was a
+  *sound* fix ("Admins see 'Override for all users' checkbox to optionally push
+  to shared bell") but placed the flag at the top of the whole save path. 5.66.2
+  predates 5.69.2, 6.11.0 and 6.20.x, so every channel carried it. The
+  cross-version repro was evidence of an OLD CLIENT BUG, not a backend one.
+- **WHY IT GOT WORSE IN 6.11.0.** The lock-note redesign added
+  "🔓 Admin: saving a new time changes this bell for every user of this
+  schedule" directly under an input whose value was being thrown away. The UI
+  began promising exactly what the code refused to do.
+- **FIX (module 16):** a time change that would land on a path that cannot
+  store it now REFUSES the save — modal stays open, typed time preserved,
+  status line names the confirm, focus moves to it. No auto-escalation: pushing
+  a bell to ~50 people stays a deliberate act. Comparison runs through
+  `normalizeTimeString` on both sides, so a browser returning `11:30` instead of
+  `11:30:00` from `type="time" step="1"` cannot make an unchanged time look
+  changed and block personal-only saves.
+- **FIX (module 16):** both save paths now call `showUserMessage`, since
+  `editBellStatus` dies with the modal. Personal: "Saved for you only — this
+  bell is unchanged for everyone else." Shared: "Saved for everyone on this
+  schedule." A save and a no-op no longer look identical.
+- **FIX (index.html):** the confirm is relabelled from "Override shared **sound**
+  for all users" to "Change this bell for **everyone** on this schedule", with a
+  sub-line stating that name/sound/visual stay personal when unticked and that
+  times require the box. The label now describes the whole modal, which is what
+  the control has actually governed since 5.66.2.
+- **REMOVED (index.html + module 16):** the `edit-bell-visual-override-checkbox`
+  ("Override shared visual for all users"). It was shown to admins but its
+  `.checked` was never read by any code — a dead control beside a live one.
+- **REMOVED (module 99):** a V4.95 listener that set
+  `editBellSoundInput.disabled = !checkbox.checked`. V5.66.2 made personal sound
+  overrides available to everyone, so this silently revoked sound editing from
+  any admin who ticked the box and then unticked it. The confirm decides WHO a
+  change reaches, never WHETHER a field is editable.
+- **FIX (module 16): false watchdog.** The 6.20.3 watchdog fired
+  `[Watchdog] ... (base=true, personal=false)` on EVERY shared-schedule
+  selection — twice per admin toggle, since `toggleAdminMode` re-enters
+  `setActiveSchedule`. The shared branch attaches no personal listener and so
+  never set `isPersonalScheduleLoaded`. Harmless (the latch short-circuits on
+  `activePersonalScheduleId`) but it was crying wolf in the one log a future
+  debugger reads. The flag is now set explicitly in the shared branch.
+- **FIX (module 16): real `onSnapshot` error callbacks** on the three listeners
+  that had none (standalone-personal, linked-base, linked-personal). §7 asked
+  for these. Each logs and then fails open, so an erroring listener can never
+  again wedge the latch in silence.
+- **tests/bell-engine.test.mjs RESTORED to 64 tests** (was 41 on GitHub). The
+  rounds 8–11 tests never reached the repo because the deploy manifest omits
+  `tests/`. 74/74 across both suites. See HANDOFF §9.
+- **service-worker.js 1.32.0** (no new modules; cache bump). NO rules change,
+  NO CSS rebuild (all classes used were already compiled), `bell-engine.js` and
+  `old.html` untouched.
+
+## V6.20.3 — Fail-open the schedule load latch (silent editor freeze)
+(Owner: "none of them are allowing me to change bell times" — on alpha 6.20.0,
+beta 6.11.0 AND 5.69.2, with NO console error. The one console line was
+`Delaying calculation: base and personal schedules have not both loaded`.)
+
+- **Root cause candidate identified.** recalculateAndRenderAll() bails out early
+  whenever state.activePersonalScheduleId is set and either isBaseScheduleLoaded
+  or isPersonalScheduleLoaded is still false. Both flags are only set inside
+  their onSnapshot success callbacks (module 16), and NEITHER listener has an
+  error callback — so a listener that never reports leaves the latch stuck
+  permanently. Result: nothing re-renders, bell edits appear impossible, and
+  NOTHING is logged as an error. That matches the report exactly, including why
+  it reproduces on 5.69.2 (the guard dates to v4.32, long predating round 7).
+- **Watchdog (module 16 setActiveSchedule, state.loadLatchWatchdogId)**: 6s after
+  a schedule switch, if either flag is still false, force BOTH true, log which
+  one failed, and recalculate. Rendering a possibly-incomplete schedule is far
+  better than a dead editor. Fail-open by design.
+- **Guard message now names the missing listener** (BASE / PERSONAL + the
+  personal id) instead of an unactionable one-liner.
+- **Carries 6.20.2** (nested periods are not collisions — lunch inside 4th;
+  overlap hook try/catch-guarded) **and 6.20.1** (update popup removed).
+- **Versions**: app 6.20.3; engine 1.16.0; service-worker 1.31.0. old.html
+  UNCHANGED. No rules change, no new module. 74/74.
+- **STILL UNKNOWN**: WHY a listener fails to report. The watchdog makes the app
+  usable and self-reporting; the `[Watchdog]` console line will name the culprit.
+
+## V6.20.2 — Nested periods are not collisions (false lunch overlap) + hard guard
+(Owner report: the overlap banner cried wolf on the exact edit they were making —
+"4th Period ends 12:08 PM, but Lunch A begins 11:36 AM". Root cause: lunch waves
+run INSIDE 4th period, and that is true of EVERY lunch; the detector treated
+containment as a collision. Nesting is legitimate schedule structure.)
+
+- **bell-engine 1.16.0 — detectPeriodOverlaps ignores NESTED spans.** If either
+  period is fully contained in the other (lunch inside 4th, advisory inside a
+  block), it is skipped. Only PARTIAL overruns are reported. +1 regression test
+  covering lunch-inside-4th, lunch moved earlier (the edit that triggered it),
+  and a genuine partial overrun still firing. 74/74.
+- **module 18 — the overlap hook is now wrapped in try/catch.** It is a cosmetic
+  warning bolted to the tail of the sacred render path; it must never be able to
+  take rendering or bell EDITING down with it. Never remove that guard.
+- **Carries 6.20.1** (never deployed): the "New version available!" popup is
+  removed in favour of a silent one-time reload on controllerchange.
+- **Versions**: app 6.20.2; engine 1.16.0; service-worker 1.30.0. old.html
+  UNCHANGED. No rules change, no new module.
+- **NOT fixed here — admin cannot edit bell times.** Reported across alpha
+  (6.20.0), beta (6.11.0) and 5.69.2. 5.69.2 predates every change in this
+  round, so a shared backend cause (rules / data / admin record) is far more
+  likely than app code. Admin DETECTION is confirmed working (the untagged-teacher
+  nudge and the Fix... button only render for a confirmed admin). Next step is the
+  browser console error on a failed save, not more code changes.
+
+# Ellis Web Bell — Changelog
+
+Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
+
+## V6.20.1 — Kill the "New version available!" popup (silent auto-update)
+(The PWA update toast — fixed once in 6.15.0 for hard-refresh — was still
+firing on a normal post-deploy BOOT, which is pure noise on an unattended
+clock. Owner reported it a second time, on a clock display. Removed.)
+
+- **module 99**: dropped the updatefound → "New version available! Refresh to
+  update." toast entirely. The service worker already skipWaiting()s +
+  clients.claim()s, so a new version takes control on its own; now the page
+  simply RELOADS ONCE, silently, on `controllerchange`. Guards: only when
+  wasControlledAtLoad (a genuine update — never a first install or a hard
+  refresh, which already has fresh code) AND no modal/editor is open (so an
+  admin mid-edit is never interrupted; they get the update on their next load).
+- **Net effect**: clocks self-update seamlessly after a deploy — no dialog, no
+  one tapping OK. Interactive users get a brief one-time reload (or the deferred
+  update next load if they're mid-edit).
+- **Rollout note**: clients still on 6.20.0 show the old popup ONE last time as
+  they pick up 6.20.1 (they're running the old code at that instant); hard-
+  refreshing a clock once on deploy avoids even that.
+- **Versions**: app 6.20.1; service-worker 1.29.0 (cache bump); bell-engine
+  unchanged (1.15.0); old.html unchanged. 73/73 tests. No rules change.
+
+## V6.20.0 — Wall-clock feed (reader half): the clocks follow the calendar
+(Phase 2 / the payoff. First change to old.html all round — the ES5 legacy
+hallway-clock/TV page — kept minimal and fail-open. md5 re-recorded:
+b8dd5f5a4c8fed0765c982a9ccc43204 → e56f1e4c50c597cfe9e5618e0b53c732.)
+
+- **old.html now reads config/clock_feeds** (the public doc the 6.19.0
+  publisher writes). New ES5 fetchClockFeeds() caches the feed map via the
+  existing parseFields REST parser; loadPublicSchedule, for its pinned public
+  schedule, prefers feeds[thisScheduleId] when its date === today, rendering
+  those already-transformed periods instead of the base. Everything downstream
+  — relative-bell resolution, the emergency shift, rendering — is unchanged;
+  the clock never does recipe math. Fail-OPEN: any error/404/absence just shows
+  the base schedule.
+- **Emergency shift on top of the feed**: feed periods (un-shifted) get
+  applyShiftToScheduleData with the base doc's temporaryShift, so a same-day
+  shift AND a transform compose correctly (recipe-then-shift, matching the app).
+- **Reaches running TVs automatically**: the feed is fetched right before each
+  load at both call sites (dropdown pick + the existing 5-minute auto-refresh),
+  so a clock that's been on since morning picks up a midday pep-rally change
+  within the refresh cycle — same path the emergency shift already rides.
+- **BUGFIX (pre-existing, found while here)**: the 5-minute refresh's public
+  branch stored the schedule as `data: fields` WITHOUT applying the emergency
+  shift (the initial load applied it) — so shifts were silently dropped on
+  refresh. Now mirrors the boot path (applyShiftToScheduleData(fields)).
+- **No firestore.rules change** (config already public-read). No new module.
+- **Versions**: app 6.20.0 (index triple); service-worker 1.28.0 (cache bump);
+  bell-engine UNCHANGED (1.15.0). 73/73 tests; old.html main script syntax-
+  checked; ES5 verified (no const/let/arrow/template literals).
+- Deploying old.html: it's a standalone page the TVs load directly — cache-bust
+  it (e.g. append ?v=620) so the dumb clients pick up the new file.
+
+## V6.19.0 — Wall-clock feed (publisher half)
+(Phase 1 of getting the hallway TVs/clocks to follow the calendar. This half
+is the authenticated PUBLISHER + opt-in UI; the old.html READER is 6.20.0. No
+rules change — config is already public-read.)
+
+- **The clocks are dumb by design** (old.html: unauthenticated ES5, can't do
+  recipe math), so an authenticated ADMIN precomputes and publishes the answer.
+  When a transform is active for today and opted into clocks, the app applies
+  it with the existing engine and writes the flat, resolved periods to the
+  public **config/clock_feeds** doc, keyed by schedule id, dated. config/{id}
+  is already `allow read: if true` + admin-write, so NO firestore.rules change.
+- **"Show on clocks" picker (module 34)**: authoring a transform now offers a
+  checklist of shared schedules whose hallway clocks should reflect it —
+  EXPLICIT, per owner (no tag/uid inference, consistent with Layer 3). Stored
+  as clockScheduleIds on the transform entry; leave unchecked to change only
+  people's apps.
+- **Publisher (module 20 publishClockFeeds)**: runs on every calendar/schedule/
+  day trigger (via refreshActiveTransforms); admin-only (writes fail for others
+  by rule, so it no-ops). Composes all of today's clock-targeting recipes per
+  schedule onto that schedule's base periods. Resets a schedule's feed to base
+  if its transform was removed earlier the same day (so a cancelled change
+  stops showing before midnight); stale (old-dated) feeds are ignored by the
+  reader.
+- **Verifiable in the Firestore console** without touching old.html: publish a
+  reclaim-FLEX transform ticked for the 7th-grade clock, then look at
+  config/clock_feeds — feeds.<7th-id> should hold the transformed periods dated
+  today.
+- **Versions**: app 6.19.0 (index triple); service-worker 1.27.0 (cache bump);
+  bell-engine UNCHANGED (1.15.0). 73/73 tests. No rules change, no new module.
+- **NEXT (6.20.0)**: the small ES5 change so old.html reads config/clock_feeds
+  and renders today's feed when present — the reader half. First touch of
+  old.html all round; md5 re-recorded then.
+
+## V6.18.1 — Shrink protects passing periods too
+(Follow-up to owner feedback: "Shrink" was the one resolver strategy that
+consumed the passing period. Fixed.)
+
+- **engine 1.15.0**: planOverlapResolution 'shrink' now honors protectGaps
+  (default TRUE). Instead of butting the next period's start right against the
+  overrun's end (zero passing period), it leaves a passing period — reusing
+  that period's own outgoing gap (passing periods are ~uniform), or the
+  smallest positive gap in the schedule as a fallback. Only the next period's
+  start moves, so dismissal is unchanged either way; uncheck the box to butt
+  them together. Passing periods remain a MEASURED quantity (next.start −
+  this.end), never a stored field.
+- **UI (module 37 + index.html)**: the "Protect in-between times" checkbox
+  moved out of the spread-only box and now governs BOTH Shrink and Spread
+  (hidden for Push, which preserves every gap inherently).
+- **Versions**: app 6.18.1; service-worker 1.26.0 (cache bump); bell-engine
+  1.15.0. 73/73 tests. No rules change, no new modules.
+
+## V6.18.0 — "Reclaim a period" (the FLEX magic trick)
+(The "guest speaker won't stop talking — kill FLEX and give the day back"
+tool. A per-day Verb B transformation recipe: ephemeral, non-destructive,
+reversible by deleting the calendar entry, and NEVER a saved schedule or a
+dropdown entry.)
+
+- **bell-engine.js 1.14.0 — applyRecipeToPeriods gains the 'reclaim'
+  archetype** ({ type:'reclaim', periodName }). Removes the named period for
+  the day and redistributes the time it occupied — **[previous period's end →
+  reclaimed period's end]**, which is the reclaimed duration PLUS the incoming
+  passing period — evenly across every surviving period, with **dismissal
+  pinned**. Sacrifices the INCOMING passing period, PRESERVES the OUTGOING one
+  (so the two periods that become adjacent still get a passing period). Because
+  freed = incoming gap + reclaimed length is handed back as extra duration and
+  the day-end is fixed, each remaining class comes out a little longer — the
+  net-positive the owner wanted. Pure, tested (last-period and mid-period
+  cases: FLEX 22 min + 4-min passing = 26 freed; day ends the same). Static
+  bells only; relatives re-derive.
+- **Recipe builder (module 34)**: a third recipe type, "Remove a period & give
+  its time to the rest of the day," with a period-name field (datalist of
+  known period names). Authored in the day-of modal and flows through the grid
+  like any transform. describeRecipe (module 20) labels it.
+- **Rides the existing Verb B pipeline** — resolveCalendarTransforms already
+  carries any transform recipe; module 14 applies it pre-merge at
+  resolveAllBellTimes. No new wiring, no rules change, no new module.
+- **Versions**: app 6.18.0 (index triple); service-worker 1.25.0 (cache bump);
+  bell-engine 1.14.0. 73/73 tests.
+- **Known v1 edge (documented, HANDOFF §7)**: a relative bell anchored INTO
+  the reclaimed period orphans to its fallback for that day. Folding such
+  anchors onto a surviving neighbor is a future refinement.
+
+## V6.17.1 — Resolver tweaks (protect passing periods; demote "push")
+(Amends the never-deployed 6.17.0 per owner feedback. Deploy THIS, not 6.17.0.)
+
+- **"Protect in-between times" checkbox on Spread, DEFAULT ON.** Passing
+  periods are the minimum kids need to get around (and use the bathroom) —
+  non-negotiable. When on (default), the overlap comes out of the CHECKED
+  periods' own length; every passing gap stays intact and dismissal is pinned.
+  Uncheck to revert to the old gap-tightening behavior. engine 1.13.0 adds the
+  protectGaps flag to planOverlapResolution (default true).
+- **"Push everything later" demoted to the THIRD option** (it changes
+  dismissal for the whole building — realistically never used) and gated
+  behind a deliberately dramatic confirm ("…Think of the children! The
+  parents! The bus drivers! … the TEACHERS!") before it moves the end of day.
+- **Order now**: Shrink (default) · Spread (protect-gaps default) · Push (with
+  confirm).
+- **Versions**: app 6.17.1; service-worker 1.24.0 (cache bump); bell-engine
+  1.13.0. 71/71 tests. No rules change, no new modules.
+
+## V6.17.0 — Collision resolver + bolder overlap banner
+(The "fix it" half of 6.16.0's detector — the feature the owner dreamed up —
+plus making the warning loud now that it's actionable.)
+
+- **Bolder banner (module 37 + index.html)**: the overlap warning went from a
+  thin pale strip to a bold red bar with a white **Fix…** button. Only shown
+  to an admin editing a SHARED schedule (a personal-overlay user can't
+  accidentally rewrite the shared base). Dismiss still hides it until the
+  overrun set changes.
+- **Resolver modal (module 37)** with PREVIEW-before-apply — you always see
+  the exact bell-time changes before anything is written. Three strategies:
+  - **Shrink the next period** — its start moves to the overrun's end; it's
+    shorter; the day ends on time. (One bell; simplest.)
+  - **Push later** — the next period and everything after shift later by the
+    overlap; nothing shortens; the day ends later.
+  - **Spread across periods I choose** — checkboxes of the following periods;
+    the overlap is split evenly and the gaps after the checked periods tighten
+    so each period keeps its length and the day still ends on time. Warns if a
+    gap can't absorb its share.
+- **bell-engine.js 1.12.0 — planOverlapResolution(periods, overrunName,
+  strategy, absorbNames)** (pure, tested, all three strategies): returns the
+  bell moves + day-end delta + any warning. Moves ONLY static bells; relative
+  bells are never touched and re-derive downstream.
+- **Apply path (module 18)**: on Apply, module 37 hands the moves to module 18
+  via an event (no import cycle); module 18 rewrites the named static bells in
+  state.localSchedulePeriods and writes `periods` — the source of truth,
+  exactly as the delete-period path does (no new save path invented) — logs a
+  'resolve-overlap' audit entry, and the shared listener recalcs, which clears
+  the banner if resolved.
+- **Versions**: app 6.17.0 (index triple); service-worker 1.23.0 (cache bump,
+  no new modules); bell-engine 1.12.0. 70/70 tests. No firestore.rules change.
+- **Note**: "spread" v1 tightens the GAPS between the checked periods (each
+  keeps its own length). If the owner wants the periods THEMSELVES to shorten
+  (lose instructional minutes), that's a labeled refinement — the preview
+  makes the current behavior explicit before applying.
+
+## V6.16.0 — Period overrun detection (the "you're cutting into 4th" warning)
+(First, SAFE half of the collision resolver the owner dreamed up. Detection
+is read-only; the destructive shrink/spread auto-fix is a deliberately
+separate later slice — it moves bells on the sacred live-edit path, so the
+detector earns real-world trust first.)
+
+- **bell-engine.js 1.11.0 — detectPeriodOverlaps(periods)** (pure, tested):
+  flags any period whose LAST bell runs past the NEXT period's FIRST bell.
+  Only periods with a real extent (≥2 distinct times) count — single-bell
+  markers and relative-only stubs are skipped — and back-to-back boundaries
+  (end == next start) are NOT flagged, so ordinary passing-period gaps never
+  trip it. Returns the offending pairs with times + overlap seconds.
+- **NEW module 37-overlap-warning.js** — after each recalc, if admin-mode is
+  on, runs the detector on state.calculatedPeriodsList (the very periods
+  being displayed) and shows a dismissible RED banner: "⚠ 3rd Period ends
+  10:44 AM, but 4th Period begins 10:38 AM — a 6-minute overlap." Strictly
+  read-only; never moves a bell. Dismiss hides it until the overrun SET
+  changes (fix-and-rebreak still re-warns; an unchanged warning stays hidden).
+  Hooked via one additive line at the tail of recalculateAndRenderAll
+  (module 18) — display only, cannot affect editing or ringing.
+- **BUGFIX — engine VERSION constant drift**: BellEngine.VERSION had silently
+  stuck at '1.8.0' since the 1.9.0/1.10.0 header bumps never updated the
+  constant (a str-replace that missed, and nothing in the battery verifies
+  it — the status modal has been under-reporting). Corrected to 1.11.0.
+- **Versions**: app 6.16.0 (index triple); service-worker 1.22.0 (NEW module
+  → CORE_ASSETS now 41, cache bump); bell-engine 1.11.0. 69/69 tests. No
+  firestore.rules change.
+- **DEFERRED (next slice, documented)**: the interactive resolver — shrink
+  the next period, spread the overflow across periods you pick (checkboxes),
+  cancel, or allow-anyway. It rewrites bells on the live schedule, so it gets
+  its own careful release once the detector is proven on real schedules.
+
+## V6.15.0 — Untagged-teacher nudge + hard-refresh update-toast bugfix
+(Two things: the operational glue that pairs with the home schedule, and a
+fix for a long-standing annoyance the owner flagged.)
+
+- **Untagged nudge (NEW module 36-untagged-nudge.js)** — an admin can't
+  preload every teacher; people trickle onto the roster over the first
+  weeks. On admin sign-in, a one-time cross-reference of presence ∩ roster
+  finds anyone who has SIGNED IN (a non-clock presence report) but has NO
+  TAG yet, and shows a dismissible blue banner ("N people have signed in
+  but have no tags yet …"). Its Review button opens the existing Roster &
+  Tags modal — no authoring duplicated. Admin-only (gated on the
+  server-confirmed admin flag; the check only runs on an
+  `ellis-admin-confirmed` event module 15 fires for real admins). Reads
+  only; never resolves a tag into a target (Layer 3 invariant intact).
+  Flow: Ms. Johnson signs in → admin is nudged → tag her + set her home
+  schedule (or re-run the 6.14.0 template) → module 20's home listener
+  lands her on the right schedule.
+- **BUGFIX — spurious "New version available!" on hard refresh (module
+  99).** The PWA update toast checked `navigator.serviceWorker.controller`
+  LIVE at the new worker's `statechange`. Because the SW uses
+  skipWaiting + clients.claim, a hard refresh (which loads uncontrolled
+  and pulls the latest from the network) would have the freshly-installed
+  worker race to claim the page, flipping `controller` truthy, so the
+  toast fired even though the user already had the newest code. Fix:
+  capture `wasControlledAtLoad` ONCE, up front, before any new worker can
+  claim, and gate the toast on that. Hard refresh → uncontrolled at load →
+  no toast (you have latest). Normal reload served from the old cache →
+  controlled at load → toast stays useful ("you're on the old version,
+  refresh"). First-ever install is uncontrolled too, so it stays silent.
+  skipWaiting/claim untouched, so the wall-clock TVs still auto-update.
+- **State**: new server-confirmed `state.isAdmin` (distinct from the
+  manual admin-mode toggle), set in module 15's auth handler.
+- **Versions**: app 6.15.0 (index triple); service-worker 1.21.0 (NEW
+  module → CORE_ASSETS now 40, cache bump); bell-engine UNCHANGED (1.10.0).
+  68/68 tests. No firestore.rules change (presence + roster reads already
+  admin/authed).
+
+## V6.14.0 — Home Schedule (invariant-safe per-teacher default)
+(A teacher's "normal day" schedule, so 6th-grade teachers land on the
+6th-grade schedule without picking it each morning — and the CDC teacher,
+who carries all three grade tags, is set to one schedule explicitly, once.
+Opt-in and backward-compatible: teachers with no home set behave exactly
+as before. Honors the Layer 3 invariant — explicit per-uid defaults, never
+runtime tag resolution.)
+
+- **roster/{uid}.defaultScheduleId** (new optional field) — a teacher's
+  home shared schedule. Admin-set. No rules change (roster is already
+  self-readable / admin-writable; the field is additive).
+- **Resolution (module 20, restructured)**: order is now (1) scoped
+  calendar designation → mandate, auto-follow + I1 banner on deviation;
+  (2) school-wide exception/weekday default → mandate (rare at Ellis);
+  (3) HOME schedule → SILENT auto-load, no banner. Home is a convenience,
+  not a building mandate: it never overrides a same-day manual pick and
+  NEVER yanks a personal-schedule user off their overlay. Steps 1+2
+  reproduce the old resolution exactly; step 3 is the new per-teacher
+  layer, reachable even with no calendar doc. A live listener on the
+  user's own roster doc means an admin setting a default takes effect at
+  once.
+- **bell-engine.js 1.10.0** — resolveScopedDesignation extracted (the
+  scoped-mandate half of resolveCalendarSchedule) so module 20 can tell a
+  bannered mandate from the silent home default. resolveCalendarSchedule
+  behavior unchanged (now calls the extraction). +1 test (68/68).
+- **Roster UI (module 33)**: each person gets a Home schedule picker;
+  a bulk template panel sets the home default for everyone matching a
+  tag/name filter (with a count + confirm to eyeball first) — the
+  "6th → 6th-grade schedule" one-click, re-runnable as new people are
+  tagged.
+- **Select all shown / Clear (module 34)** in the designation people
+  picker — quality-of-life for designating a whole filtered group.
+- **Versions**: app 6.14.0 (index triple); service-worker 1.20.0 (cache
+  bump — no new modules, CORE_ASSETS unchanged); bell-engine 1.10.0.
+  No firestore.rules change.
+- **Deferred (documented)**: alerting the admin when a signed-in teacher
+  has no tag/home yet (the "Ms. Johnson finally logged in" nudge) is the
+  next slice — it pairs with this and rides on presence + roster.
+
+## V6.13.0 — The Prefill Grid (Layer 4 "plan the weeks" — view + edit + repeat-weekly)
+(First of Layer 4's two planning UIs. The day-of modal covers I2 chaos;
+the grid covers "plan ahead when we can." New module 35. Rotation-cycle
+generators — slip-forward / calendar-locked — are the documented NEXT
+slice; deliberately out of scope here as they're aspirational/for other
+schools per the design doc.)
+
+- **New module 35-schedule-grid.js** — a desktop-grade "Plan Ahead"
+  calendar modal. A navigable 6-week grid (← Today →, paging 4 weeks)
+  reads config/schedule_calendar (getDoc snapshot, like module 34) and
+  summarizes each date's base designation(s) (▸ schedule name) and
+  transform(s) (⚡ via the shared describeRecipe). Clicking any day opens
+  the existing day-of modal (module 34) PRESET to that date — all
+  authoring (base + the Verb B recipe builder) is reused, not
+  reimplemented. The grid hides while the editor is up and reshows +
+  refreshes when it closes, wired by DOM CustomEvents so module 34 never
+  imports the grid (no cycle).
+- **Repeat-weekly generator** — copy one date's whole plan onto every
+  same-weekday date through a chosen end date. Each copied entry routes
+  through the engine's mergeCalendarEntry, so re-designating the same
+  people on a target date that already has a plan does the correct
+  last-write-wins thing (and transforms compose).
+- **bell-engine.js 1.9.0** — mergeCalendarEntry extracted: the base-dedup
+  / transform-append rule that was inline (and untested) in module 34
+  since 6.11.0 now lives in one pure, tested place, shared by the modal
+  and the grid's copy-forward. Behavior identical; module 34 rewired to
+  call it. +1 test (67/67).
+- **Module 34** — open() now accepts an optional preset date; exports
+  openDesignationModal(dateStr) for the grid; emits ellis-calendar-changed
+  on save/remove and ellis-designation-closed on close. Day-of behavior
+  unchanged (preset defaults to today).
+- **Versions**: app 6.13.0 (index triple); service-worker 1.19.0 (NEW
+  module → CORE_ASSETS now 39 modules, cache bump); bell-engine 1.9.0.
+  No firestore.rules change (config/schedule_calendar already covered).
+
+## V6.12.0 — Verb B wired (Layer 4 transformation recipes go live)
+(The engine functions that shipped dormant in 6.11.0 now have callers —
+same wake-the-resolver step 6.10.0 did for Verb A. No engine change, no
+rules change, no new modules. Mostly UI.)
+
+- **Resolution path (state.js + module 20 + module 14)**: the day's
+  transformation recipes for THIS user resolve into a new
+  `state.activeCalendarTransforms` and apply to COPIES of the base
+  periods in `resolveAllBellTimes`, before the shared/personal merge —
+  the same pristine-copy discipline as the emergency shift, so
+  `localSchedulePeriods` is never mutated (edit modals stay honest).
+  Recipes compose in resolution order; the emergency shift, if any,
+  still rides on top (recipe = planned structure, shift = day-of blanket
+  nudge). Relative bells — shared AND personal — re-derive from the moved
+  parents downstream, so Layer 2 overlays survive a transform for free.
+  Module 20 refreshes the recipe set on every calendar/schedule/day
+  trigger, INDEPENDENT of base designation (Verb B needs no Verb A), and
+  only re-renders when the set actually changes.
+- **I1 banner (module 20)**: the amber designation banner now surfaces
+  active transforms too — "Today's bells are adjusted: …", or appended to
+  a base-deviation notice. Follow is hidden in transform-only mode (there
+  is no base to follow). `describeRecipe` is exported so the modal's entry
+  list and the banner share one summary string and can't drift.
+- **Recipe builder (module 34 + index.html)**: the day-of Designation
+  modal gains a mode toggle — "Designate a base schedule" (Verb A, as
+  before) vs "Apply a transformation" (Verb B). The transform builder
+  authors both archetypes: SHIFT (minutes earlier/later, optional
+  from/until bounds) and SHORTEN (shorten periods after a time by N
+  minutes each, optionally naming a period to extend — a datalist
+  suggests period names across all admin schedules). Same Layer 3 people
+  picker (explicit checked uids stored, never tags). Transforms COMPOSE:
+  no dedup on save — a person can carry several, and be base-designated
+  too; Remove takes one back.
+- **Wall-clock precompute NOT in scope**: app clients resolve recipes at
+  runtime (module 14). Precomputing resolved times into the calendar doc
+  for the ES5 REST wall clocks remains the last Layer 4 slice
+  (follow-along), still unstarted.
+- **+1 test (66/66)**: a pipeline test folds resolveCalendarTransforms
+  output through sequential applyRecipeToPeriods exactly as module 14
+  does — pins compose-in-order and the no-op-preserves-base-reference
+  contract the wiring leans on.
+- **Versions**: app 6.12.0 (index triple bumped); service-worker 1.18.0
+  (cache bump only — no new modules, CORE_ASSETS unchanged); bell-engine
+  UNCHANGED at 1.8.0. No firestore.rules change.
+
+## V6.11.0 — Anchor-strip fix, dedup, firstSeen; Verb B engine (dormant)
+(Bugfix + ride-along release. Verb B's ENGINE lands and is fully tested
+but nothing calls it yet — same pattern as 6.10.0 shipping
+resolveCalendarSchedule before its UI. Wiring is 6.12.0.)
+
+- **bell-engine.js 1.8.0**: Layer 4 VERB B pure functions —
+  resolveCalendarTransforms(cal, date, uid) collects verb:'transform'
+  recipes scoped to a uid (they compose in entry order), and
+  applyRecipeToPeriods(periods, recipe) applies one recipe immutably.
+  Two archetypes: 'shift' (move static bells in a time range) and
+  'shorten' (compress periods after a pivot to extend a named/id'd
+  target, cascading, 60s floor). ONLY shared static bells move;
+  relatives re-derive downstream (Layer 2 overlays survive). +5 tests
+  — 65/65. NOT WIRED: no caller yet, so no behavior change ships.
+- **ANCHOR-STRIP BUGFIX (module 30, the important one)**: the edit-bell
+  anchor select was populated from the DOM-reconstructed bell object
+  (99-init), which never carried buildingBellId — so it always showed
+  "Not anchored", and the save path read that as an explicit unanchor.
+  Any admin all-users time edit of an anchored bell SILENTLY STRIPPED
+  its anchor (I0 field-stripping, reintroduced upstream of 6.5.0's
+  fix). Now populate resolves the true anchor from state.localSchedule-
+  Periods by bellId. Owner should re-run "Anchor matching…" on any bell
+  whose count dropped since 6.5.0 (idempotent, safe on all six).
+- **Designation dedup (module 34)**: saving a designation now strips
+  each uid from existing base entries first (dropping emptied entries)
+  before appending — per-person last-write-wins. Fixes "change my mind"
+  silently losing to a stale earlier entry. Transform entries untouched.
+- **firstSeen (module 28 + 29)**: presence writer stamps firstSeen once
+  (session-guarded single getDoc; existing users get theirs on next
+  sign-in, so for them it reads "since 6.11.0" — only brand-new users
+  get a true first-login date). Dashboard gains a "First seen" column.
+  TVs stay lastSeen-only (clock.html untouched).
+- **Building-bell "0 anchored" nudge (module 30)**: zero-anchor rows now
+  show an amber "0 anchored — use Anchor matching… →" instead of the
+  quiet "no anchored bells yet", teaching the flow at the point of need.
+- **Lock-note redesign (index + module 16/30)**: the edit-bell time note
+  moved BELOW the input (was between label and input, shoving the field
+  out of alignment with Bell Name). Two states: 🔒 locked (non-admin)
+  and 🔓 amber "saving changes this for every user" (admin). When the
+  bell is anchored, the note names the building bell — for everyone,
+  not just admins.
+- **service-worker.js 1.17.0**: no new modules; cache bump to ship the
+  edited files. **NO rules change** (6.9.0's roster publish already
+  covers everything).
+
+## V6.10.0 — The Calendar Wakes: Layer 4 Verb A ships
+(The v5.73.0 parked calendar is REVIVED — its park note demanded a
+per-teacher assignment model, and Layers 2–3 built exactly that.)
+
+- **bell-engine.js 1.7.0**: resolveCalendarSchedule(cal, date, uid) —
+  v2 per-date SCOPED entries ({scope:[uids], verb:'base', scheduleId}),
+  first scope hit wins, resolved PER USER; the v1 shape
+  (exceptions/weekdayDefaults) remains the unscoped fallback and
+  uid-less callers behave exactly as before. Flat/dumb/ES5 (I3).
+  +2 tests — 60/60.
+- **Module 20 REVIVED** (park note preserved as history in the file):
+  the `enabled` flag is retired — presence of calendar data IS the
+  enablement; every guard still fails closed. Manual choice today
+  still wins, but deviation is now BANNERED (I1): amber, "Today you
+  are designated to X", Follow (clears the manual choice, switches),
+  dismiss-per-session. I4: the banner counts personal reminder bells
+  whose recorded home base (6.8.0) differs from the designation.
+- **NEW `src/js/34-day-designation.js`** + "Designate Schedules"
+  (Admin Zone): the I2 day-of modal, and THE LAYER 3 FILTER-PICKER'S
+  FIRST REAL USE — filter roster by tag or name, eyeball, check
+  people; the explicit checked uid list is what's stored in scope.
+  Entries listed per date with remove. Writes config/schedule_calendar
+  (reserved since 5.73.0; covered by config rules — NO rules change).
+- Verb B (transformation recipes on findPeriodEdgeAnchorBell) is the
+  next slice; the entry shape already carries `verb` so recipes drop
+  in additively. Prefill grid + generators follow.
+- **service-worker.js 1.16.0** (38 modules); CSS rebuilt (31,001 B).
+
+## V6.9.0 — Roster & Tags: design Layer 3 ships
+(**FIRST RULES CHANGE of the 6.5–6.9 run — publish firestore.rules!**)
+
+- **NEW Firestore path** `public/data/roster/{uid}`: { displayName,
+  tags, capabilities }. Rules: read = any signed-in user; admins write
+  anything; a user may write their OWN doc only if the capabilities
+  field is absent-and-stays-absent or completely unchanged
+  (request.resource.data is post-write state, so self-serve merge
+  writes pass; self-granting 'may-break-anchors' is mechanically
+  impossible, not just discouraged).
+- **THE LAYER 3 INVARIANT** (owner decision, now carved into rules
+  comments, module header, and admin UI copy): tags are PICKER
+  FILTERS, never runtime targeting. Designation UIs (Layer 4) filter
+  by tag, the admin eyeballs the list, and the EXPLICIT checked uid
+  list is what's stored. CDC needs no special rule as a result.
+- **NEW `src/js/33-roster.js`** + two surfaces: "My Tags" (header
+  button; self-serve chips with one-click suggestions — 6th/7th/8th,
+  subjects, CDC, Office; capabilities shown read-only) and
+  "Roster & Tags" (Admin Zone modal; everyone's tags + amber
+  capability chips, Enter-to-add, remove users, and "Seed from
+  presence" which bootstraps rows for every human the usage dashboard
+  has seen — clock surfaces excluded).
+- **service-worker.js 1.15.0**: module 33 cached (37 modules).
+- **tailwind.css rebuilt** (30,969 bytes) for the chip classes.
+
+## V6.8.0 — The Shape Itself: Layer 2 slice 3
+(The design's identity-anchor shape {baseScheduleId, periodId, edge,
+offsetSeconds} is now fully realized in stored data, and the period-edge
+primitive Layer 4 will stand on is extracted and tested.)
+
+- **bell-engine.js 1.6.0 — `findPeriodEdgeAnchorBell(period, edge)`**:
+  the V5.44.1 anchor-selection heuristic (shared static first/last,
+  else anchorRole, else legacy "Period Start"/"Period End" names)
+  extracted from calculateRelativeBellTime's inline block into a named,
+  exported, tested primitive. Accepts both edge vocabularies ('start'/
+  'end' per the design; 'period_start'/'period_end' as stored).
+  Resolution behavior IDENTICAL — all 56 pre-existing tests passed
+  untouched before the 2 new ones (58 total). This is the "period edge"
+  every Layer 4 transformation recipe will operate on.
+- **Module 16's duplicated inline copy** of the heuristic (edit-modal
+  anchor prefill) now routes through the primitive — and that copy had
+  DRIFTED: with only a wrong-edge anchorRole bell present it selected
+  that bell for the opposite edge; the primitive correctly returns
+  null and the select is left blank (matching resolution behavior).
+  One implementation, one behavior, forever.
+- **`baseScheduleId` recorded on anchors** at all four stamp sites
+  (single relative, multi-add relative, shared backfill, personal
+  migration — both silent and review paths): shared-origin parents
+  record their home base; personal-period parents deliberately omit it
+  (they travel with their owner). Additive as always. The full design
+  shape maps onto stored data as: baseScheduleId ↔
+  relative.baseScheduleId, periodId ↔ relative.parentPeriodId, edge ↔
+  relative.parentAnchorType (deliberately NOT dual-written — the
+  verbose stored vocabulary IS the edge field; duplicating it would
+  invite drift), offsetSeconds ↔ relative.offsetSeconds.
+- **service-worker.js unchanged (1.14.0)**: fetch strategy is
+  network-first (verified), and the convention bumps CACHE_VERSION only
+  when CORE_ASSETS changes — no new module this release.
+- No rules changes; no CSS changes.
+
+## V6.7.0 — Personal Anchor Migration: Layer 2 slice 2
+(The user's own reminder bells go identity-keyed; every period-creation
+site in the codebase now stamps ids at birth.)
+
+- **NEW `src/js/32-personal-anchor-migration.js`**: personal_schedules
+  are OWNER-ONLY writable, so this runs client-side on the user's own
+  doc (the reason the 6.6.0 backfill couldn't touch them). Gentle 30s
+  local classification (28-presence pattern, no reads); a write happens
+  only when there's something to stamp, at most once per personal
+  schedule per session, via read-modify-write of the user's doc.
+- **Unambiguous anchors** (name matches exactly one id-bearing period
+  in the merged view) are stamped SILENTLY; the name stays as the
+  engine's fallback — never destructive.
+- **Ambiguous anchors** (duplicated period names) are NEVER guessed: an
+  amber banner (clock-drift pattern, dismissible per session) opens a
+  review modal — per bell, pick the intended period (shown with its
+  time span and personal/shared origin) or "Decide later (keep
+  name-based)". This is the design doc's migration review modal.
+- **Multi-add relative bells now identity-stamped** (the 6.6.0 IOU):
+  the period checkboxes carry `data-period-id` from the merged
+  calculatedPeriodsList (which preserves periodId), and the save loop
+  stamps `parentPeriodId` when present.
+- **Remaining creation sites stamped** (module 19): personal custom
+  periods and both schedule-import converter sites now get periodId at
+  birth. The import converter rebuilds periods from a name-keyed map,
+  so incoming ids can't survive it by construction — fresh ids +
+  name-fallback + later re-stamping is the correct behavior there.
+- **service-worker.js 1.14.0**: module 32 cached (36 modules).
+- No rules changes; no CSS changes; no engine changes (1.5.0's
+  identity-first resolution already does the work).
+
+## V6.6.0 — Period Identity: Layer 2's foundation ships (slice 1)
+(Identity anchors begin. Periods finally have stable ids; renames stop
+breaking reminder bells.)
+
+- **THE PROBLEM:** periods were `{name, isEnabled, bells}` — no identity.
+  Period-anchored relative bells resolved by NAME string match, so
+  renaming "4th Period" orphaned every reminder bell hanging off it.
+- **NEW optional `periodId`** on shared-schedule periods (additive; old
+  clients ignore it and round-trip it by spread — audit answered).
+  Stamped at period birth (both creation sites) via new
+  `generatePeriodId()` in module 05 (`period_` + random8, bell-id shape).
+- **bell-engine.js 1.5.0**: period-anchored resolution is IDENTITY
+  FIRST — `relative.parentPeriodId` wins when a matching period exists;
+  historical name match remains the fallback (old data keeps working).
+  +2 tests (rename survival; fallback) — suite 56/56.
+- **NEW `src/js/31-period-identity.js`** + "Assign Period IDs" in the
+  Admin Zone: idempotent one-click backfill — every shared period gets
+  an id; shared relative bells whose parentPeriodName matches EXACTLY
+  ONE period get parentPeriodId stamped; ambiguous names (duplicates)
+  are counted and SKIPPED, never guessed. One writeBatch + regenerated
+  legacy bells arrays + per-schedule `period-identity-backfill` audit
+  entries. Safe to run any time.
+- **Single relative-bell creation** now stamps `parentPeriodId` when the
+  anchor period has one. The multi-add relative site only holds period
+  NAMES (merged personal view) — stamping there arrives with the
+  personal-anchor migration slice (which also brings the ambiguity
+  review modal; personal schedules are owner-only writable, so their
+  migration must run client-side per user).
+- **service-worker.js 1.13.0**: module 31 cached (35 modules).
+- No rules changes; no CSS changes.
+
+## V6.5.0 — Building Bells: design build-order step 1 ships
+(The six intercom moments become first-class anchors; plus clock.html
+presence, closing the design doc's deferred open question.)
+
+- **NEW `src/js/30-building-bells.js`** + "Manage Building Bells" in the
+  Admin Zone: define the intercom bells (name + time) in a new
+  `config/building_bells` doc — **no firestore.rules change**, the
+  existing `config/{configId}` block already grants read-everyone /
+  write-admin (world-readable also future-proofs wall-clock
+  follow-along per design I3). Editing a building bell's time shows a
+  per-schedule "this will move N anchored bells" confirmation, then ONE
+  writeBatch updates the config doc plus every affected schedule's
+  `periods` AND regenerated legacy `bells` arrays — old clients render
+  the ordinary times and follow along with zero new code (design: 
+  "Building Bells writes ordinary period times old clients already
+  render"). Per-schedule audit entries: `building-bell-propagate`,
+  `building-bell-anchor`, `building-bell-unanchor`.
+- **Anchoring is explicit, eyeball-then-confirm** (the design doc's
+  tags philosophy): an "Anchor matching…" assist checkbox-lists
+  exact-time unanchored bells across all shared schedules; nothing
+  anchors without confirm. Deleting a building bell strips its anchors
+  (times stay put) so no dangling ids linger.
+- **Edit-bell modal (admin + shared):** new "Anchor to building bell"
+  select. Picking an anchor snaps the time field to the building bell's
+  time (an anchor MEANS "this bell rings at that moment"); saving with
+  a different time detaches the anchor with a visible notice. The fuzzy
+  59-second linked-edit modal REMAINS for unanchored legacy bells (I0:
+  old behavior untouched).
+- **BUG PREVENTED — `updatePeriodsOnEdit` field preservation:** it
+  replaced bells wholesale (preserving only anchorRole), so every
+  ordinary edit would have silently stripped `buildingBellId` — the I0
+  field-stripping failure mode in our own client. It now preserves the
+  field unless an edit explicitly sets (string) or clears (null) it;
+  personal-bell callers pass through untouched.
+- **bell-engine.js 1.4.0**: new pure `applyBuildingBellTimeToPeriods`
+  (never mutates; reference-equal return on no-op; refuses to write a
+  time onto relative bells). +3 tests — suite now 54/54.
+- **clock.html 1.7.0**: presence heartbeat every 5 min, `surface:
+  'clock'`, ANONYMOUS sessions only (a signed-in browser already
+  reports via the app under the same uid; both surfaces writing would
+  flap its census row).
+- **service-worker.js 1.12.0**: module 30 in CORE_ASSETS (34 modules).
+- **tailwind.css rebuilt** (30,876 bytes): module 30 introduced
+  `hover:underline`. Ships pre-built, no build needed on deploy.
+- **build/verify-esm.mjs**: the two 6.3.0-era TDZ warnings
+  (27-school-branding APP_VERSION) reviewed — 00-header is a leaf
+  module, no cycle possible — and whitelisted with reasoning.
+
+## V6.4.0 — Usage dashboard (presence): design Layer 1 ships
+(First built piece of DESIGN-CALENDAR-V2.md; additive schema per its I0.)
+
+- **NEW `src/js/28-presence.js`**: self-starting heartbeat. Writes
+  `artifacts/{appId}/public/data/presence/{uid}` — lastSeen, appVersion,
+  schedule label + ids, displayName — when the visible schedule changes
+  or every 5 min while the tab is visible (~12 writes/hr/user; hidden
+  tabs pause, with a catch-up write on return). Failures log and never
+  disturb the app. Departure = staleness; no goodbye write.
+- **NEW `src/js/29-admin-dashboard.js`** + "Who's Online" in the Admin
+  Zone: live table (name · running · version · last seen · active dot),
+  summary counts (active now / seen today / total ever). Listener is
+  lazy — attached on modal open, detached on close.
+- The dashboard modal is the FIRST new modal authored on the 6.2.0
+  data-modal chrome (jsdom-verified it assembles correctly).
+- **firestore.rules**: additive presence block — write own doc only,
+  read admins-only (reuses the isAdmin helper). MUST be published to the
+  console for 6.4.0 to function; safe for live 5.79.x clients (no old
+  code touches the path).
+- **service-worker.js -> 1.11.0** (caches both modules).
+- Census truth-in-advertising: only 6.4.0+ clients report. The school
+  repo (5.79.x) reports nothing until the 6.x batch ships there —
+  ideally before the first day of school, so day one = full census.
+- clock.html presence (TVs/grids; it does authenticate) deliberately
+  deferred — see the design doc's open questions.
+
+## V6.3.0 — Schoolification pass: one-file branding
+(Additive; zero visible change for Ellis — jsdom-verified no-op.)
+
+- **NEW `/school-config.js`** (plain script, firebase-config.js pattern):
+  appName, welcomeHeading, defaultSoundLabel, themeColor. Every value
+  optional with Ellis defaults; heavily commented, including everything
+  that deliberately STAYS manual (manifest.json is static JSON; replace
+  ellisBell.mp3 but keep the filename — it's in the SW precache and saved
+  preferences).
+- **NEW `src/js/27-school-branding.js`** applies it at startup: tab
+  title + banner (APP_VERSION appended, so the three-places version
+  convention still greps the static HTML), welcome heading, theme
+  preview, meta theme-color, all 8 default-sound dropdown labels, and
+  exports APP_NAME (now used by desktop notifications). Text/attribute
+  writes only — same safety pattern as 26.
+- index.html: three branding targets got ids; loads school-config.js
+  before the app module.
+- **service-worker.js -> 1.10.0**: caches both new files.
+- **old.html -> 1.7.1**: comment at PROJECT_ID pointing other schools at
+  firebase-config.js's projectId (the page itself stays SDK-free REST).
+- SETUP.md Step 8 rewritten around the one file.
+- Verification: jsdom harness ran school-config.js + the branding module
+  against index.html — title/h1/welcome/preview/meta + 8 labels all
+  byte-equal to the static HTML with stock config. tailwind.css still
+  byte-identical to 6.1.0.
+
+## V6.2.0 — Stage 6b: template-generated modal chrome
+(Structural, zero visual/behavioral change — proven, see below.)
+
+- **index.html shrinks by ~7.2KB of repeated class strings.** The 45 modal
+  backdrop wrappers, 42 standard white panels, and 66 standard buttons
+  (40 gray cancel / 19 blue primary / 7 red danger) now carry data
+  attributes (`data-modal`, `data-modal-panel`, `data-btn`) instead of
+  repeated literal Tailwind chrome.
+- **NEW `src/js/26-modal-chrome.js`** expands those attributes at startup —
+  CLASS ADDITION ONLY (no elements created/moved/removed, so every
+  getElementById reference and listener stays valid). Variants:
+  `data-modal-align="start"`, `data-modal-z="<literal z class>"` or
+  `"none"`. All deviations (three p-6 panels, buttons with text-sm /
+  disabled: / hidden / w-full extras) were deliberately left bespoke.
+- **Restyling all modals is now a one-place edit** (schoolification hook).
+- **service-worker.js -> 1.9.0**: 26-modal-chrome.js added to CORE_ASSETS;
+  cache bump busts 6.1.0 caches.
+- **Verification**: transform done by `build/transform-modals.mjs` (kept
+  for archaeology) with assertions — inline scripts byte-identical, id
+  inventory identical, exact expected counts. tailwind.css rebuild came
+  out BYTE-IDENTICAL to 6.1.0 (no class lost moving to JS strings). A
+  jsdom harness executed the real module against the transformed DOM and
+  compared class SETS on 1,629 elements vs pre-transform: zero
+  differences.
+- Pre-existing quirk preserved on purpose: bare `z-60`/`z-70` on three
+  modals generate no CSS in stock Tailwind (they stack by DOM order);
+  documented in the module header, not silently "fixed."
+
+## V6.1.0 — Stage 6a housekeeping: self-hosted Tone.js + verifier hardening
+(Shipped together with 6.0.2 on alpha; structural, no feature changes.)
+
+- **Tone.js 14.8.49 self-hosted** as `/tone.min.js` (+ its MIT license file)
+  — same minified UMD build as the cdnjs URL, sourced from the npm `tone`
+  package. Last CDN runtime dependency removed; the SW caches it, so the
+  bell sound engine now loads fully offline.
+- **service-worker.js -> 1.8.0**: CACHE_NAME is now DERIVED from
+  CACHE_VERSION — one bump busts the cache; the hardcoded-name footgun is
+  gone. `/tone.min.js` added to CORE_ASSETS.
+- **New verifier `npm run check:sw`** (build/verify-sw.mjs): CORE_ASSETS
+  entries all exist on disk, every src/js module is cached, header version
+  == CACHE_VERSION, CACHE_NAME is derived. Canary-tested.
+- **verify-esm hardened**: unused import specifiers are now ERRORS (scan
+  proved the 6.0.0 generator left zero; this keeps hand-maintained imports
+  at that standard), and the TDZ audit gained an in-script reviewed-safe
+  whitelist — the long-standing 02:state warning was reviewed (state.js
+  imports nothing; no cycle possible) and whitelisted. Battery is now
+  fully clean, zero warnings.
+- **`npm run check:all`** runs the entire battery in one command.
+- Module 02 split REVIEWED and re-parked: the file is 370 uniform DOM
+  consts + export list, not a functional grab-bag; splitting would churn
+  every module's imports for cosmetic gain, and Stage 6b (modal
+  templating) will reshape it anyway. Do 6b first.
+
+## V6.0.2 — Firefox sign-in fix (the popup must open from the click)
+Google sign-in failed in Firefox since launch with the auth handler's
+"missing initial state" error. Contrary to that message's usual diagnosis,
+the codebase has NO `signInWithRedirect` anywhere — the cause was
+`signInWithGoogle()` awaiting `startAudio()` (a Tone.js AudioContext
+resume) and potentially `initFirebase()` **before** `signInWithPopup`. By
+the time the popup opened, Firefox no longer treated it as user-initiated,
+and under storage partitioning the degraded flow died in the auth handler.
+
+- `signInWithGoogle()` (module 19) rewritten: click -> provider -> popup
+  with **zero awaits in between** (the pattern proven on Tentacalendar's
+  store.js v0.15.0, same stack). `startAudio()` is still *called* inside
+  the click gesture — audio unlock needs that — but is no longer awaited
+  before the popup. Cold-boot fallback (auth missing) now re-inits and asks
+  for a second click instead of opening a popup outside the gesture.
+- clock.html and dashboard-config.html audited: both already open the popup
+  synchronously from the click. No change needed.
+- Acceptance test (Firefox, default settings AND with Enhanced Tracking
+  Protection set to Strict): click Sign In -> Google popup opens -> pick
+  account -> popup closes, app signed in. No "missing initial state."
+
+## V6.0.1 — Version correction + monolith removal (housekeeping)
+The stage-2 modularization release was mislabeled **7.0.0** by a confused
+session; the owner's numbering puts it at **6.0.0** (7.x is reserved for a
+future major). Neither number was ever deployed, so no client saw 7.0.0.
+
+- Every 7.0.0 reference corrected to 6.0.0 across code comments, module
+  markers, HTML version spots, and docs. Current app version is 6.0.1.
+- **`script.js` DELETED.** The 17,297-line generated monolith (pre-6.0.0
+  concatenation output) was left in the tree when the conversion session was
+  interrupted. Nothing referenced it; it duplicated every function in
+  `src/js/`. Must also be deleted from the GitHub repo — see ROLLOUT.md.
+- Status modal: `'script.js (App)'` label -> `'App (src/js modules)'`.
+- service-worker.js -> 1.7.1: **bug fix** — `CACHE_VERSION` (what the status
+  modal reports) was left at '1.6.0' when the header went to 1.7.0; the two
+  must now be bumped together. CACHE_NAME stays v8 (CORE_ASSETS unchanged).
+- Comment-only z-bumps for the corrected app references: bell-engine 1.3.3,
+  firebase-config 1.0.2, clock.html 1.6.2.
+
+## V6.0.0 — Native ES modules (stage-2 modularization; owner-approved major)
+The app's JavaScript is now real ES modules served directly from `src/js/`:
+index.html loads `src/js/main.js` and the browser resolves the import graph.
+**script.js is retired** — there is no generated JS file and no JS build
+step; what you edit is what ships, and DevTools errors point at real files.
+
+- 27 feature modules + new `src/js/state.js` + new `src/js/main.js` (29 total).
+- `state.js`: the 103 variables that were assigned from more than one chunk
+  now live on one exported `state` object (ES module imports are read-only
+  bindings, so cross-module writes must go through a shared object). 1,543
+  references rewritten `foo` -> `state.foo`, located by scope analysis, never
+  regex. Everything else stays in its module, exported as live bindings.
+  (`state.localSchedulePeriods` is the §4.6 pristine copy — relocated,
+  semantics unchanged.)
+- Import/export blocks were machine-generated from the resolved reference
+  graph during conversion (tools kept in `build/`); they're maintained by
+  hand from here on, enforced by the new battery.
+- 239 raw `console.log` calls migrated to `safeLog.log` (debug logging now
+  gated by PRODUCTION_MODE in 03-memory-management.js). warn/error untouched.
+- New verification: `npm run check:esm` (import/export linker, read-only
+  import enforcement, TDZ audit) replaces `check:js`; lint is now per-module
+  no-undef, which catches any missing import. `build:js`/`check:js` retired
+  (build-js.mjs is a tombstone). Tailwind content scan repointed at
+  `src/js/**/*.js` — the rebuilt tailwind.css came out byte-identical,
+  proving no class strings were touched by the conversion.
+- index.html -> 6.0.0 (all three places); service-worker 1.7.0 (CORE_ASSETS:
+  script.js out, all 29 modules in; CACHE_NAME v7 -> v8). bell-engine.js is
+  UNCHANGED and still a plain script shared with clock.html. No Firestore,
+  rules, or data-shape changes. Sibling surfaces untouched.
+- Also fixed: `npm run lint` had become a silent no-op under ESLint >= 9.14
+  (targets outside the config's base path are ignored with exit 0); it now
+  runs from the repo root and was canary-tested to prove it fails on a real
+  no-undef.
+
+## V5.79.1 — Post-launch bug-fix pass (per-file versions from here on)
+FROM THIS RELEASE FORWARD, files version independently — only files that
+were actually edited get bumps. This pass: index.html -> 5.79.1 (its own
+version now, in all THREE required places: <title>, the visible <h1>, and
+the final comment line — a maintenance comment in <head> documents the
+rule); script.js/App -> 5.79.1; bell-engine.js -> 1.3.1 (VERSION export
+only). Everything else untouched and unbumped. Semver semantics per the
+owner: z = fix/clarification, y = new feature, x = major shift with the
+owner's sign-off.
+
+Fixes:
+- Version display was inconsistent (title tag 5.79.0, visible header
+  5.69.2, final comment 5.69.2) — all three now match and must always.
+- Dashboard link in the header pointed at the repo root; the page lives at
+  signage/dashboard.html.
+- Notifications toggle could read "Off" after the user granted permission.
+  Root causes fixed: Safari's legacy callback-form requestPermission()
+  returns undefined, so awaiting it read a real grant as a denial (now
+  shimmed for both forms, with live Notification.permission as the source
+  of truth); and permission granted at the browser level was invisible to
+  the label (it now re-derives from live state on every refresh, on tab
+  refocus, and on permission-change events where supported, with an
+  explicit third "blocked" state).
+- Emergency shift row: Clear All overflowed the card (row now wraps;
+  button labels no longer break mid-word).
+- "Create New Schedule" was wearing modal styling (own shadowed card with
+  max-height) inside the Admin Zone card — restyled to match its sibling
+  forms.
+- "Add Bell to This Schedule" now names its target inline — the SHARED
+  base schedule it will edit — updating live with the active schedule and
+  reading "no shared schedule selected" when none is.
+- Footer now shows HTML | App | CSS versions at a glance; tapping the line
+  opens the status modal, which gains a File Versions section listing
+  EVERY file in the deployment (local ones read live, sibling surfaces
+  fetched and parsed — a stale-cached TV shows up here as a mismatch).
+  Copy Report includes both sections.
+
+## V5.79.0 — Status / health view
+- Tap the version number in the footer (now dotted-underlined) to open the
+  App Status modal: app version, service worker version (via the
+  GET_VERSION message channel that's been in service-worker.js since v1.0),
+  online/signed-in/admin state, active schedule and any emergency shift,
+  device clock drift from v5.77.0's monitor, notification state, and bell
+  counts — plus a Copy Report button. The support script becomes: "open the
+  app, tap the version number, read me the screen." Read-only by design.
+
+## V5.78.0 — Web notification backup ring
+- Opt-in, per-device toggle ("🔕/🔔 Notifications") in the bell-list
+  controls row. When enabled and the tab is HIDDEN, every ring also fires a
+  system notification — the backup channel for throttled background tabs
+  and silent audio failures. One hook inside ringBell() covers every ring
+  path (scheduled, missed-bell recovery, queue timers, quick bells), and
+  because callers check mutes before ringBell, notifications automatically
+  respect mutes.
+- Deliberate deviations from the original sketch, documented in the chunk
+  header: per-device localStorage instead of cloud-synced preferences
+  (Notification permission is inherently per-browser — a synced ON that
+  follows you to a device that never granted permission is a toggle that
+  lies), and hidden-tab-only firing (a visible tab already has audio +
+  visuals; the OS popup would be noise). The toggle turns itself off if
+  permission gets revoked at the browser level, and enabling fires a
+  proof-of-life notification so teachers see what to expect.
+
+## V5.77.0 — Device clock drift warning
+- Bells ring on each device's LOCAL clock, so a Chromebook running four
+  minutes slow rings four minutes late and the teacher blames the app. The
+  app now measures each device's offset against Firestore server time
+  (NTP-style midpoint estimate over a server-timestamp round trip, written
+  to the user's own diagnostics doc — covered by existing rules, no rules
+  change) on load and hourly, and shows a dismissible amber banner when the
+  offset exceeds 45 seconds, telling the teacher exactly what to fix
+  (system Settings -> Date & Time).
+- Deliberate decisions, documented in the chunk header: WARN ONLY, never
+  auto-correct bell times (correcting would fight the OS clock and any
+  later fix of it); dismissal lasts the session, so a still-wrong clock
+  re-warns on tomorrow's page load; every measurement failure is silent —
+  a diagnostics feature must not generate its own support noise (15s
+  timeout guards the round trip).
+- The estimation math lives in bell-engine.js v1.3.0
+  (estimateClockDriftMs) with unit tests covering both drift directions
+  and invalid input (51 tests total).
+- The latest measurement is kept in lastClockDriftMs/lastClockDriftAt for
+  the Stage 5 status view.
+- src/js/ housekeeping: the init/listeners chunk is now numbered 99 so
+  future chunk insertions never rename it again; new chunk is
+  23-clock-drift.js (25 chunks).
+
+## V5.76.0 — Signage pages: shared engine, relative bells, shifts (full depth)
+- NEW signage/schedule-utils.js — the single home for the logic behind all
+  three TV pages (dashboard v1.6.0, dashright v1.1.0, dashclock v1.1.0),
+  which each carried their own copy of getScheduleStatus + time helpers. A
+  comment claimed the copies were "bit-for-bit identical"; verification
+  showed dashright's had already drifted (cosmetically, this time — but the
+  same rot pattern that bit clock.html semantically in v5.72).
+- FIXED: the signage pages never resolved RELATIVE bells — they displayed
+  the raw stored `time` field, so moving an anchor bell in the main app
+  silently left every TV showing the old period boundaries. Effective
+  periods are now resolved through the shared engine, corrupt/orphan bells
+  keep their engine fallback times, and a unit test pins the exact
+  stale-time scenario.
+- NEW: the TVs now honor emergency shifts. Effective periods (shift +
+  resolution) are computed at read time and memoized on (local date + shift
+  seconds), so a shift appears on the next 1-second tick after the snapshot
+  arrives and self-expires at the first tick past midnight — no refresh
+  mechanism needed, since these pages already had live onSnapshot listeners.
+- All three pages now load ../bell-engine.js + schedule-utils.js after
+  firebase-config.js (load order matters and is commented in each head).
+- tests/schedule-utils.test.mjs: 10 new tests (49 total across both suites);
+  `npm test` now runs both.
+- service-worker v1.6.0 / cache v7: schedule-utils.js precached.
+- dashboard.html's three configRef.onSnapshot listeners were inspected and
+  left alone — they're mutually exclusive branches (setup mode / shared
+  config / URL params), not a bug.
+
+## V5.75.0 — Edit audit log (shared schedules)
+- Every meaningful admin change to a shared schedule now also writes an
+  append-only entry to that schedule's edit_log subcollection: server
+  timestamp, who (uid + display name), action, and details (before/after
+  where the call site has both — enough to build one-click undo later).
+  Sixteen mutation sites instrumented: bell add/edit/delete, linked edits,
+  period delete, multi-add period/bell, schedule create/rename/delete,
+  import (replace and merge), sound reassignment, bulk edit, and emergency
+  shift apply/clear. Logging is fire-and-forget — a log failure can never
+  block or fail the edit itself.
+- New Admin Zone -> "View Edit History": last 50 entries for any shared
+  schedule, all rendered fields escaped.
+- firestore.rules: edit_log is append-only BY RULE — create requires admin
+  (matching who can edit schedules), update/delete denied to everyone
+  including admins; read requires sign-in so any teacher can answer "who
+  moved 4th period?" themselves.
+- Auth listener now records the signed-in display name for log attribution.
+- Batch operations (multi-add, conflict resolution, sound reassignment,
+  import-merge) write ONE summary entry to the active schedule rather than
+  one per touched schedule — documented trade-off, per-target logging is a
+  future refinement. Schedule DELETIONS log under the deleted doc's ghost
+  subcollection (Firestore keeps it), so they're also echoed to console.
+- Imports extended (serverTimestamp, query, orderBy, limit); src/js/ now has
+  24 chunks: new 22-audit-log.js; init/listeners is 23.
+- The lint step caught a scope bug in this very feature's first draft
+  (undefined `time` at the delete-bell site) before it shipped — the
+  guardrails guard their own author.
+
+## V5.74.0 — Emergency schedule shift; day-type calendar parked
+- NEW: Admin Zone -> "Emergency Schedule Shift (today only)". Pick a base
+  schedule (or all shared schedules) and a +/- minute offset; one field
+  (temporaryShift { seconds, date, setAt }) is written to the schedule
+  doc(s). Every client's listener picks it up live; resolveAllBellTimes
+  shifts the shared STATIC bells on its merged copies, so every relative
+  bell anchored to them — shared or personal, on any teacher's device —
+  ripples automatically. Teachers' pinned personal static times don't move.
+  The stored schedule is never modified, edit modals never see shifted
+  times, and the shift self-expires at the midnight recalculation because
+  it's stamped with today's local date.
+- PARKED: the v5.73.0 day-type calendar auto-switching. The school runs six
+  schedules simultaneously across 50 teachers, so one school-wide "today is
+  Schedule B" designation is the wrong model. The admin UI was removed
+  before ever shipping and the auto-switch is hard-gated behind an enabled
+  flag nothing can set. The pure resolver + tests stay; the revival design
+  (teacher groups by grade/role -> per-group day-type mapping) is sketched
+  in src/js/20-schedule-calendar.js's header.
+- clock.html v1.6.0: applies shifts via the shared engine, and now refreshes
+  its schedule data every 2 minutes — previously schedules loaded exactly
+  once per page load, so TVs and classroom grids never saw ANY mid-day
+  schedule change without a manual reload.
+- old.html v2: ES5 shift support at every schedule parse point, plus a
+  5-minute auto-refresh through the existing Refresh handler — the iPad
+  wall clocks now track mid-day changes too.
+- bell-engine.js v1.2.0: shiftTimeString + getActiveScheduleShiftSeconds
+  (date-stamped, self-expiring); 4 new unit tests (39 total), including one
+  pinning the static-anchor -> relative-bell ripple.
+- src/js/ now has 23 chunks: new 21-emergency-shift.js; init/listeners is 22.
+- KNOWN GAP: the signage/ pages (dashboard.html, dashclock.html,
+  dashright.html) are not in this repo snapshot and do NOT yet apply shifts.
+  If they display bell times, they need the same ~10-line engine check
+  clock.html got. Flagged in ROLLOUT.md.
+
+## V5.73.0 — Day-type schedule calendar (auto-switching)
+- NEW: Admin Zone -> "Set Which Schedule Runs Which Day". Admins set a
+  weekday default schedule (Sun-Sat) plus date exceptions (assemblies,
+  testing days; an exception of "none" suppresses the weekday default for
+  holidays). Stored at public/data/config/schedule_calendar — already
+  admin-write/public-read under the existing rules, no rules change.
+- Every client auto-switches to the day's designated shared schedule at app
+  load, at midnight (rides the existing day-change detection in updateClock),
+  and live when the calendar or schedule list changes. A teacher's manual
+  dropdown pick wins for the rest of that day on that device, and the app
+  never auto-switches anyone OFF a personal schedule. All five rules are
+  documented at the top of src/js/20-schedule-calendar.js; resolution logic
+  is pure, lives in bell-engine.js v1.1.0 (resolveCalendarSchedule +
+  toLocalDateString — local-timezone on purpose; toISOString would resolve
+  tomorrow's schedule every evening), and has 5 new unit tests (35 total).
+- FIXED (build tooling): running the Tailwind CLI from any directory other
+  than build/ silently produced an EMPTY stylesheet (Tailwind v3 resolves
+  content globs from the CWD, not the config). Content paths are now
+  absolute via path.resolve(__dirname), and `npm run build:css` self-checks
+  the output (size + sentinel classes) and fails loudly instead of shipping
+  an unstyled app.
+- NEW: ROLLOUT.md — the one-time deployment checklist for the whole
+  v5.70-v5.73 batch (repo files, Firebase rules steps with playground
+  checks, build setup, and a 10-minute smoke test).
+- src/js/ now has 22 chunks: new 20-schedule-calendar.js; init/listeners
+  renamed to 21.
+
+## V5.72.0 — Shared bell engine, script.js split, six latent bugs fixed
+- NEW: bell-engine.js — the single home for the pure time/schedule math
+  (escapeHtml, timeToSeconds/secondsToTime, formatTime12Hour,
+  getDateForBellTime, getBellId, findNextBellIn, findBellAfter,
+  calculateRelativeBellTime). Loaded via plain <script> tag by BOTH
+  index.html and clock.html (same pattern as firebase-config.js). Covered by
+  30 unit tests in tests/bell-engine.test.mjs (`cd build && npm test`).
+- FIXED (clock.html v1.5.0): its local copy of calculateRelativeBellTime had
+  silently DIVERGED from the main app — it was missing the V5.44.1
+  anchor-selection logic (shared static bells for linked periods vs anchorRole
+  bells for standalone periods), so TVs could anchor relative bells to the
+  wrong bell. It now delegates to the shared engine; corrupt/orphan bells show
+  their fallback time instead of being silently dropped from TVs.
+- SPLIT: script.js is now GENERATED — the concatenation of 21 readable chunks
+  in src/js/ (built by build/build-js.mjs; `npm run build:js`). The build is a
+  pure concatenation verified byte-identical at split time, aborts on syntax
+  errors without touching script.js, and `npm run check:js` detects direct
+  edits to the generated file. See build/README-BUILD.md.
+- REMOVED: the v4.05 IIFE that wrapped 15,000 lines (added back then to fight
+  ReferenceErrors; in an ES module it provided no isolation and blocked the
+  split). Verified safe before removal: zero name collisions between the 241
+  IIFE-scoped and 531 module-scoped declarations. Unwrapping also FIXED a
+  latent bug class: pre-IIFE code (e.g. unskipBell) that called IIFE-scoped
+  functions (showUserMessage, updateClock, updatePipWindow) threw
+  ReferenceErrors whenever those paths ran.
+- FIXED six more pre-existing latent ReferenceErrors found by lint
+  (`npm run lint`, new): closeAllConflictModals referenced a nonexistent
+  linkedEditModal (now confirmLinkedEditModal); executeAddPersonalBell
+  reset a long-deleted form, logging a bogus error on every successful add;
+  converting a relative bell to static crashed on an undefined
+  calculatedTime (now resolved from the anchor + offset); the multi-period
+  visual preview change handler called a nonexistent handleVisualSelectChange
+  (now updatePeriodVisualPreview); the bulk-edit custom-text path called a
+  nonexistent openCustomTextModal (now follows the standard
+  currentVisualSelectTarget + modal pattern).
+- service-worker v1.5.0 / cache v6: /bell-engine.js added to CORE_ASSETS.
+- DOCS: build/README-BUILD.md rewritten around The Two Build Rules; warning
+  banners added to the tops of script.js and tailwind.css; README updated.
+
+## V5.71.0 — Self-hosted compiled Tailwind (replaces Play CDN)
+- index.html now loads a static, self-hosted /tailwind.css (~30KB minified)
+  instead of the cdn.tailwindcss.com runtime JIT (~380KB script that
+  recompiled styles in the browser on every page load, and took the whole UI
+  down with it whenever the CDN hiccuped). The inline tailwind.config
+  (fontFamily) moved to build/tailwind.config.js.
+- New build/ folder: tailwind.config.js, input css, package.json, and
+  README-BUILD.md documenting the one rule that matters — if you use a
+  Tailwind class that has never appeared in index.html or script.js before,
+  run `npm run build` in build/ and commit the regenerated tailwind.css.
+- Coverage was verified by extracting all 442 class tokens used across
+  index.html and script.js and checking each against the compiled output.
+  Only z-60/z-70 were absent — and those aren't in Tailwind's default scale,
+  so the Play CDN never generated them either (four modals were stacking by
+  DOM-order luck). styles.css v2.6 now gives those modals explicit z-indexes.
+- service-worker v1.4.0 / cache v5: /tailwind.css joined CORE_ASSETS;
+  cdn.tailwindcss.com removed from EXTERNAL_ASSETS and the opaque allowlist.
+- PiP pop-out styling is unaffected: it copies document.styleSheets
+  generically, and the same-origin compiled sheet copies cleanly (its
+  cssRules are readable, unlike a cross-origin sheet).
+
+## V5.70.0 — Security & offline hardening (audit pass)
+- SECURITY: Added a real escapeHtml() utility (escapes & < > " ') and applied it
+  to every user-controlled string interpolated into innerHTML: period names,
+  bell names, schedule names, custom icon text, uploaded file names/nicknames/
+  owners, sound URLs, and the delete-audio confirmation list. The previous
+  escaping only handled double quotes, so a bell or period named with an HTML
+  tag would execute script in every faculty member's browser via schedule sync.
+  data-* attributes written through escapeHtml round-trip correctly when read
+  back via .dataset (the parser decodes entities), so mute/skip/edit lookups
+  keyed on raw names still match. ringBell()'s highlight querySelector now
+  escapes for CSS-selector context instead of HTML context.
+- SECURITY: Tightened firestore.rules (see firestore.rules comments): user data
+  is now owner-only except personal_schedules (which old.html reads via
+  unauthenticated REST and share-code following requires); share codes can only
+  be created with your own uid as ownerId and only revoked by their owner or an
+  admin (previously any authenticated user could delete anyone's code).
+- OFFLINE: service-worker v1.3.0 — external CDN assets (Tailwind, Tone.js,
+  fonts) are now actually precached (the EXTERNAL_ASSETS list existed but was
+  never used), opaque CDN responses are runtime-cached from an allowlist, and
+  ellisBell.mp3 joined CORE_ASSETS. Cache bumped to v4.
+- CLEANUP: ~280 lines of in-file release notes moved from the top of script.js
+  to this CHANGELOG.md. manifest.json theme_color updated to Carolina Blue
+  #4B9CD3 (was still indigo #1d4ed8, out of sync with index.html since 5.69.1).
+
+## V5.69.4 — PiP broadcast toggle fix
+- Removed the broadcast toggle from the Picture-in-Picture popup. The toggle
+  was being deep-cloned into the PiP from the main page's #quickBellControls,
+  but the cloned button's inline onclick="toggleBroadcastMode()" referenced a
+  function that doesn't exist in the PiP window's scope — silently no-op. Also
+  created a duplicate-ID conflict with the main-page toggle.
+- Broadcast sync still works as expected via the main-page toggle. The PiP is
+  meant for at-a-glance bell display, not configuration.
+## V5.69.1 — Carolina Blue palette — foundation pass (Tier 2 of audit, part 1 of ~3)
+- Light/dark theme objects now use Carolina Blue hues instead of
+  Tailwind blue-600/blue-400:
+    Light accent: #38759E (Carolina Deep, WCAG AA-compliant on white at 4.99:1)
+    Dark accent:  #8FC3E8 (Carolina Sky, excellent contrast on dark at 9.41:1)
+    Bold accent:  #4B9CD3 (canonical Carolina Blue, used for large surfaces)
+- Added --theme-accent-bold custom property for buttons/headers/backgrounds
+  where contrast requirements are relaxed (large text / non-text UI).
+  Existing --theme-accent remains the text-safe variant.
+- Visual cue default background: 18 instances of #4338CA (indigo) replaced
+  with #4B9CD3 (Carolina). Audited in context; all were "default bg color
+  for custom-text visual cues" — not semantic, just a leftover default.
+NOTE: This is the *foundation* of Tier 2. Tailwind class replacements
+(blue-500 → theme-accent-bold, etc.) and the other files (clock.html,
+dashboard.html, old.html, manifest.json) come in 5.70.0 and 5.71.0.
+## V5.68.0 — Inline rename button for discoverability
+- Added a pencil-icon button next to the schedule title in the main view.
+  The admin-rename capability already existed (in the Admin Zone since v4.91),
+  but was undiscoverable. The new inline button dispatches to the existing
+  handlers: openRenameSharedScheduleModal() for admins (handles both shared
+  and personal schedules), handleRenamePersonalSchedule() for authenticated
+  non-admins with a personal schedule selected.
+- The inline button mirrors the enabled state of the existing two rename
+  buttons — no new permission logic, just a more findable entry point.
+- Hidden in kiosk mode via the existing .kiosk-hide class.
+## V5.67.0 — Audit pass — versioning cleanup + shared config + dead code removal
+- REMOVED: CLOCK_VERSION and DASHBOARD_VERSION constants (stale cross-references).
+  Each sibling file (clock.html, dashboard.html, dashboard-config.html) now
+  tracks and displays its own version. index.html footer updated to match.
+- REMOVED: Inline firebaseConfig declaration. Now read from window.firebaseConfig
+  (defined in shared firebase-config.js). Consumers: index.html loads it before
+  script.js; clock/dashboard/dashboard-config load it before their init logic.
+- REMOVED: Dead functions — checkQueueUntilBell (never called outside definition),
+  findPeriodAnchorBell (same), plus already-commented-out flattenPeriodsToBells
+  and handleRelativeTimeChange blocks.
+## V5.66.3 — Time Format Fixes & Theme Improvements
+- FIX: Schedules with HH:MM times (without seconds) now work correctly
+  - Root cause: setHours() with undefined seconds created Invalid Date, breaking countdown
+  - Fixed in: updateClock(), isSafeToCleanup(), getDateForBellTime()
+- NEW: Auto-migration normalizes HH:MM -> HH:MM:SS on schedule load (admins fix shared, users fix personal)
+- Fixed bell item hover in dark mode (white-on-white issue)
+- Added --theme-bg-hover and --theme-border-light CSS variables
+## V5.66.2 — Theme & Bell Editing Fixes
+- Fixed dark mode: visual cue container now uses theme variable
+- Fixed light mode contrast: darker secondary text colors for readability
+- Fixed shared bell sound editing:
+  - ALL users can now change sound (creates personal override, only affects their room)
+  - Sound dropdown enabled by default for everyone
+  - Admins see "Override for all users" checkbox to optionally push to shared bell
+  - Non-admins don't see checkbox (their changes are always personal)
+- Added CSS variables for visual background, button colors
+## V5.66.1 — Broadcast Toggle Fix
+- Added onclick fallback to broadcast toggle button
+- Added pointer-events-none to SVG to prevent click interception
+## V5.66.0 — Theme & Display Settings
+- Added Theme & Display panel in Visual Manager section
+- Light/Dark theme presets with one-click toggle
+- Custom color pickers for: background, card, text, secondary text, accent, countdown
+- Toggle to hide visual cue graphic
+- Live preview panel showing how changes will look
+- Theme persists to localStorage and syncs to cloud
+- CSS variables applied to entire page for seamless theming
+## V5.65.3 — Remove broadcast popup messages
+- Removed "Broadcast sent" and "synced from another device" modals (too intrusive)
+- Console logging remains for debugging if needed
+## V5.65.2 — Broadcast Fix - Use correct user variable
+- Fixed: Changed currentUser (undefined) to userId (correct variable)
+- Added detailed console logging for debugging
+- Added user-visible messages when broadcast sends/receives
+- Increased stale broadcast threshold from 5s to 10s
+## V5.65.1 — Broadcast Toggle Fix
+- Fixed broadcast toggle button not responding to clicks (DOM timing issue)
+- Removed disabled attribute from HTML, button now works for all users
+## V5.65.0 — Quick Bell Broadcast Feature
+- Added broadcast toggle button next to sound dropdown (syncs quick bells across all logged-in devices)
+- Added "Always broadcast" checkbox to custom quick bells
+- Broadcast-enabled custom bells show a signal icon in the corner
+- Cancel syncs across devices when broadcast is enabled
+- Uses Firestore real-time listener for instant sync
+## V5.64.3 — PiP Kiosk Mode Fixes
+- Fixed visual cue icon not loading in kiosk mode
+- Fixed countdown centering issue when window is small (now stays left-aligned)
+## V5.64.0 — Enhanced PiP Kiosk Mode + Text Wrapping Fix
+- Enhanced PiP kiosk mode with responsive scaling (icon fills height, countdown scales with viewport)
+- Kiosk mode now has dark background, properly hides quick bells and action buttons
+- Fixed text wrapping issue in full pop-out where "are" would drop to second line
+- Fixed warning settings modal scrolling on smaller screens
+## V5.63.3 — Share code feature fixes
+- Fixed: populateScheduleSelector() -> renderScheduleSelector() (function didn't exist)
+- Fixed: Unfollow now switches to another schedule if viewing the unfollowed one
+## V5.63.2 — Fixed custom quick bell visual and sound upload
+- Visual upload: Set currentVisualSelectTarget when opening upload from custom bell manager
+- Visual upload: Added custom bell manager dropdowns to updateVisualDropdowns()
+- Visual upload: Upload completion now properly updates hidden inputs for custom bells
+- Sound upload: Added handler for [UPLOAD] selection in custom bell sound dropdown
+- Sound upload: Added custom bell sound selects to addNewAudioOption() and updateSoundDropdowns()
+## V5.63.1 — Bug fixes
+- Users can generate 6-character share codes for their personal schedules
+- Colleagues can enter share codes to "follow" schedules (read-only access)
+- Following schedules appear in schedule selector under "📥 Following" group
+- Followers can duplicate shared schedules to their own account
+- Share codes can be revoked by the owner
+- Updated Firestore rules: personal schedules readable by all authenticated users
+- Updated Storage rules: user sounds/visuals readable by all authenticated users
+## V5.62.0 — Memory Management System
+- Added automatic memory purge during safe windows (when no bells approaching)
+- Audio players now auto-dispose after playback
+- Tracks and cleans up Tone.Player instances to prevent accumulation
+- Clears unused audio buffer cache periodically
+- Added PRODUCTION_MODE flag to reduce console logging
+- Safe memory window = 60s before next bell (no cleanup during critical times)
+## V5.61.2 — Dashboard v1.2.2 - added Launch TV View button
+- Added CLOCK_VERSION and DASHBOARD_VERSION constants (dynamically displayed in footer)
+## V5.61.0 — Clock Display v1.1.7 + Dashboard link
+## V5.60.0 — Clock Display page initial release
+## V5.59.1 — Fixed Simplified View wiping schedule
+- Removed renderCombinedList() call from toggleSimplifiedView()
+- CSS handles all visibility changes, no re-render needed
+## V5.59.0 — Simplified View Mode + Bulk Edit Select All
+- Added Simplified View toggle button in Active Schedule section
+- Simplified View hides all edit/add/delete buttons in schedule display
+- Keeps Collapse/Expand/Mute/Unmute and Quick Bells visible
+- Preference saved in localStorage (per-machine)
+- Added master checkbox to select/deselect all bells in Bulk Edit mode
+- Added period-level checkboxes to select/deselect all bells in a period
+- Checkboxes show indeterminate state when partially selected
+## V5.58.9 — Fixed relative bell detection to use correct property structure
+- Relative bells use bell.relative object, not bell.relativeToAnchor
+- Two anchor types: parentBellId (direct) or parentPeriodName+parentAnchorType (period anchor)
+- Period anchor references (parentPeriodName) check if target period has matching anchor bell
+- Properly copies bell.relative object instead of wrong properties
+## V5.58.8 — Properly detect and exclude orphaned relative bells
+- Relative bells whose anchors aren't in the import are now detected and excluded
+- First pass collects all bellIds present in the import
+- Bells with relativeToAnchor pointing to missing anchors are skipped
+- Empty periods (all bells orphaned) are excluded from import
+- Period and bell counts now reflect actual importable content
+- Orphaned relative bells shown prominently in "Will Not Be Imported" section
+- Console logs which bells/periods are being skipped for debugging
+## V5.58.7 — Fixed syntax error (extra closing brace in showImportPreviewModal)
+## V5.58.6 — Import improvements
+- Added rename input to import preview modal (pre-filled with original name)
+- Added warning banner for linked schedules (based on shared schedule)
+- Better handling of empty periods (shows clear message instead of importing nothing)
+- Added reconstructPeriodsFromLegacyBells to recover periods from older backup formats
+- Added logging to debug import issues
+- Shows warning when no periods/bells found in backup
+## V5.58.5 — Import and dropdown fixes
+- Fixed import error with undefined field values (Firestore doesn't accept undefined)
+- Now properly copies relative bell properties (relativeToAnchor, relativeDirection, relativeOffset, anchorRole)
+- Handles bells without static time (relative bells)
+- Fixed sound dropdown overflow in multiple modals (added min-w-0)
+## V5.58.4 — Smart Import Preview for Admin
+- Detects personal schedule backups when importing as admin
+- Shows preview modal with analysis of what can/will be imported
+- Identifies sounds not in shared storage (replaces with default)
+- Identifies visual cues not in shared storage (removes them)
+- Shows what personal-only data will NOT be imported (quick bells, overrides, etc.)
+- Checkboxes let admin choose what to include
+- Admin exports now include exportedAt and exportedAs metadata
+## V5.58.3 — Admin period creation improvements
+- Pre-check the currently active schedule when opening period modal
+- Added visual cue picker to period creation (applies to both Period Start and Period End bells)
+- Improved error messages: now shows specific schedule names for conflicts
+- "Period already exists" now lists which schedules were skipped
+- Time conflicts now show the specific bell name, period name, and time
+- Button text changed to "Add Period to Schedule(s)..."
+## V5.58.2 — Period modal UX fixes
+- Fixed sound dropdown overflow (added min-w-0 to prevent horizontal scrolling)
+- Modal now closes on successful period creation
+- Success message shown via showUserMessage() toast instead of modal status
+## V5.58.1 — Null safety fixes for period modal
+- Added guard clauses to prevent errors if modal elements don't exist
+- Used optional chaining throughout period modal functions
+- Prevents potential blocking issues from null element access
+## V5.58.0 — Admin Period Creation
+- Added "Add Period to Schedules" button in admin zone (purple, next to Add Bell)
+- New modal allows creating periods with Period Start and Period End bells
+- Can add period to multiple schedules at once via checkboxes
+- Validates that end time is after start time
+- Checks for time conflicts (within 59s) before adding
+- Skips schedules where period name already exists
+- Each bell gets unique bellId (no shared IDs across schedules)
+## V5.57.2 — Bell proximity threshold and error messages
+- Changed bell proximity threshold from 60 to 59 seconds (was blocking bells 60s apart)
+- Enhanced error messages to include the period name of the blocking bell
+- Error now shows: bell name, period name, and time (e.g., "Period Start" in "1st Period" at 8:00 AM)
+## V5.57.1 — Fix personal period bells not editable
+- BUG FIX: Personal period anchor bells (fluke bells) were showing "Only admin can change" message
+- Root cause: handleEditBellClick had no else clause for custom bells, so time input stayed locked
+- Added else clause to properly enable time editing for all custom bells (type !== 'shared')
+- Users now have full control over their personal period anchor bells
+## V5.54.6 — UX improvements
+- Sound overrides now display nickname if available, instead of raw filename
+- Fixed sound dropdown overflow in relative bell modal (added min-w-0)
+## V5.54.5 — Bug fix - relative bells anchored to relative "Period Start" bells orphan
+- Now clones entire quickBellControls from main page instead of recreating
+- Copies main page stylesheets (Tailwind) for consistent styling
+- Custom quick bells work by cloning already-rendered buttons
+- Click handlers delegate to main page buttons for reliable behavior
+## V5.47.0 — Picture-in-Picture Pop-Out Mode
+- Added Document PiP support for always-on-top floating timer window
+- Pop-out button appears on hover over the visual cue (top-right corner)
+- Button is in a wrapper div so it doesn't get wiped when visual updates
+## V5.46.5 — Fix Individual Edit Bell + Backup/Restore for bellOverrides
+- BUG FIX: Non-admin Edit Bell was checking hidden checkbox for sound save - now checks if sound changed
+- BUG FIX: Edit Bell modal now shows the CURRENT sound (including overrides) not originalSound
+- BUG FIX: Added recalculateAndRenderAll() after non-admin shared bell save for immediate UI update
+- Backup now includes bellOverrides (shared bell customizations)
+- Restore now restores bellOverrides and shows count in confirmation
+## V5.46.4 — Fix Shared Bell Sound Overrides to Sync Across Devices
+- Sound overrides for shared bells now save to Firestore (bellOverrides) instead of localStorage
+- Firestore overrides now take priority over localStorage during rendering
+- This ensures changes to shared bell sounds sync across all your devices
+## V5.46.3 — Fix ESC Key Handler Reference Error
+- Fixed reference to deleted 'renamePeriodModal' that was causing JavaScript errors
+- Changed to correct 'edit-period-details-modal' with proper form reset
+## V5.46.2 — Three Important Fixes
+- Fixed "Duplicate as Another Personal Schedule" to copy ALL data (periods, bellOverrides, passingPeriodVisual, isStandalone)
+- Restore from backup now allows editing the schedule name (pre-filled with backup's name)
+- Added global ESC key handler to close any open modal without saving
+## V5.46.1 — Fix Shared Bell Visual Overrides Persistence
+- Added personalBellOverrides variable to store shared bell customizations
+- Load bellOverrides from Firestore when personal schedule loads
+- Apply visual overrides, sound overrides, and nicknames to shared bells during rendering
+- Visual overrides for shared bells now persist across page refreshes
+## V5.46.0 — Bulk Edit for Audio and Visual Cues
+- Added "Bulk Edit" button to schedule list controls (visible when personal schedule is active)
+- Click to enter selection mode, checkboxes appear next to each bell
+- Select bells, click button again to open bulk edit modal
+- Change audio and/or visual cue for all selected bells at once
+- Custom bells: Updated directly in Firestore periods
+- Shared bells: Sound overrides saved to localStorage, visual overrides saved to bellOverrides
+- Sky blue themed UI to distinguish from other edit modes
+## V5.45.4 — Remove inconsistent "Override:" prefix from sound display
+- The sound name alone is sufficient information
+- Removes confusing inconsistency where some overridden bells showed it and others didn't
+## V5.45.3 — Fix background color picker preview for [DEFAULT] SVGs
+- getVisualHtmlWithBg now properly handles [DEFAULT] SVGs and empty values
+- "New" preview now updates in real-time when changing the color
+## V5.45.2 — Custom background colors for default SVGs (pedestrian, lunch, numbers)
+- [BG:#hexcolor] prefix now works with [DEFAULT] SVGs, not just images
+- Uses raw SVG content to avoid nested backgrounds
+- Both full-size and icon previews support custom backgrounds
+## V5.45.1 — Fix period visual override backup/restore
+- Fixed key format: uses hyphen (-) not colon (:)
+- Fixed ID: uses activePersonalScheduleId, not baseScheduleId
+- Restore now remaps keys to current schedule ID (so backups work across schedules)
+- Also checks baseScheduleId for linked schedule compatibility
+## V5.45.0 — Comprehensive personal schedule backup/restore
+- Backup now saves: periods (v4 structure), period visual overrides, custom quick bells
+- Backup includes references to custom audio/visual files (URLs)
+- Restore supports both v1 (legacy bells) and v2 (full) formats
+- Restore prompts to optionally restore quick bells
+- Backup filename now includes date
+## V5.44.11 — Consistent icon/text sizing across all quick bell previews
+- Modal previews, manager previews, and actual buttons now all use SVG text
+- SVG text scales proportionally to container, ensuring consistent appearance
+- Font sizes: 80/45 for full preview, 70/50 for button preview (short/long text)
+## V5.44.10 — Fix custom text/color modal for quick bells
+- Created setupCustomTextModalPreviews() helper function for consistent preview behavior
+- Live preview now updates in real-time when editing custom text/colors for quick bells
+- Icon preview shape is now a rounded square (matching button) instead of a circle
+- Fixed hours field not loading from Firestore for custom quick bells
+## V5.44.0 — Custom Standalone Schedules - create blank schedules unlinked from shared bells
+- New "Create Custom Standalone Schedule" button and modal
+- Standalone schedules have baseScheduleId: null, isStandalone: true
+- Schedule selector now shows three groups: Personal, Standalone, Shared
+- Standalone badge displays when viewing a standalone schedule
+- Anchor dropdowns now show bells from ALL periods (for cross-period relative bells)
