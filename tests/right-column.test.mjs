@@ -129,7 +129,7 @@ test("today's birthday is wished today, plainly", () => {
 test('a weekend birthday is wished early on the Friday', () => {
     setData({ birthdays: [{ name: 'Devon W.', monthday: '09/19' }] });  // Saturday
     const friday = I.buildTickerItems(d(2026, 9, 18));
-    assert.ok(friday.includes('Happy Early Birthday,\nDevon W.!'));
+    assert.ok(friday.includes('Happy Early Birthday,\nDevon W.! (9/19)'));
     // …and not on the Thursday, which is outside the one-day lead window.
     const thursday = I.buildTickerItems(d(2026, 9, 17));
     assert.ok(!thursday.some(x => x.includes('Devon W.')));
@@ -150,7 +150,7 @@ test('Thanksgiving birthdays spread across the week, in date order, no duplicate
     // Six names over five lead days: the first day takes two, the rest one each.
     assert.deepEqual(week.map(x => x.length), [2, 1, 1, 1, 1]);
 
-    const order = week.flat().map(x => x.replace('Happy Early Birthday,\n', '').replace('!', ''));
+    const order = week.flat().map(x => x.replace('Happy Early Birthday,\n', '').replace(/! \(\d+\/\d+\)$/, ''));
     assert.deepEqual(order, ['A.', 'B.', 'C.', 'D.', 'E.', 'F.']);
     assert.equal(new Set(order).size, 6);
 });
@@ -414,7 +414,7 @@ test('birthday cards break after the comma, name on its own line', () => {
 
 test('early wishes break after the comma too', () => {
     setData({ birthdays: [{ name: 'Devon W.', monthday: '09/19' }] });
-    assert.ok(I.buildTickerItems(d(2026, 9, 18)).includes('Happy Early Birthday,\nDevon W.!'));
+    assert.ok(I.buildTickerItems(d(2026, 9, 18)).includes('Happy Early Birthday,\nDevon W.! (9/19)'));
 });
 
 
@@ -729,4 +729,115 @@ test('no announcements: the rotation is exactly the old ticker', () => {
     setData({ birthdays: [{ name: 'Maya R.', monthday: '09/17' }] });
     I.setAnnouncements([]);
     assert.deepEqual(texts(I.buildRotation(d(2026, 9, 17))), I.buildTickerItems(d(2026, 9, 17)));
+});
+
+// --- v1.8.0: house-coloured birthdays ---------------------------------------
+
+const cardsOn = (y, m, day) => I.buildTickerCards(d(y, m, day));
+const colourOf = (cards, name) => (cards.find(c => c.text.includes(name)) || {}).color;
+
+test('house names map to the scoreboard colours, forgivingly', () => {
+    assert.equal(I.houseColorFor('Princeps'), '#4b9cd3');
+    assert.equal(I.houseColorFor('  princeps '), '#4b9cd3');
+    assert.equal(I.houseColorFor('VEVAIOS'), '#111827');
+    assert.equal(I.houseColorFor('Callidus'), '#d1d5db');
+    assert.equal(I.houseColorFor('Accomodore'), '#ffffff');
+    assert.equal(I.houseColorFor('Accommodore'), '#ffffff');   // the natural double-m typo
+    for (const none of ['', null, undefined, 'Gryffindor']) assert.equal(I.houseColorFor(none), '');
+});
+
+test("a birthday card on the day wears the person's house colour", () => {
+    setData({ birthdays: [{ name: 'Maya R.', monthday: '09/17', house: 'Princeps' }] });
+    assert.equal(colourOf(cardsOn(2026, 9, 17), 'Maya R.'), '#4b9cd3');
+});
+
+test('faculty get their house colour too', () => {
+    setData({ faculty: [{ name: 'Mr. Wilson', monthday: '09/17', house: 'Vevaios' }] });
+    assert.equal(colourOf(cardsOn(2026, 9, 17), 'Mr. Wilson'), '#111827');
+});
+
+test("an early wish keeps the person's house colour", () => {
+    setData({ birthdays: [{ name: 'Devon W.', monthday: '09/19', house: 'Callidus' }] });   // Saturday
+    const card = cardsOn(2026, 9, 18).find(c => c.text.startsWith('Happy Early'));
+    assert.equal(card.color, '#d1d5db');
+});
+
+test('two kids with the same name in different houses keep their own colours', () => {
+    setData({ closures: [THANKSGIVING], birthdays: [
+        { name: 'Maya R.', monthday: '11/21', house: 'Princeps' },
+        { name: 'Maya R.', monthday: '11/22', house: 'Vevaios' },
+    ]});
+    const colours = [16, 17, 18, 19, 20]
+        .flatMap(day => cardsOn(2026, 11, day))
+        .filter(c => c.text.includes('Maya R.'))
+        .map(c => c.color);
+    assert.deepEqual(colours.sort(), ['#111827', '#4b9cd3']);
+});
+
+test('no house column, blank, or unknown: the ordinary tile, exactly as before', () => {
+    setData({ birthdays: [
+        { name: 'No H.', monthday: '09/17' },
+        { name: 'Blank B.', monthday: '09/17', house: '' },
+        { name: 'Odd O.', monthday: '09/17', house: 'Hufflepuff' },
+    ]});
+    const cards = cardsOn(2026, 9, 17);
+    for (const n of ['No H.', 'Blank B.', 'Odd O.']) assert.equal(colourOf(cards, n), '');
+});
+
+test('holidays and fallbacks stay the ordinary tile', () => {
+    setData({ holidays: [{ monthday: '09/17', name: 'Wacky Day' }], fallback: 'F1', fallback2: 'F2' });
+    assert.ok(cardsOn(2026, 9, 17).every(c => c.color === ''));
+});
+
+test('the rotation carries house colours through to the screen', () => {
+    setData({ birthdays: [{ name: 'Maya R.', monthday: '09/17', house: 'Princeps' }] });
+    I.setAnnouncements([]);
+    assert.equal(colourOf(I.buildRotation(d(2026, 9, 17)), 'Maya R.'), '#4b9cd3');
+});
+
+test('text-only view is unchanged by colour', () => {
+    setData({ birthdays: [{ name: 'Maya R.', monthday: '09/17', house: 'Princeps' }] });
+    assert.deepEqual(I.buildTickerItems(d(2026, 9, 17)), cardsOn(2026, 9, 17).map(c => c.text));
+});
+
+test('HOUSE_COLORS is public, for the config page presets', () => {
+    assert.deepEqual(Object.keys(RC.HOUSE_COLORS).sort(), ['accomodore', 'callidus', 'princeps', 'vevaios']);
+});
+
+// --- v1.9.0: the date on every early wish -----------------------------------
+
+test('shortDate writes dates the way a sign would', () => {
+    assert.equal(I.shortDate('07/05'), '7/5');
+    assert.equal(I.shortDate('12/31'), '12/31');
+    assert.equal(I.shortDate('01/01'), '1/1');
+});
+
+test('a summer birthday is wished in May, with its July date', () => {
+    setData({
+        closures: [{ start: d(2027, 5, 26), end: d(2027, 8, 1), label: 'Summer' }],
+        birthdays: [{ name: 'Suzie Q', monthday: '07/05' }]
+    });
+    const wish = [3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 24, 25]
+        .flatMap(day => I.buildTickerItems(d(2027, 5, day)))
+        .filter(x => x.includes('Suzie Q'));
+    assert.deepEqual(wish, ['Happy Early Birthday,\nSuzie Q! (7/5)']);
+});
+
+test('the date is the birthday, not the day it is shown', () => {
+    setData({ birthdays: [{ name: 'Devon W.', monthday: '09/19' }] });     // Saturday
+    const card = I.buildTickerItems(d(2026, 9, 18)).find(x => x.startsWith('Happy Early'));
+    assert.ok(card.endsWith('(9/19)'));
+});
+
+test('on-the-day birthdays carry no date', () => {
+    setData({ birthdays: [{ name: 'Maya R.', monthday: '09/17' }] });
+    assert.deepEqual(I.buildTickerItems(d(2026, 9, 17)).filter(x => x.includes('Maya')), ['Happy Birthday,\nMaya R.!']);
+});
+
+test("the dated line still fits the tile, however long the name", () => {
+    const p = I.planCard('Happy Early Birthday,\nMr. Featherstonehaugh! (12/31)',
+        { avail: 900, halfH: 100, fill: 80 }, { width: I.FALLBACK_WIDTH, metrics: I.FALLBACK_METRICS });
+    const widest = Math.max(...p.lines.map(I.FALLBACK_WIDTH)) * p.px / 100;
+    assert.ok(widest <= 900.01);
+    assert.deepEqual(p.lines, ['Happy Early Birthday,', 'Mr. Featherstonehaugh! (12/31)']);
 });

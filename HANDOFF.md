@@ -68,7 +68,13 @@ cannot drift from the TVs. Future "TV editor" role is logged in ROADMAP §5c.
 HARNESS LESSONS (both bit this round, neither was a code bug): inlining a JS
 file into test HTML breaks at any "</script" in its comments — escape it; and
 never treat a first theory as the answer, the "$ in replacement strings" guess
-was wrong and a quick check proved it. SW 1.47.0, 155/155.
+was wrong and a quick check proved it. Then v1.8.0: HOUSE-COLOURED BIRTHDAYS
+from an optional third feed column; HOUSE_COLORS in right-column.js is the one
+script copy of the house palette (config presets read it). Config page's date
+inputs got color-scheme: dark — their calendar button was black on black.
+Then v1.9.0: every early wish ends with the birthday's date, "Suzie Q! (7/5)",
+because a July birthday wished in May read as a mistake. ENROLMENT ANSWERED:
+548 students + 71 faculty; MAX_LEAD_SCHOOL_DAYS stays 15. SW 1.49.0, 170/170.
 Round 11, "Tenor" — see §10.)
 // prev: **6.25.1 (SILENT BELLS RANG THE DEFAULT
 BELL. The sound dropdowns have offered "Silent / None" since 5.32/5.33 (module

@@ -1,6 +1,19 @@
 /**
  * Ellis Web Bell — Signage Right Column (behaviour)
- * Version: 1.7.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ * Version: 1.9.0 (app release v6.26.0 — sibling surface, app version unchanged)
+ *
+ * v1.9.0: EVERY EARLY WISH CARRIES THE BIRTHDAY'S DATE — "Happy Early
+ *   Birthday, / Suzie Q! (7/5)". Prompted by students asking about summer: a
+ *   July birthday is wished in May, and without the date the card reads as a
+ *   mistake. Shown on all early wishes, not just summer's, so the format is
+ *   one thing everywhere (owner's call).
+ *
+ * v1.8.0: HOUSE-COLOURED BIRTHDAYS. Both birthday feeds may carry an optional
+ *   third column naming the person's house; their card — on the day and as an
+ *   early wish — then uses that house's tile colour, the same four colours as
+ *   the scoreboard cards. HOUSE_COLORS below is the single source for them:
+ *   the config page's announcement presets read it too. No column, blank, or
+ *   an unrecognised name all mean the ordinary tile — the pre-1.8.0 look.
  *
  * v1.7.0: ANNOUNCEMENTS — up to five, typed on the config page and saved to
  *   the config doc the TVs already LISTEN to live, so they appear within
@@ -168,6 +181,11 @@
  * last three weeks of school. Spreading rather than dumping is the point: the
  * alternative puts seventy names on one afternoon.
  *
+ * ENROLMENT, ANSWERED ROUND 11: 548 students + 71 faculty = 619. Summer holds
+ * ~115 of those birthdays, so the last 15 school days carry ~8 summer names a
+ * day plus that day's own — a loop under a minute. 15 stays. (The paragraph
+ * below is the original reasoning, kept for why the cap exists at all.)
+ *
  * MAX_LEAD_SCHOOL_DAYS = 15 is what makes summer birthdays reachable at all —
  * without a cap they would need ten weeks of lead time and would simply never
  * be wished. It also means graduating 8th graders get their summer wish on
@@ -212,6 +230,28 @@
     // Two of them, so a day with no birthdays and no holiday still has
     // something to flip to. "One School" came out at the owner's request — it
     // is not part of what anyone at Ellis actually says.
+    /**
+     * v1.8.0: house tile colours — the same four as the scoreboard cards in
+     * right-column.css (.house-*). The ONE place these live in script: the
+     * config page's announcement presets read SignageRightColumn.HOUSE_COLORS.
+     */
+    var HOUSE_COLORS = {
+        accomodore: '#ffffff',
+        callidus: '#d1d5db',
+        princeps: '#4b9cd3',
+        vevaios: '#111827'
+    };
+
+    /**
+     * "Princeps", "princeps ", "PRINCEPS" -> its colour. Also takes the
+     * double-m "Accommodore", the spelling people naturally type. Anything
+     * else -> '' (the ordinary tile), so a typo never breaks a card.
+     */
+    function houseColorFor(raw) {
+        var key = String(raw || '').trim().toLowerCase().replace(/^accommodore$/, 'accomodore');
+        return HOUSE_COLORS[key] || '';
+    }
+
     var DEFAULT_FALLBACK_TEXT = 'Ellis — 4 Houses, 1 Home';
     var DEFAULT_FALLBACK_TEXT_2 = 'Have a delightful day!';
 
@@ -543,6 +583,12 @@
      * early-wish spreading, same contribution to the fill-to-two rule. Students
      * first so the order is stable and predictable.
      */
+    /** "07/05" -> "7/5": the way a person writes a date on a sign. */
+    function shortDate(monthday) {
+        var parts = String(monthday || '').split('/');
+        return Number(parts[0]) + '/' + Number(parts[1]);
+    }
+
     function birthdaysOn(monthday) {
         return birthdays.concat(facultyBirthdays).filter(function (b) {
             return b.monthday === monthday;
@@ -622,7 +668,7 @@
     /** The day's full rotation: base cards plus whatever announcements apply. */
     function buildRotation(now) {
         var today = startOfDay(now);
-        var base = buildTickerItems(today).map(function (t) { return { text: t, color: '' }; });
+        var base = buildTickerCards(today);
         var key = dateKey(today);
         return composeRotation(base, announcements.filter(function (a) {
             return isAnnouncementActive(a, key);
@@ -663,12 +709,17 @@
         return cards;
     }
 
-    function buildTickerItems(now) {
+    /**
+     * v1.8.0: the day's cards as { text, color }. Birthday cards carry the
+     * person's house colour; everything else here is the ordinary tile.
+     * buildTickerItems() below is the text-only view of the same list.
+     */
+    function buildTickerCards(now) {
         var items = [];
         var today = startOfDay(now);
 
         birthdaysOn(monthDayKey(today)).forEach(function (b) {
-            items.push('Happy Birthday,\n' + b.name + '!');
+            items.push({ text: 'Happy Birthday,\n' + b.name + '!', color: houseColorFor(b.house) });
         });
 
         if (isSchoolDay(today)) {
@@ -685,15 +736,20 @@
                 }
                 if (index === -1) return;
 
-                // Names in the order their birthdays fall inside the closure.
-                var names = [];
+                // People in the order their birthdays fall inside the closure.
+                // Whole records, not just names, so each keeps their own house
+                // colour — two "Maya R."s in different houses stay distinct.
+                var people = [];
                 run.days.forEach(function (day) {
-                    birthdaysOn(monthDayKey(day)).forEach(function (b) { names.push(b.name); });
+                    birthdaysOn(monthDayKey(day)).forEach(function (b) { people.push(b); });
                 });
-                if (!names.length) return;
+                if (!people.length) return;
 
-                balancedChunks(names, leadDays.length)[index].forEach(function (name) {
-                    items.push('Happy Early Birthday,\n' + name + '!');
+                balancedChunks(people, leadDays.length)[index].forEach(function (b) {
+                    items.push({
+                        text: 'Happy Early Birthday,\n' + b.name + '! (' + shortDate(b.monthday) + ')',
+                        color: houseColorFor(b.house)
+                    });
                 });
             });
         }
@@ -735,7 +791,14 @@
             items.push(fallbacks[f % fallbacks.length]);
             f++;
         }
-        return items;
+        return items.map(function (x) {
+            return typeof x === 'string' ? { text: x, color: '' } : x;
+        });
+    }
+
+    /** Text-only view of buildTickerCards(), for everything that predates colour. */
+    function buildTickerItems(now) {
+        return buildTickerCards(now).map(function (c) { return c.text; });
     }
 
     function refreshTickerItems(now) {
@@ -999,7 +1062,8 @@
                 return normalizeMonthDay(r[1]) !== null;
             });
             var parsed = rows.map(function (r) {
-                return { name: (r[0] || '').trim(), monthday: normalizeMonthDay(r[1]) };
+                // v1.8.0: optional third column, the person's house.
+                return { name: (r[0] || '').trim(), monthday: normalizeMonthDay(r[1]), house: (r[2] || '').trim() };
             }).filter(function (b) { return b.name && b.monthday; });
             logLoad(label, rows.length, parsed.length);
             return parsed;
@@ -1367,9 +1431,10 @@
     }
 
     var SignageRightColumn = {
-        VERSION: '1.7.0',
+        VERSION: '1.9.0',
         init: init,
         mountPreview: mountPreview,
+        HOUSE_COLORS: HOUSE_COLORS,
         // Exposed for the Node tests in tests/right-column.test.mjs — these are
         // the pure parts, and they are where the real logic lives.
         _internals: {
@@ -1382,6 +1447,9 @@
             buildTickerItems: buildTickerItems,
             isSchoolDay: isSchoolDay,
             headlineFor: headlineFor,
+            houseColorFor: houseColorFor,
+            shortDate: shortDate,
+            buildTickerCards: buildTickerCards,
             normalizeAnnouncements: normalizeAnnouncements,
             isAnnouncementActive: isAnnouncementActive,
             composeRotation: composeRotation,

@@ -2,6 +2,48 @@
 
 Release history for the main app (src/js / index.html; script.js before 6.0.0). Sibling surfaces (clock.html, old.html, dashboard-config.html, service-worker.js) carry their own version notes in their file headers.
 
+## signage/right-column.js v1.9.0 — early wishes carry the date
+(Sibling surface; app unchanged at 6.26.0. SW 1.49.0.)
+
+Every early wish now ends with the birthday's own date: `Happy Early Birthday, /
+Suzie Q! (7/5)`. Prompted by two students asking what happens to summer
+birthdays. The answer was already "they're wished in the last three weeks of
+school" — but a July birthday wished in May with no date reads as a mistake.
+Shown on all early wishes, not just summer's, so the format is one thing
+everywhere (owner's call). On-the-day birthdays carry no date.
+
+**Enrolment, open since the first day of round 11, is answered:** 548 students
+and 71 faculty, 619 people. Summer holds about 115 of their birthdays, so the
+last 15 school days carry roughly 8 summer names a day plus that day's own — a
+loop under a minute. `MAX_LEAD_SCHOOL_DAYS` stays at 15.
+
+Three tests spelled out the old wording and were updated; five new ones pin the
+date format and that the date is the birthday's, not the day it's shown.
+**170/170.**
+
+## signage/right-column.js v1.8.0 — birthdays in house colours
+(Sibling surface; app unchanged at 6.26.0. Config v1.8.0, SW 1.48.0.)
+
+**Both birthday feeds may carry an optional third column: the person's house.**
+Their card — on the day and as an early wish — then uses that house's tile
+colour, the same four as the scoreboard cards, with the text colour picking
+itself as it does for announcements. Blank, missing, or unrecognised means the
+ordinary tile: exactly the old look, so nothing changes until the column exists.
+The double-m "Accommodore" is accepted, since that's the spelling people type.
+
+Early wishes now carry whole person records through the break-spreading logic
+rather than bare names, so two kids with the same display name in different
+houses keep their own colours. `HOUSE_COLORS` is now public and is the single
+source for the house colours in script: the config page's announcement presets
+read it instead of keeping a second copy.
+
+**FIXED (config v1.8.0): the date inputs' calendar button was black on black.**
+The browser draws native controls for a light page unless told otherwise;
+`color-scheme: dark` on date inputs lightens the button and darkens the popup
+calendar to match the page.
+
+10 new tests. **165/165.**
+
 ## signage/right-column.js v1.7.0 — announcements
 (Sibling surface; app unchanged at 6.26.0. CSS v1.5.0, config v1.7.0, SW 1.47.0.)
 

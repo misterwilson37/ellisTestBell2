@@ -15,13 +15,13 @@ When they disagree, HANDOFF.md wins — and fix this file.
 
 | | |
 |---|---|
-| Latest built version | **6.26.0** (app), **1.47.0** (service worker), **v1.7.0** (right-column.js) |
+| Latest built version | **6.26.0** (app), **1.49.0** (service worker), **v1.9.0** (right-column.js) |
 | Live on alpha (owner's channel) | **everything he has received** — he pushes on receipt, so 6.25.1 as of round 11's start |
 | Outgoing delta (round 11) | **6.26.0** — signage right column extracted + birthday ticker |
 | Beta channel (CDC teacher) | 6.4.0 |
 | Building channel (bells domain) | 5.69.5 backport |
 | School channel (~50 faculty) | 5.79.x |
-| Tests | 155/155, 41 modules |
+| Tests | 170/170, 41 modules |
 
 **The table above is what this round BUILT, not a guess about his channel.**
 He posts everything on receipt, so whatever zip you were handed is live — see
@@ -221,10 +221,9 @@ birthday tab is a formula over a PRIVATE roster tab, so the public URL carries
 no birth year, no full last name and no student who opted out. Nothing about
 students touches Firestore.
 
-**Open, and the only thing outstanding:** the owner still owes an enrolment
-figure so `MAX_LEAD_SCHOOL_DAYS` (currently 15) can be sized. It governs how
-many summer birthdays land per day in the last three weeks of school — fine at
-~600 students, wants raising to 20 at ~1200. One constant in right-column.js.
+**Enrolment answered (round 11): 548 students + 71 faculty.** At that size the
+15-school-day summer window carries ~8 summer names a day — `MAX_LEAD_SCHOOL_DAYS`
+stays at 15. Revisit only if the roster roughly doubles.
 
 **Watch for, first time he fills in the closure sheet:** it takes the WEEKDAYS
 school is shut and glues the flanking weekends on itself. Listing the weekends
